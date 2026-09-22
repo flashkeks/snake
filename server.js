@@ -40,20 +40,34 @@ const clients = new Map();
 
 const SIZE = 40;
 // Ein Tick = 60 ms. Normal bewegt man sich jeden 2. Tick (wie frueher alle 120 ms),
-// mit Turbo jeden Tick, als Schnecke jeden 4.
+// mit Turbo jeden Tick, als Schnecke jeden 3.
 const TICK = 60;
-const EVERY = { fast: 1, normal: 2, slow: 4 };
+const EVERY = { fast: 1, normal: 2, slow: 3 };
 const START_LEN = 6;
+// Obergrenze, damit ×100 nicht das ganze Feld (1600 Zellen) und die Leitung sprengt
+const MAX_LEN = 600;
 const DUEL_MS = 4500;
 const GAMBLE_MS = 4500;
 const BOX_MS = 1600;
 
-const APPLES = 4;
+const FRUITS = 8;
 const BOXES = 4;
 const COINS = 2;
 
-// Feste Farbe je Spieler. Gruen fehlt absichtlich: Gruen ist bei jedem Spieler "du".
-const HUES = [0, 210, 50, 280, 25, 185, 320, 245];
+// Fruechte: je seltener, desto mehr Laenge
+const FRUIT_KINDS = [
+    { kind: 'apple', icon: '🍎', value: 1, weight: 50 },
+    { kind: 'banana', icon: '🍌', value: 2, weight: 24 },
+    { kind: 'grapes', icon: '🍇', value: 3, weight: 14 },
+    { kind: 'melon', icon: '🍉', value: 5, weight: 8 },
+    { kind: 'cherry', icon: '🍒', value: 10, weight: 3 },
+    { kind: 'mango', icon: '🥭', value: 20, weight: 1 }
+];
+const FRUIT = Object.fromEntries(FRUIT_KINDS.map(f => [f.kind, f]));
+
+// Farbauswahl im Startmenue. Frei gewaehlte Farben gehen auch, nur nicht zu dunkel.
+const PALETTE = ['#ff4d4d', '#ff9f1a', '#ffd23f', '#b5ff3b', '#00ff88', '#18e0d0',
+    '#3da5ff', '#5b6cff', '#a45bff', '#ff5bd6', '#ff8fa3', '#f2f2f2'];
 
 // Seltenheit wie bei CS:GO: grey < blue < purple < pink < red < gold.
 // `bad` und `dead` sind die Nieten.
@@ -61,7 +75,7 @@ const BOX_OUTCOMES = [
     { key: 'speed', icon: '⚡', label: 'Turbo', good: true, rarity: 'blue', weight: 10 },
     { key: 'shield', icon: '🛡️', label: 'Schild', good: true, rarity: 'blue', weight: 9 },
     { key: 'grow', icon: '🍄', label: '+5', good: true, rarity: 'blue', weight: 10 },
-    { key: 'applerain', icon: '🍎', label: 'Apfelregen', good: true, rarity: 'blue', weight: 6 },
+    { key: 'applerain', icon: '🍉', label: 'Obstregen', good: true, rarity: 'blue', weight: 6 },
     { key: 'teleport', icon: '🌀', label: 'Teleport', good: null, rarity: 'blue', weight: 5 },
     { key: 'ghost', icon: '👻', label: 'Geist', good: true, rarity: 'purple', weight: 7 },
     { key: 'magnet', icon: '🧲', label: 'Magnet', good: true, rarity: 'purple', weight: 6 },
@@ -86,12 +100,17 @@ const COIN_OUTCOMES = [
     { key: 'x3', icon: '×3', label: 'Verdreifacht', good: true, rarity: 'purple', weight: 10, mul: 3 },
     { key: 'x5', icon: '×5', label: 'Fuenffach', good: true, rarity: 'pink', weight: 5, mul: 5 },
     { key: 'x10', icon: '×10', label: 'ZEHNFACH', good: true, rarity: 'gold', weight: 2, mul: 10 },
+    { key: 'x20', icon: '×20', label: 'ZWANZIGFACH', good: true, rarity: 'gold', weight: 0.8, mul: 20 },
+    { key: 'x50', icon: '×50', label: 'FUENFZIGFACH', good: true, rarity: 'mythic', weight: 0.3, mul: 50 },
+    { key: 'x100', icon: '×100', label: 'HUNDERTFACH', good: true, rarity: 'mythic', weight: 0.1, mul: 100 },
     { key: 'death', icon: '💀', label: 'Tot', good: false, rarity: 'dead', weight: 5, mul: 0 }
 ];
 
 const DURATION = {
-    speed: 8000, ghost: 6000, shield: 15000, slow: 6000, reverse: 6000, slowall: 5000,
+    speed: 8000, ghost: 6000, shield: 15000, slow: 4000, reverse: 6000, slowall: 3000,
     magnet: 10000, invisible: 7000, ice: 3000, star: 6000,
+    // Wer ×10 oder mehr zieht, leuchtet so lange fuer alle
+    jackpot: 8000,
     // Kurzer Schutz nach dem Muenzwurf, falls jemand gerade durch einen durchfaehrt
     afterGamble: 1500
 };
@@ -167,11 +186,21 @@ function cleanName(raw) {
     return out;
 }
 
-function pickHue() {
-    const used = new Map(HUES.map(h => [h, 0]));
-    for (const p of players.values()) used.set(p.hue, used.get(p.hue) + 1);
+function pickColor() {
+    const used = new Map(PALETTE.map(c => [c, 0]));
+    for (const p of players.values()) if (used.has(p.color)) used.set(p.color, used.get(p.color) + 1);
     const min = Math.min(...used.values());
-    return HUES.find(h => used.get(h) === min);
+    const free = PALETTE.filter(c => used.get(c) === min);
+    return free[rand(0, free.length)];
+}
+
+// Nur #rrggbb, und nicht so dunkel, dass man auf dem schwarzen Feld verschwindet
+function cleanColor(raw) {
+    const c = String(raw || '').toLowerCase();
+    if (!/^#[0-9a-f]{6}$/.test(c)) return null;
+    const [r, g, b] = [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16) / 255);
+    const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    return lum < 0.2 ? null : c;
 }
 
 function freePos() {
@@ -214,8 +243,25 @@ function spawn(player) {
 }
 
 function setLen(p, n) {
-    p.len = Math.max(1, Math.round(n));
+    p.len = Math.min(MAX_LEN, Math.max(1, Math.round(n)));
     p.body = p.body.slice(0, p.len);
+}
+
+function grow(p, n) {
+    p.len = Math.min(MAX_LEN, p.len + n);
+}
+
+function spawnFruit(bonus) {
+    spawnItem('fruit', { kind: weighted(FRUIT_KINDS).kind, bonus: !!bonus });
+}
+
+// Eingefroren laufen die Effekt-Timer nicht weiter. Beim Auftauen wird
+// alles, was beim Einfrieren noch lief, um die Standzeit verlaengert.
+function resumeFx(p, started) {
+    const shift = Date.now() - started;
+    for (const k of Object.keys(p.fx)) {
+        if (p.fx[k] > started) p.fx[k] += shift;
+    }
 }
 
 function active(p, fx) {
@@ -255,7 +301,7 @@ function kill(id, killerId, how) {
 
     if (killer) {
         // Killer waechst um die halbe Laenge des Opfers (aufgerundet)
-        killer.len += Math.ceil(victim.body.length / 2);
+        grow(killer, Math.ceil(victim.body.length / 2));
         killer.kills++;
         killer.streak++;
 
@@ -279,14 +325,14 @@ function kill(id, killerId, how) {
 
 function startDuel(ids) {
     const winner = ids[rand(0, ids.length)];
-    const f = { kind: 'duel', ids, winner, ends: Date.now() + DUEL_MS };
+    const f = { kind: 'duel', ids, winner, started: Date.now(), ends: Date.now() + DUEL_MS };
 
     ids.forEach(id => players.get(id).frozen = f);
     freezes.push(f);
 
     broadcast({
         type: 'duel',
-        fighters: ids.map(id => ({ id, hue: players.get(id).hue, name: players.get(id).name })),
+        fighters: ids.map(id => ({ id, color: players.get(id).color, name: players.get(id).name })),
         winner,
         ms: DUEL_MS
     });
@@ -295,7 +341,7 @@ function startDuel(ids) {
 function startGamble(id) {
     const p = players.get(id);
     const outcome = weighted(COIN_OUTCOMES);
-    const f = { kind: 'gamble', ids: [id], outcome, life: p.life, ends: Date.now() + GAMBLE_MS };
+    const f = { kind: 'gamble', ids: [id], outcome, life: p.life, started: Date.now(), ends: Date.now() + GAMBLE_MS };
 
     p.frozen = f;
     freezes.push(f);
@@ -322,7 +368,13 @@ function resolveFreezes() {
 
             // Gewinner hat das Spiel verlassen: niemand stirbt, alle machen weiter
             if (!winner) {
-                f.ids.forEach(id => { const p = players.get(id); if (p) p.frozen = null; });
+                f.ids.forEach(id => {
+                    const p = players.get(id);
+                    if (p && p.frozen === f) {
+                        p.frozen = null;
+                        resumeFx(p, f.started);
+                    }
+                });
                 continue;
             }
 
@@ -330,6 +382,7 @@ function resolveFreezes() {
                 if (id !== f.winner && players.get(id)) kill(id, f.winner);
             }
             winner.frozen = null;
+            resumeFx(winner, f.started);
         }
 
         if (f.kind === 'gamble') {
@@ -337,6 +390,7 @@ function resolveFreezes() {
             const p = players.get(id);
             if (!p || p.life !== f.life) continue;
             p.frozen = null;
+            resumeFx(p, f.started);
             p.fx.ghost = Math.max(p.fx.ghost || 0, now + DURATION.afterGamble);
 
             const o = f.outcome;
@@ -346,7 +400,14 @@ function resolveFreezes() {
             }
 
             setLen(p, p.len * o.mul);
-            const kind = o.rarity === 'gold' ? 'gold' : o.good ? 'good' : 'bad';
+
+            // Ab ×10: alle sollen es sehen
+            if (o.mul >= 10) {
+                p.fx.jackpot = now + DURATION.jackpot;
+                broadcast({ type: 'jackpot', id, name: p.name, icon: o.icon, len: p.len, rarity: o.rarity });
+            }
+
+            const kind = o.rarity === 'gold' || o.rarity === 'mythic' ? 'gold' : o.good ? 'good' : 'bad';
             feed(`${p.name} 🪙 ${o.icon} → Laenge ${p.len}`, kind);
         }
     }
@@ -400,16 +461,16 @@ function applyBox(id, p, o) {
             p.fx[o.key] = now + DURATION[o.key];
             break;
         case 'grow':
-            p.len += 5;
+            grow(p, 5);
             break;
         case 'jackpot':
-            p.len += 12;
+            grow(p, 12);
             break;
         case 'half':
             setLen(p, Math.floor(p.len / 2));
             break;
         case 'applerain':
-            for (let i = 0; i < 8; i++) spawnItem('apple', { bonus: true });
+            for (let i = 0; i < 8; i++) spawnFruit(true);
             break;
         case 'teleport': {
             // Neuer Kopf woanders, der alte Koerper laeuft hinten aus
@@ -459,7 +520,7 @@ function applyBox(id, p, o) {
                     loot += take;
                 }
             }
-            p.len += loot;
+            grow(p, loot);
             text = `${p.name} 🤏 klaut allen was: +${loot}`;
             break;
         }
@@ -508,7 +569,7 @@ wss.on('connection', ws => {
             client.joined = true;
             const player = client;
             player.name = cleanName(data.name);
-            player.hue = pickHue();
+            player.color = cleanColor(data.color) || pickColor();
             player.kills = 0;
             spawn(player);
             players.set(id, player);
@@ -526,7 +587,7 @@ wss.on('connection', ws => {
             if (!text || now - player.lastChat < 600) return;
             player.lastChat = now;
 
-            const line = { name: player.name, hue: player.hue, text, ts: now };
+            const line = { name: player.name, color: player.color, text, ts: now };
             chatLog.push(line);
             if (chatLog.length > 50) chatLog.shift();
             broadcast({ type: 'chat', ...line });
@@ -703,9 +764,11 @@ function gameTick() {
         if (idx === -1) continue;
         const [item] = items.splice(idx, 1);
 
-        if (item.type === 'apple') {
-            p.len += 1;
-            if (!item.bonus) spawnItem('apple');
+        if (item.type === 'fruit') {
+            const f = FRUIT[item.kind];
+            grow(p, f.value);
+            if (!item.bonus) spawnFruit(false);
+            if (f.value >= 10) feed(`${p.name} ${f.icon} +${f.value}`, 'gold');
         }
         if (item.type === 'box') {
             openBox(id);
@@ -731,10 +794,12 @@ function gameTick() {
         }
     }
 
+    // Eingefroren zeigt die Uhr die Restzeit vom Moment des Einfrierens
     const fxLeft = p => {
+        const ref = p.frozen ? p.frozen.started : now;
         const out = {};
         for (const [k, until] of Object.entries(p.fx)) {
-            if (until > now) out[k] = until - now;
+            if (until > ref) out[k] = until - ref;
         }
         return out;
     };
@@ -749,7 +814,7 @@ function gameTick() {
             body: p.body,
             len: p.len,
             kills: p.kills,
-            hue: p.hue,
+            color: p.color,
             name: p.name,
             frozen: !!p.frozen,
             gambling: !!(p.frozen && p.frozen.kind === 'gamble'),
@@ -762,7 +827,7 @@ function gameTick() {
 
 let nextCoinAt = Date.now() + 5000;
 
-for (let i = 0; i < APPLES; i++) spawnItem('apple');
+for (let i = 0; i < FRUITS; i++) spawnFruit(false);
 for (let i = 0; i < BOXES; i++) spawnItem('box');
 
 setInterval(gameTick, TICK);

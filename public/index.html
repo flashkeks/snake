@@ -63,8 +63,8 @@ h1 {
 
 canvas {
     display: block;
-    width: min(calc(100vw - 360px), 700px, calc(100vh - 150px));
-    height: min(calc(100vw - 360px), 700px, calc(100vh - 150px));
+    width: min(calc(100vw - 640px), 700px, calc(100vh - 150px));
+    height: min(calc(100vw - 640px), 700px, calc(100vh - 150px));
     min-width: 300px;
     min-height: 300px;
     image-rendering: pixelated;
@@ -101,12 +101,30 @@ canvas {
 
 /* ---------- Seitenleiste: Live-Rangliste, Bestenliste, Chat ---------- */
 
-#side {
+#side, #left {
     width: 300px;
     flex: 0 0 300px;
     display: flex;
     flex-direction: column;
     gap: 12px;
+}
+
+#left {
+    width: 260px;
+    flex-basis: 260px;
+}
+
+#boxes {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 20px;
+}
+
+#boxes:empty::before {
+    content: 'Hier drehen deine Boxen';
+    font-size: 12px;
+    opacity: .4;
 }
 
 .panel {
@@ -215,10 +233,14 @@ button {
     cursor: pointer;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1180px) {
     #layout {
         flex-direction: column;
         align-items: center;
+    }
+
+    #main {
+        order: -1;
     }
 
     canvas {
@@ -228,7 +250,7 @@ button {
         min-height: 0;
     }
 
-    #side {
+    #side, #left {
         width: min(92vw, 700px);
         flex-basis: auto;
     }
@@ -277,6 +299,35 @@ button {
 #join button {
     font-size: 18px;
     padding: 8px 28px;
+}
+
+#colors {
+    display: grid;
+    grid-template-columns: repeat(7, 28px);
+    gap: 8px;
+}
+
+#join .swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 2px solid transparent;
+    padding: 0;
+    font-size: 0;
+    cursor: pointer;
+}
+
+#join .swatch.sel {
+    border-color: #fff;
+    box-shadow: 0 0 10px #fff;
+}
+
+#join #custom-color {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: 6px;
+    cursor: pointer;
 }
 
 #join .hint {
@@ -443,72 +494,64 @@ button {
     70% { transform: scale(1.25); }
 }
 
-/* Kleine Walze: Mystery-Box, nur fuer den, der sie aufgesammelt hat */
-#boxreel {
-    position: absolute;
-    left: 10px;
-    bottom: 10px;
-    width: 240px;
+/* Kleine Walzen: Mystery-Boxen, nur fuer den, der sie aufgesammelt hat. Eine je Box. */
+.boxreel {
+    position: relative;
+    width: 100%;
     padding: 8px 0 6px;
-    display: none;
+    display: flex;
     flex-direction: column;
     align-items: center;
     gap: 6px;
     border-radius: 8px;
     background: rgba(5, 8, 7, .92);
     border: 2px solid #b36bff;
-    box-shadow: 0 0 30px rgba(179, 107, 255, .35);
-    pointer-events: none;
-    z-index: 2;
+    box-shadow: 0 0 20px rgba(179, 107, 255, .3);
+    transition: opacity .4s;
 }
 
-#boxreel.show {
-    display: flex;
+.boxreel.done {
+    opacity: 0;
 }
 
-#boxreel .reel {
+.boxreel .reel {
     height: 64px;
 }
 
-#boxreel .reel::after {
+.boxreel .reel::after {
     background: #b36bff;
     box-shadow: 0 0 10px #b36bff;
 }
 
-#boxreel .tile {
+.boxreel .tile {
     flex-basis: 60px;
     font-size: 9px;
     padding-bottom: 5px;
 }
 
-#boxreel .tile .big {
+.boxreel .tile .big {
     font-size: 24px;
     margin-bottom: 2px;
 }
 
-#boxreel .tile.r-gold::before {
+.boxreel .tile.r-gold::before {
     font-size: 10px;
     top: 2px;
     left: 4px;
 }
 
-#box-result {
+.box-result {
     font-weight: 800;
     min-height: 1.2em;
 }
 
-/* Killfeed oben rechts */
+/* Killfeed in der linken Spalte, neueste oben */
 #feed {
-    position: absolute;
-    right: 10px;
-    top: 10px;
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
     gap: 4px;
-    pointer-events: none;
-    max-width: 65%;
-    z-index: 2;
+    max-height: 360px;
+    overflow: hidden;
 }
 
 .feed {
@@ -525,6 +568,8 @@ button {
 .feed.kill { border-color: #ff4d4d; }
 .feed.good { border-color: #00ff88; }
 .feed.bad { border-color: #ff9f1a; }
+
+.feed.info { opacity: .85; }
 
 .feed.streak {
     border-color: #f5c542;
@@ -544,7 +589,56 @@ button {
 }
 
 @keyframes feedIn {
-    from { transform: translateX(30px); opacity: 0; }
+    from { transform: translateX(-30px); opacity: 0; }
+}
+
+/* Mythisch (×50, ×100): Regenbogen statt Gold */
+.tile.r-mythic {
+    background: linear-gradient(115deg, #ff004c, #ff9900, #ffee00, #00ff88, #00b3ff, #a100ff, #ff004c);
+    background-size: 300% 100%;
+    border-bottom-color: #fff;
+    color: #fff;
+    text-shadow: 0 0 6px #000, 0 1px 2px #000;
+    animation: goldShine .9s linear infinite;
+    box-shadow: inset 0 0 22px rgba(255, 255, 255, .8);
+}
+
+.tile.r-mythic::before {
+    content: '★★';
+    position: absolute;
+    top: 4px;
+    left: 6px;
+    font-size: 12px;
+    color: #fff;
+    text-shadow: 0 0 6px #fff;
+}
+
+/* Jackpot-Banner fuer alle */
+#banner {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 12%;
+    text-align: center;
+    font-size: 34px;
+    font-weight: 900;
+    color: #ffd700;
+    text-shadow: 0 0 20px #ffd700, 0 0 40px #ff9d00, 0 2px 4px #000;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 4;
+}
+
+#banner.show {
+    animation: bannerIn 3.5s ease-out forwards;
+}
+
+@keyframes bannerIn {
+    0% { opacity: 0; transform: scale(.3); }
+    10% { opacity: 1; transform: scale(1.3); }
+    20% { transform: scale(1); }
+    80% { opacity: 1; }
+    100% { opacity: 0; }
 }
 
 #toast {
@@ -575,6 +669,17 @@ button {
 <div id="status">Connecting...</div>
 
 <div id="layout">
+    <div id="left">
+        <div class="panel">
+            <h2>🎲 Deine Boxen</h2>
+            <div id="boxes"></div>
+        </div>
+        <div class="panel">
+            <h2>📰 Feed</h2>
+            <div id="feed"></div>
+        </div>
+    </div>
+
     <div id="main">
         <div id="stage">
             <canvas id="game" width="800" height="800"></canvas>
@@ -583,6 +688,7 @@ button {
                 <form id="join-form">
                     <h2>🐍 Wie heisst du?</h2>
                     <input id="join-name" maxlength="16" placeholder="Name" autocomplete="off" required>
+                    <div id="colors"></div>
                     <button type="submit">Spielen</button>
                     <div class="hint">WASD / Pfeiltasten · Wischen am Handy<br>Enter = Chat</div>
                 </form>
@@ -594,19 +700,14 @@ button {
                 <div id="reel-result"></div>
             </div>
 
-            <div id="boxreel">
-                <div class="reel"><div class="strip" id="boxstrip"></div></div>
-                <div id="box-result"></div>
-            </div>
-
-            <div id="feed"></div>
+            <div id="banner"></div>
             <div id="toast"></div>
         </div>
 
         <div id="score"></div>
         <div id="effects"></div>
         <div id="controls">
-            🍎 +1 &nbsp; ❓ Mystery-Box &nbsp; 🪙 Double or Nothing (bis ×10)
+            🍎+1 🍌+2 🍇+3 🍉+5 🍒+10 🥭+20 &nbsp; ❓ Mystery-Box &nbsp; 🪙 Double or Nothing (bis ×100)
         </div>
     </div>
 
@@ -685,6 +786,8 @@ ws.onmessage = event => {
     if (data.type === 'chatlog') data.list.forEach(addChat);
     if (data.type === 'chat') addChat(data);
 
+    if (data.type === 'jackpot') showJackpot(data);
+
     if (data.type === 'died') {
         toast(data.by ? `💀 Gekillt von ${data.by}` : '💀 Tot');
     }
@@ -704,13 +807,46 @@ const joinName = document.getElementById('join-name');
 try { joinName.value = localStorage.getItem('snake-name') || ''; } catch {}
 joinName.focus();
 
+// Farbwahl: zwoelf Vorgaben plus freie Farbe
+const PALETTE = ['#ff4d4d', '#ff9f1a', '#ffd23f', '#b5ff3b', '#00ff88', '#18e0d0',
+    '#3da5ff', '#5b6cff', '#a45bff', '#ff5bd6', '#ff8fa3', '#f2f2f2'];
+let myColor = null;
+try { myColor = localStorage.getItem('snake-color'); } catch {}
+
+const colorsEl = document.getElementById('colors');
+PALETTE.forEach(c => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'swatch';
+    b.style.background = c;
+    b.dataset.color = c;
+    b.onclick = () => pickColor(c);
+    colorsEl.appendChild(b);
+});
+const custom = document.createElement('input');
+custom.type = 'color';
+custom.id = 'custom-color';
+custom.title = 'Eigene Farbe';
+custom.oninput = () => pickColor(custom.value);
+colorsEl.appendChild(custom);
+
+function pickColor(c) {
+    myColor = c;
+    colorsEl.querySelectorAll('.swatch').forEach(b => b.classList.toggle('sel', b.dataset.color === c));
+    if (!PALETTE.includes(c)) custom.value = c;
+}
+if (myColor) pickColor(myColor);
+
 document.getElementById('join-form').addEventListener('submit', e => {
     e.preventDefault();
     const name = joinName.value.trim();
     if (!name) return;
-    try { localStorage.setItem('snake-name', name); } catch {}
+    try {
+        localStorage.setItem('snake-name', name);
+        if (myColor) localStorage.setItem('snake-color', myColor);
+    } catch {}
     unlockAudio();
-    wsSend({ type: 'join', name });
+    wsSend({ type: 'join', name, color: myColor });
     joinName.blur();
 });
 
@@ -788,7 +924,7 @@ function addChat(m) {
     const line = document.createElement('div');
     const who = document.createElement('span');
     who.className = 'who';
-    who.style.color = `hsl(${m.hue}, 80%, 65%)`;
+    who.style.color = m.color;
     who.textContent = m.name + ': ';
     line.appendChild(who);
     line.appendChild(document.createTextNode(m.text));
@@ -801,15 +937,17 @@ function addChat(m) {
 
 const FX_ICON = {
     speed: '⚡', slow: '🐌', ghost: '👻', shield: '🛡️', reverse: '🔄',
-    magnet: '🧲', invisible: '🫥', ice: '🧊', star: '⭐'
+    magnet: '🧲', invisible: '🫥', ice: '🧊', star: '⭐', jackpot: '💰'
 };
 const FX_NAME = {
     speed: 'Turbo', slow: 'Schnecke', ghost: 'Geist', shield: 'Schild', reverse: 'Verdreht',
-    magnet: 'Magnet', invisible: 'Unsichtbar', ice: 'Eisblock', star: 'Stern'
+    magnet: 'Magnet', invisible: 'Unsichtbar', ice: 'Eisblock', star: 'Stern', jackpot: 'Jackpot'
 };
 
+const FRUIT_ICON = { apple: '🍎', banana: '🍌', grapes: '🍇', melon: '🍉', cherry: '🍒', mango: '🥭' };
+
 function colorOf(p) {
-    return p.id === myId ? '#00ff88' : `hsl(${p.hue}, 80%, 55%)`;
+    return p.color || '#888';
 }
 
 function draw() {
@@ -844,15 +982,21 @@ function draw() {
         const cx = it.x * cell + cell / 2;
         const cy = it.y * cell + cell / 2;
 
-        if (it.type === 'coin' || it.type === 'box') {
-            ctx.fillStyle = it.type === 'coin' ? 'rgba(245,197,66,.3)' : 'rgba(179,107,255,.25)';
+        const aura =
+            it.type === 'coin' ? 'rgba(245,197,66,.3)' :
+            it.type === 'box' ? 'rgba(179,107,255,.25)' :
+            it.kind === 'cherry' ? 'rgba(255,60,120,.3)' :
+            it.kind === 'mango' ? `rgba(255,215,0,${0.35 + 0.25 * Math.sin(now / 120)})` : null;
+        if (aura) {
+            ctx.fillStyle = aura;
             ctx.beginPath();
-            ctx.arc(cx, cy, cell * 0.9 * pulse, 0, Math.PI * 2);
+            ctx.arc(cx, cy, cell * (it.kind === 'mango' ? 1.3 : 0.9) * pulse, 0, Math.PI * 2);
             ctx.fill();
         }
 
-        ctx.font = `${Math.floor(cell * (it.type === 'apple' ? 0.85 : 1.05 * pulse))}px system-ui`;
-        ctx.fillText({ apple: '🍎', box: '❓', coin: '🪙' }[it.type], cx, cy + 1);
+        const big = it.type !== 'fruit' || it.kind === 'cherry' || it.kind === 'mango';
+        ctx.font = `${Math.floor(cell * (big ? 1.05 * pulse : 0.85))}px system-ui`;
+        ctx.fillText(it.type === 'fruit' ? FRUIT_ICON[it.kind] : { box: '❓', coin: '🪙' }[it.type], cx, cy + 1);
     });
 
     const blink = Math.floor(now / 150) % 2 === 0;
@@ -864,7 +1008,13 @@ function draw() {
         // Unsichtbare sieht nur der Spieler selbst
         if (fx.invisible && !mine) return;
 
-        ctx.fillStyle = fx.star ? `hsl(${(now / 4) % 360}, 90%, 60%)` : colorOf(p);
+        // Jackpot: wild blinkend in Gold, Weiss und Regenbogen
+        const jp = fx.jackpot ? Math.floor(now / 90) % 3 : -1;
+        ctx.fillStyle =
+            jp === 0 ? '#ffd700' :
+            jp === 1 ? '#ffffff' :
+            jp === 2 ? `hsl(${(now / 2) % 360}, 100%, 60%)` :
+            fx.star ? `hsl(${(now / 4) % 360}, 90%, 60%)` : colorOf(p);
         ctx.globalAlpha =
             p.gambling ? (blink ? 0.15 : 0.5) :
             fx.invisible ? 0.35 :
@@ -891,9 +1041,24 @@ function draw() {
         const head = p.body[0];
         if (!head) return;
 
-        // Kopf markieren
+        // Kopf markieren, der eigene bekommt einen weissen Rahmen
         ctx.fillStyle = 'rgba(0,0,0,.45)';
         ctx.fillRect(head.x * cell + cell / 3, head.y * cell + cell / 3, cell / 3, cell / 3);
+        if (mine) {
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(head.x * cell + 1, head.y * cell + 1, cell - 2, cell - 2);
+        }
+
+        // Jackpot: pulsierende Ringe um den Kopf
+        if (fx.jackpot) {
+            const r = cell * (1.5 + (now % 600) / 600 * 3);
+            ctx.strokeStyle = `rgba(255, 215, 0, ${1 - (now % 600) / 600})`;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(head.x * cell + cell / 2, head.y * cell + cell / 2, r, 0, Math.PI * 2);
+            ctx.stroke();
+        }
 
         // Schild als Ring um den Kopf
         if (fx.shield) {
@@ -975,17 +1140,28 @@ function addFeed(text, kind) {
     const el = document.createElement('div');
     el.className = 'feed ' + (kind || 'info');
     el.textContent = text;
-    box.appendChild(el);
+    box.prepend(el);
 
-    while (box.children.length > 6) box.firstChild.remove();
+    while (box.children.length > 14) box.lastChild.remove();
 
     if (kind === 'streak' || kind === 'gold') {
         beep(520, 0.1, 0.06);
         setTimeout(() => beep(780, 0.2, 0.06), 100);
     }
 
-    setTimeout(() => el.style.opacity = '0', kind === 'gold' ? 8000 : 5000);
-    setTimeout(() => el.remove(), kind === 'gold' ? 8600 : 5600);
+    // Im eigenen Kasten darf der Feed stehen bleiben, nur alte Zeilen verblassen
+    setTimeout(() => el.style.opacity = '0.45', kind === 'gold' ? 30000 : 15000);
+}
+
+// ---------- Jackpot fuer alle ----------
+
+function showJackpot(d) {
+    const el = document.getElementById('banner');
+    el.textContent = `💰 ${d.id === myId ? 'DU' : d.name} ${d.icon}! → ${d.len} 💰`;
+    el.classList.remove('show');
+    el.getBoundingClientRect();
+    el.classList.add('show');
+    fanfare('gold');
 }
 
 // ---------- Toast ----------
@@ -1172,7 +1348,7 @@ function nextReel() {
 function fighterTile(f) {
     return {
         label: f.id === myId ? 'DU' : f.name,
-        color: f.id === myId ? '#00ff88' : `hsl(${f.hue}, 80%, 55%)`
+        color: f.color
     };
 }
 
@@ -1199,7 +1375,7 @@ function duelReel(data) {
 
 function gambleReel(data) {
     const res = data.options.find(o => o.key === data.result);
-    const rare = data.options.filter(o => o.rarity === 'gold' || o.rarity === 'pink');
+    const rare = data.options.filter(o => ['pink', 'gold', 'mythic'].includes(o.rarity));
     const bad = data.options.filter(o => !o.good && o.key !== res.key);
 
     return {
@@ -1211,36 +1387,42 @@ function gambleReel(data) {
         pickNear: () => optionTile(res.good ? (bad[0] || res) : rare[Math.floor(Math.random() * rare.length)]),
         result: () => {
             if (res.key === 'death') return ['💀 VERZOCKT', false];
-            const after = Math.max(1, Math.round(data.len * (res.key === 'half' ? 0.5 : Number(res.key.slice(1)))));
+            const after = Math.min(600, Math.max(1, Math.round(data.len * (res.key === 'half' ? 0.5 : Number(res.key.slice(1))))));
             const text = `${res.icon} ${res.label} → Länge ${after}`;
-            return [text, res.rarity === 'gold' ? 'gold' : !!res.good];
+            return [text, res.rarity === 'gold' || res.rarity === 'mythic' ? 'gold' : !!res.good];
         }
     };
 }
 
 // ---------- Kleine Walze: Mystery-Box ----------
 
-let boxTimer = null;
-
+// Jede Box bekommt ihre eigene Walze, damit man bei zwei Boxen beide drehen sieht
 function playBox(data) {
-    const box = document.getElementById('boxreel');
-    const result = document.getElementById('box-result');
     const res = data.options.find(o => o.key === data.result);
 
-    result.textContent = '';
-    box.classList.add('show');
+    const box = document.createElement('div');
+    box.className = 'boxreel';
+    const reel = document.createElement('div');
+    reel.className = 'reel';
+    const strip = document.createElement('div');
+    strip.className = 'strip';
+    const result = document.createElement('div');
+    result.className = 'box-result';
+    reel.appendChild(strip);
+    box.append(reel, result);
+    document.getElementById('boxes').appendChild(box);
 
     const spin = data.ms - 150;
     const tiles = buildTiles(40, 34, optionTile(res), () => optionTile(weightedPick(data.options)));
-    const mark = spinStrip(box.querySelector('.reel'), document.getElementById('boxstrip'), tiles, 34, 60, 6, spin, 0.03);
+    const mark = spinStrip(reel, strip, tiles, 34, 60, 6, spin, 0.03);
 
-    clearTimeout(boxTimer);
     setTimeout(() => {
         mark();
         result.textContent = `${res.icon} ${res.label}`;
         fanfare(res.rarity === 'gold' ? 'gold' : res.good !== false);
     }, spin + 50);
-    boxTimer = setTimeout(() => box.classList.remove('show'), spin + 1800);
+    setTimeout(() => box.classList.add('done'), spin + 2500);
+    setTimeout(() => box.remove(), spin + 2900);
 }
 
 // Blinken und Items auch zwischen zwei Server-Ticks animieren
