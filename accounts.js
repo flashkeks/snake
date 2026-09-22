@@ -53,7 +53,8 @@ module.exports = function createAccounts(dataDir) {
     db.users = db.users || {};
     db.sessions = db.sessions || {};
 
-    let dirty = false;
+    // Neue Datei gleich anlegen, damit das Backup von Anfang an etwas vorfindet
+    let dirty = !fs.existsSync(file);
 
     function save(sync) {
         if (!dirty) return;
