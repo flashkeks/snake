@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Multiplayer Snake</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    color: white;
+    font-family: system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    background:
+        radial-gradient(circle at 50% 20%, rgba(0,255,140,.10), transparent 35%),
+        linear-gradient(rgba(0,255,140,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,140,.025) 1px, transparent 1px),
+        #050807;
+
+    background-size:
+        auto,
+        40px 40px,
+        40px 40px,
+        auto;
+}
+
+h1 {
+    margin: 20px 0 5px;
+    text-shadow: 0 0 20px rgba(0,255,140,.35);
+}
+
+#status {
+    opacity: .7;
+    margin-bottom: 15px;
+}
+
+#layout {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 0 16px;
+    max-width: 100%;
+}
+
+#main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+}
+
+#stage {
+    position: relative;
+}
+
+canvas {
+    display: block;
+    width: min(calc(100vw - 360px), 700px, calc(100vh - 150px));
+    height: min(calc(100vw - 360px), 700px, calc(100vh - 150px));
+    min-width: 300px;
+    min-height: 300px;
+    image-rendering: pixelated;
+    border: 2px solid rgba(0,255,140,.35);
+    border-radius: 8px;
+    background: #090d0b;
+    box-shadow:
+        0 0 40px rgba(0,255,140,.08),
+        0 0 100px rgba(0,255,140,.04);
+}
+
+#score {
+    margin-top: 12px;
+    font-size: 18px;
+}
+
+#effects {
+    margin-top: 6px;
+    min-height: 1.4em;
+    font-size: 15px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+}
+
+#controls {
+    margin: 12px 0 30px;
+    opacity: .5;
+    text-align: center;
+    line-height: 1.6;
+    font-size: 14px;
+}
+
+/* ---------- Seitenleiste: Live-Rangliste, Bestenliste, Chat ---------- */
+
+#side {
+    width: 300px;
+    flex: 0 0 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.panel {
+    background: rgba(9, 13, 11, .85);
+    border: 1px solid rgba(0,255,140,.25);
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
+.panel h2 {
+    margin: 0 0 8px;
+    font-size: 13px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: rgba(0,255,140,.8);
+}
+
+.panel table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.panel td {
+    padding: 2px 4px;
+    white-space: nowrap;
+}
+
+.panel td.name {
+    max-width: 130px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.panel td.num {
+    text-align: right;
+    opacity: .85;
+}
+
+.panel tr.me {
+    font-weight: 700;
+}
+
+.dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    margin-right: 6px;
+    vertical-align: -1px;
+}
+
+#chat {
+    display: flex;
+    flex-direction: column;
+    height: 320px;
+}
+
+#chat-log {
+    flex: 1;
+    overflow-y: auto;
+    font-size: 13px;
+    line-height: 1.4;
+    padding-right: 4px;
+    word-wrap: break-word;
+}
+
+#chat-log .who {
+    font-weight: 700;
+}
+
+#chat-form {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+input {
+    font: inherit;
+    color: white;
+    background: #0d1310;
+    border: 1px solid rgba(0,255,140,.35);
+    border-radius: 6px;
+    padding: 6px 8px;
+    outline: none;
+}
+
+input:focus {
+    border-color: #00ff88;
+    box-shadow: 0 0 10px rgba(0,255,140,.25);
+}
+
+#chat-input {
+    flex: 1;
+    min-width: 0;
+}
+
+button {
+    font: inherit;
+    font-weight: 700;
+    color: #04130b;
+    background: #00ff88;
+    border: 0;
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+}
+
+@media (max-width: 900px) {
+    #layout {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    canvas {
+        width: min(92vw, 700px);
+        height: min(92vw, 700px);
+        min-width: 0;
+        min-height: 0;
+    }
+
+    #side {
+        width: min(92vw, 700px);
+        flex-basis: auto;
+    }
+}
+
+/* ---------- Namensmenue ---------- */
+
+#join {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(5, 8, 7, .8);
+    backdrop-filter: blur(3px);
+    border-radius: 8px;
+    z-index: 5;
+}
+
+#join.hidden {
+    display: none;
+}
+
+#join form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+    padding: 24px 28px;
+    border: 2px solid rgba(0,255,140,.4);
+    border-radius: 10px;
+    background: #070b09;
+    box-shadow: 0 0 40px rgba(0,255,140,.15);
+}
+
+#join h2 {
+    margin: 0;
+}
+
+#join input {
+    width: 220px;
+    text-align: center;
+    font-size: 18px;
+}
+
+#join button {
+    font-size: 18px;
+    padding: 8px 28px;
+}
+
+#join .hint {
+    font-size: 13px;
+    opacity: .6;
+    text-align: center;
+    line-height: 1.5;
+}
+
+/* ---------- Grosse Walze: Duell und Double or Nothing, CS:GO-Case-Opening ---------- */
+
+#reelbox {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 0;
+    background: rgba(5, 8, 7, .9);
+    border-top: 2px solid #f5c542;
+    border-bottom: 2px solid #f5c542;
+    box-shadow: 0 0 60px rgba(245, 197, 66, .25);
+    pointer-events: none;
+    z-index: 3;
+}
+
+#reelbox.show {
+    display: flex;
+}
+
+#reelbox.jackpot {
+    animation: jackpotGlow .6s ease-in-out infinite alternate;
+}
+
+@keyframes jackpotGlow {
+    from { box-shadow: 0 0 60px rgba(255, 215, 0, .4); }
+    to { box-shadow: 0 0 140px rgba(255, 215, 0, .9); }
+}
+
+#reel-title {
+    font-weight: 800;
+    letter-spacing: .15em;
+    color: #f5c542;
+    text-transform: uppercase;
+    text-align: center;
+}
+
+.reel {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+}
+
+#reel {
+    height: 100px;
+}
+
+.reel::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    margin-left: -1.5px;
+    background: #f5c542;
+    box-shadow: 0 0 12px #f5c542;
+    z-index: 2;
+}
+
+.strip {
+    display: flex;
+    gap: 6px;
+    height: 100%;
+    will-change: transform;
+}
+
+.tile {
+    position: relative;
+    flex: 0 0 90px;
+    height: 100%;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 4px 8px;
+    font-weight: 700;
+    font-size: 13px;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,.6);
+    border-bottom: 5px solid rgba(0, 0, 0, .35);
+    text-align: center;
+    line-height: 1.1;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.tile .big {
+    font-size: 30px;
+    margin-bottom: 4px;
+}
+
+.tile.win {
+    outline: 3px solid #fff;
+    box-shadow: 0 0 25px #fff;
+}
+
+/* Seltenheitsfarben wie bei CS:GO */
+.tile.r-bad { background: linear-gradient(180deg, #5d6570, #3b4048); border-bottom-color: #b0c3d9; }
+.tile.r-dead { background: linear-gradient(180deg, #3a0b0b, #140303); border-bottom-color: #ff2a2a; color: #ff6b6b; }
+.tile.r-blue { background: linear-gradient(180deg, #4b69ff, #2a3c99); border-bottom-color: #8da2ff; }
+.tile.r-purple { background: linear-gradient(180deg, #8847ff, #4d25a0); border-bottom-color: #b891ff; }
+.tile.r-pink { background: linear-gradient(180deg, #d32ce6, #7d1789); border-bottom-color: #f08bfb; }
+.tile.r-red { background: linear-gradient(180deg, #eb4b4b, #8f2020); border-bottom-color: #ff9a9a; }
+
+/* ★ Gold: das Messer unter den Kacheln */
+.tile.r-gold {
+    background: linear-gradient(115deg, #7a5200 0%, #e4ae39 25%, #fff3b0 45%, #e4ae39 60%, #a86f00 100%);
+    background-size: 250% 100%;
+    border-bottom-color: #fff0a0;
+    color: #3a2400;
+    text-shadow: 0 1px 0 rgba(255,255,255,.5);
+    animation: goldShine 1.4s linear infinite;
+    box-shadow: inset 0 0 18px rgba(255, 240, 160, .7);
+}
+
+.tile.r-gold::before {
+    content: '★';
+    position: absolute;
+    top: 4px;
+    left: 6px;
+    font-size: 13px;
+    color: #fff8d0;
+    text-shadow: 0 0 6px #fff;
+}
+
+@keyframes goldShine {
+    from { background-position: 100% 0; }
+    to { background-position: -150% 0; }
+}
+
+#reel-result {
+    min-height: 1.4em;
+    font-size: 22px;
+    font-weight: 800;
+    text-align: center;
+}
+
+#reel-result.gold {
+    font-size: 30px;
+    color: #ffd700;
+    text-shadow: 0 0 20px #ffd700, 0 0 40px #ff9d00;
+    animation: pop .4s ease-out;
+}
+
+@keyframes pop {
+    from { transform: scale(.4); }
+    70% { transform: scale(1.25); }
+}
+
+/* Kleine Walze: Mystery-Box, nur fuer den, der sie aufgesammelt hat */
+#boxreel {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    width: 240px;
+    padding: 8px 0 6px;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    border-radius: 8px;
+    background: rgba(5, 8, 7, .92);
+    border: 2px solid #b36bff;
+    box-shadow: 0 0 30px rgba(179, 107, 255, .35);
+    pointer-events: none;
+    z-index: 2;
+}
+
+#boxreel.show {
+    display: flex;
+}
+
+#boxreel .reel {
+    height: 64px;
+}
+
+#boxreel .reel::after {
+    background: #b36bff;
+    box-shadow: 0 0 10px #b36bff;
+}
+
+#boxreel .tile {
+    flex-basis: 60px;
+    font-size: 9px;
+    padding-bottom: 5px;
+}
+
+#boxreel .tile .big {
+    font-size: 24px;
+    margin-bottom: 2px;
+}
+
+#boxreel .tile.r-gold::before {
+    font-size: 10px;
+    top: 2px;
+    left: 4px;
+}
+
+#box-result {
+    font-weight: 800;
+    min-height: 1.2em;
+}
+
+/* Killfeed oben rechts */
+#feed {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    pointer-events: none;
+    max-width: 65%;
+    z-index: 2;
+}
+
+.feed {
+    padding: 4px 10px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, .7);
+    border-right: 3px solid #888;
+    font-size: 13px;
+    font-weight: 600;
+    animation: feedIn .2s ease-out;
+    transition: opacity .5s;
+}
+
+.feed.kill { border-color: #ff4d4d; }
+.feed.good { border-color: #00ff88; }
+.feed.bad { border-color: #ff9f1a; }
+
+.feed.streak {
+    border-color: #f5c542;
+    color: #f5c542;
+    font-size: 16px;
+    font-weight: 900;
+    letter-spacing: .05em;
+}
+
+.feed.gold {
+    border-color: #ffd700;
+    color: #3a2400;
+    background: linear-gradient(115deg, #a86f00, #ffd700, #fff3b0, #e4ae39);
+    background-size: 250% 100%;
+    animation: feedIn .2s ease-out, goldShine 1.4s linear infinite;
+    font-weight: 900;
+}
+
+@keyframes feedIn {
+    from { transform: translateX(30px); opacity: 0; }
+}
+
+#toast {
+    position: absolute;
+    left: 50%;
+    top: 16px;
+    transform: translateX(-50%);
+    padding: 8px 16px;
+    border-radius: 6px;
+    background: rgba(255, 60, 60, .9);
+    font-weight: 700;
+    opacity: 0;
+    transition: opacity .3s;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 4;
+}
+
+#toast.show {
+    opacity: 1;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🐍 Multiplayer Snake</h1>
+<div id="status">Connecting...</div>
+
+<div id="layout">
+    <div id="main">
+        <div id="stage">
+            <canvas id="game" width="800" height="800"></canvas>
+
+            <div id="join">
+                <form id="join-form">
+                    <h2>🐍 Wie heisst du?</h2>
+                    <input id="join-name" maxlength="16" placeholder="Name" autocomplete="off" required>
+                    <button type="submit">Spielen</button>
+                    <div class="hint">WASD / Pfeiltasten · Wischen am Handy<br>Enter = Chat</div>
+                </form>
+            </div>
+
+            <div id="reelbox">
+                <div id="reel-title"></div>
+                <div class="reel" id="reel"><div class="strip" id="strip"></div></div>
+                <div id="reel-result"></div>
+            </div>
+
+            <div id="boxreel">
+                <div class="reel"><div class="strip" id="boxstrip"></div></div>
+                <div id="box-result"></div>
+            </div>
+
+            <div id="feed"></div>
+            <div id="toast"></div>
+        </div>
+
+        <div id="score"></div>
+        <div id="effects"></div>
+        <div id="controls">
+            🍎 +1 &nbsp; ❓ Mystery-Box &nbsp; 🪙 Double or Nothing (bis ×10)
+        </div>
+    </div>
+
+    <div id="side">
+        <div class="panel">
+            <h2>Jetzt im Spiel</h2>
+            <table id="board"></table>
+        </div>
+        <div class="panel">
+            <h2>🏆 Bestenliste</h2>
+            <table id="hall"></table>
+        </div>
+        <div class="panel" id="chat">
+            <h2>💬 Chat</h2>
+            <div id="chat-log"></div>
+            <form id="chat-form">
+                <input id="chat-input" maxlength="200" placeholder="Enter zum Schreiben" autocomplete="off">
+                <button type="submit">↵</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+const status = document.getElementById('status');
+const score = document.getElementById('score');
+
+let myId = null;
+let joined = false;
+let boardSize = 40;
+let players = [];
+let items = [];
+
+const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+const ws = new WebSocket(wsProtocol + '//' + location.host + '/game/ws');
+
+ws.onopen = () => {
+    status.textContent = '🟢 Connected';
+};
+
+ws.onclose = () => {
+    status.textContent = '🔴 Disconnected — Seite neu laden';
+};
+
+ws.onerror = () => {
+    status.textContent = '⚠️ Connection error';
+};
+
+ws.onmessage = event => {
+    const data = JSON.parse(event.data);
+
+    if (data.type === 'welcome') {
+        myId = data.id;
+        boardSize = data.size;
+    }
+
+    if (data.type === 'joined') {
+        joined = true;
+        document.getElementById('join').classList.add('hidden');
+    }
+
+    if (data.type === 'state') {
+        players = data.players;
+        items = data.items || [];
+        draw();
+    }
+
+    if (data.type === 'duel') queueReel(duelReel(data));
+    if (data.type === 'gamble') queueReel(gambleReel(data));
+    if (data.type === 'box') playBox(data);
+    if (data.type === 'feed') addFeed(data.text, data.kind);
+    if (data.type === 'highscores') drawHall(data.list);
+    if (data.type === 'chatlog') data.list.forEach(addChat);
+    if (data.type === 'chat') addChat(data);
+
+    if (data.type === 'died') {
+        toast(data.by ? `💀 Gekillt von ${data.by}` : '💀 Tot');
+    }
+};
+
+function wsSend(obj) {
+    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+}
+
+function sendDirection(direction) {
+    if (joined) wsSend({ type: 'direction', direction });
+}
+
+// ---------- Namensmenue ----------
+
+const joinName = document.getElementById('join-name');
+try { joinName.value = localStorage.getItem('snake-name') || ''; } catch {}
+joinName.focus();
+
+document.getElementById('join-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const name = joinName.value.trim();
+    if (!name) return;
+    try { localStorage.setItem('snake-name', name); } catch {}
+    unlockAudio();
+    wsSend({ type: 'join', name });
+    joinName.blur();
+});
+
+// ---------- Steuerung ----------
+
+const chatInput = document.getElementById('chat-input');
+
+document.addEventListener('keydown', e => {
+    const typing = document.activeElement && document.activeElement.tagName === 'INPUT';
+
+    if (typing) {
+        if (e.key === 'Escape') document.activeElement.blur();
+        return;
+    }
+
+    if (e.key === 'Enter' && joined) {
+        e.preventDefault();
+        chatInput.focus();
+        return;
+    }
+
+    const keys = {
+        ArrowUp: 'up',
+        w: 'up',
+        W: 'up',
+        ArrowDown: 'down',
+        s: 'down',
+        S: 'down',
+        ArrowLeft: 'left',
+        a: 'left',
+        A: 'left',
+        ArrowRight: 'right',
+        d: 'right',
+        D: 'right'
+    };
+
+    unlockAudio();
+
+    if (keys[e.key]) {
+        e.preventDefault();
+        sendDirection(keys[e.key]);
+    }
+});
+
+// Wischen auf dem Handy
+let touchStart = null;
+canvas.addEventListener('touchstart', e => {
+    unlockAudio();
+    touchStart = e.touches[0];
+}, { passive: true });
+canvas.addEventListener('touchend', e => {
+    if (!touchStart) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStart.clientX;
+    const dy = t.clientY - touchStart.clientY;
+    touchStart = null;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return;
+    sendDirection(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+}, { passive: true });
+
+// ---------- Chat ----------
+
+const chatLog = document.getElementById('chat-log');
+
+document.getElementById('chat-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const text = chatInput.value.trim();
+    if (text) wsSend({ type: 'chat', text });
+    chatInput.value = '';
+    chatInput.blur();
+});
+
+function addChat(m) {
+    const atBottom = chatLog.scrollHeight - chatLog.scrollTop - chatLog.clientHeight < 30;
+    const line = document.createElement('div');
+    const who = document.createElement('span');
+    who.className = 'who';
+    who.style.color = `hsl(${m.hue}, 80%, 65%)`;
+    who.textContent = m.name + ': ';
+    line.appendChild(who);
+    line.appendChild(document.createTextNode(m.text));
+    chatLog.appendChild(line);
+    while (chatLog.children.length > 100) chatLog.firstChild.remove();
+    if (atBottom) chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+// ---------- Zeichnen ----------
+
+const FX_ICON = {
+    speed: '⚡', slow: '🐌', ghost: '👻', shield: '🛡️', reverse: '🔄',
+    magnet: '🧲', invisible: '🫥', ice: '🧊', star: '⭐'
+};
+const FX_NAME = {
+    speed: 'Turbo', slow: 'Schnecke', ghost: 'Geist', shield: 'Schild', reverse: 'Verdreht',
+    magnet: 'Magnet', invisible: 'Unsichtbar', ice: 'Eisblock', star: 'Stern'
+};
+
+function colorOf(p) {
+    return p.id === myId ? '#00ff88' : `hsl(${p.hue}, 80%, 55%)`;
+}
+
+function draw() {
+    const cell = canvas.width / boardSize;
+
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Grid
+    ctx.strokeStyle = '#181818';
+    ctx.lineWidth = 1;
+
+    for (let i = 0; i <= boardSize; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * cell, 0);
+        ctx.lineTo(i * cell, canvas.height);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(0, i * cell);
+        ctx.lineTo(canvas.width, i * cell);
+        ctx.stroke();
+    }
+
+    const now = Date.now();
+
+    // Items
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const pulse = 1 + Math.sin(now / 200) * 0.12;
+    items.forEach(it => {
+        const cx = it.x * cell + cell / 2;
+        const cy = it.y * cell + cell / 2;
+
+        if (it.type === 'coin' || it.type === 'box') {
+            ctx.fillStyle = it.type === 'coin' ? 'rgba(245,197,66,.3)' : 'rgba(179,107,255,.25)';
+            ctx.beginPath();
+            ctx.arc(cx, cy, cell * 0.9 * pulse, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.font = `${Math.floor(cell * (it.type === 'apple' ? 0.85 : 1.05 * pulse))}px system-ui`;
+        ctx.fillText({ apple: '🍎', box: '❓', coin: '🪙' }[it.type], cx, cy + 1);
+    });
+
+    const blink = Math.floor(now / 150) % 2 === 0;
+
+    players.forEach(p => {
+        const fx = p.fx || {};
+        const mine = p.id === myId;
+
+        // Unsichtbare sieht nur der Spieler selbst
+        if (fx.invisible && !mine) return;
+
+        ctx.fillStyle = fx.star ? `hsl(${(now / 4) % 360}, 90%, 60%)` : colorOf(p);
+        ctx.globalAlpha =
+            p.gambling ? (blink ? 0.15 : 0.5) :
+            fx.invisible ? 0.35 :
+            fx.ghost ? 0.3 :
+            p.frozen && blink ? 0.35 : 1;
+
+        p.body.forEach(part => {
+            ctx.fillRect(
+                part.x * cell + 1,
+                part.y * cell + 1,
+                cell - 2,
+                cell - 2
+            );
+        });
+
+        // Eisblock als hellblaue Schicht
+        if (fx.ice) {
+            ctx.fillStyle = 'rgba(160, 220, 255, .55)';
+            p.body.forEach(part => ctx.fillRect(part.x * cell, part.y * cell, cell, cell));
+        }
+
+        ctx.globalAlpha = 1;
+
+        const head = p.body[0];
+        if (!head) return;
+
+        // Kopf markieren
+        ctx.fillStyle = 'rgba(0,0,0,.45)';
+        ctx.fillRect(head.x * cell + cell / 3, head.y * cell + cell / 3, cell / 3, cell / 3);
+
+        // Schild als Ring um den Kopf
+        if (fx.shield) {
+            ctx.strokeStyle = '#6cf';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(head.x * cell + cell / 2, head.y * cell + cell / 2, cell * 0.85, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // Magnet: Reichweite andeuten
+        if (fx.magnet) {
+            ctx.strokeStyle = 'rgba(255, 80, 80, .25)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect((head.x - 7) * cell, (head.y - 7) * cell, 15 * cell, 15 * cell);
+        }
+
+        // Name und Effekte ueber dem Kopf
+        const icons = Object.keys(fx).filter(k => k !== 'shield').map(k => FX_ICON[k]).filter(Boolean).join('');
+        ctx.font = `bold ${Math.floor(cell * 0.6)}px system-ui`;
+        ctx.fillStyle = 'rgba(255,255,255,.8)';
+        ctx.fillText((p.gambling ? '🪙 ' : '') + (mine ? 'Du' : p.name) + (icons ? ' ' + icons : ''),
+            head.x * cell + cell / 2, head.y * cell - cell * 0.5);
+    });
+
+    const me = players.find(p => p.id === myId);
+
+    score.textContent = me
+        ? `Länge: ${me.body.length} | Kills: ${me.kills} | Spieler: ${players.length}`
+        : `Spieler: ${players.length}`;
+
+    drawEffects(me);
+    drawBoard();
+}
+
+function drawEffects(me) {
+    const el = document.getElementById('effects');
+    const fx = me?.fx || {};
+    const html = Object.entries(fx)
+        .filter(([k]) => FX_ICON[k])
+        .map(([k, ms]) => `<span>${FX_ICON[k]} ${FX_NAME[k]} ${Math.ceil(ms / 1000)}s</span>`)
+        .join('');
+    if (el.innerHTML !== html) el.innerHTML = html;
+}
+
+function esc(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+let lastBoard = '';
+
+function drawBoard() {
+    const rows = [...players]
+        .sort((a, b) => b.body.length - a.body.length || b.kills - a.kills)
+        .map((p, i) => `<tr class="${p.id === myId ? 'me' : ''}">` +
+            `<td class="name"><span class="dot" style="background:${colorOf(p)}"></span>${i === 0 ? '👑 ' : ''}${esc(p.name)}</td>` +
+            `<td class="num">📏 ${p.body.length}</td>` +
+            `<td class="num">🗡️ ${p.kills}</td></tr>`)
+        .join('') || '<tr><td style="opacity:.5">Niemand da</td></tr>';
+    if (rows !== lastBoard) {
+        document.getElementById('board').innerHTML = rows;
+        lastBoard = rows;
+    }
+}
+
+function drawHall(list) {
+    const medals = ['🥇', '🥈', '🥉'];
+    document.getElementById('hall').innerHTML = list.map((s, i) =>
+        `<tr><td class="name">${medals[i] || (i + 1) + '.'} ${esc(s.name)}</td>` +
+        `<td class="num" title="Laengste Schlange">📏 ${s.best}</td>` +
+        `<td class="num" title="Kills insgesamt">🗡️ ${s.kills}</td></tr>`
+    ).join('') || '<tr><td style="opacity:.5">Noch leer</td></tr>';
+}
+
+// ---------- Killfeed ----------
+
+function addFeed(text, kind) {
+    const box = document.getElementById('feed');
+    const el = document.createElement('div');
+    el.className = 'feed ' + (kind || 'info');
+    el.textContent = text;
+    box.appendChild(el);
+
+    while (box.children.length > 6) box.firstChild.remove();
+
+    if (kind === 'streak' || kind === 'gold') {
+        beep(520, 0.1, 0.06);
+        setTimeout(() => beep(780, 0.2, 0.06), 100);
+    }
+
+    setTimeout(() => el.style.opacity = '0', kind === 'gold' ? 8000 : 5000);
+    setTimeout(() => el.remove(), kind === 'gold' ? 8600 : 5600);
+}
+
+// ---------- Toast ----------
+
+let toastTimer = null;
+
+function toast(text) {
+    const el = document.getElementById('toast');
+    el.textContent = text;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ---------- Sound ----------
+
+let audio = null;
+
+function unlockAudio() {
+    if (!audio) {
+        try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
+    }
+    if (audio && audio.state === 'suspended') audio.resume();
+}
+
+function beep(freq, dur, vol) {
+    if (!audio || audio.state !== 'running') return;
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
+    osc.type = 'square';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol, audio.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + dur);
+    osc.connect(gain).connect(audio.destination);
+    osc.start();
+    osc.stop(audio.currentTime + dur);
+}
+
+function fanfare(kind) {
+    if (kind === 'gold') {
+        [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => beep(f, 0.25, 0.08), i * 110));
+    } else if (kind) {
+        beep(660, 0.12, 0.08);
+        setTimeout(() => beep(990, 0.25, 0.08), 120);
+    } else {
+        beep(220, 0.4, 0.08);
+    }
+}
+
+// ---------- Walze (gemeinsam fuer gross und klein) ----------
+
+// Laesst eine Walze ueber `tiles` laufen und auf Index `winAt` stehen bleiben.
+function spinStrip(reelEl, stripEl, tiles, winAt, tileW, gap, spin, tickVol) {
+    stripEl.innerHTML = '';
+    tiles.forEach(t => {
+        const el = document.createElement('div');
+        el.className = 'tile' + (t.rarity ? ' r-' + t.rarity : '');
+        if (t.color) el.style.background = t.color;
+        if (t.color) el.style.color = 'rgba(0,0,0,.8)';
+        if (t.color) el.style.textShadow = 'none';
+        if (t.big) {
+            const big = document.createElement('div');
+            big.className = 'big';
+            big.textContent = t.big;
+            el.appendChild(big);
+        }
+        const label = document.createElement('div');
+        label.textContent = t.label;
+        el.appendChild(label);
+        stripEl.appendChild(el);
+    });
+
+    const step = tileW + gap;
+    const center = reelEl.clientWidth / 2;
+    // Wie in CS:GO: der Zeiger landet irgendwo auf der Kachel, nicht genau in der Mitte
+    const jitter = (Math.random() - 0.5) * tileW * 0.7;
+    const target = -(winAt * step + tileW / 2 - center + jitter);
+
+    stripEl.style.transition = 'none';
+    stripEl.style.transform = 'translateX(0px)';
+    stripEl.getBoundingClientRect();
+    stripEl.style.transition = `transform ${spin}ms cubic-bezier(.08,.75,.15,1)`;
+    stripEl.style.transform = `translateX(${target}px)`;
+
+    // Tick bei jeder Kachel, die unter dem Zeiger durchlaeuft
+    let lastIdx = -1;
+    const started = Date.now();
+
+    function tick() {
+        const x = new DOMMatrixReadOnly(getComputedStyle(stripEl).transform).m41;
+        const idx = Math.floor((center - x) / step);
+        if (idx !== lastIdx) {
+            if (lastIdx !== -1) beep(900, 0.03, tickVol);
+            lastIdx = idx;
+        }
+        if (Date.now() - started < spin) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+
+    return () => stripEl.children[winAt].classList.add('win');
+}
+
+// Fuellt eine Walze: an `winAt` das Ergebnis, daneben knapp verpasste Nieten
+function buildTiles(count, winAt, winner, pickRandom, pickNear) {
+    const tiles = [];
+    for (let i = 0; i < count; i++) {
+        if (i === winAt) tiles.push(winner);
+        else if (Math.abs(i - winAt) === 1 && pickNear) tiles.push(pickNear(i));
+        else tiles.push(pickRandom());
+    }
+    return tiles;
+}
+
+// Zufallskachel nach Gewicht, damit die Walze die echten Chancen zeigt
+function weightedPick(options) {
+    const total = options.reduce((s, o) => s + (o.weight || 1), 0);
+    let r = Math.random() * total;
+    for (const o of options) {
+        r -= o.weight || 1;
+        if (r < 0) return o;
+    }
+    return options[0];
+}
+
+function optionTile(o) {
+    return { big: o.icon, label: o.label, rarity: o.rarity };
+}
+
+// ---------- Grosse Walze ----------
+
+const TILE = 90;
+const GAP = 6;
+const TILES = 60;
+const WIN_AT = 52;
+
+let reelQueue = [];
+let reelRunning = false;
+
+function queueReel(job) {
+    reelQueue.push(job);
+    if (!reelRunning) nextReel();
+}
+
+function nextReel() {
+    // Veraltete Walzen ueberspringen, wenn mehrere gleichzeitig kamen
+    while (reelQueue.length && reelQueue[0].until - Date.now() < 1500) reelQueue.shift();
+
+    const job = reelQueue.shift();
+    const box = document.getElementById('reelbox');
+    if (!job) {
+        reelRunning = false;
+        return;
+    }
+    reelRunning = true;
+
+    const result = document.getElementById('reel-result');
+    document.getElementById('reel-title').textContent = job.title;
+    result.textContent = '';
+    result.className = '';
+    box.classList.remove('jackpot');
+    box.classList.add('show');
+
+    const spin = Math.min(3500, job.until - Date.now() - 900);
+    const tiles = buildTiles(TILES, WIN_AT, job.winner, job.pickRandom, job.pickNear);
+    const mark = spinStrip(document.getElementById('reel'), document.getElementById('strip'), tiles, WIN_AT, TILE, GAP, spin, 0.05);
+
+    setTimeout(() => {
+        mark();
+        const [text, kind] = job.result();
+        result.textContent = text;
+        if (kind === 'gold') {
+            result.className = 'gold';
+            box.classList.add('jackpot');
+        }
+        fanfare(kind);
+    }, spin + 50);
+
+    setTimeout(() => {
+        box.classList.remove('show', 'jackpot');
+        nextReel();
+    }, Math.max(spin + 800, job.until - Date.now()));
+}
+
+function fighterTile(f) {
+    return {
+        label: f.id === myId ? 'DU' : f.name,
+        color: f.id === myId ? '#00ff88' : `hsl(${f.hue}, 80%, 55%)`
+    };
+}
+
+function duelReel(data) {
+    const fighters = data.fighters;
+    const winner = fighters.find(f => f.id === data.winner);
+    const losers = fighters.filter(f => f.id !== winner.id);
+
+    return {
+        until: Date.now() + data.ms,
+        title: '⚔️ Kopf an Kopf',
+        winner: fighterTile(winner),
+        pickRandom: () => fighterTile(fighters[Math.floor(Math.random() * fighters.length)]),
+        // Knapp daneben ist spannender: Nachbarn der Gewinner-Kachel sind die Verlierer
+        pickNear: i => fighterTile(losers[i % losers.length]),
+        result: () => {
+            const involved = fighters.some(f => f.id === myId);
+            if (data.winner === myId) return ['🏆 DU GEWINNST', true];
+            if (involved) return [`💀 VERLOREN — ${winner.name} gewinnt`, false];
+            return [`🏆 ${winner.name.toUpperCase()} GEWINNT`, true];
+        }
+    };
+}
+
+function gambleReel(data) {
+    const res = data.options.find(o => o.key === data.result);
+    const rare = data.options.filter(o => o.rarity === 'gold' || o.rarity === 'pink');
+    const bad = data.options.filter(o => !o.good && o.key !== res.key);
+
+    return {
+        until: Date.now() + data.ms,
+        title: `🪙 Double or Nothing — Länge ${data.len}`,
+        winner: optionTile(res),
+        pickRandom: () => optionTile(weightedPick(data.options)),
+        // Links und rechts: beim Gewinn eine Niete, bei einer Niete das Gold knapp verpasst
+        pickNear: () => optionTile(res.good ? (bad[0] || res) : rare[Math.floor(Math.random() * rare.length)]),
+        result: () => {
+            if (res.key === 'death') return ['💀 VERZOCKT', false];
+            const after = Math.max(1, Math.round(data.len * (res.key === 'half' ? 0.5 : Number(res.key.slice(1)))));
+            const text = `${res.icon} ${res.label} → Länge ${after}`;
+            return [text, res.rarity === 'gold' ? 'gold' : !!res.good];
+        }
+    };
+}
+
+// ---------- Kleine Walze: Mystery-Box ----------
+
+let boxTimer = null;
+
+function playBox(data) {
+    const box = document.getElementById('boxreel');
+    const result = document.getElementById('box-result');
+    const res = data.options.find(o => o.key === data.result);
+
+    result.textContent = '';
+    box.classList.add('show');
+
+    const spin = data.ms - 150;
+    const tiles = buildTiles(40, 34, optionTile(res), () => optionTile(weightedPick(data.options)));
+    const mark = spinStrip(box.querySelector('.reel'), document.getElementById('boxstrip'), tiles, 34, 60, 6, spin, 0.03);
+
+    clearTimeout(boxTimer);
+    setTimeout(() => {
+        mark();
+        result.textContent = `${res.icon} ${res.label}`;
+        fanfare(res.rarity === 'gold' ? 'gold' : res.good !== false);
+    }, spin + 50);
+    boxTimer = setTimeout(() => box.classList.remove('show'), spin + 1800);
+}
+
+// Blinken und Items auch zwischen zwei Server-Ticks animieren
+setInterval(draw, 100);
+</script>
+</body>
+</html>

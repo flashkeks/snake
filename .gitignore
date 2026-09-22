@@ -1,0 +1,4 @@
+node_modules/
+highscores.json
+highscores.json.tmp
+*.bak-*
