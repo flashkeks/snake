@@ -3,12 +3,18 @@ const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
 
-const PORT = 3000;
+const createAccounts = require('./accounts');
+const slots = require('./slots');
+
+const PORT = Number(process.env.PORT) || 3000;
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const PUBLIC = path.join(__dirname, 'public');
-const SCORES_FILE = path.join(__dirname, 'highscores.json');
+
+const accounts = createAccounts(DATA_DIR);
 
 const server = http.createServer((req, res) => {
-    let file = req.url === '/' ? '/index.html' : req.url;
+    const url = req.url.split('?')[0];
+    let file = url === '/' ? '/index.html' : url;
     file = path.normalize(file).replace(/^(\.\.[\/\\])+/, '');
     const filePath = path.join(PUBLIC, file);
 
@@ -20,39 +26,46 @@ const server = http.createServer((req, res) => {
 
         const ext = path.extname(filePath);
         const types = {
-            '.html': 'text/html',
+            '.html': 'text/html; charset=utf-8',
             '.js': 'application/javascript',
             '.css': 'text/css'
         };
 
         res.writeHead(200, {
-            'Content-Type': types[ext] || 'application/octet-stream'
+            'Content-Type': types[ext] || 'application/octet-stream',
+            'Cache-Control': 'no-cache'
         });
         res.end(data);
     });
 });
 
-const wss = new WebSocket.Server({ server, path: '/ws' });
+const wss = new WebSocket.Server({ server, path: '/ws', maxPayload: 4096 });
 
-// Nur Spieler, die ueber das Namensmenue beigetreten sind. Zuschauer stehen in `clients`.
+// Nur Spieler, die gerade auf dem Feld sind. Alle Verbindungen stehen in `clients`.
 const players = new Map();
 const clients = new Map();
 
-const SIZE = 40;
-// Ein Tick = 60 ms. Normal bewegt man sich jeden 2. Tick (wie frueher alle 120 ms),
+// Grosses Feld, der Browser zeigt davon nur einen Ausschnitt um den eigenen Kopf
+const SIZE = 120;
+const VIEW = 40;
+// Ein Tick = 60 ms. Normal bewegt man sich jeden 2. Tick,
 // mit Turbo jeden Tick, als Schnecke jeden 3.
 const TICK = 60;
 const EVERY = { fast: 1, normal: 2, slow: 3 };
 const START_LEN = 6;
-// Obergrenze, damit ×100 nicht das ganze Feld (1600 Zellen) und die Leitung sprengt
+// Obergrenze, damit ×100 nicht Feld und Leitung sprengt
 const MAX_LEN = 600;
 const DUEL_MS = 4500;
 const GAMBLE_MS = 4500;
 const BOX_MS = 1600;
+// Leertaste so lange halten, dann wird der Score in Coins ausgezahlt
+const CASHOUT_MS = 5000;
+// Score = Laenge + KILL_SCORE je Kill in diesem Leben
+const KILL_SCORE = 5;
 
-const FRUITS = 8;
-const BOXES = 4;
-const COINS = 2;
+const FRUITS = 90;
+const BOXES = 30;
+const COINS = 8;
 
 // Fruechte: je seltener, desto mehr Laenge
 const FRUIT_KINDS = [
@@ -69,7 +82,7 @@ const FRUIT = Object.fromEntries(FRUIT_KINDS.map(f => [f.kind, f]));
 const PALETTE = ['#ff4d4d', '#ff9f1a', '#ffd23f', '#b5ff3b', '#00ff88', '#18e0d0',
     '#3da5ff', '#5b6cff', '#a45bff', '#ff5bd6', '#ff8fa3', '#f2f2f2'];
 
-// Seltenheit wie bei CS:GO: grey < blue < purple < pink < red < gold.
+// Seltenheit wie bei CS:GO: grey < blue < purple < pink < red < gold < mythic.
 // `bad` und `dead` sind die Nieten.
 const BOX_OUTCOMES = [
     { key: 'speed', icon: '⚡', label: 'Turbo', good: true, rarity: 'blue', weight: 10 },
@@ -112,7 +125,9 @@ const DURATION = {
     // Wer ×10 oder mehr zieht, leuchtet so lange fuer alle
     jackpot: 8000,
     // Kurzer Schutz nach dem Muenzwurf, falls jemand gerade durch einen durchfaehrt
-    afterGamble: 1500
+    afterGamble: 1500,
+    // Spawnschutz
+    spawn: 2000
 };
 
 const STREAKS = { 2: 'DOPPELKILL', 3: 'TRIPLEKILL', 5: 'RAMPAGE', 8: 'GODLIKE' };
@@ -140,46 +155,35 @@ function publicOptions(list) {
     return list.map(({ key, icon, label, good, rarity, weight }) => ({ key, icon, label, good, rarity, weight }));
 }
 
-// ---------- Ewige Bestenliste ----------
+// ---------- Rate-Limits je IP ----------
 
-let scores = {};
-let scoresDirty = false;
+const buckets = new Map();
 
-try {
-    scores = JSON.parse(fs.readFileSync(SCORES_FILE, 'utf8'));
-} catch {}
-
-function record(name) {
-    if (!scores[name]) scores[name] = { best: 0, kills: 0, streak: 0 };
-    return scores[name];
+// true = erlaubt. Hoechstens `max` Aufrufe je `windowMs` und Schluessel.
+function allow(bucketKey, max, windowMs) {
+    const now = Date.now();
+    const list = (buckets.get(bucketKey) || []).filter(t => now - t < windowMs);
+    if (list.length >= max) {
+        buckets.set(bucketKey, list);
+        return false;
+    }
+    list.push(now);
+    buckets.set(bucketKey, list);
+    return true;
 }
 
-function topScores() {
-    return Object.entries(scores)
-        .map(([name, s]) => ({ name, ...s }))
-        .sort((a, b) => b.best - a.best || b.kills - a.kills)
-        .slice(0, 10);
+setInterval(() => {
+    const now = Date.now();
+    for (const [k, list] of buckets) if (!list.some(t => now - t < 3600e3)) buckets.delete(k);
+}, 600e3);
+
+// ---------- Hilfen ----------
+
+function cleanText(raw, max) {
+    return String(raw || '').replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, max);
 }
 
-function saveScores() {
-    if (!scoresDirty) return;
-    scoresDirty = false;
-    const tmp = SCORES_FILE + '.tmp';
-    fs.writeFile(tmp, JSON.stringify(scores), err => {
-        if (!err) fs.rename(tmp, SCORES_FILE, () => {});
-    });
-    broadcast({ type: 'highscores', list: topScores() });
-}
-
-setInterval(saveScores, 5000);
-
-// ---------- Spieler ----------
-
-function cleanName(raw) {
-    let name = String(raw || '').replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, 16);
-    if (!name) name = 'Snake' + rand(100, 999);
-
-    // Doppelte Namen im laufenden Spiel bekommen eine Nummer
+function uniqueName(name) {
     const taken = new Set([...players.values()].map(p => p.name));
     let out = name;
     for (let i = 2; taken.has(out); i++) out = name.slice(0, 13) + ' ' + i;
@@ -203,28 +207,45 @@ function cleanColor(raw) {
     return lum < 0.2 ? null : c;
 }
 
-function freePos() {
+// Freies Feld mit Abstand `margin` zur Wand und zu allen Koepfen
+function freePos(margin) {
+    margin = margin || 2;
     const taken = new Set(items.map(key));
     for (const p of players.values()) p.body.forEach(s => taken.add(key(s)));
 
-    for (let i = 0; i < 200; i++) {
-        const pos = { x: rand(0, SIZE), y: rand(0, SIZE) };
-        if (!taken.has(key(pos))) return pos;
+    for (let i = 0; i < 300; i++) {
+        const pos = { x: rand(margin, SIZE - margin), y: rand(margin, SIZE - margin) };
+        if (taken.has(key(pos))) continue;
+        if (margin > 2 && [...players.values()].some(p => Math.abs(p.x - pos.x) < 8 && Math.abs(p.y - pos.y) < 8)) continue;
+        return pos;
     }
-    return { x: rand(0, SIZE), y: rand(0, SIZE) };
+    return { x: rand(margin, SIZE - margin), y: rand(margin, SIZE - margin) };
 }
 
 function spawnItem(type, extra) {
-    items.push({ type, ...freePos(), ...(extra || {}) });
+    items.push({ type, ...freePos(2), ...(extra || {}) });
 }
 
-function randomDir() {
-    return [[1, 0], [-1, 0], [0, 1], [0, -1]][rand(0, 4)];
+function spawnFruit(bonus, near) {
+    const kind = weighted(FRUIT_KINDS).kind;
+    if (near) {
+        // Obstregen: in der Naehe des Spielers
+        const x = Math.min(SIZE - 1, Math.max(0, near.x + rand(-8, 9)));
+        const y = Math.min(SIZE - 1, Math.max(0, near.y + rand(-8, 9)));
+        items.push({ type: 'fruit', x, y, kind, bonus: !!bonus });
+        return;
+    }
+    spawnItem('fruit', { kind, bonus: !!bonus });
 }
 
 function spawn(player) {
-    const pos = freePos();
-    const [dx, dy] = randomDir();
+    const pos = freePos(6);
+
+    // Weg von der naechsten Wand losfahren
+    const dirs = [];
+    if (pos.x < SIZE / 2) dirs.push([1, 0]); else dirs.push([-1, 0]);
+    if (pos.y < SIZE / 2) dirs.push([0, 1]); else dirs.push([0, -1]);
+    const [dx, dy] = dirs[rand(0, 2)];
 
     player.x = pos.x;
     player.y = pos.y;
@@ -235,10 +256,12 @@ function spawn(player) {
     player.mdy = dy;
     player.body = [{ x: pos.x, y: pos.y }];
     player.len = START_LEN;
+    player.kills = 0;
     player.streak = 0;
     player.acc = 0;
-    player.fx = {};
+    player.fx = { ghost: Date.now() + DURATION.spawn };
     player.frozen = null;
+    player.cashout = null;
     player.life = (player.life || 0) + 1;
 }
 
@@ -251,17 +274,8 @@ function grow(p, n) {
     p.len = Math.min(MAX_LEN, p.len + n);
 }
 
-function spawnFruit(bonus) {
-    spawnItem('fruit', { kind: weighted(FRUIT_KINDS).kind, bonus: !!bonus });
-}
-
-// Eingefroren laufen die Effekt-Timer nicht weiter. Beim Auftauen wird
-// alles, was beim Einfrieren noch lief, um die Standzeit verlaengert.
-function resumeFx(p, started) {
-    const shift = Date.now() - started;
-    for (const k of Object.keys(p.fx)) {
-        if (p.fx[k] > started) p.fx[k] += shift;
-    }
+function scoreOf(p) {
+    return p.len + KILL_SCORE * p.kills;
 }
 
 function active(p, fx) {
@@ -278,8 +292,17 @@ function intangible(p) {
     return active(p, 'ghost') || (p.frozen && p.frozen.kind === 'gamble');
 }
 
-function send(p, obj) {
-    if (p.ws.readyState === WebSocket.OPEN) p.ws.send(JSON.stringify(obj));
+// Eingefroren laufen die Effekt-Timer nicht weiter. Beim Auftauen wird
+// alles, was beim Einfrieren noch lief, um die Standzeit verlaengert.
+function resumeFx(p, started) {
+    const shift = Date.now() - started;
+    for (const k of Object.keys(p.fx)) {
+        if (p.fx[k] > started) p.fx[k] += shift;
+    }
+}
+
+function send(c, obj) {
+    if (c.ws.readyState === WebSocket.OPEN) c.ws.send(JSON.stringify(obj));
 }
 
 function broadcast(obj) {
@@ -293,6 +316,42 @@ function feed(text, kind) {
     broadcast({ type: 'feed', text, kind: kind || 'info' });
 }
 
+function sendAccount(c) {
+    const u = c.account ? accounts.get(c.account) : null;
+    send(c, { type: 'account', user: u ? accounts.publicUser(u) : null });
+}
+
+// ---------- Bestenliste ----------
+
+let lastTop = '';
+
+function pushTop(force) {
+    const top = JSON.stringify(accounts.top());
+    if (!force && top === lastTop) return;
+    lastTop = top;
+    broadcast({ type: 'highscores', top: JSON.parse(top) });
+}
+
+setInterval(() => pushTop(false), 5000);
+
+function recordScore(p) {
+    if (!p.account) return;
+    const score = scoreOf(p);
+    accounts.stat(p.account, s => { s.bestScore = Math.max(s.bestScore, score); });
+}
+
+// ---------- Tod, Verlassen, Cashout ----------
+
+// Spieler vom Feld nehmen. Der Client landet wieder im Menue.
+function removeFromField(id) {
+    const p = players.get(id);
+    if (!p) return;
+    players.delete(id);
+    p.joined = false;
+    p.frozen = null;
+    p.cashout = null;
+}
+
 function kill(id, killerId, how) {
     const victim = players.get(id);
     if (!victim) return;
@@ -304,11 +363,7 @@ function kill(id, killerId, how) {
         grow(killer, Math.ceil(victim.body.length / 2));
         killer.kills++;
         killer.streak++;
-
-        const r = record(killer.name);
-        r.kills++;
-        r.streak = Math.max(r.streak, killer.streak);
-        scoresDirty = true;
+        if (killer.account) accounts.stat(killer.account, s => { s.kills++; });
 
         feed(`${killer.name} 🗡️ ${victim.name}`, 'kill');
         if (STREAKS[killer.streak]) feed(`${killer.name}: ${STREAKS[killer.streak]}!`, 'streak');
@@ -316,18 +371,43 @@ function kill(id, killerId, how) {
         feed(`${victim.name} ${how || '☠️'}`, 'kill');
     }
 
-    send(victim, { type: 'died', by: killer ? killer.name : null });
+    recordScore(victim);
+    send(victim, { type: 'died', by: killer ? killer.name : null, how: how || null, score: scoreOf(victim) });
+    removeFromField(id);
+}
 
-    spawn(victim);
+function finishCashout(id, p) {
+    const score = scoreOf(p);
+    recordScore(p);
+    const balance = accounts.addCoins(p.account, score);
+    accounts.stat(p.account, s => {
+        s.cashouts++;
+        s.totalCashout += score;
+        s.bestCashout = Math.max(s.bestCashout, score);
+    });
+
+    feed(`💰 ${p.name} zahlt ${score} Coins aus`, score >= 200 ? 'gold' : 'good');
+    send(p, { type: 'cashedout', coins: score, balance });
+    removeFromField(id);
+    sendAccount(p);
 }
 
 // ---------- Duell (alle sehen die Walze) und Muenzwurf (nur der Spieler selbst) ----------
+
+function freeze(p, f) {
+    p.frozen = f;
+    // Wer einfriert, verliert den laufenden Cashout
+    if (p.cashout) {
+        p.cashout = null;
+        send(p, { type: 'cashoutCancel' });
+    }
+}
 
 function startDuel(ids) {
     const winner = ids[rand(0, ids.length)];
     const f = { kind: 'duel', ids, winner, started: Date.now(), ends: Date.now() + DUEL_MS };
 
-    ids.forEach(id => players.get(id).frozen = f);
+    ids.forEach(id => freeze(players.get(id), f));
     freezes.push(f);
 
     broadcast({
@@ -343,7 +423,7 @@ function startGamble(id) {
     const outcome = weighted(COIN_OUTCOMES);
     const f = { kind: 'gamble', ids: [id], outcome, life: p.life, started: Date.now(), ends: Date.now() + GAMBLE_MS };
 
-    p.frozen = f;
+    freeze(p, f);
     freezes.push(f);
 
     send(p, {
@@ -367,7 +447,7 @@ function resolveFreezes() {
             const winner = players.get(f.winner);
 
             // Gewinner hat das Spiel verlassen: niemand stirbt, alle machen weiter
-            if (!winner) {
+            if (!winner || winner.frozen !== f) {
                 f.ids.forEach(id => {
                     const p = players.get(id);
                     if (p && p.frozen === f) {
@@ -379,7 +459,8 @@ function resolveFreezes() {
             }
 
             for (const id of f.ids) {
-                if (id !== f.winner && players.get(id)) kill(id, f.winner);
+                const p = players.get(id);
+                if (id !== f.winner && p && p.frozen === f) kill(id, f.winner);
             }
             winner.frozen = null;
             resumeFx(winner, f.started);
@@ -388,7 +469,7 @@ function resolveFreezes() {
         if (f.kind === 'gamble') {
             const id = f.ids[0];
             const p = players.get(id);
-            if (!p || p.life !== f.life) continue;
+            if (!p || p.life !== f.life || p.frozen !== f) continue;
             p.frozen = null;
             resumeFx(p, f.started);
             p.fx.ghost = Math.max(p.fx.ghost || 0, now + DURATION.afterGamble);
@@ -470,15 +551,16 @@ function applyBox(id, p, o) {
             setLen(p, Math.floor(p.len / 2));
             break;
         case 'applerain':
-            for (let i = 0; i < 8; i++) spawnFruit(true);
+            for (let i = 0; i < 10; i++) spawnFruit(true, p);
             break;
         case 'teleport': {
             // Neuer Kopf woanders, der alte Koerper laeuft hinten aus
-            const pos = freePos();
+            const pos = freePos(6);
             p.x = pos.x;
             p.y = pos.y;
             p.body.unshift({ x: pos.x, y: pos.y });
             p.body = p.body.slice(0, p.len);
+            p.fx.ghost = Math.max(p.fx.ghost || 0, now + 1000);
             break;
         }
         case 'slowall':
@@ -488,21 +570,23 @@ function applyBox(id, p, o) {
             }
             break;
         case 'ice': {
-            const pool = others(p).filter(q => !q.frozen);
+            // Der naechste Gegner friert ein
+            const pool = others(p).filter(q => !q.frozen)
+                .sort((a, b) => (Math.abs(a.x - p.x) + Math.abs(a.y - p.y)) - (Math.abs(b.x - p.x) + Math.abs(b.y - p.y)));
             if (!pool.length) {
                 text += ' (niemand da)';
                 break;
             }
-            const q = pool[rand(0, pool.length)];
+            const q = pool[0];
             q.fx.ice = now + DURATION.ice;
             text = `${p.name} 🧊 friert ${q.name} ein`;
             break;
         }
         case 'bomb': {
-            // Wer mit irgendeinem Stueck im Umkreis 6 um den Kopf liegt, wird halbiert
+            // Wer mit irgendeinem Stueck im Umkreis 8 um den Kopf liegt, wird halbiert
             const hit = [];
             for (const q of others(p)) {
-                const near = q.body.some(s => Math.abs(s.x - p.x) <= 6 && Math.abs(s.y - p.y) <= 6);
+                const near = q.body.some(s => Math.abs(s.x - p.x) <= 8 && Math.abs(s.y - p.y) <= 8);
                 if (near && !active(q, 'star')) {
                     setLen(q, Math.floor(q.len / 2));
                     hit.push(q.name);
@@ -546,16 +630,212 @@ function applyBox(id, p, o) {
     feed(text, kind);
 }
 
-// ---------- Verbindungen ----------
+// ---------- Nachrichten vom Browser ----------
 
-wss.on('connection', ws => {
+const DIRS = {
+    up: [0, -1],
+    down: [0, 1],
+    left: [-1, 0],
+    right: [1, 0]
+};
+
+async function handle(c, data) {
+    switch (data.type) {
+        // --- Konto ---
+
+        case 'register': {
+            if (!allow('reg:' + c.ip, 5, 3600e3)) return send(c, { type: 'authError', error: 'Zu viele neue Konten von hier, spaeter nochmal' });
+            const r = await accounts.register(data.name, data.password);
+            if (r.error) return send(c, { type: 'authError', error: r.error });
+            c.account = r.key;
+            send(c, { type: 'auth', token: r.token, user: r.user });
+            feed(`🎉 ${r.user.name} hat sich registriert`);
+            pushTop(true);
+            return;
+        }
+
+        case 'login': {
+            if (!allow('login:' + c.ip, 10, 300e3)) return send(c, { type: 'authError', error: 'Zu viele Versuche, 5 Minuten warten' });
+            const r = await accounts.login(data.name, data.password);
+            if (r.error) return send(c, { type: 'authError', error: r.error });
+            if (c.joined) return send(c, { type: 'authError', error: 'Erst das Spiel verlassen' });
+            c.account = r.key;
+            send(c, { type: 'auth', token: r.token, user: r.user });
+            return;
+        }
+
+        case 'resume': {
+            const r = accounts.resume(data.token);
+            if (!r) return send(c, { type: 'authExpired' });
+            c.account = r.key;
+            send(c, { type: 'auth', token: data.token, user: r.user });
+            return;
+        }
+
+        case 'logout':
+            if (c.joined) return send(c, { type: 'authError', error: 'Erst das Spiel verlassen' });
+            accounts.logout(data.token);
+            c.account = null;
+            send(c, { type: 'auth', token: null, user: null });
+            return;
+
+        case 'changePassword': {
+            if (!c.account) return;
+            if (!allow('pw:' + c.ip, 10, 300e3)) return send(c, { type: 'authError', error: 'Zu viele Versuche, 5 Minuten warten' });
+            const r = await accounts.changePassword(c.account, data.oldPassword, data.newPassword);
+            if (r.error) return send(c, { type: 'authError', error: r.error });
+            send(c, { type: 'auth', token: r.token, user: accounts.publicUser(accounts.get(c.account)), note: 'Passwort geaendert, andere Geraete sind abgemeldet' });
+            return;
+        }
+
+        case 'deleteAccount': {
+            if (!c.account || c.joined) return;
+            if (!allow('pw:' + c.ip, 10, 300e3)) return send(c, { type: 'authError', error: 'Zu viele Versuche, 5 Minuten warten' });
+            const r = await accounts.deleteAccount(c.account, data.password);
+            if (r.error) return send(c, { type: 'authError', error: r.error });
+            c.account = null;
+            send(c, { type: 'auth', token: null, user: null, note: 'Konto geloescht' });
+            pushTop(true);
+            return;
+        }
+
+        // --- Spiel ---
+
+        case 'join': {
+            if (c.joined) return;
+            let name;
+            if (c.account) {
+                const u = accounts.get(c.account);
+                if (!u) return;
+                if ([...players.values()].some(p => p.account === c.account)) {
+                    return send(c, { type: 'joinError', error: 'Du spielst schon in einem anderen Fenster' });
+                }
+                name = u.name;
+            } else {
+                name = cleanText(data.name, 16);
+                if (!name) return send(c, { type: 'joinError', error: 'Name fehlt' });
+                if (accounts.exists(name)) return send(c, { type: 'joinError', error: 'Der Name gehoert einem Konto. Einloggen oder anderen Namen nehmen' });
+            }
+
+            c.joined = true;
+            c.name = uniqueName(name);
+            c.guest = !c.account;
+            c.color = cleanColor(data.color) || pickColor();
+            if (c.account) accounts.setColor(c.account, c.color);
+            spawn(c);
+            players.set(c.id, c);
+            send(c, { type: 'joined', name: c.name, guest: c.guest });
+            feed(`${c.name}${c.guest ? ' (Gast)' : ''} ist beigetreten`);
+            return;
+        }
+
+        case 'leave': {
+            const p = players.get(c.id);
+            if (!p) return;
+            recordScore(p);
+            feed(`${p.name} ist raus`);
+            removeFromField(c.id);
+            send(c, { type: 'left' });
+            return;
+        }
+
+        case 'cashout': {
+            const p = players.get(c.id);
+            if (!p || p.guest) return;
+            if (!data.on) {
+                p.cashout = null;
+                return;
+            }
+            if (p.frozen || p.cashout) return;
+            p.cashout = Date.now();
+            return;
+        }
+
+        case 'direction': {
+            const p = players.get(c.id);
+            if (!p) return;
+            // Beim Cashout faehrt man stur geradeaus
+            if (p.cashout) return;
+
+            let dir = DIRS[data.direction];
+            if (!dir) return;
+
+            // Verdreht: alle Richtungen gespiegelt
+            if (active(p, 'reverse')) dir = [-dir[0], -dir[1]];
+
+            // Kein 180° drehen, gemessen am letzten echten Schritt
+            if (dir[0] === -p.mdx && dir[1] === -p.mdy) return;
+
+            p.dx = dir[0];
+            p.dy = dir[1];
+            return;
+        }
+
+        case 'chat': {
+            if (!c.account && !c.joined) return;
+            const now = Date.now();
+            const text = cleanText(data.text, 200);
+            if (!text || now - (c.lastChat || 0) < 600) return;
+            c.lastChat = now;
+
+            const u = c.account ? accounts.get(c.account) : null;
+            const line = {
+                name: u ? u.name : c.name,
+                color: c.color || (u && u.color) || '#cccccc',
+                guest: !u,
+                text,
+                ts: now
+            };
+            chatLog.push(line);
+            if (chatLog.length > 50) chatLog.shift();
+            broadcast({ type: 'chat', ...line });
+            return;
+        }
+
+        // --- Automat ---
+
+        case 'spin': {
+            if (!c.account) return send(c, { type: 'spinError', error: 'Nur mit Konto' });
+            const now = Date.now();
+            if (now - (c.lastSpin || 0) < 1200) return;
+            const bet = Number(data.bet);
+            if (!slots.BETS.includes(bet)) return send(c, { type: 'spinError', error: 'Einsatz gibt es nicht' });
+            const u = accounts.get(c.account);
+            if (!u || u.coins < bet) return send(c, { type: 'spinError', error: 'Nicht genug Coins' });
+            c.lastSpin = now;
+
+            accounts.addCoins(c.account, -bet);
+            const r = slots.spin(bet);
+            const balance = accounts.addCoins(c.account, r.win);
+            accounts.stat(c.account, s => {
+                s.spins++;
+                s.biggestWin = Math.max(s.biggestWin, r.win);
+            });
+
+            send(c, { type: 'spin', reels: r.reels, win: r.win, mult: r.mult, bet, balance });
+            if (r.mult >= 80) feed(`🎰 ${u.name} knackt ${r.reels.join('')} → ${r.win} Coins`, 'gold');
+            return;
+        }
+    }
+}
+
+wss.on('connection', (ws, req) => {
     const id = Math.random().toString(36).substring(2, 10);
-    const client = { ws, id, joined: false, lastChat: 0 };
-    clients.set(id, client);
+    const ip = req.headers['cf-connecting-ip'] || String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress;
+    const c = { ws, id, ip, account: null, joined: false };
+    clients.set(id, c);
 
-    ws.send(JSON.stringify({ type: 'welcome', id, size: SIZE }));
-    ws.send(JSON.stringify({ type: 'highscores', list: topScores() }));
-    ws.send(JSON.stringify({ type: 'chatlog', list: chatLog }));
+    send(c, {
+        type: 'welcome',
+        id,
+        size: SIZE,
+        view: VIEW,
+        cashoutMs: CASHOUT_MS,
+        palette: PALETTE,
+        slots: { symbols: slots.SYMBOLS, bets: slots.BETS, twoCherry: slots.TWO_CHERRY }
+    });
+    send(c, { type: 'highscores', top: accounts.top() });
+    send(c, { type: 'chatlog', list: chatLog });
 
     ws.on('message', msg => {
         let data;
@@ -564,63 +844,17 @@ wss.on('connection', ws => {
         } catch {
             return;
         }
-
-        if (data.type === 'join' && !client.joined) {
-            client.joined = true;
-            const player = client;
-            player.name = cleanName(data.name);
-            player.color = cleanColor(data.color) || pickColor();
-            player.kills = 0;
-            spawn(player);
-            players.set(id, player);
-            send(player, { type: 'joined', name: player.name });
-            feed(`${player.name} ist beigetreten`);
-            return;
-        }
-
-        if (!client.joined) return;
-        const player = client;
-
-        if (data.type === 'chat') {
-            const now = Date.now();
-            const text = String(data.text || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 200);
-            if (!text || now - player.lastChat < 600) return;
-            player.lastChat = now;
-
-            const line = { name: player.name, color: player.color, text, ts: now };
-            chatLog.push(line);
-            if (chatLog.length > 50) chatLog.shift();
-            broadcast({ type: 'chat', ...line });
-            return;
-        }
-
-        if (data.type !== 'direction') return;
-
-        const dirs = {
-            up: [0, -1],
-            down: [0, 1],
-            left: [-1, 0],
-            right: [1, 0]
-        };
-
-        let dir = dirs[data.direction];
-        if (!dir) return;
-
-        // Verdreht: alle Richtungen gespiegelt
-        if (active(player, 'reverse')) dir = [-dir[0], -dir[1]];
-
-        // Kein 180° drehen, gemessen am letzten echten Schritt
-        if (dir[0] === -player.mdx && dir[1] === -player.mdy) return;
-
-        player.dx = dir[0];
-        player.dy = dir[1];
+        if (!data || typeof data.type !== 'string') return;
+        handle(c, data).catch(err => console.error('handle', data.type, err));
     });
 
     ws.on('close', () => {
         clients.delete(id);
-        if (players.has(id)) {
-            feed(`${client.name} ist weg`);
-            players.delete(id);
+        const p = players.get(id);
+        if (p) {
+            recordScore(p);
+            feed(`${p.name} ist weg`);
+            removeFromField(id);
         }
     });
 });
@@ -631,6 +865,11 @@ function gameTick() {
     resolveFreezes();
 
     const now = Date.now();
+
+    // Cashout fertig?
+    for (const [id, p] of players) {
+        if (p.cashout && now - p.cashout >= CASHOUT_MS) finishCashout(id, p);
+    }
 
     // Wer steht, steht. Die anderen je nach Tempo.
     const movers = [];
@@ -644,6 +883,8 @@ function gameTick() {
     }
 
     const oldHead = new Map();
+    const dead = new Map();
+    const wall = new Set();
 
     for (const [id, player] of movers) {
         oldHead.set(id, { x: player.x, y: player.y });
@@ -653,10 +894,11 @@ function gameTick() {
         player.mdx = player.dx;
         player.mdy = player.dy;
 
-        if (player.x < 0) player.x = SIZE - 1;
-        if (player.x >= SIZE) player.x = 0;
-        if (player.y < 0) player.y = SIZE - 1;
-        if (player.y >= SIZE) player.y = 0;
+        // Wand ist tot. Auch Geister und Sterne.
+        if (player.x < 0 || player.y < 0 || player.x >= SIZE || player.y >= SIZE) {
+            wall.add(id);
+            continue;
+        }
 
         player.body.unshift({
             x: player.x,
@@ -673,13 +915,15 @@ function gameTick() {
         if (active(p, 'star')) star.add(id);
     }
 
+    const live = movers.filter(([id]) => !wall.has(id));
+
     // Zwei Koepfe, die aneinander vorbeiziehen (A auf B's altes Feld und umgekehrt),
     // zaehlen als Kopf-an-Kopf und nicht als gegenseitiger Koerpertreffer
     const swapped = new Set();
     const headGroups = [];
 
-    for (const [a, pa] of movers) {
-        for (const [b, pb] of movers) {
+    for (const [a, pa] of live) {
+        for (const [b, pb] of live) {
             if (a >= b || ghost.has(a) || ghost.has(b) || swapped.has(a) || swapped.has(b)) continue;
             if (key(pa.body[0]) === key(oldHead.get(b)) && key(pb.body[0]) === key(oldHead.get(a))) {
                 swapped.add(a);
@@ -693,15 +937,14 @@ function gameTick() {
     // Wer steht (Duell, Eis), ist komplett massiv. Geister und Zocker sind nicht da.
     const occupied = new Map();
     for (const [id, p] of players) {
-        if (ghost.has(id)) continue;
+        if (ghost.has(id) || wall.has(id)) continue;
         p.body.forEach((s, i) => {
             if (i === 0 && !still(p)) return;
             occupied.set(key(s), id);
         });
     }
 
-    const dead = new Map();
-    for (const [id, p] of movers) {
+    for (const [id, p] of live) {
         if (swapped.has(id) || ghost.has(id)) continue;
         const owner = occupied.get(key(p.body[0]));
         if (owner === undefined) continue;
@@ -719,10 +962,10 @@ function gameTick() {
     }
 
     // Kopf-an-Kopf: Koepfe auf demselben Feld, mindestens einer hat sich gerade bewegt
-    const moverIds = new Set(movers.map(([id]) => id));
+    const moverIds = new Set(live.map(([id]) => id));
     const heads = new Map();
     for (const [id, p] of players) {
-        if (still(p) || swapped.has(id) || dead.has(id) || ghost.has(id)) continue;
+        if (still(p) || swapped.has(id) || dead.has(id) || ghost.has(id) || wall.has(id)) continue;
         const k = key(p.body[0]);
         if (!heads.has(k)) heads.set(k, []);
         heads.get(k).push(id);
@@ -731,11 +974,14 @@ function gameTick() {
         if (ids.length > 1 && ids.some(id => moverIds.has(id))) headGroups.push(ids);
     }
 
+    for (const id of wall) kill(id, null, 'ist gegen die Wand gefahren');
     for (const [id, killerId] of dead) kill(id, killerId, killerId ? null : 'ist in sich selbst gefahren');
 
     // Genau ein Stern im Kopf-an-Kopf gewinnt ohne Walze. Sonst Duell.
     const inDuel = new Set();
-    for (const ids of headGroups) {
+    for (const group of headGroups) {
+        const ids = group.filter(id => players.has(id));
+        if (ids.length < 2) continue;
         const stars = ids.filter(id => star.has(id));
         if (stars.length === 1) {
             for (const id of ids) if (id !== stars[0]) kill(id, stars[0]);
@@ -746,8 +992,8 @@ function gameTick() {
     }
 
     // Magnet: Items im Umkreis 7 ruecken einen Schritt auf den Kopf zu
-    for (const [id, p] of movers) {
-        if (!active(p, 'magnet') || dead.has(id)) continue;
+    for (const [id, p] of live) {
+        if (!players.has(id) || !active(p, 'magnet')) continue;
         for (const it of items) {
             const dx = p.x - it.x, dy = p.y - it.y;
             if (Math.abs(dx) > 7 || Math.abs(dy) > 7) continue;
@@ -757,8 +1003,8 @@ function gameTick() {
     }
 
     // Items einsammeln
-    for (const [id, p] of movers) {
-        if (dead.has(id) || inDuel.has(id) || p.frozen) continue;
+    for (const [id, p] of live) {
+        if (!players.has(id) || inDuel.has(id) || p.frozen) continue;
         const k = key(p.body[0]);
         const idx = items.findIndex(it => key(it) === k);
         if (idx === -1) continue;
@@ -779,19 +1025,10 @@ function gameTick() {
         }
     }
 
-    // Muenzen: bis zu COINS Stueck, alle 8–15 s eine neue
-    if (players.size && now >= nextCoinAt) {
+    // Muenzen: bis zu COINS Stueck, alle 3–6 s eine neue
+    if (now >= nextCoinAt) {
         if (items.filter(it => it.type === 'coin').length < COINS) spawnItem('coin');
-        nextCoinAt = now + rand(8000, 15000);
-    }
-
-    // Rekorde der Bestenliste mitziehen
-    for (const p of players.values()) {
-        const r = record(p.name);
-        if (p.body.length > r.best) {
-            r.best = p.body.length;
-            scoresDirty = true;
-        }
+        nextCoinAt = now + rand(3000, 6000);
     }
 
     // Eingefroren zeigt die Uhr die Restzeit vom Moment des Einfrierens
@@ -804,7 +1041,7 @@ function gameTick() {
         return out;
     };
 
-    const state = {
+    broadcast({
         type: 'state',
         items,
         players: [...players.entries()].map(([id, p]) => ({
@@ -814,24 +1051,32 @@ function gameTick() {
             body: p.body,
             len: p.len,
             kills: p.kills,
+            score: scoreOf(p),
             color: p.color,
             name: p.name,
+            guest: p.guest,
             frozen: !!p.frozen,
             gambling: !!(p.frozen && p.frozen.kind === 'gamble'),
+            cashout: p.cashout ? Math.min(1, (now - p.cashout) / CASHOUT_MS) : 0,
             fx: fxLeft(p)
         }))
-    };
-
-    broadcast(state);
+    });
 }
 
-let nextCoinAt = Date.now() + 5000;
+let nextCoinAt = Date.now() + 2000;
 
 for (let i = 0; i < FRUITS; i++) spawnFruit(false);
 for (let i = 0; i < BOXES; i++) spawnItem('box');
 
 setInterval(gameTick, TICK);
 
+function shutdown() {
+    accounts.save(true);
+    process.exit(0);
+}
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
+
 server.listen(PORT, '127.0.0.1', () => {
-    console.log(`Snake running on http://127.0.0.1:${PORT}`);
+    console.log(`Snake running on http://127.0.0.1:${PORT}, Daten in ${DATA_DIR}`);
 });

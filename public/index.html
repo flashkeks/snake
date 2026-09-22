@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Multiplayer Snake</title>
+<title>Kek Minigames</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐍</text></svg>">
 
 <style>
 * {
@@ -256,58 +257,166 @@ button {
     }
 }
 
-/* ---------- Namensmenue ---------- */
+/* ---------- Overlays ueber dem Feld: Hauptmenue, Automat, Konto ---------- */
 
-#join {
+.overlay {
     position: absolute;
     inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(5, 8, 7, .8);
+    background: rgba(5, 8, 7, .82);
     backdrop-filter: blur(3px);
     border-radius: 8px;
     z-index: 5;
+    overflow-y: auto;
+    padding: 16px;
 }
 
-#join.hidden {
+.overlay.hidden {
     display: none;
 }
 
-#join form {
+.card {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    align-items: center;
-    padding: 24px 28px;
+    align-items: stretch;
+    width: min(380px, 100%);
+    padding: 20px 22px;
     border: 2px solid rgba(0,255,140,.4);
-    border-radius: 10px;
+    border-radius: 12px;
     background: #070b09;
     box-shadow: 0 0 40px rgba(0,255,140,.15);
 }
 
-#join h2 {
+.card h2 {
     margin: 0;
-}
-
-#join input {
-    width: 220px;
     text-align: center;
-    font-size: 18px;
 }
 
-#join button {
-    font-size: 18px;
-    padding: 8px 28px;
+.card h3 {
+    margin: 4px 0 0;
+    font-size: 13px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: rgba(0,255,140,.8);
+}
+
+.card input {
+    width: 100%;
+    font-size: 16px;
+}
+
+.card button {
+    font-size: 16px;
+    padding: 9px 16px;
+}
+
+button.ghost {
+    background: transparent;
+    color: #cfe;
+    border: 1px solid rgba(0,255,140,.35);
+}
+
+button.gold {
+    background: linear-gradient(115deg, #a86f00, #ffd700, #fff3b0, #e4ae39);
+    background-size: 250% 100%;
+    animation: goldShine 2.5s linear infinite;
+    color: #3a2400;
+}
+
+button.danger {
+    background: #ff4d4d;
+    color: #200;
+}
+
+button:disabled {
+    opacity: .4;
+    cursor: not-allowed;
+}
+
+.row {
+    display: flex;
+    gap: 8px;
+}
+
+.row > * {
+    flex: 1;
+}
+
+.tabs {
+    display: flex;
+    gap: 6px;
+}
+
+.tabs button {
+    flex: 1;
+    background: transparent;
+    color: #cfe;
+    border: 1px solid rgba(0,255,140,.25);
+    font-size: 14px;
+    padding: 7px;
+}
+
+.tabs button.on {
+    background: rgba(0,255,140,.15);
+    border-color: #00ff88;
+    color: #fff;
+}
+
+.whoami {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: rgba(0,255,140,.08);
+    border: 1px solid rgba(0,255,140,.25);
+}
+
+.coins {
+    font-weight: 800;
+    color: #ffd23f;
+    white-space: nowrap;
+}
+
+.msg {
+    min-height: 1.2em;
+    font-size: 14px;
+    text-align: center;
+}
+
+.msg.err { color: #ff7b7b; }
+.msg.ok { color: #7bffb5; }
+
+.result {
+    text-align: center;
+    font-size: 20px;
+    font-weight: 800;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.result.dead { background: rgba(255, 60, 60, .15); color: #ff8b8b; }
+.result.cash { background: rgba(255, 210, 63, .15); color: #ffd23f; }
+
+.hint {
+    font-size: 13px;
+    opacity: .6;
+    text-align: center;
+    line-height: 1.5;
 }
 
 #colors {
     display: grid;
     grid-template-columns: repeat(7, 28px);
     gap: 8px;
+    justify-content: center;
 }
 
-#join .swatch {
+.card .swatch {
     width: 28px;
     height: 28px;
     border-radius: 6px;
@@ -317,12 +426,12 @@ button {
     cursor: pointer;
 }
 
-#join .swatch.sel {
+.card .swatch.sel {
     border-color: #fff;
     box-shadow: 0 0 10px #fff;
 }
 
-#join #custom-color {
+.card #custom-color {
     width: 28px;
     height: 28px;
     padding: 0;
@@ -330,11 +439,130 @@ button {
     cursor: pointer;
 }
 
-#join .hint {
+.stats {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 12px;
+    font-size: 14px;
+}
+
+.stats span:nth-child(even) {
+    text-align: right;
+    font-weight: 700;
+}
+
+/* ---------- Spiel-HUD ---------- */
+
+#hud {
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    z-index: 2;
+}
+
+#hud.hidden {
+    display: none;
+}
+
+#hud button {
     font-size: 13px;
-    opacity: .6;
+    padding: 5px 10px;
+    background: rgba(0,0,0,.6);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.3);
+}
+
+#hud .pill {
+    padding: 5px 10px;
+    border-radius: 6px;
+    background: rgba(0,0,0,.6);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+/* ---------- Slot-Automat ---------- */
+
+.machine {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    padding: 16px;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #2a0f3d, #12051c);
+    border: 3px solid #ffd23f;
+    box-shadow: 0 0 30px rgba(255, 210, 63, .35), inset 0 0 30px rgba(0,0,0,.6);
+}
+
+.machine.win {
+    animation: jackpotGlow .5s ease-in-out infinite alternate;
+}
+
+.slot {
+    width: 86px;
+    height: 96px;
+    overflow: hidden;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #ddd, #fff 30%, #fff 70%, #ccc);
+    box-shadow: inset 0 6px 10px rgba(0,0,0,.4), inset 0 -6px 10px rgba(0,0,0,.4);
+    position: relative;
+}
+
+.slot .col {
+    display: flex;
+    flex-direction: column;
+    will-change: transform;
+}
+
+.slot .sym {
+    height: 96px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 54px;
+}
+
+.paytable {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2px 14px;
+    font-size: 13px;
+    opacity: .85;
+}
+
+.bets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+}
+
+.bets button {
+    font-size: 14px;
+    padding: 6px 10px;
+    background: transparent;
+    color: #ffd23f;
+    border: 1px solid rgba(255, 210, 63, .5);
+}
+
+.bets button.on {
+    background: #ffd23f;
+    color: #2a1a00;
+}
+
+#slot-msg {
+    min-height: 1.6em;
+    font-size: 20px;
+    font-weight: 800;
     text-align: center;
-    line-height: 1.5;
+}
+
+#slot-msg.big {
+    color: #ffd700;
+    text-shadow: 0 0 20px #ffd700;
+    animation: pop .4s ease-out;
 }
 
 /* ---------- Grosse Walze: Duell und Double or Nothing, CS:GO-Case-Opening ---------- */
@@ -665,7 +893,7 @@ button {
 
 <body>
 
-<h1>🐍 Multiplayer Snake</h1>
+<h1>🍪 Kek Minigames</h1>
 <div id="status">Connecting...</div>
 
 <div id="layout">
@@ -684,14 +912,108 @@ button {
         <div id="stage">
             <canvas id="game" width="800" height="800"></canvas>
 
-            <div id="join">
-                <form id="join-form">
-                    <h2>🐍 Wie heisst du?</h2>
-                    <input id="join-name" maxlength="16" placeholder="Name" autocomplete="off" required>
+            <div id="hud" class="hidden">
+                <button id="leave-btn" type="button">🚪 Verlassen</button>
+                <span class="pill" id="hud-score">Score 0</span>
+                <span class="pill" id="hud-hint">␣ 5 s halten = Cashout</span>
+            </div>
+
+            <!-- Hauptmenue -->
+            <div id="menu" class="overlay">
+                <div class="card">
+                    <h2>🐍 Snake</h2>
+
+                    <div id="menu-result"></div>
+
+                    <!-- Nicht eingeloggt -->
+                    <div id="auth-box">
+                        <div class="tabs">
+                            <button type="button" data-tab="login" class="on">Einloggen</button>
+                            <button type="button" data-tab="register">Registrieren</button>
+                        </div>
+                        <form id="auth-form" style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+                            <input id="auth-name" maxlength="16" placeholder="Name" autocomplete="username">
+                            <input id="auth-pass" type="password" maxlength="200" placeholder="Passwort" autocomplete="current-password">
+                            <input id="auth-pass2" type="password" maxlength="200" placeholder="Passwort wiederholen" autocomplete="new-password" style="display:none">
+                            <button type="submit" id="auth-submit">Einloggen</button>
+                        </form>
+                        <div class="msg" id="auth-msg"></div>
+                    </div>
+
+                    <!-- Eingeloggt -->
+                    <div id="me-box" class="whoami" style="display:none">
+                        <span>👤 <b id="me-name"></b></span>
+                        <span class="coins">🪙 <span id="me-coins">0</span></span>
+                        <button type="button" class="ghost" id="konto-btn" style="font-size:13px;padding:5px 10px">Konto</button>
+                    </div>
+
+                    <h3>Spielen</h3>
+                    <input id="guest-name" maxlength="16" placeholder="Name als Gast" autocomplete="off">
                     <div id="colors"></div>
-                    <button type="submit">Spielen</button>
-                    <div class="hint">WASD / Pfeiltasten · Wischen am Handy<br>Enter = Chat</div>
-                </form>
+                    <button type="button" id="play-btn">▶ Spielen</button>
+                    <div class="msg" id="play-msg"></div>
+
+                    <button type="button" class="gold" id="slots-btn">🎰 Zum Automaten</button>
+
+                    <div class="hint" id="menu-hint">
+                        WASD / Pfeiltasten · Wischen am Handy · Enter = Chat<br>
+                        Leertaste 5 s halten = Cashout: Score wird zu Coins, du faehrst so lange geradeaus.<br>
+                        Die Wand ist toedlich.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Automat -->
+            <div id="slots" class="overlay hidden">
+                <div class="card" style="width:min(420px,100%)">
+                    <h2>🎰 Kek-Automat</h2>
+                    <div class="whoami">
+                        <span>👤 <b id="slot-name"></b></span>
+                        <span class="coins">🪙 <span id="slot-coins">0</span></span>
+                    </div>
+                    <div class="machine" id="machine">
+                        <div class="slot"><div class="col"></div></div>
+                        <div class="slot"><div class="col"></div></div>
+                        <div class="slot"><div class="col"></div></div>
+                    </div>
+                    <div id="slot-msg"></div>
+                    <h3>Einsatz</h3>
+                    <div class="bets" id="bets"></div>
+                    <button type="button" class="gold" id="spin-btn" style="font-size:20px">DREHEN</button>
+                    <h3>Gewinne (drei gleiche)</h3>
+                    <div class="paytable" id="paytable"></div>
+                    <button type="button" class="ghost" id="slots-back">← Zurück</button>
+                </div>
+            </div>
+
+            <!-- Konto -->
+            <div id="konto" class="overlay hidden">
+                <div class="card">
+                    <h2>👤 <span id="konto-name"></span></h2>
+                    <div class="stats" id="konto-stats"></div>
+
+                    <h3>Passwort aendern</h3>
+                    <form id="pw-form" style="display:flex;flex-direction:column;gap:8px">
+                        <input id="pw-old" type="password" placeholder="Altes Passwort" autocomplete="current-password">
+                        <input id="pw-new" type="password" placeholder="Neues Passwort (mind. 6)" autocomplete="new-password">
+                        <button type="submit">Aendern</button>
+                    </form>
+
+                    <div class="msg" id="konto-msg"></div>
+
+                    <div class="row">
+                        <button type="button" class="ghost" id="konto-back">← Zurück</button>
+                        <button type="button" class="ghost" id="logout-btn">Abmelden</button>
+                    </div>
+
+                    <details>
+                        <summary style="cursor:pointer;opacity:.6;font-size:13px">Konto loeschen</summary>
+                        <form id="del-form" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+                            <input id="del-pass" type="password" placeholder="Passwort zur Bestaetigung" autocomplete="current-password">
+                            <button type="submit" class="danger">Endgueltig loeschen</button>
+                        </form>
+                    </details>
+                </div>
             </div>
 
             <div id="reelbox">
@@ -718,6 +1040,11 @@ button {
         </div>
         <div class="panel">
             <h2>🏆 Bestenliste</h2>
+            <div class="tabs" id="hall-tabs" style="margin-bottom:8px">
+                <button type="button" data-hall="score" class="on">Score</button>
+                <button type="button" data-hall="coins">Coins</button>
+                <button type="button" data-hall="kills">Kills</button>
+            </div>
             <table id="hall"></table>
         </div>
         <div class="panel" id="chat">
@@ -734,25 +1061,34 @@ button {
 <script>
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
+const $ = id => document.getElementById(id);
 
-const status = document.getElementById('status');
-const score = document.getElementById('score');
+const status = $('status');
 
 let myId = null;
 let joined = false;
-let boardSize = 40;
+let boardSize = 120;
+let viewCells = 40;
+let cashoutMs = 5000;
 let players = [];
 let items = [];
+let me = null;          // Konto oder null
+let token = null;
+let slotInfo = null;
 
-const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-const ws = new WebSocket(wsProtocol + '//' + location.host + '/game/ws');
+// WebSocket relativ zur Seite: unter /game/ -> /game/ws, unter / -> /ws
+const wsUrl = new URL('ws', location.href);
+wsUrl.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+const ws = new WebSocket(wsUrl);
 
 ws.onopen = () => {
     status.textContent = '🟢 Connected';
+    try { token = localStorage.getItem('snake-token'); } catch {}
+    if (token) wsSend({ type: 'resume', token });
 };
 
 ws.onclose = () => {
-    status.textContent = '🔴 Disconnected — Seite neu laden';
+    status.textContent = '🔴 Verbindung weg — Seite neu laden';
 };
 
 ws.onerror = () => {
@@ -762,34 +1098,68 @@ ws.onerror = () => {
 ws.onmessage = event => {
     const data = JSON.parse(event.data);
 
-    if (data.type === 'welcome') {
-        myId = data.id;
-        boardSize = data.size;
-    }
-
-    if (data.type === 'joined') {
-        joined = true;
-        document.getElementById('join').classList.add('hidden');
-    }
-
-    if (data.type === 'state') {
-        players = data.players;
-        items = data.items || [];
-        draw();
-    }
-
-    if (data.type === 'duel') queueReel(duelReel(data));
-    if (data.type === 'gamble') queueReel(gambleReel(data));
-    if (data.type === 'box') playBox(data);
-    if (data.type === 'feed') addFeed(data.text, data.kind);
-    if (data.type === 'highscores') drawHall(data.list);
-    if (data.type === 'chatlog') data.list.forEach(addChat);
-    if (data.type === 'chat') addChat(data);
-
-    if (data.type === 'jackpot') showJackpot(data);
-
-    if (data.type === 'died') {
-        toast(data.by ? `💀 Gekillt von ${data.by}` : '💀 Tot');
+    switch (data.type) {
+        case 'welcome':
+            myId = data.id;
+            boardSize = data.size;
+            viewCells = data.view;
+            cashoutMs = data.cashoutMs;
+            slotInfo = data.slots;
+            buildSlots();
+            break;
+        case 'auth':
+            setToken(data.token);
+            setMe(data.user);
+            if (data.note) showMsg($('konto').classList.contains('hidden') ? 'auth-msg' : 'konto-msg', data.note, 'ok');
+            if (!data.user) showScreen('menu');
+            break;
+        case 'authExpired':
+            setToken(null);
+            setMe(null);
+            break;
+        case 'authError':
+            showMsg($('konto').classList.contains('hidden') ? 'auth-msg' : 'konto-msg', data.error, 'err');
+            break;
+        case 'account':
+            setMe(data.user);
+            break;
+        case 'joined':
+            joined = true;
+            showScreen(null);
+            $('hud').classList.remove('hidden');
+            $('hud-hint').style.display = data.guest ? 'none' : '';
+            break;
+        case 'joinError':
+            showMsg('play-msg', data.error, 'err');
+            break;
+        case 'left':
+            backToMenu(null);
+            break;
+        case 'died':
+            backToMenu(`<div class="result dead">💀 ${data.by ? 'Gekillt von ' + esc(data.by) : 'Tot'} — Score ${data.score} verloren</div>`);
+            break;
+        case 'cashedout':
+            backToMenu(`<div class="result cash">💰 +${data.coins} Coins ausgezahlt! Kontostand ${data.balance}</div>`);
+            fanfare('gold');
+            break;
+        case 'cashoutCancel':
+            toast('Cashout abgebrochen');
+            break;
+        case 'state':
+            players = data.players;
+            items = data.items || [];
+            updatePanels();
+            break;
+        case 'duel': queueReel(duelReel(data)); break;
+        case 'gamble': queueReel(gambleReel(data)); break;
+        case 'box': playBox(data); break;
+        case 'feed': addFeed(data.text, data.kind); break;
+        case 'highscores': hall = data.top; drawHall(); break;
+        case 'chatlog': data.list.forEach(addChat); break;
+        case 'chat': addChat(data); break;
+        case 'jackpot': showJackpot(data); break;
+        case 'spin': slotResult(data); break;
+        case 'spinError': slotError(data.error); break;
     }
 };
 
@@ -797,23 +1167,93 @@ function wsSend(obj) {
     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
 }
 
-function sendDirection(direction) {
-    if (joined) wsSend({ type: 'direction', direction });
+function esc(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-// ---------- Namensmenue ----------
+function showMsg(id, text, kind) {
+    const el = $(id);
+    el.textContent = text || '';
+    el.className = 'msg ' + (kind || '');
+}
 
-const joinName = document.getElementById('join-name');
-try { joinName.value = localStorage.getItem('snake-name') || ''; } catch {}
-joinName.focus();
+// ---------- Screens ----------
 
-// Farbwahl: zwoelf Vorgaben plus freie Farbe
+function showScreen(name) {
+    ['menu', 'slots', 'konto'].forEach(s => $(s).classList.toggle('hidden', s !== name));
+}
+
+function backToMenu(resultHtml) {
+    joined = false;
+    spaceDown = false;
+    $('hud').classList.add('hidden');
+    $('menu-result').innerHTML = resultHtml || '';
+    showScreen('menu');
+    showMsg('play-msg', '');
+}
+
+function setToken(t) {
+    token = t;
+    try {
+        if (t) localStorage.setItem('snake-token', t);
+        else localStorage.removeItem('snake-token');
+    } catch {}
+}
+
+function setMe(user) {
+    me = user;
+    $('auth-box').style.display = me ? 'none' : '';
+    $('me-box').style.display = me ? '' : 'none';
+    $('guest-name').style.display = me ? 'none' : '';
+    $('slots-btn').disabled = !me;
+    $('slots-btn').title = me ? '' : 'Nur mit Konto';
+    if (me) {
+        $('me-name').textContent = me.name;
+        $('me-coins').textContent = me.coins;
+        $('slot-name').textContent = me.name;
+        if (!slotSpinning) $('slot-coins').textContent = me.coins;
+        $('konto-name').textContent = me.name;
+        if (me.color && !myColor) pickColor(me.color);
+        drawStats();
+    }
+}
+
+// ---------- Hauptmenue: Login / Registrieren ----------
+
+let authMode = 'login';
+
+document.querySelectorAll('#auth-box .tabs button').forEach(b => b.onclick = () => {
+    authMode = b.dataset.tab;
+    document.querySelectorAll('#auth-box .tabs button').forEach(x => x.classList.toggle('on', x === b));
+    $('auth-pass2').style.display = authMode === 'register' ? '' : 'none';
+    $('auth-pass').autocomplete = authMode === 'register' ? 'new-password' : 'current-password';
+    $('auth-submit').textContent = authMode === 'register' ? 'Konto anlegen' : 'Einloggen';
+    showMsg('auth-msg', '');
+});
+
+$('auth-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const name = $('auth-name').value.trim();
+    const password = $('auth-pass').value;
+    if (authMode === 'register' && password !== $('auth-pass2').value) {
+        return showMsg('auth-msg', 'Passwoerter stimmen nicht ueberein', 'err');
+    }
+    showMsg('auth-msg', '…');
+    wsSend({ type: authMode, name, password });
+    $('auth-pass').value = '';
+    $('auth-pass2').value = '';
+});
+
+// ---------- Hauptmenue: Spielen ----------
+
+try { $('guest-name').value = localStorage.getItem('snake-name') || ''; } catch {}
+
 const PALETTE = ['#ff4d4d', '#ff9f1a', '#ffd23f', '#b5ff3b', '#00ff88', '#18e0d0',
     '#3da5ff', '#5b6cff', '#a45bff', '#ff5bd6', '#ff8fa3', '#f2f2f2'];
 let myColor = null;
 try { myColor = localStorage.getItem('snake-color'); } catch {}
 
-const colorsEl = document.getElementById('colors');
+const colorsEl = $('colors');
 PALETTE.forEach(c => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -837,22 +1277,70 @@ function pickColor(c) {
 }
 if (myColor) pickColor(myColor);
 
-document.getElementById('join-form').addEventListener('submit', e => {
-    e.preventDefault();
-    const name = joinName.value.trim();
-    if (!name) return;
+$('play-btn').onclick = () => {
+    unlockAudio();
+    const name = $('guest-name').value.trim();
+    if (!me && !name) return showMsg('play-msg', 'Name eingeben oder einloggen', 'err');
     try {
-        localStorage.setItem('snake-name', name);
+        if (!me) localStorage.setItem('snake-name', name);
         if (myColor) localStorage.setItem('snake-color', myColor);
     } catch {}
-    unlockAudio();
+    $('menu-result').innerHTML = '';
     wsSend({ type: 'join', name, color: myColor });
-    joinName.blur();
+};
+
+$('leave-btn').onclick = () => {
+    if (confirm('Wirklich verlassen? Ohne Cashout ist der Score weg.')) wsSend({ type: 'leave' });
+};
+
+$('slots-btn').onclick = () => {
+    if (!me) return;
+    showScreen('slots');
+};
+$('slots-back').onclick = () => showScreen('menu');
+
+$('konto-btn').onclick = () => {
+    showMsg('konto-msg', '');
+    drawStats();
+    showScreen('konto');
+};
+$('konto-back').onclick = () => showScreen('menu');
+$('logout-btn').onclick = () => wsSend({ type: 'logout', token });
+
+$('pw-form').addEventListener('submit', e => {
+    e.preventDefault();
+    wsSend({ type: 'changePassword', oldPassword: $('pw-old').value, newPassword: $('pw-new').value });
+    $('pw-old').value = '';
+    $('pw-new').value = '';
 });
+
+$('del-form').addEventListener('submit', e => {
+    e.preventDefault();
+    if (!confirm('Konto samt Coins wirklich loeschen?')) return;
+    wsSend({ type: 'deleteAccount', password: $('del-pass').value });
+    $('del-pass').value = '';
+});
+
+function drawStats() {
+    if (!me) return;
+    const s = me.stats || {};
+    const rows = [
+        ['Coins', me.coins],
+        ['Bester Score', s.bestScore || 0],
+        ['Kills', s.kills || 0],
+        ['Cashouts', s.cashouts || 0],
+        ['Groesster Cashout', s.bestCashout || 0],
+        ['Ausgezahlt gesamt', s.totalCashout || 0],
+        ['Spins am Automaten', s.spins || 0],
+        ['Groesster Automatengewinn', s.biggestWin || 0]
+    ];
+    $('konto-stats').innerHTML = rows.map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join('');
+}
 
 // ---------- Steuerung ----------
 
-const chatInput = document.getElementById('chat-input');
+const chatInput = $('chat-input');
+let spaceDown = false;
 
 document.addEventListener('keydown', e => {
     const typing = document.activeElement && document.activeElement.tagName === 'INPUT';
@@ -862,56 +1350,82 @@ document.addEventListener('keydown', e => {
         return;
     }
 
-    if (e.key === 'Enter' && joined) {
+    if (e.key === 'Enter' && (joined || me)) {
         e.preventDefault();
         chatInput.focus();
         return;
     }
 
+    if (!joined) return;
+
+    if (e.code === 'Space') {
+        e.preventDefault();
+        if (!spaceDown) {
+            spaceDown = true;
+            wsSend({ type: 'cashout', on: true });
+        }
+        return;
+    }
+
     const keys = {
-        ArrowUp: 'up',
-        w: 'up',
-        W: 'up',
-        ArrowDown: 'down',
-        s: 'down',
-        S: 'down',
-        ArrowLeft: 'left',
-        a: 'left',
-        A: 'left',
-        ArrowRight: 'right',
-        d: 'right',
-        D: 'right'
+        ArrowUp: 'up', w: 'up', W: 'up',
+        ArrowDown: 'down', s: 'down', S: 'down',
+        ArrowLeft: 'left', a: 'left', A: 'left',
+        ArrowRight: 'right', d: 'right', D: 'right'
     };
 
     unlockAudio();
 
     if (keys[e.key]) {
         e.preventDefault();
-        sendDirection(keys[e.key]);
+        wsSend({ type: 'direction', direction: keys[e.key] });
     }
 });
 
-// Wischen auf dem Handy
+document.addEventListener('keyup', e => {
+    if (e.code === 'Space' && spaceDown) {
+        spaceDown = false;
+        wsSend({ type: 'cashout', on: false });
+    }
+});
+
+// Fenster verliert den Fokus: Cashout abbrechen, sonst haengt die Taste
+window.addEventListener('blur', () => {
+    if (spaceDown) {
+        spaceDown = false;
+        wsSend({ type: 'cashout', on: false });
+    }
+});
+
+// Wischen auf dem Handy, lange druecken = Cashout
 let touchStart = null;
+let touchTimer = null;
 canvas.addEventListener('touchstart', e => {
     unlockAudio();
     touchStart = e.touches[0];
+    if (joined) touchTimer = setTimeout(() => { spaceDown = true; wsSend({ type: 'cashout', on: true }); }, 400);
 }, { passive: true });
 canvas.addEventListener('touchend', e => {
+    clearTimeout(touchTimer);
+    if (spaceDown) {
+        spaceDown = false;
+        wsSend({ type: 'cashout', on: false });
+    }
     if (!touchStart) return;
     const t = e.changedTouches[0];
     const dx = t.clientX - touchStart.clientX;
     const dy = t.clientY - touchStart.clientY;
     touchStart = null;
     if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return;
-    sendDirection(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+    wsSend({ type: 'direction', direction: Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up') });
 }, { passive: true });
+canvas.addEventListener('touchmove', () => clearTimeout(touchTimer), { passive: true });
 
 // ---------- Chat ----------
 
-const chatLog = document.getElementById('chat-log');
+const chatLog = $('chat-log');
 
-document.getElementById('chat-form').addEventListener('submit', e => {
+$('chat-form').addEventListener('submit', e => {
     e.preventDefault();
     const text = chatInput.value.trim();
     if (text) wsSend({ type: 'chat', text });
@@ -925,7 +1439,7 @@ function addChat(m) {
     const who = document.createElement('span');
     who.className = 'who';
     who.style.color = m.color;
-    who.textContent = m.name + ': ';
+    who.textContent = m.name + (m.guest ? ' (Gast)' : '') + ': ';
     line.appendChild(who);
     line.appendChild(document.createTextNode(m.text));
     chatLog.appendChild(line);
@@ -933,7 +1447,7 @@ function addChat(m) {
     if (atBottom) chatLog.scrollTop = chatLog.scrollHeight;
 }
 
-// ---------- Zeichnen ----------
+// ---------- Zeichnen: Kamera folgt dem eigenen Kopf ----------
 
 const FX_ICON = {
     speed: '⚡', slow: '🐌', ghost: '👻', shield: '🛡️', reverse: '🔄',
@@ -943,44 +1457,87 @@ const FX_NAME = {
     speed: 'Turbo', slow: 'Schnecke', ghost: 'Geist', shield: 'Schild', reverse: 'Verdreht',
     magnet: 'Magnet', invisible: 'Unsichtbar', ice: 'Eisblock', star: 'Stern', jackpot: 'Jackpot'
 };
-
 const FRUIT_ICON = { apple: '🍎', banana: '🍌', grapes: '🍇', melon: '🍉', cherry: '🍒', mango: '🥭' };
+
+let cam = { x: 60, y: 60 };
 
 function colorOf(p) {
     return p.color || '#888';
 }
 
+function camTarget() {
+    const mine = players.find(p => p.id === myId);
+    if (mine && mine.body[0]) return mine.body[0];
+    // Im Menue: dem Laengsten zuschauen, sonst Feldmitte
+    const lead = [...players].sort((a, b) => b.score - a.score)[0];
+    if (lead && lead.body[0]) return lead.body[0];
+    return { x: boardSize / 2, y: boardSize / 2 };
+}
+
+function frame() {
+    const t = camTarget();
+    // Weich nachziehen; bei grossen Spruengen (Teleport, Respawn) sofort
+    const dx = t.x + 0.5 - cam.x, dy = t.y + 0.5 - cam.y;
+    if (Math.abs(dx) > 15 || Math.abs(dy) > 15) cam = { x: t.x + 0.5, y: t.y + 0.5 };
+    else cam = { x: cam.x + dx * 0.2, y: cam.y + dy * 0.2 };
+
+    draw();
+    requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
 function draw() {
-    const cell = canvas.width / boardSize;
+    const W = canvas.width;
+    const cell = W / viewCells;
+    const now = Date.now();
+
+    // Welt -> Bildschirm
+    const ox = W / 2 - cam.x * cell;
+    const oy = W / 2 - cam.y * cell;
+    const sx = x => ox + x * cell;
+    const sy = y => oy + y * cell;
+
+    const x0 = Math.floor(cam.x - viewCells / 2) - 2, x1 = Math.ceil(cam.x + viewCells / 2) + 2;
+    const y0 = Math.floor(cam.y - viewCells / 2) - 2, y1 = Math.ceil(cam.y + viewCells / 2) + 2;
+    const inView = (x, y) => x >= x0 && x <= x1 && y >= y0 && y <= y1;
+
+    // Ausserhalb des Feldes: dunkelrot schraffiert
+    ctx.fillStyle = '#1a0606';
+    ctx.fillRect(0, 0, W, W);
 
     ctx.fillStyle = '#111';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(sx(0), sy(0), boardSize * cell, boardSize * cell);
 
-    // Grid
+    // Gitter nur im sichtbaren Teil
     ctx.strokeStyle = '#181818';
     ctx.lineWidth = 1;
-
-    for (let i = 0; i <= boardSize; i++) {
-        ctx.beginPath();
-        ctx.moveTo(i * cell, 0);
-        ctx.lineTo(i * cell, canvas.height);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(0, i * cell);
-        ctx.lineTo(canvas.width, i * cell);
-        ctx.stroke();
+    ctx.beginPath();
+    for (let x = Math.max(0, x0); x <= Math.min(boardSize, x1); x++) {
+        ctx.moveTo(sx(x), sy(Math.max(0, y0)));
+        ctx.lineTo(sx(x), sy(Math.min(boardSize, y1)));
     }
+    for (let y = Math.max(0, y0); y <= Math.min(boardSize, y1); y++) {
+        ctx.moveTo(sx(Math.max(0, x0)), sy(y));
+        ctx.lineTo(sx(Math.min(boardSize, x1)), sy(y));
+    }
+    ctx.stroke();
 
-    const now = Date.now();
+    // Wand
+    ctx.strokeStyle = '#ff3b3b';
+    ctx.lineWidth = 4;
+    ctx.shadowColor = '#ff3b3b';
+    ctx.shadowBlur = 12;
+    ctx.strokeRect(sx(0) - 2, sy(0) - 2, boardSize * cell + 4, boardSize * cell + 4);
+    ctx.shadowBlur = 0;
 
     // Items
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const pulse = 1 + Math.sin(now / 200) * 0.12;
-    items.forEach(it => {
-        const cx = it.x * cell + cell / 2;
-        const cy = it.y * cell + cell / 2;
+    for (const it of items) {
+        if (!inView(it.x, it.y)) continue;
+        const cx = sx(it.x) + cell / 2;
+        const cy = sy(it.y) + cell / 2;
 
         const aura =
             it.type === 'coin' ? 'rgba(245,197,66,.3)' :
@@ -997,16 +1554,16 @@ function draw() {
         const big = it.type !== 'fruit' || it.kind === 'cherry' || it.kind === 'mango';
         ctx.font = `${Math.floor(cell * (big ? 1.05 * pulse : 0.85))}px system-ui`;
         ctx.fillText(it.type === 'fruit' ? FRUIT_ICON[it.kind] : { box: '❓', coin: '🪙' }[it.type], cx, cy + 1);
-    });
+    }
 
     const blink = Math.floor(now / 150) % 2 === 0;
 
-    players.forEach(p => {
+    for (const p of players) {
         const fx = p.fx || {};
         const mine = p.id === myId;
 
         // Unsichtbare sieht nur der Spieler selbst
-        if (fx.invisible && !mine) return;
+        if (fx.invisible && !mine) continue;
 
         // Jackpot: wild blinkend in Gold, Weiss und Regenbogen
         const jp = fx.jackpot ? Math.floor(now / 90) % 3 : -1;
@@ -1021,33 +1578,30 @@ function draw() {
             fx.ghost ? 0.3 :
             p.frozen && blink ? 0.35 : 1;
 
-        p.body.forEach(part => {
-            ctx.fillRect(
-                part.x * cell + 1,
-                part.y * cell + 1,
-                cell - 2,
-                cell - 2
-            );
-        });
+        for (const part of p.body) {
+            if (!inView(part.x, part.y)) continue;
+            ctx.fillRect(sx(part.x) + 1, sy(part.y) + 1, cell - 2, cell - 2);
+        }
 
         // Eisblock als hellblaue Schicht
         if (fx.ice) {
             ctx.fillStyle = 'rgba(160, 220, 255, .55)';
-            p.body.forEach(part => ctx.fillRect(part.x * cell, part.y * cell, cell, cell));
+            for (const part of p.body) if (inView(part.x, part.y)) ctx.fillRect(sx(part.x), sy(part.y), cell, cell);
         }
 
         ctx.globalAlpha = 1;
 
         const head = p.body[0];
-        if (!head) return;
+        if (!head || !inView(head.x, head.y)) continue;
+        const hx = sx(head.x), hy = sy(head.y);
 
         // Kopf markieren, der eigene bekommt einen weissen Rahmen
         ctx.fillStyle = 'rgba(0,0,0,.45)';
-        ctx.fillRect(head.x * cell + cell / 3, head.y * cell + cell / 3, cell / 3, cell / 3);
+        ctx.fillRect(hx + cell / 3, hy + cell / 3, cell / 3, cell / 3);
         if (mine) {
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = 2;
-            ctx.strokeRect(head.x * cell + 1, head.y * cell + 1, cell - 2, cell - 2);
+            ctx.strokeRect(hx + 1, hy + 1, cell - 2, cell - 2);
         }
 
         // Jackpot: pulsierende Ringe um den Kopf
@@ -1056,7 +1610,7 @@ function draw() {
             ctx.strokeStyle = `rgba(255, 215, 0, ${1 - (now % 600) / 600})`;
             ctx.lineWidth = 4;
             ctx.beginPath();
-            ctx.arc(head.x * cell + cell / 2, head.y * cell + cell / 2, r, 0, Math.PI * 2);
+            ctx.arc(hx + cell / 2, hy + cell / 2, r, 0, Math.PI * 2);
             ctx.stroke();
         }
 
@@ -1065,7 +1619,7 @@ function draw() {
             ctx.strokeStyle = '#6cf';
             ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.arc(head.x * cell + cell / 2, head.y * cell + cell / 2, cell * 0.85, 0, Math.PI * 2);
+            ctx.arc(hx + cell / 2, hy + cell / 2, cell * 0.85, 0, Math.PI * 2);
             ctx.stroke();
         }
 
@@ -1073,70 +1627,135 @@ function draw() {
         if (fx.magnet) {
             ctx.strokeStyle = 'rgba(255, 80, 80, .25)';
             ctx.lineWidth = 1;
-            ctx.strokeRect((head.x - 7) * cell, (head.y - 7) * cell, 15 * cell, 15 * cell);
+            ctx.strokeRect(sx(head.x - 7), sy(head.y - 7), 15 * cell, 15 * cell);
         }
 
-        // Name und Effekte ueber dem Kopf
+        // Cashout-Ring: fuer alle sichtbar, damit man weiss, wer gerade auszahlt
+        if (p.cashout > 0) {
+            ctx.strokeStyle = '#ffd23f';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.arc(hx + cell / 2, hy + cell / 2, cell * 1.4, -Math.PI / 2, -Math.PI / 2 + p.cashout * Math.PI * 2);
+            ctx.stroke();
+            ctx.font = `bold ${Math.floor(cell * 0.7)}px system-ui`;
+            ctx.fillStyle = '#ffd23f';
+            ctx.fillText(`💰 ${p.score}`, hx + cell / 2, hy + cell * 2.4);
+        }
+
+        // Name, Score und Effekte ueber dem Kopf
         const icons = Object.keys(fx).filter(k => k !== 'shield').map(k => FX_ICON[k]).filter(Boolean).join('');
         ctx.font = `bold ${Math.floor(cell * 0.6)}px system-ui`;
-        ctx.fillStyle = 'rgba(255,255,255,.8)';
-        ctx.fillText((p.gambling ? '🪙 ' : '') + (mine ? 'Du' : p.name) + (icons ? ' ' + icons : ''),
-            head.x * cell + cell / 2, head.y * cell - cell * 0.5);
-    });
+        ctx.fillStyle = 'rgba(255,255,255,.85)';
+        ctx.fillText((p.gambling ? '🪙 ' : '') + (mine ? 'Du' : p.name) + ` · ${p.score}` + (icons ? ' ' + icons : ''),
+            hx + cell / 2, hy - cell * 0.5);
+    }
 
-    const me = players.find(p => p.id === myId);
-
-    score.textContent = me
-        ? `Länge: ${me.body.length} | Kills: ${me.kills} | Spieler: ${players.length}`
-        : `Spieler: ${players.length}`;
-
-    drawEffects(me);
-    drawBoard();
+    drawMinimap(now);
 }
 
-function drawEffects(me) {
-    const el = document.getElementById('effects');
-    const fx = me?.fx || {};
+function drawMinimap(now) {
+    const W = canvas.width;
+    const size = 170;
+    const pad = 10;
+    const mx = W - size - pad, my = W - size - pad;
+    const k = size / boardSize;
+
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = '#050807';
+    ctx.fillRect(mx, my, size, size);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(255, 59, 59, .8)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(mx, my, size, size);
+
+    // Muenzen als gelbe Punkte
+    ctx.fillStyle = '#ffd23f';
+    for (const it of items) {
+        if (it.type === 'coin') ctx.fillRect(mx + it.x * k - 1.5, my + it.y * k - 1.5, 3, 3);
+    }
+
+    for (const p of players) {
+        if (p.fx && p.fx.invisible && p.id !== myId) continue;
+        ctx.fillStyle = colorOf(p);
+        const step = Math.max(1, Math.floor(p.body.length / 40));
+        for (let i = 0; i < p.body.length; i += step) {
+            const s = p.body[i];
+            ctx.fillRect(mx + s.x * k, my + s.y * k, Math.max(1.5, k), Math.max(1.5, k));
+        }
+        const h = p.body[0];
+        if (h && p.id === myId) {
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(mx + h.x * k, my + h.y * k, 4 + Math.sin(now / 150), 0, Math.PI * 2);
+            ctx.stroke();
+        }
+    }
+
+    // Sichtfenster
+    ctx.strokeStyle = 'rgba(255,255,255,.35)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(mx + (cam.x - viewCells / 2) * k, my + (cam.y - viewCells / 2) * k, viewCells * k, viewCells * k);
+}
+
+// ---------- Seitenleisten ----------
+
+let lastBoard = '';
+let lastEffects = '';
+
+function updatePanels() {
+    const mine = players.find(p => p.id === myId);
+
+    $('score').textContent = mine
+        ? `Score: ${mine.score} | Länge: ${mine.body.length} | Kills: ${mine.kills} | Spieler: ${players.length}`
+        : `Spieler: ${players.length}`;
+    $('hud-score').textContent = mine ? `Score ${mine.score}` : '';
+
+    const fx = mine?.fx || {};
     const html = Object.entries(fx)
         .filter(([k]) => FX_ICON[k])
         .map(([k, ms]) => `<span>${FX_ICON[k]} ${FX_NAME[k]} ${Math.ceil(ms / 1000)}s</span>`)
         .join('');
-    if (el.innerHTML !== html) el.innerHTML = html;
-}
+    if (html !== lastEffects) {
+        $('effects').innerHTML = html;
+        lastEffects = html;
+    }
 
-function esc(s) {
-    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-
-let lastBoard = '';
-
-function drawBoard() {
     const rows = [...players]
-        .sort((a, b) => b.body.length - a.body.length || b.kills - a.kills)
+        .sort((a, b) => b.score - a.score)
         .map((p, i) => `<tr class="${p.id === myId ? 'me' : ''}">` +
-            `<td class="name"><span class="dot" style="background:${colorOf(p)}"></span>${i === 0 ? '👑 ' : ''}${esc(p.name)}</td>` +
-            `<td class="num">📏 ${p.body.length}</td>` +
+            `<td class="name"><span class="dot" style="background:${esc(colorOf(p))}"></span>${i === 0 ? '👑 ' : ''}${esc(p.name)}${p.guest ? ' <span style="opacity:.5">(Gast)</span>' : ''}</td>` +
+            `<td class="num">⭐ ${p.score}</td>` +
             `<td class="num">🗡️ ${p.kills}</td></tr>`)
         .join('') || '<tr><td style="opacity:.5">Niemand da</td></tr>';
     if (rows !== lastBoard) {
-        document.getElementById('board').innerHTML = rows;
+        $('board').innerHTML = rows;
         lastBoard = rows;
     }
 }
 
-function drawHall(list) {
+let hall = { score: [], coins: [], kills: [] };
+let hallTab = 'score';
+
+document.querySelectorAll('#hall-tabs button').forEach(b => b.onclick = () => {
+    hallTab = b.dataset.hall;
+    document.querySelectorAll('#hall-tabs button').forEach(x => x.classList.toggle('on', x === b));
+    drawHall();
+});
+
+function drawHall() {
     const medals = ['🥇', '🥈', '🥉'];
-    document.getElementById('hall').innerHTML = list.map((s, i) =>
+    const icon = { score: '⭐', coins: '🪙', kills: '🗡️' }[hallTab];
+    $('hall').innerHTML = (hall[hallTab] || []).map((s, i) =>
         `<tr><td class="name">${medals[i] || (i + 1) + '.'} ${esc(s.name)}</td>` +
-        `<td class="num" title="Laengste Schlange">📏 ${s.best}</td>` +
-        `<td class="num" title="Kills insgesamt">🗡️ ${s.kills}</td></tr>`
+        `<td class="num">${icon} ${s.value}</td></tr>`
     ).join('') || '<tr><td style="opacity:.5">Noch leer</td></tr>';
 }
 
 // ---------- Killfeed ----------
 
 function addFeed(text, kind) {
-    const box = document.getElementById('feed');
+    const box = $('feed');
     const el = document.createElement('div');
     el.className = 'feed ' + (kind || 'info');
     el.textContent = text;
@@ -1156,7 +1775,7 @@ function addFeed(text, kind) {
 // ---------- Jackpot fuer alle ----------
 
 function showJackpot(d) {
-    const el = document.getElementById('banner');
+    const el = $('banner');
     el.textContent = `💰 ${d.id === myId ? 'DU' : d.name} ${d.icon}! → ${d.len} 💰`;
     el.classList.remove('show');
     el.getBoundingClientRect();
@@ -1169,7 +1788,7 @@ function showJackpot(d) {
 let toastTimer = null;
 
 function toast(text) {
-    const el = document.getElementById('toast');
+    const el = $('toast');
     el.textContent = text;
     el.classList.add('show');
     clearTimeout(toastTimer);
@@ -1219,9 +1838,11 @@ function spinStrip(reelEl, stripEl, tiles, winAt, tileW, gap, spin, tickVol) {
     tiles.forEach(t => {
         const el = document.createElement('div');
         el.className = 'tile' + (t.rarity ? ' r-' + t.rarity : '');
-        if (t.color) el.style.background = t.color;
-        if (t.color) el.style.color = 'rgba(0,0,0,.8)';
-        if (t.color) el.style.textShadow = 'none';
+        if (t.color) {
+            el.style.background = t.color;
+            el.style.color = 'rgba(0,0,0,.8)';
+            el.style.textShadow = 'none';
+        }
         if (t.big) {
             const big = document.createElement('div');
             big.className = 'big';
@@ -1310,15 +1931,15 @@ function nextReel() {
     while (reelQueue.length && reelQueue[0].until - Date.now() < 1500) reelQueue.shift();
 
     const job = reelQueue.shift();
-    const box = document.getElementById('reelbox');
+    const box = $('reelbox');
     if (!job) {
         reelRunning = false;
         return;
     }
     reelRunning = true;
 
-    const result = document.getElementById('reel-result');
-    document.getElementById('reel-title').textContent = job.title;
+    const result = $('reel-result');
+    $('reel-title').textContent = job.title;
     result.textContent = '';
     result.className = '';
     box.classList.remove('jackpot');
@@ -1326,7 +1947,7 @@ function nextReel() {
 
     const spin = Math.min(3500, job.until - Date.now() - 900);
     const tiles = buildTiles(TILES, WIN_AT, job.winner, job.pickRandom, job.pickNear);
-    const mark = spinStrip(document.getElementById('reel'), document.getElementById('strip'), tiles, WIN_AT, TILE, GAP, spin, 0.05);
+    const mark = spinStrip($('reel'), $('strip'), tiles, WIN_AT, TILE, GAP, spin, 0.05);
 
     setTimeout(() => {
         mark();
@@ -1394,9 +2015,8 @@ function gambleReel(data) {
     };
 }
 
-// ---------- Kleine Walze: Mystery-Box ----------
+// ---------- Kleine Walzen: Mystery-Boxen, eine je Box ----------
 
-// Jede Box bekommt ihre eigene Walze, damit man bei zwei Boxen beide drehen sieht
 function playBox(data) {
     const res = data.options.find(o => o.key === data.result);
 
@@ -1410,7 +2030,7 @@ function playBox(data) {
     result.className = 'box-result';
     reel.appendChild(strip);
     box.append(reel, result);
-    document.getElementById('boxes').appendChild(box);
+    $('boxes').appendChild(box);
 
     const spin = data.ms - 150;
     const tiles = buildTiles(40, 34, optionTile(res), () => optionTile(weightedPick(data.options)));
@@ -1425,8 +2045,118 @@ function playBox(data) {
     setTimeout(() => box.remove(), spin + 2900);
 }
 
-// Blinken und Items auch zwischen zwei Server-Ticks animieren
-setInterval(draw, 100);
+// ---------- Slot-Automat ----------
+
+let bet = 10;
+let slotSpinning = false;
+const SYM_H = 96;
+
+function buildSlots() {
+    if (!slotInfo) return;
+    const betsEl = $('bets');
+    betsEl.innerHTML = '';
+    slotInfo.bets.forEach(b => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = b;
+        btn.className = b === bet ? 'on' : '';
+        btn.onclick = () => {
+            bet = b;
+            betsEl.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === btn));
+        };
+        betsEl.appendChild(btn);
+    });
+
+    $('paytable').innerHTML = slotInfo.symbols.map(s => `<span>${s.s}${s.s}${s.s}</span><span style="text-align:right">×${s.three}</span>`).join('') +
+        `<span>🍒🍒 irgendwo</span><span style="text-align:right">×${slotInfo.twoCherry}</span>`;
+
+    document.querySelectorAll('.slot .col').forEach(col => {
+        col.innerHTML = `<div class="sym">${slotInfo.symbols[Math.floor(Math.random() * slotInfo.symbols.length)].s}</div>`;
+        col.style.transform = 'translateY(0)';
+    });
+}
+
+function randomSym() {
+    const list = slotInfo.symbols;
+    const total = list.reduce((s, x) => s + x.weight, 0);
+    let r = Math.random() * total;
+    for (const x of list) {
+        r -= x.weight;
+        if (r < 0) return x.s;
+    }
+    return list[0].s;
+}
+
+$('spin-btn').onclick = () => {
+    if (slotSpinning || !me) return;
+    unlockAudio();
+    if (me.coins < bet) return slotError('Nicht genug Coins');
+    slotSpinning = true;
+    $('spin-btn').disabled = true;
+    $('slot-msg').textContent = '';
+    $('slot-msg').className = '';
+    $('machine').classList.remove('win');
+    // Einsatz sofort abziehen, der Server schickt den echten Stand hinterher
+    $('slot-coins').textContent = me.coins - bet;
+    wsSend({ type: 'spin', bet });
+};
+
+function slotError(text) {
+    slotSpinning = false;
+    $('spin-btn').disabled = false;
+    if (me) $('slot-coins').textContent = me.coins;
+    $('slot-msg').textContent = text;
+}
+
+function slotResult(d) {
+    const cols = document.querySelectorAll('.slot .col');
+    const durations = [900, 1300, 1700];
+
+    cols.forEach((col, i) => {
+        // Streifen: aktuelles Symbol oben, dann Zufall, am Ende das Ergebnis
+        const current = col.lastElementChild ? col.lastElementChild.textContent : d.reels[i];
+        const n = 18 + i * 6;
+        const syms = [current];
+        for (let k = 0; k < n; k++) syms.push(randomSym());
+        syms.push(d.reels[i]);
+        col.innerHTML = syms.map(s => `<div class="sym">${s}</div>`).join('');
+        col.style.transition = 'none';
+        col.style.transform = 'translateY(0)';
+        col.getBoundingClientRect();
+        col.style.transition = `transform ${durations[i]}ms cubic-bezier(.2,.7,.25,1.05)`;
+        col.style.transform = `translateY(${-(syms.length - 1) * SYM_H}px)`;
+
+        // Tick-Geraeusch waehrend des Drehens, Klack beim Stehen
+        const ticker = setInterval(() => beep(700 + i * 120, 0.02, 0.03), 90);
+        setTimeout(() => {
+            clearInterval(ticker);
+            beep(300, 0.06, 0.06);
+        }, durations[i]);
+    });
+
+    setTimeout(() => {
+        slotSpinning = false;
+        $('spin-btn').disabled = false;
+        $('slot-coins').textContent = d.balance;
+        if (me) {
+            me.coins = d.balance;
+            $('me-coins').textContent = d.balance;
+        }
+        const msg = $('slot-msg');
+        if (d.win > 0) {
+            msg.textContent = `+${d.win} Coins (×${d.mult})`;
+            if (d.mult >= 20) {
+                msg.className = 'big';
+                $('machine').classList.add('win');
+                fanfare('gold');
+            } else {
+                fanfare(true);
+            }
+        } else {
+            msg.textContent = 'Nichts';
+        }
+    }, durations[2] + 100);
+}
 </script>
 </body>
 </html>
