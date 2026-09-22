@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -123,7 +123,7 @@ canvas {
 }
 
 #boxes:empty::before {
-    content: 'Hier drehen deine Boxen';
+    content: 'Your mystery boxes spin here';
     font-size: 12px;
     opacity: .4;
 }
@@ -449,6 +449,247 @@ button:disabled {
 .stats span:nth-child(even) {
     text-align: right;
     font-weight: 700;
+}
+
+/* ---------- Mini events ---------- */
+
+#event .card {
+    width: min(720px, 100%);
+    border-color: #ff5bd6;
+    box-shadow: 0 0 60px rgba(255, 91, 214, .35);
+}
+
+#event .ev-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+#event .ev-title {
+    font-size: 24px;
+    font-weight: 900;
+    background: linear-gradient(90deg, #ff5bd6, #ffd23f, #00ff88, #3da5ff, #ff5bd6);
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: goldShine 3s linear infinite;
+}
+
+#event .ev-timer {
+    font-size: 22px;
+    font-weight: 900;
+    min-width: 60px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+#event .ev-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255,255,255,.1);
+    overflow: hidden;
+}
+
+#event .ev-bar div {
+    height: 100%;
+    background: linear-gradient(90deg, #ff5bd6, #ffd23f);
+}
+
+#event .ev-body {
+    display: grid;
+    grid-template-columns: 1fr 200px;
+    gap: 14px;
+}
+
+#event .ev-board td {
+    padding: 2px 4px;
+    font-size: 13px;
+}
+
+#event .ev-board .me {
+    font-weight: 800;
+}
+
+#event .big-note {
+    text-align: center;
+    font-size: 18px;
+    font-weight: 800;
+    padding: 18px 8px;
+}
+
+.flag-img {
+    display: block;
+    margin: 0 auto;
+    height: 150px;
+    max-width: 100%;
+    border-radius: 6px;
+    box-shadow: 0 4px 20px rgba(0,0,0,.6);
+}
+
+.choices {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.choices button {
+    background: #16211b;
+    color: #fff;
+    border: 2px solid rgba(0,255,140,.3);
+    font-size: 15px;
+    padding: 10px;
+}
+
+.choices button.mine { border-color: #ffd23f; }
+.choices button.right { background: #0f7a45; border-color: #00ff88; }
+.choices button.wrong { background: #7a1f1f; border-color: #ff4d4d; }
+
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    justify-content: center;
+}
+
+.chips button {
+    font-size: 13px;
+    padding: 5px 9px;
+    background: transparent;
+    color: #ffd23f;
+    border: 1px solid rgba(255, 210, 63, .5);
+}
+
+.chips button.on {
+    background: #ffd23f;
+    color: #2a1a00;
+}
+
+.rl-outside {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 4px;
+    margin-top: 8px;
+}
+
+.rl-outside button, .rl-grid button {
+    font-size: 13px;
+    padding: 7px 2px;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.2);
+}
+
+.rl-grid {
+    display: grid;
+    grid-template-columns: repeat(13, 1fr);
+    gap: 3px;
+    margin-top: 6px;
+}
+
+.rl-grid button {
+    padding: 6px 0;
+    font-size: 12px;
+}
+
+.c-red { background: #b3202a; }
+.c-black { background: #1c1c1c; }
+.c-green { background: #0f7a45; }
+.c-dark { background: #26332c; }
+
+.bets-list {
+    font-size: 12px;
+    max-height: 90px;
+    overflow-y: auto;
+    opacity: .85;
+    margin-top: 6px;
+}
+
+#ev-reel {
+    height: 80px;
+    margin: 6px 0;
+}
+
+#ev-reel .tile {
+    flex-basis: 64px;
+    font-size: 26px;
+    justify-content: center;
+    padding: 0;
+}
+
+.bj-table {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.bj-hand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.bj-hand .who {
+    min-width: 90px;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.card-p {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 54px;
+    border-radius: 5px;
+    background: #fff;
+    color: #111;
+    font-weight: 800;
+    font-size: 15px;
+    box-shadow: 0 2px 6px rgba(0,0,0,.5);
+    animation: pop .25s ease-out;
+}
+
+.card-p.red { color: #c21a2a; }
+
+.card-p.back {
+    background: repeating-linear-gradient(45deg, #5b6cff, #5b6cff 5px, #3d4bd0 5px, #3d4bd0 10px);
+}
+
+.bj-res {
+    font-size: 13px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.bj-res.win, .bj-res.blackjack { background: #0f7a45; }
+.bj-res.lose, .bj-res.bust { background: #7a1f1f; }
+.bj-res.push { background: #555; }
+
+#countdown {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 140px;
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 0 0 40px #ff5bd6;
+    pointer-events: none;
+    z-index: 6;
+}
+
+#countdown.show {
+    display: flex;
+}
+
+@media (max-width: 700px) {
+    #event .ev-body { grid-template-columns: 1fr; }
+    .rl-grid { grid-template-columns: repeat(7, 1fr); }
 }
 
 /* ---------- Spiel-HUD ---------- */
@@ -899,7 +1140,7 @@ button:disabled {
 <div id="layout">
     <div id="left">
         <div class="panel">
-            <h2>🎲 Deine Boxen</h2>
+            <h2>🎲 Your boxes</h2>
             <div id="boxes"></div>
         </div>
         <div class="panel">
@@ -913,9 +1154,9 @@ button:disabled {
             <canvas id="game" width="800" height="800"></canvas>
 
             <div id="hud" class="hidden">
-                <button id="leave-btn" type="button">🚪 Verlassen</button>
+                <button id="leave-btn" type="button">🚪 Leave</button>
                 <span class="pill" id="hud-score">Score 0</span>
-                <span class="pill" id="hud-hint">␣ 5 s halten = Cashout</span>
+                <span class="pill" id="hud-hint">hold ␣ 5 s = cash out</span>
             </div>
 
             <!-- Hauptmenue -->
@@ -928,14 +1169,14 @@ button:disabled {
                     <!-- Nicht eingeloggt -->
                     <div id="auth-box">
                         <div class="tabs">
-                            <button type="button" data-tab="login" class="on">Einloggen</button>
-                            <button type="button" data-tab="register">Registrieren</button>
+                            <button type="button" data-tab="login" class="on">Log in</button>
+                            <button type="button" data-tab="register">Sign up</button>
                         </div>
                         <form id="auth-form" style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
                             <input id="auth-name" maxlength="16" placeholder="Name" autocomplete="username">
-                            <input id="auth-pass" type="password" maxlength="200" placeholder="Passwort" autocomplete="current-password">
-                            <input id="auth-pass2" type="password" maxlength="200" placeholder="Passwort wiederholen" autocomplete="new-password" style="display:none">
-                            <button type="submit" id="auth-submit">Einloggen</button>
+                            <input id="auth-pass" type="password" maxlength="200" placeholder="Password" autocomplete="current-password">
+                            <input id="auth-pass2" type="password" maxlength="200" placeholder="Repeat password" autocomplete="new-password" style="display:none">
+                            <button type="submit" id="auth-submit">Log in</button>
                         </form>
                         <div class="msg" id="auth-msg"></div>
                     </div>
@@ -944,21 +1185,21 @@ button:disabled {
                     <div id="me-box" class="whoami" style="display:none">
                         <span>👤 <b id="me-name"></b></span>
                         <span class="coins">🪙 <span id="me-coins">0</span></span>
-                        <button type="button" class="ghost" id="konto-btn" style="font-size:13px;padding:5px 10px">Konto</button>
+                        <button type="button" class="ghost" id="konto-btn" style="font-size:13px;padding:5px 10px">Account</button>
                     </div>
 
-                    <h3>Spielen</h3>
-                    <input id="guest-name" maxlength="16" placeholder="Name als Gast" autocomplete="off">
+                    <h3>Play</h3>
+                    <input id="guest-name" maxlength="16" placeholder="Name (as guest)" autocomplete="off">
                     <div id="colors"></div>
-                    <button type="button" id="play-btn">▶ Spielen</button>
+                    <button type="button" id="play-btn">▶ Play</button>
                     <div class="msg" id="play-msg"></div>
 
-                    <button type="button" class="gold" id="slots-btn">🎰 Zum Automaten</button>
+                    <button type="button" class="gold" id="slots-btn">🎰 Slot machine</button>
 
                     <div class="hint" id="menu-hint">
-                        WASD / Pfeiltasten · Wischen am Handy · Enter = Chat<br>
-                        Leertaste 5 s halten = Cashout: Score wird zu Coins, du faehrst so lange geradeaus.<br>
-                        Die Wand ist toedlich.
+                        WASD / arrow keys · swipe on mobile · Enter = chat<br>
+                        Hold Space for 5 s to cash out your score as coins. You keep going straight meanwhile.<br>
+                        The wall kills. Big 🎪 boxes start a mini event for everyone.
                     </div>
                 </div>
             </div>
@@ -966,7 +1207,7 @@ button:disabled {
             <!-- Automat -->
             <div id="slots" class="overlay hidden">
                 <div class="card" style="width:min(420px,100%)">
-                    <h2>🎰 Kek-Automat</h2>
+                    <h2>🎰 Kek Slots</h2>
                     <div class="whoami">
                         <span>👤 <b id="slot-name"></b></span>
                         <span class="coins">🪙 <span id="slot-coins">0</span></span>
@@ -977,12 +1218,12 @@ button:disabled {
                         <div class="slot"><div class="col"></div></div>
                     </div>
                     <div id="slot-msg"></div>
-                    <h3>Einsatz</h3>
+                    <h3>Bet</h3>
                     <div class="bets" id="bets"></div>
-                    <button type="button" class="gold" id="spin-btn" style="font-size:20px">DREHEN</button>
-                    <h3>Gewinne (drei gleiche)</h3>
+                    <button type="button" class="gold" id="spin-btn" style="font-size:20px">SPIN</button>
+                    <h3>Payouts (three of a kind)</h3>
                     <div class="paytable" id="paytable"></div>
-                    <button type="button" class="ghost" id="slots-back">← Zurück</button>
+                    <button type="button" class="ghost" id="slots-back">← Back</button>
                 </div>
             </div>
 
@@ -992,29 +1233,50 @@ button:disabled {
                     <h2>👤 <span id="konto-name"></span></h2>
                     <div class="stats" id="konto-stats"></div>
 
-                    <h3>Passwort aendern</h3>
+                    <h3>Change password</h3>
                     <form id="pw-form" style="display:flex;flex-direction:column;gap:8px">
-                        <input id="pw-old" type="password" placeholder="Altes Passwort" autocomplete="current-password">
-                        <input id="pw-new" type="password" placeholder="Neues Passwort (mind. 6)" autocomplete="new-password">
-                        <button type="submit">Aendern</button>
+                        <input id="pw-old" type="password" placeholder="Current password" autocomplete="current-password">
+                        <input id="pw-new" type="password" placeholder="New password (min. 6)" autocomplete="new-password">
+                        <button type="submit">Change</button>
                     </form>
 
                     <div class="msg" id="konto-msg"></div>
 
                     <div class="row">
-                        <button type="button" class="ghost" id="konto-back">← Zurück</button>
-                        <button type="button" class="ghost" id="logout-btn">Abmelden</button>
+                        <button type="button" class="ghost" id="konto-back">← Back</button>
+                        <button type="button" class="ghost" id="logout-btn">Log out</button>
                     </div>
 
                     <details>
-                        <summary style="cursor:pointer;opacity:.6;font-size:13px">Konto loeschen</summary>
+                        <summary style="cursor:pointer;opacity:.6;font-size:13px">Delete account</summary>
                         <form id="del-form" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
-                            <input id="del-pass" type="password" placeholder="Passwort zur Bestaetigung" autocomplete="current-password">
-                            <button type="submit" class="danger">Endgueltig loeschen</button>
+                            <input id="del-pass" type="password" placeholder="Password to confirm" autocomplete="current-password">
+                            <button type="submit" class="danger">Delete for good</button>
                         </form>
                     </details>
                 </div>
             </div>
+
+            <!-- Mini event -->
+            <div id="event" class="overlay hidden">
+                <div class="card">
+                    <div class="ev-head">
+                        <span class="ev-title" id="ev-title"></span>
+                        <span class="ev-timer" id="ev-timer"></span>
+                    </div>
+                    <div class="ev-bar"><div id="ev-bar"></div></div>
+                    <div class="ev-body">
+                        <div id="ev-main"></div>
+                        <div>
+                            <h3>Event board</h3>
+                            <table class="ev-board" id="ev-board"></table>
+                        </div>
+                    </div>
+                    <div class="msg" id="ev-msg"></div>
+                </div>
+            </div>
+
+            <div id="countdown"></div>
 
             <div id="reelbox">
                 <div id="reel-title"></div>
@@ -1029,17 +1291,17 @@ button:disabled {
         <div id="score"></div>
         <div id="effects"></div>
         <div id="controls">
-            🍎+1 🍌+2 🍇+3 🍉+5 🍒+10 🥭+20 &nbsp; ❓ Mystery-Box &nbsp; 🪙 Double or Nothing (bis ×100)
+            🍎+1 🍌+2 🍇+3 🍉+5 🍒+10 🥭+20 🍍+50 🐉+150 &nbsp; ❓ Mystery box &nbsp; 🪙 Double or Nothing (up to ×100) &nbsp; 🎪 Event
         </div>
     </div>
 
     <div id="side">
         <div class="panel">
-            <h2>Jetzt im Spiel</h2>
+            <h2>In game</h2>
             <table id="board"></table>
         </div>
         <div class="panel">
-            <h2>🏆 Bestenliste</h2>
+            <h2>🏆 Leaderboard</h2>
             <div class="tabs" id="hall-tabs" style="margin-bottom:8px">
                 <button type="button" data-hall="score" class="on">Score</button>
                 <button type="button" data-hall="coins">Coins</button>
@@ -1051,7 +1313,7 @@ button:disabled {
             <h2>💬 Chat</h2>
             <div id="chat-log"></div>
             <form id="chat-form">
-                <input id="chat-input" maxlength="200" placeholder="Enter zum Schreiben" autocomplete="off">
+                <input id="chat-input" maxlength="200" placeholder="Enter to type" autocomplete="off">
                 <button type="submit">↵</button>
             </form>
         </div>
@@ -1067,7 +1329,9 @@ const status = $('status');
 
 let myId = null;
 let joined = false;
-let boardSize = 120;
+let paused = false;
+let fxDurations = {};
+let lastStateAt = 0;
 let viewCells = 40;
 let cashoutMs = 5000;
 let players = [];
@@ -1088,7 +1352,7 @@ ws.onopen = () => {
 };
 
 ws.onclose = () => {
-    status.textContent = '🔴 Verbindung weg — Seite neu laden';
+    status.textContent = '🔴 Connection lost — reload the page';
 };
 
 ws.onerror = () => {
@@ -1101,9 +1365,10 @@ ws.onmessage = event => {
     switch (data.type) {
         case 'welcome':
             myId = data.id;
-            boardSize = data.size;
+            arena = data.arena;
             viewCells = data.view;
             cashoutMs = data.cashoutMs;
+            fxDurations = data.durations || {};
             slotInfo = data.slots;
             buildSlots();
             break;
@@ -1136,30 +1401,38 @@ ws.onmessage = event => {
             backToMenu(null);
             break;
         case 'died':
-            backToMenu(`<div class="result dead">💀 ${data.by ? 'Gekillt von ' + esc(data.by) : 'Tot'} — Score ${data.score} verloren</div>`);
+            backToMenu(`<div class="result dead">💀 ${data.by ? 'Killed by ' + esc(data.by) : 'Dead'} — score ${data.score} lost</div>`);
             break;
         case 'cashedout':
-            backToMenu(`<div class="result cash">💰 +${data.coins} Coins ausgezahlt! Kontostand ${data.balance}</div>`);
+            backToMenu(`<div class="result cash">💰 +${data.coins} coins cashed out! Balance ${data.balance}</div>`);
             fanfare('gold');
             break;
         case 'cashoutCancel':
-            toast('Cashout abgebrochen');
+            toast('Cash out cancelled');
             break;
         case 'state':
+            lastStateAt = performance.now();
+            ingestState(data);
             players = data.players;
             items = data.items || [];
+            arena = data.arena;
+            paused = data.paused;
             updatePanels();
             break;
         case 'duel': queueReel(duelReel(data)); break;
         case 'gamble': queueReel(gambleReel(data)); break;
         case 'box': playBox(data); break;
-        case 'feed': addFeed(data.text, data.kind); break;
+        case 'feed': addFeed(data); break;
         case 'highscores': hall = data.top; drawHall(); break;
         case 'chatlog': data.list.forEach(addChat); break;
         case 'chat': addChat(data); break;
         case 'jackpot': showJackpot(data); break;
         case 'spin': slotResult(data); break;
         case 'spinError': slotError(data.error); break;
+        case 'event': onEvent(data); break;
+        case 'eventEnd': onEventEnd(); break;
+        case 'eventError': showMsg('ev-msg', data.error, 'err'); break;
+        case 'resume': onResume(data.in); break;
     }
 };
 
@@ -1180,7 +1453,7 @@ function showMsg(id, text, kind) {
 // ---------- Screens ----------
 
 function showScreen(name) {
-    ['menu', 'slots', 'konto'].forEach(s => $(s).classList.toggle('hidden', s !== name));
+    ['menu', 'slots', 'konto', 'event'].forEach(s => $(s).classList.toggle('hidden', s !== name));
 }
 
 function backToMenu(resultHtml) {
@@ -1206,7 +1479,7 @@ function setMe(user) {
     $('me-box').style.display = me ? '' : 'none';
     $('guest-name').style.display = me ? 'none' : '';
     $('slots-btn').disabled = !me;
-    $('slots-btn').title = me ? '' : 'Nur mit Konto';
+    $('slots-btn').title = me ? '' : 'Accounts only';
     if (me) {
         $('me-name').textContent = me.name;
         $('me-coins').textContent = me.coins;
@@ -1227,7 +1500,7 @@ document.querySelectorAll('#auth-box .tabs button').forEach(b => b.onclick = () 
     document.querySelectorAll('#auth-box .tabs button').forEach(x => x.classList.toggle('on', x === b));
     $('auth-pass2').style.display = authMode === 'register' ? '' : 'none';
     $('auth-pass').autocomplete = authMode === 'register' ? 'new-password' : 'current-password';
-    $('auth-submit').textContent = authMode === 'register' ? 'Konto anlegen' : 'Einloggen';
+    $('auth-submit').textContent = authMode === 'register' ? 'Create account' : 'Log in';
     showMsg('auth-msg', '');
 });
 
@@ -1236,7 +1509,7 @@ $('auth-form').addEventListener('submit', e => {
     const name = $('auth-name').value.trim();
     const password = $('auth-pass').value;
     if (authMode === 'register' && password !== $('auth-pass2').value) {
-        return showMsg('auth-msg', 'Passwoerter stimmen nicht ueberein', 'err');
+        return showMsg('auth-msg', 'Passwords do not match', 'err');
     }
     showMsg('auth-msg', '…');
     wsSend({ type: authMode, name, password });
@@ -1266,7 +1539,7 @@ PALETTE.forEach(c => {
 const custom = document.createElement('input');
 custom.type = 'color';
 custom.id = 'custom-color';
-custom.title = 'Eigene Farbe';
+custom.title = 'Custom color';
 custom.oninput = () => pickColor(custom.value);
 colorsEl.appendChild(custom);
 
@@ -1280,7 +1553,7 @@ if (myColor) pickColor(myColor);
 $('play-btn').onclick = () => {
     unlockAudio();
     const name = $('guest-name').value.trim();
-    if (!me && !name) return showMsg('play-msg', 'Name eingeben oder einloggen', 'err');
+    if (!me && !name) return showMsg('play-msg', 'Enter a name or log in', 'err');
     try {
         if (!me) localStorage.setItem('snake-name', name);
         if (myColor) localStorage.setItem('snake-color', myColor);
@@ -1290,7 +1563,7 @@ $('play-btn').onclick = () => {
 };
 
 $('leave-btn').onclick = () => {
-    if (confirm('Wirklich verlassen? Ohne Cashout ist der Score weg.')) wsSend({ type: 'leave' });
+    if (confirm('Leave the game? Without cashing out your score is lost.')) wsSend({ type: 'leave' });
 };
 
 $('slots-btn').onclick = () => {
@@ -1316,7 +1589,7 @@ $('pw-form').addEventListener('submit', e => {
 
 $('del-form').addEventListener('submit', e => {
     e.preventDefault();
-    if (!confirm('Konto samt Coins wirklich loeschen?')) return;
+    if (!confirm('Really delete your account and all coins?')) return;
     wsSend({ type: 'deleteAccount', password: $('del-pass').value });
     $('del-pass').value = '';
 });
@@ -1326,13 +1599,13 @@ function drawStats() {
     const s = me.stats || {};
     const rows = [
         ['Coins', me.coins],
-        ['Bester Score', s.bestScore || 0],
+        ['Best score', s.bestScore || 0],
         ['Kills', s.kills || 0],
-        ['Cashouts', s.cashouts || 0],
-        ['Groesster Cashout', s.bestCashout || 0],
-        ['Ausgezahlt gesamt', s.totalCashout || 0],
-        ['Spins am Automaten', s.spins || 0],
-        ['Groesster Automatengewinn', s.biggestWin || 0]
+        ['Cash outs', s.cashouts || 0],
+        ['Biggest cash out', s.bestCashout || 0],
+        ['Cashed out in total', s.totalCashout || 0],
+        ['Slot spins', s.spins || 0],
+        ['Biggest slot win', s.biggestWin || 0]
     ];
     $('konto-stats').innerHTML = rows.map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join('');
 }
@@ -1439,7 +1712,7 @@ function addChat(m) {
     const who = document.createElement('span');
     who.className = 'who';
     who.style.color = m.color;
-    who.textContent = m.name + (m.guest ? ' (Gast)' : '') + ': ';
+    who.textContent = m.name + (m.guest ? ' (guest)' : '') + ': ';
     line.appendChild(who);
     line.appendChild(document.createTextNode(m.text));
     chatLog.appendChild(line);
@@ -1447,51 +1720,115 @@ function addChat(m) {
     if (atBottom) chatLog.scrollTop = chatLog.scrollHeight;
 }
 
-// ---------- Zeichnen: Kamera folgt dem eigenen Kopf ----------
+// ---------- Drawing: smooth camera, interpolated snakes ----------
 
 const FX_ICON = {
     speed: '⚡', slow: '🐌', ghost: '👻', shield: '🛡️', reverse: '🔄',
     magnet: '🧲', invisible: '🫥', ice: '🧊', star: '⭐', jackpot: '💰'
 };
 const FX_NAME = {
-    speed: 'Turbo', slow: 'Schnecke', ghost: 'Geist', shield: 'Schild', reverse: 'Verdreht',
-    magnet: 'Magnet', invisible: 'Unsichtbar', ice: 'Eisblock', star: 'Stern', jackpot: 'Jackpot'
+    speed: 'Turbo', slow: 'Snail', ghost: 'Ghost', shield: 'Shield', reverse: 'Reversed',
+    magnet: 'Magnet', invisible: 'Invisible', ice: 'Ice block', star: 'Star', jackpot: 'Jackpot'
 };
-const FRUIT_ICON = { apple: '🍎', banana: '🍌', grapes: '🍇', melon: '🍉', cherry: '🍒', mango: '🥭' };
+const FRUIT_ICON = {
+    apple: '🍎', banana: '🍌', grapes: '🍇', melon: '🍉', cherry: '🍒', mango: '🥭',
+    pineapple: '🍍', dragon: '🐉'
+};
 
-let cam = { x: 60, y: 60 };
+let arena = { lo: 75, hi: 125 };
+let cam = null;
+
+// The server moves snakes in whole cells every ~120 ms. To make that smooth,
+// every segment slides from its previous cell to its current one in between.
+const smooth = new Map();   // id -> { prev, cur, t, interval }
+
+function decodeRuns(runs) {
+    const body = [];
+    for (const [x0, y0, dirs] of runs) {
+        let x = x0, y = y0;
+        body.push({ x, y });
+        for (const ch of dirs) {
+            if (ch === 'R') x++;
+            else if (ch === 'L') x--;
+            else if (ch === 'D') y++;
+            else y--;
+            body.push({ x, y });
+        }
+    }
+    return body;
+}
+
+function ingestState(data) {
+    const now = performance.now();
+    const seen = new Set();
+    for (const p of data.players) {
+        p.body = decodeRuns(p.runs);
+        seen.add(p.id);
+        const head = p.body[0];
+        let s = smooth.get(p.id);
+        if (!s) {
+            smooth.set(p.id, { prev: p.body, cur: p.body, t: now, interval: 120 });
+            continue;
+        }
+        const old = s.cur[0];
+        if (!old || !head || old.x !== head.x || old.y !== head.y) {
+            // Learn the real step time (normal, turbo, snail) from what arrives
+            const dt = now - s.t;
+            if (dt > 30 && dt < 400) s.interval = s.interval * 0.6 + dt * 0.4;
+            s.prev = s.cur;
+            s.cur = p.body;
+            s.t = now;
+        } else {
+            s.cur = p.body;
+        }
+    }
+    for (const id of [...smooth.keys()]) if (!seen.has(id)) smooth.delete(id);
+}
+
+function interpBody(p, now) {
+    const s = smooth.get(p.id);
+    if (!s || p.frozen) return p.body;
+    const f = Math.min(1, (now - s.t) / s.interval);
+    const out = new Array(s.cur.length);
+    for (let i = 0; i < s.cur.length; i++) {
+        const c = s.cur[i], a = s.prev[i];
+        // Growth, teleport or respawn: no sliding
+        if (!a || Math.abs(a.x - c.x) + Math.abs(a.y - c.y) > 1) out[i] = c;
+        else out[i] = { x: a.x + (c.x - a.x) * f, y: a.y + (c.y - a.y) * f };
+    }
+    return out;
+}
 
 function colorOf(p) {
     return p.color || '#888';
 }
 
-function camTarget() {
+function camTarget(now) {
     const mine = players.find(p => p.id === myId);
-    if (mine && mine.body[0]) return mine.body[0];
-    // Im Menue: dem Laengsten zuschauen, sonst Feldmitte
-    const lead = [...players].sort((a, b) => b.score - a.score)[0];
-    if (lead && lead.body[0]) return lead.body[0];
-    return { x: boardSize / 2, y: boardSize / 2 };
+    const who = mine || [...players].sort((a, b) => b.score - a.score)[0];
+    if (who && who.body[0]) return interpBody(who, now)[0];
+    return { x: (arena.lo + arena.hi) / 2 - 0.5, y: (arena.lo + arena.hi) / 2 - 0.5 };
 }
 
 function frame() {
-    const t = camTarget();
-    // Weich nachziehen; bei grossen Spruengen (Teleport, Respawn) sofort
-    const dx = t.x + 0.5 - cam.x, dy = t.y + 0.5 - cam.y;
-    if (Math.abs(dx) > 15 || Math.abs(dy) > 15) cam = { x: t.x + 0.5, y: t.y + 0.5 };
-    else cam = { x: cam.x + dx * 0.2, y: cam.y + dy * 0.2 };
+    const now = performance.now();
+    const t = camTarget(now);
+    const tx = t.x + 0.5, ty = t.y + 0.5;
+    // Follow the interpolated head closely; jump on teleport or respawn
+    if (!cam || Math.abs(tx - cam.x) > 10 || Math.abs(ty - cam.y) > 10) cam = { x: tx, y: ty };
+    else cam = { x: cam.x + (tx - cam.x) * 0.35, y: cam.y + (ty - cam.y) * 0.35 };
 
-    draw();
+    draw(now);
     requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 
-function draw() {
+function draw(perfNow) {
     const W = canvas.width;
     const cell = W / viewCells;
     const now = Date.now();
 
-    // Welt -> Bildschirm
+    // World -> screen
     const ox = W / 2 - cam.x * cell;
     const oy = W / 2 - cam.y * cell;
     const sx = x => ox + x * cell;
@@ -1500,34 +1837,35 @@ function draw() {
     const x0 = Math.floor(cam.x - viewCells / 2) - 2, x1 = Math.ceil(cam.x + viewCells / 2) + 2;
     const y0 = Math.floor(cam.y - viewCells / 2) - 2, y1 = Math.ceil(cam.y + viewCells / 2) + 2;
     const inView = (x, y) => x >= x0 && x <= x1 && y >= y0 && y <= y1;
+    const A = arena, size = A.hi - A.lo;
 
-    // Ausserhalb des Feldes: dunkelrot schraffiert
+    // Outside the arena: dark red
     ctx.fillStyle = '#1a0606';
     ctx.fillRect(0, 0, W, W);
-
     ctx.fillStyle = '#111';
-    ctx.fillRect(sx(0), sy(0), boardSize * cell, boardSize * cell);
+    ctx.fillRect(sx(A.lo), sy(A.lo), size * cell, size * cell);
 
-    // Gitter nur im sichtbaren Teil
+    // Grid, only the visible part
     ctx.strokeStyle = '#181818';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    for (let x = Math.max(0, x0); x <= Math.min(boardSize, x1); x++) {
-        ctx.moveTo(sx(x), sy(Math.max(0, y0)));
-        ctx.lineTo(sx(x), sy(Math.min(boardSize, y1)));
+    const gx0 = Math.max(A.lo, x0), gx1 = Math.min(A.hi, x1), gy0 = Math.max(A.lo, y0), gy1 = Math.min(A.hi, y1);
+    for (let x = gx0; x <= gx1; x++) {
+        ctx.moveTo(sx(x), sy(gy0));
+        ctx.lineTo(sx(x), sy(gy1));
     }
-    for (let y = Math.max(0, y0); y <= Math.min(boardSize, y1); y++) {
-        ctx.moveTo(sx(Math.max(0, x0)), sy(y));
-        ctx.lineTo(sx(Math.min(boardSize, x1)), sy(y));
+    for (let y = gy0; y <= gy1; y++) {
+        ctx.moveTo(sx(gx0), sy(y));
+        ctx.lineTo(sx(gx1), sy(y));
     }
     ctx.stroke();
 
-    // Wand
+    // Wall
     ctx.strokeStyle = '#ff3b3b';
     ctx.lineWidth = 4;
     ctx.shadowColor = '#ff3b3b';
     ctx.shadowBlur = 12;
-    ctx.strokeRect(sx(0) - 2, sy(0) - 2, boardSize * cell + 4, boardSize * cell + 4);
+    ctx.strokeRect(sx(A.lo) - 2, sy(A.lo) - 2, size * cell + 4, size * cell + 4);
     ctx.shadowBlur = 0;
 
     // Items
@@ -1535,24 +1873,39 @@ function draw() {
     ctx.textBaseline = 'middle';
     const pulse = 1 + Math.sin(now / 200) * 0.12;
     for (const it of items) {
+        if (it.type === 'event') {
+            if (!inView(it.x + 1, it.y + 1) && !inView(it.x, it.y) && !inView(it.x + 2, it.y + 2)) continue;
+            drawEventItem(sx(it.x), sy(it.y), cell, now);
+            continue;
+        }
         if (!inView(it.x, it.y)) continue;
         const cx = sx(it.x) + cell / 2;
         const cy = sy(it.y) + cell / 2;
 
+        const legend = it.kind === 'pineapple' || it.kind === 'dragon';
         const aura =
             it.type === 'coin' ? 'rgba(245,197,66,.3)' :
             it.type === 'box' ? 'rgba(179,107,255,.25)' :
             it.kind === 'cherry' ? 'rgba(255,60,120,.3)' :
-            it.kind === 'mango' ? `rgba(255,215,0,${0.35 + 0.25 * Math.sin(now / 120)})` : null;
+            it.kind === 'mango' ? `rgba(255,215,0,${0.35 + 0.25 * Math.sin(now / 120)})` :
+            legend ? `hsla(${(now / 5) % 360}, 100%, 60%, .45)` : null;
         if (aura) {
             ctx.fillStyle = aura;
             ctx.beginPath();
-            ctx.arc(cx, cy, cell * (it.kind === 'mango' ? 1.3 : 0.9) * pulse, 0, Math.PI * 2);
+            ctx.arc(cx, cy, cell * (legend ? 2.2 : it.kind === 'mango' ? 1.3 : 0.9) * pulse, 0, Math.PI * 2);
             ctx.fill();
+        }
+        if (legend) {
+            // Sparkles around legendary fruit
+            ctx.fillStyle = '#fff';
+            for (let i = 0; i < 6; i++) {
+                const a = now / 400 + i * Math.PI / 3;
+                ctx.fillRect(cx + Math.cos(a) * cell * 1.8 - 2, cy + Math.sin(a) * cell * 1.8 - 2, 4, 4);
+            }
         }
 
         const big = it.type !== 'fruit' || it.kind === 'cherry' || it.kind === 'mango';
-        ctx.font = `${Math.floor(cell * (big ? 1.05 * pulse : 0.85))}px system-ui`;
+        ctx.font = `${Math.floor(cell * (legend ? 1.8 * pulse : big ? 1.05 * pulse : 0.85))}px system-ui`;
         ctx.fillText(it.type === 'fruit' ? FRUIT_ICON[it.kind] : { box: '❓', coin: '🪙' }[it.type], cx, cy + 1);
     }
 
@@ -1562,10 +1915,12 @@ function draw() {
         const fx = p.fx || {};
         const mine = p.id === myId;
 
-        // Unsichtbare sieht nur der Spieler selbst
+        // Invisible snakes only for their owner
         if (fx.invisible && !mine) continue;
 
-        // Jackpot: wild blinkend in Gold, Weiss und Regenbogen
+        const body = interpBody(p, perfNow);
+
+        // Jackpot: wild blinking in gold, white and rainbow
         const jp = fx.jackpot ? Math.floor(now / 90) % 3 : -1;
         ctx.fillStyle =
             jp === 0 ? '#ffd700' :
@@ -1576,26 +1931,24 @@ function draw() {
             p.gambling ? (blink ? 0.15 : 0.5) :
             fx.invisible ? 0.35 :
             fx.ghost ? 0.3 :
-            p.frozen && blink ? 0.35 : 1;
+            p.frozen && !paused && blink ? 0.35 : 1;
 
-        for (const part of p.body) {
+        for (const part of body) {
             if (!inView(part.x, part.y)) continue;
             ctx.fillRect(sx(part.x) + 1, sy(part.y) + 1, cell - 2, cell - 2);
         }
 
-        // Eisblock als hellblaue Schicht
         if (fx.ice) {
             ctx.fillStyle = 'rgba(160, 220, 255, .55)';
-            for (const part of p.body) if (inView(part.x, part.y)) ctx.fillRect(sx(part.x), sy(part.y), cell, cell);
+            for (const part of body) if (inView(part.x, part.y)) ctx.fillRect(sx(part.x), sy(part.y), cell, cell);
         }
 
         ctx.globalAlpha = 1;
 
-        const head = p.body[0];
+        const head = body[0];
         if (!head || !inView(head.x, head.y)) continue;
         const hx = sx(head.x), hy = sy(head.y);
 
-        // Kopf markieren, der eigene bekommt einen weissen Rahmen
         ctx.fillStyle = 'rgba(0,0,0,.45)';
         ctx.fillRect(hx + cell / 3, hy + cell / 3, cell / 3, cell / 3);
         if (mine) {
@@ -1604,7 +1957,6 @@ function draw() {
             ctx.strokeRect(hx + 1, hy + 1, cell - 2, cell - 2);
         }
 
-        // Jackpot: pulsierende Ringe um den Kopf
         if (fx.jackpot) {
             const r = cell * (1.5 + (now % 600) / 600 * 3);
             ctx.strokeStyle = `rgba(255, 215, 0, ${1 - (now % 600) / 600})`;
@@ -1614,7 +1966,6 @@ function draw() {
             ctx.stroke();
         }
 
-        // Schild als Ring um den Kopf
         if (fx.shield) {
             ctx.strokeStyle = '#6cf';
             ctx.lineWidth = 3;
@@ -1623,14 +1974,13 @@ function draw() {
             ctx.stroke();
         }
 
-        // Magnet: Reichweite andeuten
         if (fx.magnet) {
             ctx.strokeStyle = 'rgba(255, 80, 80, .25)';
             ctx.lineWidth = 1;
-            ctx.strokeRect(sx(head.x - 7), sy(head.y - 7), 15 * cell, 15 * cell);
+            ctx.strokeRect(hx - 8 * cell, hy - 8 * cell, 17 * cell, 17 * cell);
         }
 
-        // Cashout-Ring: fuer alle sichtbar, damit man weiss, wer gerade auszahlt
+        // Cash-out ring: everyone sees who is cashing out
         if (p.cashout > 0) {
             ctx.strokeStyle = '#ffd23f';
             ctx.lineWidth = 5;
@@ -1642,15 +1992,79 @@ function draw() {
             ctx.fillText(`💰 ${p.score}`, hx + cell / 2, hy + cell * 2.4);
         }
 
-        // Name, Score und Effekte ueber dem Kopf
         const icons = Object.keys(fx).filter(k => k !== 'shield').map(k => FX_ICON[k]).filter(Boolean).join('');
         ctx.font = `bold ${Math.floor(cell * 0.6)}px system-ui`;
         ctx.fillStyle = 'rgba(255,255,255,.85)';
-        ctx.fillText((p.gambling ? '🪙 ' : '') + (mine ? 'Du' : p.name) + ` · ${p.score}` + (icons ? ' ' + icons : ''),
+        ctx.fillText((p.gambling ? '🪙 ' : '') + (mine ? 'You' : p.name) + ` · ${p.score}` + (icons ? ' ' + icons : ''),
             hx + cell / 2, hy - cell * 0.5);
     }
 
+    drawEffectBars();
     drawMinimap(now);
+}
+
+// Own effects as bars with remaining time, top left under the HUD
+function drawEffectBars() {
+    const mine = players.find(p => p.id === myId);
+    if (!mine || !mine.fx) return;
+    // Remaining time counts down locally between two states
+    const since = performance.now() - lastStateAt;
+    const list = Object.entries(mine.fx)
+        .filter(([k]) => FX_ICON[k] && k !== 'jackpot')
+        .map(([k, ms]) => [k, Math.max(0, ms - (paused || mine.frozen ? 0 : since))]);
+    let y = 52;
+    for (const [k, ms] of list) {
+        const total = fxDurations[k] || 10000;
+        const f = Math.min(1, ms / total);
+        const x = 12, w = 190, h = 26;
+        ctx.globalAlpha = 0.8;
+        ctx.fillStyle = '#000';
+        ctx.fillRect(x, y, w, h);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = ms < 2000 && Math.floor(Date.now() / 200) % 2 ? '#ff4d4d' : k === 'slow' || k === 'reverse' ? '#ff9f1a' : '#00ff88';
+        ctx.fillRect(x, y + h - 5, w * f, 5);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 15px system-ui';
+        ctx.fillStyle = '#fff';
+        ctx.fillText(`${FX_ICON[k]} ${FX_NAME[k]}`, x + 8, y + 11);
+        ctx.textAlign = 'right';
+        ctx.fillText(`${(ms / 1000).toFixed(1)}s`, x + w - 8, y + 11);
+        y += h + 6;
+    }
+    ctx.textAlign = 'center';
+}
+
+// The 3x3 event box: impossible to miss
+function drawEventItem(x, y, cell, now) {
+    const s = cell * 3;
+    const hue = (now / 4) % 360;
+    const glow = 20 + 15 * Math.sin(now / 150);
+
+    ctx.save();
+    ctx.shadowColor = `hsl(${hue}, 100%, 60%)`;
+    ctx.shadowBlur = glow;
+    const g = ctx.createLinearGradient(x, y, x + s, y + s);
+    g.addColorStop(0, `hsl(${hue}, 100%, 55%)`);
+    g.addColorStop(0.5, `hsl(${(hue + 120) % 360}, 100%, 55%)`);
+    g.addColorStop(1, `hsl(${(hue + 240) % 360}, 100%, 55%)`);
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y, s, s);
+    ctx.restore();
+
+    // Expanding rings
+    for (let i = 0; i < 2; i++) {
+        const k = ((now / 900) + i / 2) % 1;
+        ctx.strokeStyle = `hsla(${hue}, 100%, 70%, ${1 - k})`;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x - k * cell * 3, y - k * cell * 3, s + k * cell * 6, s + k * cell * 6);
+    }
+
+    ctx.font = `${Math.floor(cell * 1.9)}px system-ui`;
+    ctx.fillText('🎪', x + s / 2, y + s / 2 - cell * 0.1);
+    ctx.font = `900 ${Math.floor(cell * 0.7)}px system-ui`;
+    ctx.fillStyle = '#fff';
+    ctx.fillText('EVENT', x + s / 2, y + s + cell * 0.6);
 }
 
 function drawMinimap(now) {
@@ -1658,7 +2072,10 @@ function drawMinimap(now) {
     const size = 170;
     const pad = 10;
     const mx = W - size - pad, my = W - size - pad;
-    const k = size / boardSize;
+    const A = arena;
+    const k = size / (A.hi - A.lo);
+    const mapX = x => mx + (x - A.lo) * k;
+    const mapY = y => my + (y - A.lo) * k;
 
     ctx.globalAlpha = 0.85;
     ctx.fillStyle = '#050807';
@@ -1668,35 +2085,331 @@ function drawMinimap(now) {
     ctx.lineWidth = 2;
     ctx.strokeRect(mx, my, size, size);
 
-    // Muenzen als gelbe Punkte
+    // Coins as yellow dots
     ctx.fillStyle = '#ffd23f';
     for (const it of items) {
-        if (it.type === 'coin') ctx.fillRect(mx + it.x * k - 1.5, my + it.y * k - 1.5, 3, 3);
+        if (it.type === 'coin') ctx.fillRect(mapX(it.x) - 1.5, mapY(it.y) - 1.5, 3, 3);
     }
 
     for (const p of players) {
         if (p.fx && p.fx.invisible && p.id !== myId) continue;
         ctx.fillStyle = colorOf(p);
-        const step = Math.max(1, Math.floor(p.body.length / 40));
+        const step = Math.max(1, Math.floor(p.body.length / 60));
         for (let i = 0; i < p.body.length; i += step) {
             const s = p.body[i];
-            ctx.fillRect(mx + s.x * k, my + s.y * k, Math.max(1.5, k), Math.max(1.5, k));
+            ctx.fillRect(mapX(s.x), mapY(s.y), Math.max(1.5, k), Math.max(1.5, k));
         }
         const h = p.body[0];
         if (h && p.id === myId) {
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = 1.5;
             ctx.beginPath();
-            ctx.arc(mx + h.x * k, my + h.y * k, 4 + Math.sin(now / 150), 0, Math.PI * 2);
+            ctx.arc(mapX(h.x), mapY(h.y), 4 + Math.sin(now / 150), 0, Math.PI * 2);
             ctx.stroke();
         }
     }
 
-    // Sichtfenster
+    // Legendary fruit and event boxes: big and pulsing so you can hunt them
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const it of items) {
+        const legend = it.kind === 'pineapple' || it.kind === 'dragon';
+        if (!legend && it.type !== 'event') continue;
+        const cx = mapX(it.x + (it.type === 'event' ? 1.5 : 0.5)), cy = mapY(it.y + (it.type === 'event' ? 1.5 : 0.5));
+        const r = 7 + 3 * Math.sin(now / 150);
+        ctx.fillStyle = it.type === 'event' ? `hsla(${(now / 4) % 360}, 100%, 60%, .6)` : 'rgba(255, 215, 0, .5)';
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = '13px system-ui';
+        ctx.fillText(it.type === 'event' ? '🎪' : FRUIT_ICON[it.kind], cx, cy + 1);
+    }
+
+    // View window
     ctx.strokeStyle = 'rgba(255,255,255,.35)';
     ctx.lineWidth = 1;
-    ctx.strokeRect(mx + (cam.x - viewCells / 2) * k, my + (cam.y - viewCells / 2) * k, viewCells * k, viewCells * k);
+    ctx.strokeRect(mapX(cam.x - viewCells / 2), mapY(cam.y - viewCells / 2), viewCells * k, viewCells * k);
 }
+
+// ---------- Mini events ----------
+
+let ev = null;            // last event state from the server
+let evReceived = 0;
+let evChip = 50;
+let evAnswer = null;      // our flag answer this round
+let evRound = 0;
+let evSpun = false;
+
+function evMember() {
+    return ev && ev.members.includes(myId);
+}
+
+function onEvent(d) {
+    const firstSpin = d.kind === 'roulette' && d.phase === 'spinning' && !evSpun;
+    if (!ev || d.data.round !== evRound) {
+        evAnswer = null;
+        evRound = d.data.round;
+    }
+    if (!ev || ev.phase !== d.phase) {
+        if (d.phase === 'intro') fanfare(true);
+        if (d.phase === 'reveal' && evAnswer !== null) fanfare(evAnswer === d.data.correct);
+    }
+    if (d.phase !== 'spinning') evSpun = false;
+    ev = d;
+    evReceived = performance.now();
+
+    // Only people who were on the field see the event; the menu stays usable
+    if (!evMember() && !joined) return;
+    showScreen('event');
+    renderEvent();
+    if (firstSpin) {
+        evSpun = true;
+        spinRoulette(d.data.result);
+    }
+}
+
+function onEventEnd() {
+    ev = null;
+    if (joined) showScreen(null);
+    else if (!$('event').classList.contains('hidden')) showScreen('menu');
+}
+
+function onResume(ms) {
+    if (!joined) return;
+    const el = $('countdown');
+    let n = Math.round(ms / 1000);
+    el.textContent = n;
+    el.classList.add('show');
+    beep(600, 0.1, 0.06);
+    const t = setInterval(() => {
+        n--;
+        if (n <= 0) {
+            clearInterval(t);
+            el.textContent = 'GO!';
+            beep(900, 0.2, 0.08);
+            setTimeout(() => el.classList.remove('show'), 500);
+        } else {
+            el.textContent = n;
+            beep(600, 0.1, 0.06);
+        }
+    }, 1000);
+}
+
+// Countdown bar
+setInterval(() => {
+    if (!ev || ev.left === null) {
+        $('ev-timer').textContent = '';
+        $('ev-bar').style.width = '0';
+        return;
+    }
+    const left = Math.max(0, ev.left - (performance.now() - evReceived));
+    $('ev-timer').textContent = Math.ceil(left / 1000) + 's';
+    const total = { intro: 4000, question: 9000, reveal: 2500, betting: ev.kind === 'roulette' ? 20000 : 15000, playing: 25000, spinning: 6500, results: 8000 }[ev.phase] || 10000;
+    $('ev-bar').style.width = (100 * left / total) + '%';
+}, 100);
+
+const PHASE_NAME = {
+    intro: 'Get ready', question: 'Question', reveal: 'Answer', betting: 'Place your bets',
+    spinning: 'Spinning', playing: 'Your move', dealer: 'Dealer plays', results: 'Results'
+};
+
+function renderEvent() {
+    const d = ev;
+    $('ev-title').textContent = `${d.title} · ${PHASE_NAME[d.phase] || d.phase}`;
+
+    $('ev-board').innerHTML = d.board.map((r, i) =>
+        `<tr class="${r.id === myId ? 'me' : ''}"><td>${['🥇', '🥈', '🥉'][i] || (i + 1) + '.'}</td>` +
+        `<td><span class="dot" style="background:${esc(r.color)}"></span>${esc(r.name)}${r.guest ? ' <span style="opacity:.5">(guest)</span>' : ''}</td>` +
+        `<td style="text-align:right">${d.eventType === 'gamble' && r.value > 0 ? '+' : ''}${r.value}</td></tr>`
+    ).join('');
+
+    const main = $('ev-main');
+    const member = evMember();
+
+    if (d.phase === 'intro') {
+        const text = {
+            flags: `${d.data.total} flags. Pick the right country, faster answers score more.<br>Coins for everyone with an account, length for everyone.`,
+            roulette: 'One round of roulette with everyone on the field.<br>Bet your coins on colors, halves or single numbers.',
+            blackjack: 'Everyone plays against the dealer at the same time.<br>Bet, then hit, stand or double.'
+        }[d.kind];
+        main.innerHTML = `<div class="big-note">${text}</div>`;
+        if (!member) main.innerHTML += '<div class="hint">You are watching. Only players on the field when the box was opened can play.</div>';
+        return;
+    }
+
+    if (d.kind === 'flags') return renderFlags(main, d, member);
+    if (d.kind === 'roulette') return renderRoulette(main, d, member);
+    if (d.kind === 'blackjack') return renderBlackjack(main, d, member);
+}
+
+// --- Flag Quiz ---
+
+function renderFlags(main, d, member) {
+    const q = d.data;
+    if (d.phase === 'results') {
+        const r = q.rewards && q.rewards[myId];
+        main.innerHTML = `<div class="big-note">🏁 Quiz over!</div>` +
+            (r ? `<div class="result cash">+${r.coins} coins · +${r.length} length</div>` : '');
+        return;
+    }
+    if (!q.flag) {
+        main.innerHTML = '';
+        return;
+    }
+    const answered = q.answered.includes(myId);
+    main.innerHTML =
+        `<div class="hint">Flag ${q.round} / ${q.total} · ${q.answered.length} answered</div>` +
+        `<img class="flag-img" src="https://flagcdn.com/w320/${esc(q.flag)}.png" alt="flag">` +
+        '<div class="choices">' + q.options.map((o, i) => {
+            let cls = '';
+            if (q.correct !== null) cls = i === q.correct ? 'right' : i === evAnswer ? 'wrong' : '';
+            else if (i === evAnswer) cls = 'mine';
+            const dis = !member || answered || d.phase !== 'question' ? 'disabled' : '';
+            return `<button type="button" class="${cls}" data-ev="flag" data-i="${i}" ${dis}>${esc(o)}</button>`;
+        }).join('') + '</div>' +
+        (d.phase === 'reveal' ? `<div class="msg ok">${q.right.length} got it right</div>` : '');
+}
+
+// --- Roulette ---
+
+const RL_RED = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
+const rlColor = n => n === 0 ? 'green' : RL_RED.has(n) ? 'red' : 'black';
+const RL_LABEL = { red: '🔴 Red', black: '⚫ Black', even: 'Even', odd: 'Odd', low: '1–18', high: '19–36' };
+
+function chipsHtml(bets) {
+    return '<div class="chips">' + bets.map(b =>
+        `<button type="button" data-ev="chip" data-v="${b}" class="${b === evChip ? 'on' : ''}">${b}</button>`).join('') + '</div>';
+}
+
+function renderRoulette(main, d, member) {
+    const bets = d.data.bets;
+    const mine = bets.filter(b => b.id === myId);
+    const list = '<div class="bets-list">' + (bets.length ? bets.map(b =>
+        `<div><span class="dot" style="background:${esc(b.color)}"></span>${esc(b.name)}: ${b.amount} on ${b.type === 'number' ? '#' + b.n : RL_LABEL[b.type]}${b.win !== undefined ? (b.win > 0 ? ` → <b style="color:#7bffb5">+${b.win}</b>` : ' ✗') : ''}</div>`).join('') : '<div>No bets yet</div>') + '</div>';
+
+    if (d.phase === 'betting') {
+        const can = member && me;
+        main.innerHTML =
+            (can ? chipsHtml(d.bets) : `<div class="hint">${member ? 'Log in to bet coins' : 'You are watching'}</div>`) +
+            '<div class="rl-outside">' + ['red', 'black', 'even', 'odd', 'low', 'high'].map(t =>
+                `<button type="button" class="${t === 'red' ? 'c-red' : t === 'black' ? 'c-black' : 'c-dark'}" data-ev="rl" data-t="${t}" ${can ? '' : 'disabled'}>${RL_LABEL[t]}</button>`).join('') + '</div>' +
+            '<div class="rl-grid">' + Array.from({ length: 37 }, (_, n) =>
+                `<button type="button" class="c-${rlColor(n)}" data-ev="rl" data-t="number" data-n="${n}" ${can ? '' : 'disabled'}>${n}</button>`).join('') + '</div>' +
+            (mine.length ? `<div class="row" style="margin-top:6px"><button type="button" class="ghost" data-ev="rlclear">Clear my bets (${mine.reduce((s, b) => s + b.amount, 0)})</button></div>` : '') +
+            list;
+        return;
+    }
+
+    if (d.phase === 'spinning') {
+        if (!$('ev-reel')) main.innerHTML = '<div class="reel" id="ev-reel"><div class="strip" id="ev-strip"></div></div>' + list;
+        return;
+    }
+
+    if (d.phase === 'results') {
+        const n = d.data.result;
+        const net = d.board.find(r => r.id === myId);
+        main.innerHTML = `<div class="big-note"><span class="card-p ${rlColor(n) === 'red' ? 'red' : ''}" style="width:70px;height:70px;font-size:32px;background:${rlColor(n) === 'red' ? '#b3202a' : rlColor(n) === 'green' ? '#0f7a45' : '#1c1c1c'};color:#fff">${n}</span></div>` +
+            (net && mine.length ? `<div class="result ${net.value >= 0 ? 'cash' : 'dead'}">${net.value >= 0 ? '+' : ''}${net.value} coins</div>` : '') + list;
+        if (net && net.value > 0) fanfare(net.value >= 500 ? 'gold' : true);
+    }
+}
+
+function spinRoulette(result) {
+    const reel = $('ev-reel');
+    if (!reel) return;
+    const tiles = [];
+    const WIN = 44;
+    for (let i = 0; i < 52; i++) {
+        const n = i === WIN ? result : Math.floor(Math.random() * 37);
+        tiles.push({ label: String(n), color: n === 0 ? '#0f7a45' : RL_RED.has(n) ? '#b3202a' : '#1c1c1c' });
+    }
+    const mark = spinStrip(reel, $('ev-strip'), tiles, WIN, 64, 6, 5500, 0.05);
+    // Tiles use white text on dark colors
+    $('ev-strip').querySelectorAll('.tile').forEach(t => { t.style.color = '#fff'; });
+    setTimeout(mark, 5550);
+}
+
+// --- Blackjack ---
+
+function cardHtml(c) {
+    if (c === '??') return '<span class="card-p back"></span>';
+    const red = c.endsWith('♥') || c.endsWith('♦');
+    return `<span class="card-p ${red ? 'red' : ''}">${esc(c)}</span>`;
+}
+
+function renderBlackjack(main, d, member) {
+    const hands = d.data.hands;
+    const mine = hands[myId];
+    const names = Object.fromEntries(d.board.map(r => [r.id, r]));
+
+    if (d.phase === 'betting') {
+        const can = member && me;
+        main.innerHTML =
+            (can ? `<div class="hint">Choose your bet:</div>` + chipsHtml(d.bets).replace(/data-ev="chip"/g, 'data-ev="bjbet"') +
+                (mine ? `<div class="msg ok">Your bet: ${mine.bet} <button type="button" class="ghost" data-ev="bjclear" style="font-size:12px;padding:3px 8px">clear</button></div>` : '')
+                : `<div class="hint">${member ? 'Log in to bet coins' : 'You are watching'}</div>`) +
+            '<div class="bets-list">' + Object.entries(hands).map(([id, h]) =>
+                `<div>${esc(names[id] ? names[id].name : '?')}: ${h.bet}</div>`).join('') + '</div>';
+        return;
+    }
+
+    const dealer = d.data.dealer;
+    let html = '<div class="bj-table">' +
+        `<div class="bj-hand"><span class="who">🎩 Dealer${dealer.total !== null ? ' · ' + dealer.total : ''}</span>${dealer.cards.map(cardHtml).join('')}</div>`;
+
+    for (const [id, h] of Object.entries(hands)) {
+        const n = names[id];
+        const res = h.result ? `<span class="bj-res ${h.result}">${h.result.toUpperCase()} ${h.net > 0 ? '+' + h.net : h.net < 0 ? h.net : ''}</span>` : '';
+        html += `<div class="bj-hand"><span class="who" style="color:${esc(n ? n.color : '#fff')}">${id === myId ? 'You' : esc(n ? n.name : '?')} · ${h.total}${h.doubled ? ' ×2' : ''}</span>` +
+            h.cards.map(cardHtml).join('') + ` <span style="opacity:.6;font-size:12px">bet ${h.bet}</span> ${res}</div>`;
+    }
+    html += '</div>';
+
+    if (d.phase === 'playing' && mine && !mine.done) {
+        html += '<div class="row" style="margin-top:10px">' +
+            '<button type="button" data-ev="bj" data-m="hit">Hit</button>' +
+            '<button type="button" class="ghost" data-ev="bj" data-m="stand">Stand</button>' +
+            (mine.cards.length === 2 && me && me.coins >= mine.bet ? '<button type="button" class="gold" data-ev="bj" data-m="double">Double</button>' : '') +
+            '</div>';
+    } else if (d.phase === 'playing' && mine) {
+        html += '<div class="hint">Waiting for the others…</div>';
+    } else if (!Object.keys(hands).length) {
+        html += '<div class="big-note">Nobody placed a bet</div>';
+    }
+
+    if (d.phase === 'results' && mine && (mine.result === 'win' || mine.result === 'blackjack')) fanfare(mine.result === 'blackjack' ? 'gold' : true);
+    main.innerHTML = html;
+}
+
+// One click handler for all event buttons
+$('event').addEventListener('click', e => {
+    const b = e.target.closest('button[data-ev]');
+    if (!b || b.disabled || !ev) return;
+    unlockAudio();
+    const t = b.dataset.ev;
+    if (t === 'flag') {
+        evAnswer = Number(b.dataset.i);
+        wsSend({ type: 'eventAction', choice: evAnswer });
+        renderEvent();
+    } else if (t === 'chip') {
+        evChip = Number(b.dataset.v);
+        renderEvent();
+    } else if (t === 'rl') {
+        const bet = { type: b.dataset.t, amount: evChip };
+        if (b.dataset.t === 'number') bet.n = Number(b.dataset.n);
+        wsSend({ type: 'eventAction', bet });
+        beep(500, 0.05, 0.05);
+    } else if (t === 'rlclear') {
+        wsSend({ type: 'eventAction', clear: true });
+    } else if (t === 'bjbet') {
+        evChip = Number(b.dataset.v);
+        wsSend({ type: 'eventAction', bet: evChip });
+    } else if (t === 'bjclear') {
+        wsSend({ type: 'eventAction', clear: true });
+    } else if (t === 'bj') {
+        wsSend({ type: 'eventAction', move: b.dataset.m });
+    }
+});
 
 // ---------- Seitenleisten ----------
 
@@ -1707,8 +2420,8 @@ function updatePanels() {
     const mine = players.find(p => p.id === myId);
 
     $('score').textContent = mine
-        ? `Score: ${mine.score} | Länge: ${mine.body.length} | Kills: ${mine.kills} | Spieler: ${players.length}`
-        : `Spieler: ${players.length}`;
+        ? `Score: ${mine.score} | Length: ${mine.body.length} | Kills: ${mine.kills} | Players: ${players.length}`
+        : `Players: ${players.length}`;
     $('hud-score').textContent = mine ? `Score ${mine.score}` : '';
 
     const fx = mine?.fx || {};
@@ -1724,10 +2437,10 @@ function updatePanels() {
     const rows = [...players]
         .sort((a, b) => b.score - a.score)
         .map((p, i) => `<tr class="${p.id === myId ? 'me' : ''}">` +
-            `<td class="name"><span class="dot" style="background:${esc(colorOf(p))}"></span>${i === 0 ? '👑 ' : ''}${esc(p.name)}${p.guest ? ' <span style="opacity:.5">(Gast)</span>' : ''}</td>` +
+            `<td class="name"><span class="dot" style="background:${esc(colorOf(p))}"></span>${i === 0 ? '👑 ' : ''}${esc(p.name)}${p.guest ? ' <span style="opacity:.5">(guest)</span>' : ''}</td>` +
             `<td class="num">⭐ ${p.score}</td>` +
             `<td class="num">🗡️ ${p.kills}</td></tr>`)
-        .join('') || '<tr><td style="opacity:.5">Niemand da</td></tr>';
+        .join('') || '<tr><td style="opacity:.5">Nobody here</td></tr>';
     if (rows !== lastBoard) {
         $('board').innerHTML = rows;
         lastBoard = rows;
@@ -1749,12 +2462,13 @@ function drawHall() {
     $('hall').innerHTML = (hall[hallTab] || []).map((s, i) =>
         `<tr><td class="name">${medals[i] || (i + 1) + '.'} ${esc(s.name)}</td>` +
         `<td class="num">${icon} ${s.value}</td></tr>`
-    ).join('') || '<tr><td style="opacity:.5">Noch leer</td></tr>';
+    ).join('') || '<tr><td style="opacity:.5">Nothing yet</td></tr>';
 }
 
 // ---------- Killfeed ----------
 
-function addFeed(text, kind) {
+function addFeed(d) {
+    const text = d.text, kind = d.kind;
     const box = $('feed');
     const el = document.createElement('div');
     el.className = 'feed ' + (kind || 'info');
@@ -1763,7 +2477,8 @@ function addFeed(text, kind) {
 
     while (box.children.length > 14) box.lastChild.remove();
 
-    if (kind === 'streak' || kind === 'gold') {
+    // Sound only for your own highlights, or for huge ones (×10 and up) for everyone
+    if ((kind === 'streak' || kind === 'gold') && (d.big || d.who === myId)) {
         beep(520, 0.1, 0.06);
         setTimeout(() => beep(780, 0.2, 0.06), 100);
     }
@@ -1776,7 +2491,7 @@ function addFeed(text, kind) {
 
 function showJackpot(d) {
     const el = $('banner');
-    el.textContent = `💰 ${d.id === myId ? 'DU' : d.name} ${d.icon}! → ${d.len} 💰`;
+    el.textContent = `💰 ${d.id === myId ? 'YOU' : d.name} ${d.icon}! → ${d.len} 💰`;
     el.classList.remove('show');
     el.getBoundingClientRect();
     el.classList.add('show');
@@ -1968,7 +2683,7 @@ function nextReel() {
 
 function fighterTile(f) {
     return {
-        label: f.id === myId ? 'DU' : f.name,
+        label: f.id === myId ? 'YOU' : f.name,
         color: f.color
     };
 }
@@ -1980,16 +2695,16 @@ function duelReel(data) {
 
     return {
         until: Date.now() + data.ms,
-        title: '⚔️ Kopf an Kopf',
+        title: '⚔️ Head to head',
         winner: fighterTile(winner),
         pickRandom: () => fighterTile(fighters[Math.floor(Math.random() * fighters.length)]),
         // Knapp daneben ist spannender: Nachbarn der Gewinner-Kachel sind die Verlierer
         pickNear: i => fighterTile(losers[i % losers.length]),
         result: () => {
             const involved = fighters.some(f => f.id === myId);
-            if (data.winner === myId) return ['🏆 DU GEWINNST', true];
-            if (involved) return [`💀 VERLOREN — ${winner.name} gewinnt`, false];
-            return [`🏆 ${winner.name.toUpperCase()} GEWINNT`, true];
+            if (data.winner === myId) return ['🏆 YOU WIN', true];
+            if (involved) return [`💀 YOU LOSE — ${winner.name} wins`, false];
+            return [`🏆 ${winner.name.toUpperCase()} WINS`, true];
         }
     };
 }
@@ -2001,15 +2716,15 @@ function gambleReel(data) {
 
     return {
         until: Date.now() + data.ms,
-        title: `🪙 Double or Nothing — Länge ${data.len}`,
+        title: `🪙 Double or Nothing — length ${data.len}`,
         winner: optionTile(res),
         pickRandom: () => optionTile(weightedPick(data.options)),
         // Links und rechts: beim Gewinn eine Niete, bei einer Niete das Gold knapp verpasst
         pickNear: () => optionTile(res.good ? (bad[0] || res) : rare[Math.floor(Math.random() * rare.length)]),
         result: () => {
-            if (res.key === 'death') return ['💀 VERZOCKT', false];
-            const after = Math.min(600, Math.max(1, Math.round(data.len * (res.key === 'half' ? 0.5 : Number(res.key.slice(1))))));
-            const text = `${res.icon} ${res.label} → Länge ${after}`;
+            if (res.key === 'death') return ['💀 BUSTED', false];
+            const after = Math.min(5000, Math.max(1, Math.round(data.len * (res.key === 'half' ? 0.5 : Number(res.key.slice(1))))));
+            const text = `${res.icon} ${res.label} → length ${after}`;
             return [text, res.rarity === 'gold' || res.rarity === 'mythic' ? 'gold' : !!res.good];
         }
     };
@@ -2068,7 +2783,7 @@ function buildSlots() {
     });
 
     $('paytable').innerHTML = slotInfo.symbols.map(s => `<span>${s.s}${s.s}${s.s}</span><span style="text-align:right">×${s.three}</span>`).join('') +
-        `<span>🍒🍒 irgendwo</span><span style="text-align:right">×${slotInfo.twoCherry}</span>`;
+        `<span>🍒🍒 anywhere</span><span style="text-align:right">×${slotInfo.twoCherry}</span>`;
 
     document.querySelectorAll('.slot .col').forEach(col => {
         col.innerHTML = `<div class="sym">${slotInfo.symbols[Math.floor(Math.random() * slotInfo.symbols.length)].s}</div>`;
@@ -2090,7 +2805,7 @@ function randomSym() {
 $('spin-btn').onclick = () => {
     if (slotSpinning || !me) return;
     unlockAudio();
-    if (me.coins < bet) return slotError('Nicht genug Coins');
+    if (me.coins < bet) return slotError('Not enough coins');
     slotSpinning = true;
     $('spin-btn').disabled = true;
     $('slot-msg').textContent = '';
@@ -2144,7 +2859,7 @@ function slotResult(d) {
         }
         const msg = $('slot-msg');
         if (d.win > 0) {
-            msg.textContent = `+${d.win} Coins (×${d.mult})`;
+            msg.textContent = `+${d.win} coins (×${d.mult})`;
             if (d.mult >= 20) {
                 msg.className = 'big';
                 $('machine').classList.add('win');
@@ -2153,7 +2868,7 @@ function slotResult(d) {
                 fanfare(true);
             }
         } else {
-            msg.textContent = 'Nichts';
+            msg.textContent = 'No win';
         }
     }, durations[2] + 100);
 }

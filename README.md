@@ -15,6 +15,8 @@ Live: **`snake.flashkeks.com`** auf `edge` (Netcup).
 | `server.js` | HTTP + WebSocket, Spiel-Tick, Items, Duelle, Cashout |
 | `accounts.js` | Konten, Sessions, Coins, Statistik (JSON-Datei im Datenordner) |
 | `slots.js` | Slot-Automat; `node slots.js` rechnet die Rueckzahlungsquote aus |
+| `events.js` | Mini-Events (Flag Quiz, Roulette, Blackjack): Ablauf, Einsaetze, Auszahlung |
+| `flags.js` | Laender fuer das Flag Quiz (ISO-Code + englischer Name) |
 | `public/index.html` | der ganze Browser-Teil in einer Datei |
 | `deploy.sh` | auf `edge`: pull, npm bei Bedarf, Syntaxcheck, Dienst neu starten |
 
@@ -45,8 +47,16 @@ Bis 22.09.2026 lief das Spiel im Calibre-Container von Michaffs unter
 
 ## Spielregeln
 
-- Feld 120 × 120, die Kamera zeigt 40 × 40 um den eigenen Kopf, unten rechts
-  eine Minimap (Schlangen, Muenzen, Sichtfenster).
+- **Arena waechst und schrumpft mit der Spielerzahl:** Kantenlaenge
+  `36 + 16 × Spieler`, mindestens 50, hoechstens 200 (1 Spieler 52, 2 → 68,
+  3 → 84, 5 → 116). Waechst alle 0,5 s um 2, schrumpft alle 2,5 s um 1.
+  Wer beim Schrumpfen mit dem Kopf draussen ist, wird zerquetscht. Items
+  wachsen mit: Fruechte 0,6 %, Boxen 0,2 % der Felder, Muenzen 1 je 1500.
+- Die Kamera zeigt 40 × 40 um den eigenen Kopf, unten rechts eine Minimap
+  (Schlangen, Muenzen, legendaere Fruechte, Event-Kisten, Sichtfenster).
+- **Weiche Bewegung:** der Server bewegt in ganzen Feldern, der Browser
+  schiebt jedes Segment zwischen zwei Ticks von seinem alten zum neuen Feld
+  und lernt das Tempo (normal, Turbo, Schnecke) aus den ankommenden Zustaenden.
 - Steuerung: WASD / Pfeiltasten, am Handy wischen. Enter oeffnet den Chat.
 - **Wand ist toedlich.** Auch fuer Geister und Sterne.
 - **Tod:** Kopf in fremden oder eigenen Koerper oder in die Wand. Danach geht
@@ -57,15 +67,20 @@ Bis 22.09.2026 lief das Spiel im Calibre-Container von Michaffs unter
 - **Spawn:** mit Abstand zur Wand und zu anderen Koepfen, 2 s Geist-Schutz.
 - **Tempo:** Server-Tick 60 ms. Normal ein Schritt je 2 Ticks, Turbo je Tick,
   Schnecke je 3.
-- **Laenge:** hoechstens 600 (`MAX_LEN`).
-- **Effekt-Timer ruhen**, solange man eingefroren ist (Muenzwurf, Duell).
+- **Laenge:** hoechstens 5000 (`MAX_LEN`). Koerper gehen kompakt ueber die
+  Leitung: Startpunkt + ein Richtungsbuchstabe je Segment (`U D L R`).
+- **Effekt-Timer ruhen**, solange man eingefroren ist (Muenzwurf, Duell,
+  Mini-Event). Die eigenen Effekte stehen als Balken mit Restzeit oben links
+  im Feld.
+- **Sound** nur fuer eigene Highlights, fuer alle nur ab ×10 an der Muenze.
 
 ## Score und Cashout
 
 - **Score = Laenge + 5 je Kill in diesem Leben.** Steht ueber dem Kopf, in der
   Rangliste und oben links im HUD.
 - **Cashout:** Leertaste 5 s halten (am Handy: lange druecken). Solange faehrt
-  man stur geradeaus, Lenken wird ignoriert, und alle sehen einen goldenen
+  man stur geradeaus und auf Schneckentempo (~28 Felder, passt auch in die
+  kleine Arena), Lenken wird ignoriert, und alle sehen einen goldenen
   Ring mit dem Score. Wer stirbt, verliert alles. Loslassen bricht ab,
   Einfrieren (Duell, Muenze) auch. Nach 5 s wird der Score als Coins
   gutgeschrieben und man landet im Menue.
@@ -143,6 +158,40 @@ Die Seltenheitsfarben der Kacheln folgen CS:GO: grau, blau, lila, pink, rot,
 Gold mit Glanz-Animation.
 
 
+**Legendaere Fruechte** (nicht im normalen Pool): 🍍 Pineapple +50 und
+🐉 Dragon Fruit +150 (1 zu 5). Alle 60–150 s eine, hoechstens eine je Sorte,
+mit Ansage im Feed und dickem Marker auf der Minimap.
+
+**Magnet:** zieht Fruechte, Boxen und Muenzen im Umkreis 8 zwei Felder je
+eigenem Schritt heran (also schneller, als man faehrt) und sammelt Fruechte
+und Boxen direkt neben dem Kopf gleich mit ein. Muenzen nur, wenn man
+wirklich draufsitzt.
+
+**Schild** faengt einen Koerpertreffer ab, und seit 23.09.2026 auch den 💀
+aus Muenze oder Box.
+
+## Mini-Events
+
+Alle 90–180 s (das erste nach 45–75 s) taucht eine **3 × 3 grosse 🎪
+EVENT-Kiste** auf: bunt, pulsierend, mit Ringen, auf der Minimap markiert.
+Wer mit dem Kopf in die Kiste faehrt, startet ein Event fuer alle, die gerade
+auf dem Feld sind:
+
+- Das Spiel friert fuer alle ein, Effekt-Timer, Duelle und Muenzwuerfe ruhen.
+  Laufende Cashouts brechen ab.
+- Jeder Teilnehmer sieht das Event mit eigener Event-Rangliste. Wer im Menue
+  ist, spielt nicht mit.
+- Danach 3 s Countdown, dann geht es weiter.
+
+| Event | Art | Ablauf |
+|---|---|---|
+| 🏳️ Flag Quiz | flat Coins | 6 Flaggen (Bilder von flagcdn.com), je 9 s, 4 Antworten. Richtig = 100 + bis 100 Tempobonus. Danach Coins = Punkte / 10 (+50 fuer Platz 1) fuer Konten, Laenge = Punkte / 40 fuer alle |
+| 🎡 Roulette | Coins setzen | 20 s setzen (Rot, Schwarz, Gerade, Ungerade, 1–18, 19–36 zahlen ×2, Einzelzahl 0–36 zahlt ×36), bis 12 Einsaetze, dann Walze, europaeisches Rad |
+| 🃏 Blackjack | Coins setzen | 15 s Einsatz, dann spielen alle gleichzeitig gegen den Dealer (Hit, Stand, Double), 25 s Zeit. 6 Decks, Dealer zieht bis 17, Blackjack zahlt 3:2 |
+
+Gaeste koennen beim Flag Quiz mitspielen (bekommen nur Laenge), bei Roulette
+und Blackjack nur zuschauen.
+
 ## Drumherum
 
 - **Hauptmenue** vor jeder Runde: Login/Registrierung, Farbwahl (zwoelf
@@ -156,13 +205,26 @@ Gold mit Glanz-Animation.
 - **Feed** mit Streak-Ansagen (DOPPELKILL, TRIPLEKILL, RAMPAGE, GODLIKE) und
   Gold-Zeilen fuer seltene Treffer.
 
+## Tests
+
+Nur lokal, nie auf `edge` setzen:
+
+- `SNAKE_TEST=1` schaltet die Nachricht `testEvent {kind}` frei, die sofort
+  ein Event startet.
+- `SNAKE_EVENT_SPEED=5` laesst alle Event-Phasen fuenfmal schneller laufen.
+
 ## Protokoll (WebSocket)
 
 Client → Server: `register`, `login`, `resume {token}`, `logout`,
 `changePassword`, `deleteAccount`, `join {name?, color}`, `leave`,
-`direction`, `cashout {on}`, `chat`, `spin {bet}`.
+`direction`, `cashout {on}`, `chat`, `spin {bet}`, `eventAction`
+(`choice` beim Quiz, `bet`/`clear` beim Roulette, `bet`/`clear`/`move` beim
+Blackjack).
 
 Server → Client: `welcome`, `auth`, `authError`, `authExpired`, `account`,
 `joined`, `joinError`, `left`, `died`, `cashedout`, `cashoutCancel`, `state`
-(alle 60 ms), `duel`, `gamble`, `box`, `jackpot`, `feed`, `chat`, `chatlog`,
-`highscores`, `spin`, `spinError`.
+(alle 60 ms, mit `arena` und `paused`), `duel`, `gamble`, `box`, `jackpot`,
+`feed` (mit `who` und `big` fuer den Sound), `chat`, `chatlog`, `highscores`,
+`spin`, `spinError`, `event`, `eventEnd`, `eventError`, `resume`.
+
+Die Oberflaeche ist seit 23.09.2026 englisch, diese Doku bleibt deutsch.

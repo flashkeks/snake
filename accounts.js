@@ -120,16 +120,16 @@ module.exports = function createAccounts(dataDir) {
         async register(name, password) {
             name = String(name || '').trim();
             password = String(password || '');
-            if (!NAME_RE.test(name)) return { error: 'Name: 3–16 Zeichen, Buchstaben, Zahlen, _ . -' };
-            if (password.length < 6) return { error: 'Passwort: mindestens 6 Zeichen' };
-            if (password.length > 200) return { error: 'Passwort zu lang' };
+            if (!NAME_RE.test(name)) return { error: 'Name: 3–16 characters, letters, digits, _ . -' };
+            if (password.length < 6) return { error: 'Password: at least 6 characters' };
+            if (password.length > 200) return { error: 'Password too long' };
             const key = name.toLowerCase();
-            if (db.users[key]) return { error: 'Name ist schon vergeben' };
+            if (db.users[key]) return { error: 'Name is already taken' };
 
             const salt = crypto.randomBytes(16).toString('hex');
             const hash = (await scrypt(password, salt)).toString('hex');
             // Zwischen await und hier kann jemand schneller gewesen sein
-            if (db.users[key]) return { error: 'Name ist schon vergeben' };
+            if (db.users[key]) return { error: 'Name is already taken' };
 
             db.users[key] = { name, salt, hash, coins: START_COINS, created: Date.now(), stats: newStats() };
             touch();
@@ -142,7 +142,7 @@ module.exports = function createAccounts(dataDir) {
             // Auch ohne Konto rechnen, damit die Antwortzeit nicht verraet, ob es den Namen gibt
             const hash = await scrypt(String(password || ''), u ? u.salt : 'x'.repeat(32));
             if (!u || !crypto.timingSafeEqual(hash, Buffer.from(u.hash, 'hex'))) {
-                return { error: 'Name oder Passwort falsch' };
+                return { error: 'Wrong name or password' };
             }
             return { key, token: createSession(key), user: publicUser(u) };
         },
@@ -160,12 +160,12 @@ module.exports = function createAccounts(dataDir) {
 
         async changePassword(key, oldPw, newPw) {
             const u = db.users[key];
-            if (!u) return { error: 'Konto weg' };
+            if (!u) return { error: 'Account not found' };
             newPw = String(newPw || '');
-            if (newPw.length < 6) return { error: 'Neues Passwort: mindestens 6 Zeichen' };
-            if (newPw.length > 200) return { error: 'Passwort zu lang' };
+            if (newPw.length < 6) return { error: 'New password: at least 6 characters' };
+            if (newPw.length > 200) return { error: 'Password too long' };
             const hash = await scrypt(String(oldPw || ''), u.salt);
-            if (!crypto.timingSafeEqual(hash, Buffer.from(u.hash, 'hex'))) return { error: 'Altes Passwort falsch' };
+            if (!crypto.timingSafeEqual(hash, Buffer.from(u.hash, 'hex'))) return { error: 'Current password is wrong' };
 
             u.salt = crypto.randomBytes(16).toString('hex');
             u.hash = (await scrypt(newPw, u.salt)).toString('hex');
@@ -177,9 +177,9 @@ module.exports = function createAccounts(dataDir) {
 
         async deleteAccount(key, password) {
             const u = db.users[key];
-            if (!u) return { error: 'Konto weg' };
+            if (!u) return { error: 'Account not found' };
             const hash = await scrypt(String(password || ''), u.salt);
-            if (!crypto.timingSafeEqual(hash, Buffer.from(u.hash, 'hex'))) return { error: 'Passwort falsch' };
+            if (!crypto.timingSafeEqual(hash, Buffer.from(u.hash, 'hex'))) return { error: 'Wrong password' };
             delete db.users[key];
             for (const [k, s] of Object.entries(db.sessions)) if (s.user === key) delete db.sessions[k];
             touch();
