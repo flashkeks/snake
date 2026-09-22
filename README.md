@@ -52,6 +52,9 @@ blinkender Schatten: keine Kollision, niemand kann in ihn reinfahren. Danach
 hat er 1,5 s Geist-Schutz, falls gerade jemand durch ihn durchfaehrt.
 
 **Muenze** (`COIN_OUTCOMES`): ÷2 38 %, ×2 40 %, ×3 10 %, ×5 5 %, ×10 2 %, 💀 5 %.
+Nachgeprueft am 22.09.2026 mit 10^6 Wuerfen: die Verteilung stimmt. ×10 bleibt
+bei 2 % (Entscheidung Max), auch wenn 100 Muenzen ohne ×10 in 13 % der Faelle
+vorkommen.
 
 **Box** (`BOX_OUTCOMES`, Gewichte relativ):
 
