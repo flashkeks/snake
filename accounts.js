@@ -39,10 +39,17 @@ module.exports = function createAccounts(dataDir) {
     fs.mkdirSync(dataDir, { recursive: true });
 
     // users: key = Name klein geschrieben. sessions: key = sha256(Token), der Token selbst liegt nie auf der Platte.
+    // Fehlt die Datei, geht es leer los. Ist sie da, aber kaputt, startet der
+    // Server NICHT: sonst ueberschreibt das naechste Speichern alle Konten.
     let db = { users: {}, sessions: {} };
-    try {
-        db = JSON.parse(fs.readFileSync(file, 'utf8'));
-    } catch {}
+    if (fs.existsSync(file)) {
+        try {
+            db = JSON.parse(fs.readFileSync(file, 'utf8'));
+        } catch (err) {
+            console.error(`accounts: ${file} ist kaputt (${err.message}). Aus dem Backup holen, dann neu starten.`);
+            process.exit(1);
+        }
+    }
     db.users = db.users || {};
     db.sessions = db.sessions || {};
 
