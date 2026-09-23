@@ -770,6 +770,33 @@ Detailansicht.
 - Protokoll: `sh` hat jetzt `mobs` ([id, art, x, y, hp, max, winkel,
   zielt-ms]) und `boss` mit Art an Stelle 7; Kisten mit Militaer-Flag.
 
+### ⚔️ PvP-Arena (4.3, `arena-rooms.js`)
+
+- **Welten:** `shooter.js` kennt jetzt mehrere Welten (`makeWorld(map, w, h)`:
+  Map + Wandtest + Rutschen). `createArena(h, opts)` baut eine Instanz mit
+  `opts.mode` ('extract' Standard, 'pvp') und `opts.world`. Die Extraction
+  ist die bisherige Einzel-Instanz, jedes PvP-Match eine eigene.
+- **Maps:** vier kleine, spiegelsymmetrische Maps 2100 × 1300 (Courtyard,
+  Depot, Crossing, Yard; `PVP_WORLDS`), Team 🔵 Blue links, 🔴 Red rechts.
+- **Lobbys:** Play → PvP arena. Erstellen (1v1/2v2/3v3), einem Team
+  beitreten, Team wechseln, verlassen. Sind beide Teams voll, startet das
+  Match nach 5 s. Wer in einer Lobby ist, kommt nicht in die Extraction und
+  umgekehrt. Lobby leert sich bei Logout/Verbindungsende.
+- **Match:** Best of 5 (erste 3 Runden), 3 s Countdown (alle eingefroren),
+  90 s je Runde; Zeit um: mehr Leben (anteilig) gewinnt. Tote warten auf die
+  naechste Runde. Kein Beschuss unter Teamkameraden (Kugeln fliegen durch).
+  Keine Kisten, Beutel, Gegner, Extraction.
+- **Keine Verluste:** gespielt wird mit Kopien des Loadouts (Waffen,
+  Ruestung, Verbrauchsgut bis zur Menge im Lager); jede Runde wieder voll.
+  Level-Boni gelten.
+- **Wertung:** Elo (K 32, Teamdurchschnitt), Start 1000, gespeichert in
+  `u.arena.pvp = { rating, wins, losses, draws, kills, deaths }`. XP: Sieg
+  300, Niederlage 80, Unentschieden 150, je Kill 60. Aufgeben/Verlassen
+  zaehlt als Niederlage (−20). Leaderboard „PvP rating“.
+- Protokoll: `pvpList`, `pvpCreate {size}`, `pvpJoin {id, team}`,
+  `pvpSwitch`, `pvpLeave`; Server schickt `pvpLobbies`, im Match `sh.pvp =
+  { round, score, phase, left, last, team }`, Spieler mit `tm`.
+
 ### Raid (`shooter.js`)
 
 - **Map** 4000 × 2800, fest aus Seed 1337: 16 Gebaeude mit Tueren, 90

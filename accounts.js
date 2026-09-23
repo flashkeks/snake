@@ -685,6 +685,13 @@ module.exports = function createAccounts(dataDir) {
                     casino: casinoNet(s), events: s.eventWins, arena: s.shooterKills
                 }[cat] || 0;
             };
+            // PvP-Wertung (4.3): Elo, nur wer schon gespielt hat
+            if (cat === 'pvp') {
+                return Object.values(db.users)
+                    .filter(u => u.arena && u.arena.pvp && u.arena.pvp.wins + u.arena.pvp.losses + u.arena.pvp.draws > 0)
+                    .map(u => ({ name: u.name, value: u.arena.pvp.rating, tt: ach.titleOf(u) || undefined, w: u.arena.pvp.wins, l: u.arena.pvp.losses }))
+                    .sort((a, b) => b.value - a.value).slice(0, 10);
+            }
             // Arena-Level (4.0): nach Gesamt-XP, nur "All time"
             if (cat === 'alevel') {
                 return Object.values(db.users)

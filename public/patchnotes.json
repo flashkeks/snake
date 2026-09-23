@@ -1,5 +1,16 @@
 [
   {
+    "version": "4.3",
+    "date": "23.09.2026",
+    "items": [
+      "⚔️ PvP arena: create or join 1v1, 2v2 and 3v3 lobbies (Play → PvP arena)",
+      "Best of 5 rounds on 4 small symmetric maps, no friendly fire",
+      "You fight with copies of your loadout – you never lose items in PvP",
+      "PvP rating (Elo): win +300 XP, each kill +60 XP; leaving a match counts as a loss",
+      "Leaderboard: new PvP rating category"
+    ]
+  },
+  {
     "version": "4.2",
     "date": "23.09.2026",
     "items": [

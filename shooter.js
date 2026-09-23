@@ -186,16 +186,6 @@ const MAP = buildMap();
 
 // Raster fuer schnelle Wandtests
 const CELL = 200;
-const GRID = new Map();
-MAP.walls.forEach((w, i) => {
-    for (let gx = Math.floor(w[0] / CELL); gx <= Math.floor((w[0] + w[2]) / CELL); gx++) {
-        for (let gy = Math.floor(w[1] / CELL); gy <= Math.floor((w[1] + w[3]) / CELL); gy++) {
-            const k = gx + ',' + gy;
-            if (!GRID.has(k)) GRID.set(k, []);
-            GRID.get(k).push(i);
-        }
-    }
-});
 
 function circleRect(x, y, r, [rx, ry, rw, rh]) {
     const cx = Math.max(rx, Math.min(x, rx + rw));
@@ -203,21 +193,77 @@ function circleRect(x, y, r, [rx, ry, rw, rh]) {
     return (x - cx) ** 2 + (y - cy) ** 2 < r * r;
 }
 
-function blocked(x, y, r) {
-    if (x < r || y < r || x > W - r || y > H - r) return true;
-    for (let gx = Math.floor((x - r) / CELL); gx <= Math.floor((x + r) / CELL); gx++) {
-        for (let gy = Math.floor((y - r) / CELL); gy <= Math.floor((y + r) / CELL); gy++) {
-            const list = GRID.get(gx + ',' + gy);
-            if (list && list.some(i => circleRect(x, y, r, MAP.walls[i]))) return true;
+// Eine Welt = Map + Groesse + Wandtest (4.3: mehrere Welten, z. B. PvP-Maps)
+function makeWorld(map, w, hh) {
+    const grid = new Map();
+    map.walls.forEach((wl, i) => {
+        for (let gx = Math.floor(wl[0] / CELL); gx <= Math.floor((wl[0] + wl[2]) / CELL); gx++) {
+            for (let gy = Math.floor(wl[1] / CELL); gy <= Math.floor((wl[1] + wl[3]) / CELL); gy++) {
+                const k = gx + ',' + gy;
+                if (!grid.has(k)) grid.set(k, []);
+                grid.get(k).push(i);
+            }
         }
+    });
+    function blocked(x, y, r) {
+        if (x < r || y < r || x > w - r || y > hh - r) return true;
+        for (let gx = Math.floor((x - r) / CELL); gx <= Math.floor((x + r) / CELL); gx++) {
+            for (let gy = Math.floor((y - r) / CELL); gy <= Math.floor((y + r) / CELL); gy++) {
+                const list = grid.get(gx + ',' + gy);
+                if (list && list.some(i => circleRect(x, y, r, map.walls[i]))) return true;
+            }
+        }
+        return false;
     }
-    return false;
+    return { map, w, h: hh, blocked, slide: (x, y, dx, dy, r, isBlocked = blocked) => slideWith(x, y, dx, dy, r, isBlocked) };
 }
+
+const WORLD = makeWorld(MAP, W, H);
+const blocked = WORLD.blocked;
+
+// PvP-Maps (4.3): klein und spiegelsymmetrisch, Team A links, Team B rechts
+const PVP_W = 2100, PVP_H = 1300;
+function buildPvpMap(seed, name) {
+    const rand = rng(seed);
+    const walls = [], bushes = [], buildings = [], doors = [];
+    const T = WALL_T;
+    const half = [];
+    const overlaps = (a, b, m) => a[0] < b[0] + b[2] + m && a[0] + a[2] + m > b[0] && a[1] < b[1] + b[3] + m && a[1] + a[3] + m > b[1];
+    // Mitte: eine Deckung auf der Achse
+    walls.push([PVP_W / 2 - 40, PVP_H / 2 - 110, 80, 220]);
+    for (let k = 0; k < 800 && half.length < 11; k++) {
+        const type = rand();
+        const r = type < 0.55 ? [0, 0, 60 + rand() * 70, 50 + rand() * 60] : type < 0.78 ? [0, 0, 140 + rand() * 120, T] : [0, 0, T, 140 + rand() * 120];
+        r[0] = 260 + rand() * (PVP_W / 2 - 330 - r[2]);
+        r[1] = 60 + rand() * (PVP_H - 120 - r[3]);
+        if (half.some(o => overlaps(r, o, 90)) || overlaps(r, [PVP_W / 2 - 40, PVP_H / 2 - 110, 80, 220], 90)) continue;
+        half.push(r);
+    }
+    for (const r of half) walls.push(r, [PVP_W - r[0] - r[2], r[1], r[2], r[3]]);
+    for (let k = 0; k < 600 && bushes.length < 6; k++) {
+        const r = 40 + rand() * 20;
+        const b = [260 + rand() * (PVP_W / 2 - 320), 80 + rand() * (PVP_H - 160), r];
+        const box = [b[0] - r, b[1] - r, 2 * r, 2 * r];
+        if (walls.some(w => overlaps(box, w, 10))) continue;
+        bushes.push(b, [PVP_W - b[0], b[1], r]);
+    }
+    const spawns = { a: [], b: [] };
+    for (let i = 0; i < 3; i++) {
+        const y = PVP_H / 2 + (i - 1) * 160;
+        spawns.a.push({ x: 110, y });
+        spawns.b.push({ x: PVP_W - 110, y });
+    }
+    return {
+        name, walls: walls.map(w => w.map(Math.round)), crates: [], extracts: [], buildings, bushes: bushes.map(b => b.map(Math.round)), doors,
+        stations: [], town: null, outpost: null, military: null, spawns
+    };
+}
+const PVP_WORLDS = [[101, 'Courtyard'], [202, 'Depot'], [303, 'Crossing'], [404, 'Yard']].map(([s, n]) => makeWorld(buildPvpMap(s, n), PVP_W, PVP_H));
 
 // Bewegen mit Rutschen: in kleinen Schritten bis an die Wand heran und an
 // Ecken seitlich vorbei, statt an Kanten haengenzubleiben. Dieselbe Logik
 // steckt im Browser (shSlide), sonst korrigiert der Server staendig.
-function slide(x, y, dx, dy, r, isBlocked = blocked) {
+function slideWith(x, y, dx, dy, r, isBlocked) {
     const n = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 4));
     const sx = dx / n, sy = dy / n;
     for (let i = 0; i < n; i++) {
@@ -264,7 +310,12 @@ const GEAR = ['primary', 'secondary', ...I.SLOTS, 'backpack'];
 const L = require('./arena-level');
 const M = require('./arena-mobs');
 
-module.exports = function createArena(h) {
+// opts: { mode: 'extract' (Standard) | 'pvp', world, ... } – siehe PvP unten
+module.exports = function createArena(h, opts = {}) {
+    // Die Welt dieser Instanz (ueberdeckt die Modul-Namen fuer die Extraction-Map)
+    const world = opts.world || WORLD;
+    const mode = opts.mode || 'extract';
+    const MAP = world.map, W = world.w, H = world.h, blocked = world.blocked, slide = world.slide;
     // h: { accounts, send, feed, refresh(c), changed() }
     const players = new Map();       // client id -> Spieler im Raid
     const bullets = [];
@@ -363,7 +414,7 @@ module.exports = function createArena(h) {
         const u = h.accounts.get(c.account);
         h.send(c, {
             type: 'arHub', inv: a.inv.map(it => ({ ...it, sv: I.salvageValue(it) })), loadout: a.loadout,
-            scrap: a.scrap, coins: u.coins, inRaid: players.has(c.id), prog: progView(c, a), ...extra
+            scrap: a.scrap, coins: u.coins, inRaid: players.has(c.id), prog: progView(c, a), pvp: a.pvp || null, ...extra
         });
     }
 
@@ -534,7 +585,7 @@ module.exports = function createArena(h) {
             if (MAP.extracts.some(e => Math.hypot(e.x - x, e.y - y) < 500)) continue;
             if (avoidPlayers && [...players.values()].some(p => Math.hypot(p.x - x, p.y - y) < 700)) continue;
             // Spieler (und Bosse) nicht im Militaerlager oder direkt neben Gegnern absetzen
-            if (avoidPlayers && (x > MAP.military[0] - 400 && x < MAP.military[0] + MAP.military[2] + 400 && y > MAP.military[1] - 400 && y < MAP.military[1] + MAP.military[3] + 400)) continue;
+            if (avoidPlayers && MAP.military && (x > MAP.military[0] - 400 && x < MAP.military[0] + MAP.military[2] + 400 && y > MAP.military[1] - 400 && y < MAP.military[1] + MAP.military[3] + 400)) continue;
             if (avoidPlayers && k < 300 && mobs.some(m => Math.hypot(m.x - x, m.y - y) < 650)) continue;
             return { x, y };
         }
@@ -575,12 +626,28 @@ module.exports = function createArena(h) {
         }
     }
 
-    function join(c, name, color) {
+    // Spieler-Objekt fuer Raid und PvP
+    function newPlayer(c, name, color, a, gear, util, spot) {
+        const now = Date.now();
+        return {
+            id: c.id, c, name, account: c.account, color: color || '#ff5bd6',
+            x: spot.x, y: spot.y, a: 0, mx: 0, my: 0, fire: false, lastShot: 0, seq: 0, lastMove: now,
+            gear, slot: 'primary', util, lastUse: 0,
+            pack: [], kills: 0, zone: null, smoke: null,
+            hp: 0, maxHp: 0, speedMul: 1, regen: 0, thorns: 0, dodge: 0, dmgMul: 1, rateMul: 1, taken: 1, healMul: 1, homing: 0, phantom: false,
+            burn: null, slowUntil: 0, slow: 0, lastHurt: 0, healUntil: 0, healRate: 0, stimUntil: 0, stim: 0,
+            extractAt: null, joinedAt: now, protect: now + 3000 / SPEED,
+            b: L.bonuses(a.prog), level: L.levelOf(a.prog.xp).level, windUsed: false, lastUsed: false, adrenCd: 0, rampUntil: 0
+        };
+    }
+
+    function join(c, name, color, team) {
         if (!c.account) return 'Log in to raid';
         if (players.has(c.id)) {
             sendJoined(c);
             return null;
         }
+        if (pvp) return joinPvp(c, name, team);
         if (players.size >= MAX_PLAYERS) return 'The raid is full';
         const a = st(c);
         const take = uid => {
@@ -602,18 +669,7 @@ module.exports = function createArena(h) {
         });
         a.loadout = EMPTY_LOADOUT();
         h.accounts.touch();
-        const s = freeSpot(true);
-        const now = Date.now();
-        const p = {
-            id: c.id, c, name, account: c.account, color: color || '#ff5bd6',
-            x: s.x, y: s.y, a: 0, mx: 0, my: 0, fire: false, lastShot: 0, seq: 0, lastMove: now,
-            gear, slot: 'primary', util, lastUse: 0,
-            pack: [], kills: 0, zone: null, smoke: null,
-            hp: 0, maxHp: 0, speedMul: 1, regen: 0, thorns: 0, dodge: 0, dmgMul: 1, rateMul: 1, taken: 1, healMul: 1, homing: 0, phantom: false,
-            burn: null, slowUntil: 0, slow: 0, lastHurt: 0, healUntil: 0, healRate: 0, stimUntil: 0, stim: 0,
-            extractAt: null, joinedAt: now, protect: now + 3000 / SPEED,
-            b: L.bonuses(a.prog), level: L.levelOf(a.prog.xp).level, windUsed: false, lastUsed: false, adrenCd: 0, rampUntil: 0
-        };
+        const p = newPlayer(c, name, color, a, gear, util, freeSpot(true));
         gearStats(p);
         players.set(c.id, p);
         h.accounts.stat(c.account, st2 => { st2.raids = (st2.raids || 0) + 1; });
@@ -632,7 +688,8 @@ module.exports = function createArena(h) {
                 stations: MAP.stations, town: MAP.town, outpost: MAP.outpost, military: MAP.military, mobs: M.catalog(),
                 trader: { buy: TRADER_BUY, sell: TRADER_SELL }, medic: { cost: MEDIC_COST, cd: MEDIC_CD }
             },
-            packMax: p0PackMax(c), feed: feedLog.slice(-6)
+            packMax: p0PackMax(c), feed: pvp ? [] : feedLog.slice(-6), mode, team: players.get(c.id) ? players.get(c.id).team : undefined,
+            mapName: MAP.name || null
         });
     }
 
@@ -687,6 +744,7 @@ module.exports = function createArena(h) {
     // Tod, Verlassen, Abbruch: Raid vorbei, alles weg
     // by = Name eines Gegners (NPC/Boss), falls der getoetet hat
     function die(p, killer, how, by) {
+        if (pvp) return how === 'left' ? pvpLeave(p) : pvpDown(p, killer);
         if (!players.has(p.id)) return;
         players.delete(p.id);
         const loot = lootOf(p);
@@ -845,6 +903,7 @@ module.exports = function createArena(h) {
 
     // Naechste Kiste oder naechster Beutel in Reichweite
     function interact(p) {
+        if (pvp) return;
         const now = Date.now();
         let best = null, bd = INTERACT_R;
         for (const cr of crates) {
@@ -942,6 +1001,7 @@ module.exports = function createArena(h) {
 
     function useUtil(p, si, tx, ty, now) {
         const u = p.util[si];
+        if (p.dead || (pvp && pvp.phase !== 'fight')) return;
         if (!u || now - p.lastUse < 600 * p.b.utilCd / SPEED) return;
         const def = I.UTILS[u.base];
         if (def.use === 'heal') {
@@ -1121,6 +1181,8 @@ module.exports = function createArena(h) {
     // stillsteht. Ganz nah dran oder kurz nach einem eigenen Schuss sieht man jeden.
     function canSee(v, t, now) {
         if (v === t) return true;
+        if (t.dead) return false;
+        if (v.team && v.team === t.team) return true;
         if (Math.hypot(v.x - t.x, v.y - t.y) < SEE_NEAR) return true;
         if (now - t.lastShot < REVEAL_MS * t.b.reveal) return true;
         if (stillHidden(t, now)) return false;
@@ -1132,6 +1194,7 @@ module.exports = function createArena(h) {
     // ---------- Kampf ----------
 
     function shoot(p, now) {
+        if (p.dead || (pvp && pvp.phase !== 'fight')) return;
         const item = p.gear[p.slot] || p.gear.primary;
         const w = { ...I.weaponStats(item) };
         w.dmg *= p.dmgMul;
@@ -1165,7 +1228,7 @@ module.exports = function createArena(h) {
         const x2 = p.x + dx * len, y2 = p.y + dy * len;
         fxAt(p.x, p.y, { type: 'shBeam', x1: Math.round(x1), y1: Math.round(y1), x2: Math.round(x2), y2: Math.round(y2), owner: p.id });
         for (const q of [...players.values()]) {
-            if (q === p) continue;
+            if (q === p || q.dead || (p.team && p.team === q.team)) continue;
             const t = (q.x - p.x) * dx + (q.y - p.y) * dy;
             if (t < 0 || t > len) continue;
             const perp = Math.abs((q.x - p.x) * dy - (q.y - p.y) * dx);
@@ -1185,7 +1248,7 @@ module.exports = function createArena(h) {
     }
 
     function near(x, y, r) {
-        return [...players.values()].filter(q => Math.hypot(q.x - x, q.y - y) < r);
+        return [...players.values()].filter(q => !q.dead && Math.hypot(q.x - x, q.y - y) < r);
     }
 
     function fxAt(x, y, msg) {
@@ -1194,7 +1257,9 @@ module.exports = function createArena(h) {
 
     // Schaden mit allen Folgen; true = tot
     function damage(v, attacker, dmg, now, x, y, opts = {}) {
-        if (!players.has(v.id) || now < v.protect) return false;
+        if (!players.has(v.id) || now < v.protect || v.dead) return false;
+        // PvP: kein Schaden unter Teamkameraden
+        if (attacker && attacker !== v && attacker.team && attacker.team === v.team) return false;
         if (!opts.noDodge && v.dodge && Math.random() < v.dodge) {
             if (attacker) h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: 0, dodge: true });
             return false;
@@ -1271,6 +1336,165 @@ module.exports = function createArena(h) {
         if (!isMob(b.owner)) for (const m of mobsNear(b.x, b.y, r + 60)) if (Math.hypot(m.x - b.x, m.y - b.y) < r + m.def.r) hurtMob(m, shooter, w.dmg * w.explode * (shooter ? shooter.b.expl : 1), now, m.x, m.y);
     }
 
+    // ---------- PvP (4.3): Teams, Runden, keine Verluste ----------
+    // Best of 5 (wer zuerst 3 Runden holt). Man spielt mit Kopien seines
+    // Loadouts: nichts verlaesst das Lager, nichts geht verloren. Tote warten
+    // auf die naechste Runde. Kein Beschuss unter Teamkameraden.
+    const PVP_WIN = 3, PVP_ROUND_MS = 90000, PVP_COUNT_MS = 3000, PVP_END_MS = 3000;
+    const TEAM_COLOR = { a: '#3da5ff', b: '#ff5b5b' };
+    const TEAM_NAME = { a: '🔵 Blue', b: '🔴 Red' };
+    const pvp = mode === 'pvp' ? { round: 0, score: [0, 0], phase: 'wait', until: 0, last: null, size: opts.size || 1, done: false, kills: new Map() } : null;
+
+    function joinPvp(c, name, team) {
+        const a = st(c);
+        const copy = uid => {
+            const it = uid && a.inv.find(x => x.uid === uid);
+            return it ? JSON.parse(JSON.stringify(it)) : null;
+        };
+        const gear = { primary: copy(a.loadout.primary) || starterPistol(), secondary: copy(a.loadout.secondary) };
+        for (const s of [...I.SLOTS, 'backpack']) gear[s] = copy(a.loadout[s]);
+        const util = (a.loadout.util || []).map(u => u && Math.min(u.n, count(a, u.base)) > 0 ? { base: u.base, n: Math.min(u.n, count(a, u.base)) } : null);
+        team = team === 'b' ? 'b' : 'a';
+        const p = newPlayer(c, name, TEAM_COLOR[team], a, gear, util, MAP.spawns[team][0]);
+        p.team = team;
+        p.dead = false;
+        p.loadUtil = util.map(u => u ? { ...u } : null);
+        gearStats(p);
+        players.set(c.id, p);
+        pvp.kills.set(c.id, 0);
+        sendJoined(c);
+        sendInv(p);
+        return null;
+    }
+
+    // Neue Runde: alle an ihre Seite, voll geheilt, Verbrauchsgut wieder voll
+    function pvpRound(now) {
+        pvp.round++;
+        pvp.phase = 'countdown';
+        pvp.until = now + PVP_COUNT_MS / SPEED;
+        bullets.length = 0;
+        nades.length = 0;
+        smokes.length = 0;
+        fires.length = 0;
+        holes.length = 0;
+        const idx = { a: 0, b: 0 };
+        for (const p of players.values()) {
+            const sp = MAP.spawns[p.team][idx[p.team]++ % MAP.spawns[p.team].length];
+            Object.assign(p, {
+                x: sp.x, y: sp.y, a: p.team === 'a' ? 0 : Math.PI, dead: false, hp: p.maxHp, burn: null, slowUntil: 0, stimUntil: 0, healUntil: 0,
+                windUsed: false, lastUsed: false, fire: false, mx: 0, my: 0, protect: pvp.until, lastHurt: 0
+            });
+            p.util = p.loadUtil.map(u => u ? { ...u } : null);
+            sendInv(p);
+        }
+        for (const p of players.values()) h.send(p.c, { type: 'shEvent', text: `⚔️ Round ${pvp.round} – ${pvp.score[0]} : ${pvp.score[1]}`, kind: 'drop' });
+    }
+
+    function pvpDown(p, killer) {
+        if (p.dead) return;
+        p.dead = true;
+        p.fire = false;
+        p.mx = p.my = 0;
+        const a = p.account ? st(p.c) : null;
+        if (a) {
+            a.pvp = a.pvp || { rating: 1000, wins: 0, losses: 0, draws: 0, kills: 0, deaths: 0 };
+            a.pvp.deaths++;
+        }
+        if (killer && killer !== p) {
+            pvp.kills.set(killer.id, (pvp.kills.get(killer.id) || 0) + 1);
+            award(killer, 60, 'pvp kill');
+            const ka = st(killer.c);
+            ka.pvp = ka.pvp || { rating: 1000, wins: 0, losses: 0, draws: 0, kills: 0, deaths: 0 };
+            ka.pvp.kills++;
+            if (killer.b.bloodlust) killer.hp = Math.min(killer.maxHp, killer.hp + killer.b.bloodlust);
+            if (killer.b.rampage) killer.rampUntil = Date.now() + 4000 / SPEED;
+        }
+        h.accounts.touch();
+        const w = killer ? (killer.gear[killer.slot] || killer.gear.primary) : null;
+        const line = { killer: killer ? killer.name : null, victim: p.name, how: 'shot', weapon: w ? w.name : null, tier: w ? w.tier : null, loot: 0 };
+        for (const q of players.values()) h.send(q.c, { type: 'shKill', ...line });
+        h.send(p.c, { type: 'shEvent', text: '💀 You are down – wait for the next round', kind: 'self' });
+    }
+
+    function pvpTick(now) {
+        if (pvp.done) return;
+        if (pvp.phase === 'countdown' && now >= pvp.until) {
+            pvp.phase = 'fight';
+            pvp.until = now + PVP_ROUND_MS / SPEED;
+        } else if (pvp.phase === 'fight') {
+            const alive = t => [...players.values()].filter(p => p.team === t && !p.dead);
+            const A = alive('a'), B = alive('b');
+            let winner = null;
+            if (!A.length || !B.length) winner = !A.length && !B.length ? 'draw' : !A.length ? 'b' : 'a';
+            else if (now >= pvp.until) {
+                // Zeit um: mehr Leben (anteilig) gewinnt
+                const hp = l => l.reduce((s, p) => s + p.hp / p.maxHp, 0);
+                const d = hp(A) - hp(B);
+                winner = Math.abs(d) < 0.01 ? 'draw' : d > 0 ? 'a' : 'b';
+            }
+            if (winner) {
+                if (winner !== 'draw') pvp.score[winner === 'a' ? 0 : 1]++;
+                pvp.phase = 'end';
+                pvp.last = winner;
+                pvp.until = now + PVP_END_MS / SPEED;
+                for (const p of players.values()) h.send(p.c, { type: 'shEvent', text: winner === 'draw' ? `Round ${pvp.round}: draw` : `${TEAM_NAME[winner]} wins round ${pvp.round} (${pvp.score[0]} : ${pvp.score[1]})`, kind: winner === p.team ? 'drop' : 'boss' });
+            }
+        } else if (pvp.phase === 'end' && now >= pvp.until) {
+            if (pvp.score[0] >= PVP_WIN || pvp.score[1] >= PVP_WIN || pvp.round >= 9) pvpFinish();
+            else pvpRound(now);
+        }
+    }
+
+    // Match vorbei: Elo (K 32, Teamdurchschnitt), XP, Ergebnis an alle
+    function pvpFinish(forfeit) {
+        if (pvp.done) return;
+        pvp.done = true;
+        const win = forfeit || (pvp.score[0] > pvp.score[1] ? 'a' : pvp.score[1] > pvp.score[0] ? 'b' : null);
+        const list = [...players.values()];
+        const rec = p => {
+            const a = st(p.c);
+            a.pvp = a.pvp || { rating: 1000, wins: 0, losses: 0, draws: 0, kills: 0, deaths: 0 };
+            return a.pvp;
+        };
+        const avg = t => {
+            const l = list.filter(p => p.team === t);
+            return l.length ? l.reduce((s, p) => s + rec(p).rating, 0) / l.length : 1000;
+        };
+        const ra = avg('a'), rb = avg('b');
+        for (const p of list) {
+            const r = rec(p);
+            const mine = p.team === 'a' ? ra : rb, theirs = p.team === 'a' ? rb : ra;
+            const expect = 1 / (1 + Math.pow(10, (theirs - mine) / 400));
+            const s = !win ? 0.5 : win === p.team ? 1 : 0;
+            const delta = Math.round(32 * (s - expect));
+            r.rating = Math.max(0, r.rating + delta);
+            if (s === 1) r.wins++;
+            else if (s === 0) r.losses++;
+            else r.draws++;
+            award(p, s === 1 ? 300 : s === 0 ? 80 : 150, s === 1 ? 'pvp win' : 'pvp match');
+            const myScore = p.team === 'a' ? pvp.score : [pvp.score[1], pvp.score[0]];
+            h.send(p.c, { type: 'shLeft', result: 'pvp', won: s === 1, draw: s === 0.5, score: myScore, kills: pvp.kills.get(p.id) || 0, rating: r.rating, delta, forfeit: !!forfeit });
+        }
+        h.accounts.touch();
+        players.clear();
+        if (opts.onDone) opts.onDone({ winner: win, score: pvp.score });
+    }
+
+    function pvpLeave(p) {
+        players.delete(p.id);
+        const a = st(p.c);
+        a.pvp = a.pvp || { rating: 1000, wins: 0, losses: 0, draws: 0, kills: 0, deaths: 0 };
+        if (!pvp.done) {
+            // Aufgeben zaehlt als Niederlage
+            a.pvp.losses++;
+            a.pvp.rating = Math.max(0, a.pvp.rating - 20);
+            h.accounts.touch();
+            h.send(p.c, { type: 'shLeft', result: 'pvp', won: false, left: true, score: p.team === 'a' ? pvp.score : [pvp.score[1], pvp.score[0]], kills: pvp.kills.get(p.id) || 0, rating: a.pvp.rating, delta: -20 });
+            const left = t => [...players.values()].some(q => q.team === t);
+            if (!left(p.team)) pvpFinish(p.team === 'a' ? 'b' : 'a');
+        }
+    }
+
     // ---------- Events: Boss und Versorgungsabwurf ----------
 
     const randIn = ([a, b]) => a + Math.random() * (b - a);
@@ -1323,7 +1547,7 @@ module.exports = function createArena(h) {
         }
         return null;
     }
-    const inZone = (x, y, z, m) => x > z[0] - m && x < z[0] + z[2] + m && y > z[1] - m && y < z[1] + z[3] + m;
+    const inZone = (x, y, z, m) => !!z && x > z[0] - m && x < z[0] + z[2] + m && y > z[1] - m && y < z[1] + z[3] + m;
     // Stadt und Aussenposten sind Schutzzonen: Gegner kommen nicht hinein (schiessen aber hinein)
     const mobBlocked = (x, y, r) => blocked(x, y, r) || inZone(x, y, MAP.town, r) || inZone(x, y, MAP.outpost, r);
 
@@ -1677,11 +1901,17 @@ module.exports = function createArena(h) {
             nextDropAt = 0;
             return;
         }
-        eventTick(now, dt);
+        if (mode === 'extract') eventTick(now, dt);
+        if (pvp) pvpTick(now);
         nadeTick(now, dt);
 
         for (const p of [...players.values()]) {
-            if (!players.has(p.id)) continue;
+            if (!players.has(p.id) || p.dead) continue;
+            // PvP-Countdown: alle stehen still
+            if (pvp && pvp.phase !== 'fight') {
+                p.fire = false;
+                continue;
+            }
             // Brennen, Feuerflaechen, Heilen, Regeneration
             if (p.burn) {
                 if (now > p.burn.until) p.burn = null;
@@ -1719,8 +1949,9 @@ module.exports = function createArena(h) {
             // Zielsuchend: Richtung langsam zum naechsten Gegner drehen
             if (b.w.homing && !gone) {
                 let tgt = null, td = 380;
+                const howner = players.get(b.owner);
                 for (const q of players.values()) {
-                    if (q.id === b.owner || b.hits.has(q.id)) continue;
+                    if (q.id === b.owner || b.hits.has(q.id) || q.dead || (howner && howner.team && howner.team === q.team)) continue;
                     const d = Math.hypot(q.x - b.x, q.y - b.y);
                     if (d < td) { tgt = q; td = d; }
                 }
@@ -1755,8 +1986,9 @@ module.exports = function createArena(h) {
                     gone = true;
                     break;
                 }
+                const bowner = players.get(b.owner);
                 for (const q of players.values()) {
-                    if (q.id === b.owner || b.hits.has(q.id)) continue;
+                    if (q.id === b.owner || b.hits.has(q.id) || q.dead || (bowner && bowner.team && bowner.team === q.team)) continue;
                     if (Math.hypot(q.x - b.x, q.y - b.y) < R + (b.w.big ? 14 : 4)) {
                         b.hits.add(q.id);
                         if (b.w.mobBoom) mobBoom(b, now);
@@ -1801,13 +2033,14 @@ module.exports = function createArena(h) {
                     ms: Math.round(I.weaponStats(w).ms / p.rateMul),
                     spd: Math.round(p.speedMul * (now < p.slowUntil ? 1 - p.slow : 1) * (now < p.stimUntil ? 1 + p.stim : 1) * 100) / 100,
                     ex: p.extractAt ? Math.max(0, p.extractAt - now) : null,
-                    burn: !!p.burn || !!p.inFire, heal: now < p.healUntil, pr: now < p.protect,
+                    burn: !!p.burn || !!p.inFire, heal: now < p.healUntil, pr: now < p.protect, dead: !!p.dead, fz: !!(pvp && pvp.phase !== 'fight'),
                     hid: (!!(p.zone || p.smoke !== null) && now - p.lastShot >= REVEAL_MS * p.b.reveal) || stillHidden(p, now)
                 },
+                pvp: pvp ? { round: pvp.round, score: pvp.score, phase: pvp.phase, left: Math.max(0, Math.round(pvp.until - now)), last: pvp.last, team: p.team } : undefined,
                 players: plist.filter(q => q === p || (inView(q.x, q.y) && canSee(p, q, now))).map(q => {
                     const qw = q.gear[q.slot] || q.gear.primary;
                     return {
-                        id: q.id, n: q.name, c: q.color, lv: q.level,
+                        id: q.id, n: q.name, c: q.color, lv: q.level, tm: q.team, dead: q.dead || undefined,
                         x: Math.round(q.x * 10) / 10, y: Math.round(q.y * 10) / 10, a: Math.round(q.a * 100) / 100,
                         hp: Math.max(0, Math.round(q.hp)), mh: q.maxHp, w: qw.base, wt: qw.tier, wn: qw.name,
                         ar: q.gear.vest ? I.ARMORS[q.gear.vest.base].set : null, hm: q.gear.helmet ? I.ARMORS[q.gear.helmet.base].set : null,
@@ -1831,6 +2064,7 @@ module.exports = function createArena(h) {
 
     return {
         join, leave, input, action, tick, refundAll, hubAction,
+        startPvp: () => pvpRound(Date.now()), pvpState: () => pvp,
         has: c => players.has(c.id),
         names: () => [...players.values()].map(p => p.name),
         rooms: () => [{ id: 'raid', players: [...players.values()].map(p => p.name) }],
@@ -1842,6 +2076,8 @@ module.exports = function createArena(h) {
 
 module.exports.MAP = MAP;
 module.exports.blocked = blocked;
-module.exports.slide = slide;
+module.exports.slide = WORLD.slide;
+module.exports.WORLD = WORLD;
+module.exports.PVP_WORLDS = PVP_WORLDS;
 module.exports.W = W;
 module.exports.H = H;

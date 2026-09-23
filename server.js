@@ -19,6 +19,7 @@ const plinko = require('./plinko');
 const createTickets = require('./tickets');
 const startAdmin = require('./admin');
 const createShooter = require('./shooter');
+const createRooms = require('./arena-rooms');
 const shop = require('./shop');
 const arenaItems = require('./arena-items');
 const arenaLevel = require('./arena-level');
@@ -404,7 +405,7 @@ let lastTop = '';
 const pendingWins = new Map();  // Konto -> { amount, feed, timer, onReveal }
 
 // Leaderboard (#8): Kategorien und Spiele mit sinnvollem Multi
-const BOARD_CATS = ['score', 'coins', 'kills', 'bigwin', 'bestx', 'casino', 'events', 'arena', 'alevel'];
+const BOARD_CATS = ['score', 'coins', 'kills', 'bigwin', 'bestx', 'casino', 'events', 'arena', 'alevel', 'pvp'];
 const BOARD_X_GAMES = ['starlight', 'slots', 'plinko', 'crossy', 'roulette', 'blackjack', 'poker'];
 
 function hideWin(key, amount, feedLine, ms, onReveal) {
@@ -834,6 +835,7 @@ async function handle(c, data) {
             if (c.cross) return send(c, { type: 'authError', error: 'Finish your Crossy Road run first' });
             tables.leave(c);
             shooter.leave(c);
+            rooms.leave(c);
             accounts.logout(data.token);
             c.account = null;
             send(c, { type: 'auth', token: null, user: null });
@@ -855,6 +857,7 @@ async function handle(c, data) {
             if (r.error) return send(c, { type: 'authError', error: r.error });
             tables.leave(c);
             shooter.leave(c);
+            rooms.leave(c);
             c.account = null;
             send(c, { type: 'auth', token: null, user: null, note: 'Account deleted' });
             pushTop(true);
@@ -867,6 +870,7 @@ async function handle(c, data) {
             if (c.joined) return;
             tables.leave(c);
             shooter.leave(c);
+            rooms.leave(c);
             let name;
             if (c.account) {
                 const u = accounts.get(c.account);
@@ -1015,12 +1019,14 @@ async function handle(c, data) {
         case 'tableJoin':
             if (c.joined) return send(c, { type: 'tableError', error: 'Leave the snake field first' });
             shooter.leave(c);
+            rooms.leave(c);
             tables.join(c, String(data.kind));
             return;
 
         case 'pokerCreate':
             if (c.joined) return send(c, { type: 'tableError', error: 'Leave the snake field first' });
             shooter.leave(c);
+            rooms.leave(c);
             tables.create(c, data);
             return;
 
@@ -1030,6 +1036,7 @@ async function handle(c, data) {
             if (!c.account) return send(c, { type: 'shError', error: 'Log in to raid' });
             if (c.joined) return send(c, { type: 'shError', error: 'Leave the snake field first' });
             if (c.cross) return send(c, { type: 'shError', error: 'Finish your Crossy Road run first' });
+            if (rooms.inLobby(c)) return send(c, { type: 'shError', error: 'Leave your PvP lobby first' });
             const u = accounts.get(c.account);
             if (!u) return;
             tables.leave(c);
@@ -1046,7 +1053,7 @@ async function handle(c, data) {
             if (!BOARD_CATS.includes(cat) || !['day', 'week', 'all'].includes(period)) return;
             if (cat === 'bestx' && !BOARD_X_GAMES.includes(game)) return;
             if (!allow('board:' + c.id, 30, 60e3)) return;
-            const list = accounts.board(cat, game, cat === 'coins' || cat === 'alevel' ? 'all' : period, key => pendingWins.has(key) ? pendingWins.get(key).amount : 0);
+            const list = accounts.board(cat, game, cat === 'coins' || cat === 'alevel' || cat === 'pvp' ? 'all' : period, key => pendingWins.has(key) ? pendingWins.get(key).amount : 0);
             send(c, { type: 'board', cat, game, period, list });
             return;
         }
@@ -1092,7 +1099,7 @@ async function handle(c, data) {
             return;
 
         case 'shInput':
-            shooter.input(c, data);
+            (rooms.arenaOf(c) || shooter).input(c, data);
             return;
 
         // Arena-Hub (Extraction): Lager, Kaufen, Cases, Salvage, Loadout
@@ -1111,7 +1118,7 @@ async function handle(c, data) {
         case 'shInteract':
         case 'shInv':
         case 'shTrade':
-            shooter.action(c, data);
+            (rooms.arenaOf(c) || shooter).action(c, data);
             return;
 
         // Laufzeit messen, damit der Browser seine Vorhersage abgleichen kann
@@ -1120,7 +1127,17 @@ async function handle(c, data) {
             return;
 
         case 'shLeave':
-            shooter.leave(c);
+            if (rooms.arenaOf(c)) rooms.leave(c);
+            else shooter.leave(c);
+            return;
+
+        // PvP-Lobbys (4.3)
+        case 'pvpList':
+        case 'pvpCreate':
+        case 'pvpJoin':
+        case 'pvpLeave':
+        case 'pvpSwitch':
+            rooms.handle(c, data);
             return;
 
         case 'tableLeave':
@@ -1133,7 +1150,7 @@ async function handle(c, data) {
 
         // Nur fuer lokale Tests (SNAKE_TEST=1): Raid-Figur versetzen
         case 'shTp': {
-            const p = shooter._players.get(c.id);
+            const p = (rooms.arenaOf(c) || shooter)._players.get(c.id);
             if (process.env.SNAKE_TEST === '1' && p) {
                 p.x = Number(data.x) || p.x;
                 p.y = Number(data.y) || p.y;
@@ -1400,6 +1417,7 @@ wss.on('connection', (ws, req) => {
     ws.on('close', () => {
         tables.leave(c);
         shooter.leave(c);
+        rooms.leave(c);
         crossClose(c);
         if (c.account) revealWin(c.account);
         clients.delete(id);
@@ -1577,8 +1595,18 @@ const shooter = createShooter({
     // Wer ist in welcher Arena: fuers Menue an alle
     changed: () => broadcast({ type: 'shRooms', rooms: shooter.rooms() })
 });
+// PvP-Lobbys: jedes Match eine eigene Arena-Instanz auf einer kleinen Map
+const rooms = createRooms({
+    accounts, send, broadcast, feed, refresh: c => sendAccount(c), worlds: createShooter.PVP_WORLDS,
+    createArena: o => createShooter({ accounts, send, feed, refresh: c => sendAccount(c), changed: () => {} }, o),
+    busy: c => shooter.has(c) || !!c.joined || !!c.cross
+});
+
 // Eigener, schnellerer Takt als das Snake-Feld (33 ms)
-setInterval(() => shooter.tick(), 16);
+setInterval(() => {
+    shooter.tick();
+    rooms.tick();
+}, 16);
 
 // ---------- Support-Tickets ----------
 
@@ -1622,6 +1650,7 @@ startAdmin({
         }
         tables.leave(c);
         shooter.leave(c);
+        rooms.leave(c);
         crossClose(c);
     }),
     kickAccount: key => clientsOf(key).forEach(c => {
@@ -1634,6 +1663,7 @@ startAdmin({
         }
         tables.leave(c);
         shooter.leave(c);
+        rooms.leave(c);
         crossClose(c);
         c.account = null;
         send(c, { type: 'authExpired' });
