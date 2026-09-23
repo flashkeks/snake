@@ -147,6 +147,7 @@ function makeCard(raw, rankFrac, num) {
     return {
         id: raw.id, set: raw.set, num: `${SETS[raw.set].code}-${String(num).padStart(4, '0')}`,
         name: raw.name, img: raw.img, from: raw.from || '', type, rarity: rarity.id, hp, atk, def, spd, attacks,
+        gender: /^female$/i.test(raw.gender || '') ? 'f' : /^male$/i.test(raw.gender || '') ? 'm' : '',
         weak: TYPES[type].weak
     };
 }
@@ -177,7 +178,16 @@ function load(dataDir) {
         const k = c.set + ':' + c.rarity;
         (byRarity[k] = byRarity[k] || []).push(c.id);
     }
-    return { cards, byId, byRarity, source: file ? path.basename(file) : null };
+    // Pools je Pack und Seltenheit (alle Reihen des Packs zusammen, ggf. gefiltert)
+    const pools = {};
+    for (const [pid, p] of Object.entries(PACKS)) {
+        pools[pid] = {};
+        for (const c of cards) {
+            if (!p.sets.includes(c.set) || (p.only && c.gender !== p.only)) continue;
+            (pools[pid][c.rarity] = pools[pid][c.rarity] || []).push(c.id);
+        }
+    }
+    return { cards, byId, byRarity, pools, source: file ? path.basename(file) : null };
 }
 
 // ---------- Packs ----------
@@ -186,6 +196,8 @@ function load(dataDir) {
 const PACKS = {
     anime: { name: 'Anime Booster', icon: '🌸', sets: ['anime'], price: 10000, size: 5, sure: 1 },
     film: { name: 'Heroes & Series Booster', icon: '🎬', sets: ['hero', 'tv'], price: 10000, size: 5, sure: 1 },
+    // 5.1b (Max): nur weibliche Figuren aus Anime und Comics (Geschlecht aus AniList/Superhero-API)
+    waifu: { name: 'Waifu Booster', icon: '💖', sets: ['anime', 'hero'], only: 'f', price: 10000, size: 5, sure: 1 },
     mixed: { name: 'Kek Mega Booster', icon: '🃏', sets: ['anime', 'hero', 'tv'], price: 50000, size: 8, sure: 3, mega: true }
 };
 // Gewichte je Platz (Summe egal, wird normiert)
@@ -236,10 +248,12 @@ function openPack(db, packId) {
     for (let i = 0; i < p.size; i++) {
         const sure = i >= p.size - p.sure;
         let rar = pick(p.mega ? (sure ? ODDS.megaSure : ODDS.megaNormal) : (sure ? ODDS.sure : ODDS.normal));
-        const set = p.sets[Math.floor(Math.random() * p.sets.length)];
-        // Stufe leer in dieser Reihe (kleine Testdaten): eine Stufe tiefer
-        while (!db.byRarity[set + ':' + rar] && RIDX[rar] > 0) rar = RARITIES[RIDX[rar] - 1].id;
-        const pool = db.byRarity[set + ':' + rar] || db.cards.filter(c => p.sets.includes(c.set)).map(c => c.id);
+        const pools = db.pools[packId];
+        // Stufe leer (kleine Testdaten, Filter): eine Stufe tiefer, notfalls hoeher
+        let r = rar;
+        while (!pools[r] && RIDX[r] > 0) r = RARITIES[RIDX[r] - 1].id;
+        if (!pools[r]) r = Object.keys(pools)[0];
+        const pool = pools[r];
         out.push({ id: pool[Math.floor(Math.random() * pool.length)], v: rollVariant(p.mega) });
     }
     return out;

@@ -965,9 +965,23 @@ module.exports = function createArena(h, opts = {}) {
                 if (slot === 'secondary' && p.slot === 'secondary') p.slot = 'primary';
             }
         } else if (d.op === 'drop') {
-            const i = p.pack.findIndex(x => x.uid === d.uid);
-            if (i < 0) return;
-            dropBag(p.x + Math.cos(p.a) * 30, p.y + Math.sin(p.a) * 30, p.pack.splice(i, 1));
+            const at = [p.x + Math.cos(p.a) * 30, p.y + Math.sin(p.a) * 30];
+            // Ausgeruestetes direkt fallen lassen (5.1b, per Drag & Drop aus dem Fenster)
+            if (d.slot) {
+                const slot = String(d.slot);
+                const slots = ['primary', 'secondary', 'helmet', 'vest', 'pants', 'boots', 'backpack'];
+                if (!slots.includes(slot) || !p.gear[slot] || p.gear[slot].starter) return;
+                // Rucksack nur, wenn der Inhalt in den Grundrucksack passt
+                if (slot === 'backpack' && p.pack.length > I.BASE_PACK) return h.send(p.c, { type: 'shLoot', items: [], full: true });
+                const it = p.gear[slot];
+                p.gear[slot] = slot === 'primary' ? starterPistol() : null;
+                if (slot === 'secondary' && p.slot === 'secondary') p.slot = 'primary';
+                dropBag(at[0], at[1], [it]);
+            } else {
+                const i = p.pack.findIndex(x => x.uid === d.uid);
+                if (i < 0) return;
+                dropBag(at[0], at[1], p.pack.splice(i, 1));
+            }
         } else return;
         gearStats(p);
         sendInv(p);

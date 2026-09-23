@@ -20,7 +20,10 @@ const createTickets = require('./tickets');
 const startAdmin = require('./admin');
 const createShooter = require('./shooter');
 const createRooms = require('./arena-rooms');
-const createTrade = require('./arena-trade');
+const createTrade = require('./trade');
+const createAssets = require('./assets');
+const createMarket = require('./market');
+const createLobby = require('./lobby');
 const shop = require('./shop');
 const arenaItems = require('./arena-items');
 const arenaLevel = require('./arena-level');
@@ -430,7 +433,7 @@ let achRatesCache = null;
 const WHERE = {
     casino: '🎰 Casino', daily: '🎁 Daily Wheel', cross: '🐔 Crossy Road', plinko: '🔻 Plinko',
     pokerlobby: '♠️ Poker', slots: '🎰 Slots', slots2: '🌟 Starlight', arenahub: '🔫 Arena',
-    shooter: '🔫 Arena', kekemon: '🃏 Kekémon', shop: '🎨 Shop', event: '🎪 Event'
+    shooter: '🔫 Arena', kekemon: '🃏 Kekémon', shop: '🎨 Shop', event: '🎪 Event', market: '🏛️ Market'
 };
 const TABLE_WHERE = { blackjack: '🃏 Blackjack', roulette: '🎡 Roulette', poker: '♠️ Poker' };
 
@@ -1012,6 +1015,8 @@ async function handle(c, data) {
             shooter.leave(c);
             rooms.leave(c);
             trade.gone(c);
+            lobby.leave(c);
+            c.mkWatch = false;
             accounts.logout(data.token);
             c.account = null;
             send(c, { type: 'auth', token: null, user: null });
@@ -1343,7 +1348,26 @@ async function handle(c, data) {
             rooms.handle(c, data);
             return;
 
-        // Handel zwischen Spielern (4.5)
+        // Markt (5.2): Auktionshaus und Lobby
+        case 'mkState':
+        case 'mkList':
+        case 'mkBuy':
+        case 'mkBid':
+        case 'mkCancel':
+        case 'mkClaim':
+            market.handle(c, data);
+            return;
+        case 'mkLeave':
+            c.mkWatch = false;
+            return;
+
+        case 'lbJoin':
+        case 'lbLeave':
+        case 'lbMove':
+            lobby.handle(c, data);
+            return;
+
+        // Handel zwischen Spielern (4.5, seit 5.2 ueber den Markt)
         case 'trReq':
         case 'trAccept':
         case 'trDecline':
@@ -1630,6 +1654,7 @@ wss.on('connection', (ws, req) => {
 
     ws.on('close', () => {
         trade.gone(c);
+        lobby.leave(c);
         tables.leave(c);
         shooter.leave(c);
         rooms.leave(c);
@@ -1818,11 +1843,38 @@ const rooms = createRooms({
 });
 
 // Handel: nur Hub-Aktion, kein eigener Takt
+// Markt (5.2): handelbare Gueter, direkter Handel, Auktionshaus, Lobby
+const assets = createAssets({ accounts, cards, cardDb, shop, I: arenaItems });
+
+// Nach einem Tausch/Kauf: alles frisch, was der Browser gerade zeigt
+function mkRefresh(c) {
+    sendAccount(c);
+    if (c.mkWatch) send(c, market.state(c));
+    if (c.account) kmState(c);
+    lobby.refresh(c);
+    if (!shooter.has(c)) shooter.hubAction(c, { type: 'arHub' });
+}
+
 const trade = createTrade({
-    accounts, send, clientsOf, refresh: c => sendAccount(c),
-    hubRefresh: c => shooter.hubAction(c, { type: 'arHub' }),
+    accounts, assets, send, clientsOf, refresh: mkRefresh,
     log: line => console.log('trade:', line)
 });
+
+// Aenderungen im Auktionshaus an alle schicken, die es offen haben (gebremst)
+let mkPushT = null;
+const market = createMarket({
+    dataDir: DATA_DIR, accounts, assets, send, clientsOf, feed, refresh: mkRefresh, cardV: cardHash,
+    log: line => console.log(line),
+    onChange: () => {
+        if (mkPushT) return;
+        mkPushT = setTimeout(() => {
+            mkPushT = null;
+            for (const c of clients.values()) if (c.mkWatch && c.account) send(c, market.state(c));
+        }, 400);
+    }
+});
+
+const lobby = createLobby({ accounts, send, titleOf: key => accounts.titleOf(key) });
 
 // Eigener, schnellerer Takt als das Snake-Feld (33 ms)
 setInterval(() => {
@@ -2240,6 +2292,7 @@ function shutdown() {
     shooter.refundAll();
     accounts.save(true);
     tickets.save(true);
+    market.save();
     process.exit(0);
 }
 process.on('SIGTERM', shutdown);

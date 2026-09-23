@@ -14,7 +14,7 @@ let kmShown = 60;            // Album: so viele Karten gerade sichtbar
 const kmFilter = { set: '', type: '', rarity: '', own: '', q: '', sort: 'num' };
 let kmOpening = null;        // offenes Pack { pack, cards: [{id, v}], fresh, order, idx }
 
-const KM_PACK_COLOR = { anime: '#ff7ac8', film: '#3da5ff', mixed: '#ffb13d' };
+const KM_PACK_COLOR = { anime: '#ff7ac8', film: '#3da5ff', waifu: '#ff4f8b', mixed: '#ffb13d' };
 const KM_VLABEL = { p: 'Pokéball', m: 'Masterball', s: 'Shiny' };
 
 // Klang nie das Oeffnen blockieren lassen
@@ -78,7 +78,7 @@ function kmOpen(tab) {
     if (tab) kmTab = tab;
     if (world !== 'cards') {
         world = 'cards';
-        document.body.classList.remove('world-arena');
+        document.body.classList.remove('world-arena', 'world-market');
         document.body.classList.add('world-cards');
         document.querySelectorAll('#world-switch [data-world]').forEach(b => b.classList.toggle('on', b.dataset.world === 'cards'));
     }
@@ -339,6 +339,12 @@ function kmRank(g) {
 
 function kmShowPack(o) {
     const p = kmCat.packs[o.pack];
+    // Alte Antwortform (nur Ids) vertragen und Unbekanntes weglassen
+    o = { ...o, cards: o.cards.map(g => typeof g === 'string' ? { id: g, v: '' } : g) };
+    const keep = o.cards.map(g => !!kmCat.byId[g.id]);
+    o.fresh = (o.fresh || []).filter((f, i) => keep[i]);
+    o.cards = o.cards.filter((g, i) => keep[i]);
+    if (!o.cards.length) return showMsg('km-msg', 'Pack opened – reload the page to see your cards', 'err');
     // Aufdeck-Reihenfolge: schwaechste zuerst, beste zuletzt
     const order = o.cards.map((g, i) => i).sort((a, b) => kmRank(o.cards[a]) - kmRank(o.cards[b]));
     kmOpening = { ...o, order, idx: 0, busy: false };

@@ -1,0 +1,543 @@
+/* Markt (5.2): Auktionshaus, Lobby, Handelsfenster. Welt als Vollseite wie Arena/Kekemon. */
+
+#world-switch [data-world="market"].on {
+    background: #3da5ff;
+    border-color: #3da5ff;
+    color: #031526;
+    box-shadow: 0 0 18px rgba(61,165,255,.5);
+}
+
+body.world-market #left,
+body.world-market #side,
+body.world-market #game,
+body.world-market #hud,
+body.world-market #pad,
+body.world-market #score,
+body.world-market #effects,
+body.world-market #controls,
+body.world-market #countdown {
+    display: none !important;
+}
+
+body.world-market #layout {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+body.world-market #main {
+    flex: 1;
+    align-items: stretch;
+    width: 100%;
+}
+
+body.world-market #stage {
+    width: 100%;
+    min-height: calc(100vh - 70px);
+}
+
+body.world-market #market {
+    position: relative;
+    inset: auto;
+    background: transparent;
+    backdrop-filter: none;
+    padding: 0;
+    overflow: visible;
+}
+
+body.world-market #market > .card {
+    width: min(1400px, 100%);
+    max-height: none;
+}
+
+#market .cs-tabs button.on,
+.mk-sub button.on,
+.mk-sub2 button.on {
+    background: #3da5ff;
+    border-color: #3da5ff;
+    color: #031526;
+}
+
+.mk-sub,
+.mk-sub2 {
+    margin: 10px 0;
+}
+
+/* ---------- Auktionshaus ---------- */
+
+.mk-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.mk-tile {
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 12px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.1);
+    align-items: center;
+}
+
+.mk-tile.mine {
+    border-color: rgba(61,165,255,.5);
+}
+
+.mk-tile.top {
+    border-color: rgba(125,255,176,.6);
+}
+
+.mk-what {
+    flex: 0 0 150px;
+    display: flex;
+    justify-content: center;
+}
+
+.mk-what .it {
+    width: 150px;
+}
+
+.mk-cardwrap .kc.mini {
+    --w: 130px;
+}
+
+.mk-deal {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+}
+
+.mk-deal .row {
+    display: flex;
+    gap: 6px;
+}
+
+.mk-deal input {
+    width: 100%;
+    min-width: 0;
+    background: rgba(255,255,255,.06);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 8px;
+    padding: 5px 8px;
+    font: inherit;
+}
+
+.mk-deal button {
+    padding: 5px 12px;
+    font-size: 13px;
+}
+
+.mk-meta {
+    display: flex;
+    justify-content: space-between;
+    color: #9aa7b8;
+}
+
+.mk-type {
+    font-weight: 900;
+    font-size: 11px;
+    letter-spacing: .05em;
+    padding: 2px 7px;
+    border-radius: 999px;
+}
+
+.mk-type.bin {
+    background: #7dffb0;
+    color: #03140b;
+}
+
+.mk-type.auction {
+    background: #ffb13d;
+    color: #2a1600;
+}
+
+.mk-seller {
+    color: #9aa7b8;
+    font-size: 12px;
+}
+
+.mk-top {
+    color: #7dffb0;
+    font-weight: 800;
+}
+
+.mk-cos {
+    width: 140px;
+    padding: 12px 8px;
+    border-radius: 12px;
+    background: rgba(255,255,255,.05);
+    border: 2px solid var(--rc, #cfd8e3);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.mk-cos span {
+    font-size: 40px;
+}
+
+.mk-cos small {
+    color: #9aa7b8;
+}
+
+.mk-pickgrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+    max-height: 420px;
+    overflow-y: auto;
+    padding: 4px;
+    justify-items: center;
+}
+
+.mk-pick {
+    position: relative;
+    cursor: pointer;
+    border-radius: 12px;
+    outline: 3px solid transparent;
+    transition: outline-color .15s, transform .15s;
+}
+
+.mk-pick:hover {
+    transform: translateY(-2px);
+}
+
+.mk-pick.sel {
+    outline-color: #3da5ff;
+}
+
+.mk-pick .it {
+    width: 150px;
+}
+
+.mk-form {
+    margin-top: 14px;
+    padding: 12px;
+    border-radius: 12px;
+    background: rgba(61,165,255,.08);
+    border: 1px solid rgba(61,165,255,.35);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    align-items: center;
+}
+
+.mk-form > div:first-child,
+.mk-form .hint {
+    flex-basis: 100%;
+}
+
+.mk-form input[type="number"],
+.mk-form select {
+    width: 130px;
+    background: rgba(255,255,255,.06);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 8px;
+    padding: 5px 8px;
+    font: inherit;
+}
+
+.mk-form select option {
+    background: #1a1a2a;
+}
+
+.mk-kind {
+    display: flex;
+    gap: 14px;
+}
+
+.mk-sold {
+    margin-top: 14px;
+    font-size: 12px;
+    color: #9aa7b8;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+}
+
+/* ---------- Toasts, Einladungen, Handelsfenster (am Body, ueber allem) ---------- */
+
+#mk-toasts,
+#tr-invites {
+    position: fixed;
+    right: 14px;
+    z-index: 70;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: min(380px, calc(100vw - 28px));
+}
+
+#mk-toasts {
+    top: 70px;
+}
+
+#tr-invites {
+    bottom: 20px;
+}
+
+.mk-toast {
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(20,24,40,.95);
+    border: 1px solid rgba(125,255,176,.5);
+    color: #fff;
+    font-size: 14px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.5);
+    transition: opacity .5s, transform .5s;
+}
+
+.mk-toast.err {
+    border-color: rgba(255,61,110,.6);
+}
+
+.mk-toast.out {
+    opacity: 0;
+    transform: translateX(30px);
+}
+
+.tr-inv {
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: rgba(20,24,40,.97);
+    border: 2px solid #ffd23f;
+    box-shadow: 0 0 20px rgba(255,210,63,.35);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    animation: km-deal .3s ease-out;
+}
+
+.tr-inv button {
+    padding: 5px 12px;
+}
+
+#tr-window {
+    position: fixed;
+    inset: 0;
+    z-index: 65;
+    background: rgba(5,5,12,.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    box-sizing: border-box;
+}
+
+#tr-window[hidden] {
+    display: none;
+}
+
+.tr-card {
+    width: min(1100px, 100%);
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+    background: #141827;
+    border: 2px solid #3da5ff;
+    border-radius: 16px;
+    padding: 14px;
+    box-sizing: border-box;
+}
+
+.tr-card .tr-head {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.tr-card .tr-head b {
+    flex: 1;
+    font-size: 18px;
+}
+
+.tr-card .tr-sides {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+    margin: 10px 0;
+}
+
+.tr-card .tr-side {
+    flex: 1;
+    min-width: 0;
+    padding: 10px;
+    border-radius: 12px;
+    background: rgba(255,255,255,.04);
+    border: 2px solid rgba(255,255,255,.1);
+}
+
+.tr-card .tr-side.ready {
+    border-color: #7dffb0;
+}
+
+.tr-card .tr-side h4 {
+    margin: 0 0 8px;
+}
+
+.tr-ok {
+    color: #7dffb0;
+}
+
+.tr-assets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 60px;
+}
+
+.tr-a {
+    cursor: pointer;
+}
+
+.tr-a .it {
+    width: 130px;
+}
+
+.tr-a .kc.mini {
+    --w: 110px;
+}
+
+.tr-a .mk-cos {
+    width: 110px;
+}
+
+.tr-arrows {
+    align-self: center;
+    font-size: 28px;
+    color: #3da5ff;
+}
+
+.tr-money {
+    margin-top: 8px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.tr-money input {
+    width: 110px;
+    background: rgba(255,255,255,.06);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 8px;
+    padding: 4px 8px;
+    font: inherit;
+}
+
+.tr-n {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    z-index: 5;
+    background: #3da5ff;
+    color: #031526;
+    font-weight: 900;
+    font-size: 12px;
+    padding: 2px 7px;
+    border-radius: 999px;
+}
+
+/* ---------- Lobby ---------- */
+
+.lb-wrap {
+    position: relative;
+    margin-top: 10px;
+}
+
+#lb-canvas {
+    display: block;
+    width: 100%;
+    height: calc(100vh - 230px);
+    min-height: 360px;
+    border-radius: 14px;
+    border: 2px solid rgba(255,91,214,.35);
+    background: #12101c;
+    touch-action: none;
+    cursor: crosshair;
+}
+
+.lb-hud {
+    position: absolute;
+    left: 50%;
+    top: 14px;
+    transform: translateX(-50%);
+    padding: 7px 16px;
+    border-radius: 999px;
+    background: rgba(10,10,20,.8);
+    border: 1px solid rgba(255,255,255,.2);
+    color: #cfd8e3;
+    font-size: 14px;
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.lb-hud.act {
+    border-color: #ffd23f;
+    color: #fff;
+    box-shadow: 0 0 16px rgba(255,210,63,.4);
+}
+
+.lb-hud b {
+    display: inline-block;
+    padding: 0 7px;
+    margin-right: 4px;
+    border-radius: 6px;
+    background: #ffd23f;
+    color: #2a1a00;
+}
+
+.lb-help {
+    margin-top: 6px;
+    text-align: center;
+    font-size: 12px;
+    color: #9aa7b8;
+}
+
+.lb-f {
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    font-size: 26px;
+    font-weight: 900;
+    opacity: .35;
+    display: none;
+}
+
+.lb-f.act {
+    opacity: 1;
+}
+
+body.touch .lb-f {
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .mk-tile {
+        flex-direction: column;
+    }
+
+    .mk-what {
+        flex-basis: auto;
+    }
+
+    .tr-card .tr-sides {
+        flex-direction: column;
+    }
+
+    .tr-arrows {
+        transform: rotate(90deg);
+    }
+}

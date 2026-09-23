@@ -1,19 +1,19 @@
-// Handel zwischen Spielern (seit 4.5): Items aus dem Lager, Scrap, Coins.
+// Direkter Handel zwischen zwei Spielern (5.2, vorher arena-trade.js).
+// Seit dem Markt: Arena-Items, Kekemon-Karten, Cosmetics, Scrap, Coins.
+// Gestartet wird er in der Markt-Lobby (F bei einem Spieler) oder per Name.
 //
-// Ablauf: A schickt B eine Anfrage (B muss online sein), B nimmt an. Beide
-// stellen ihr Angebot zusammen; jede Aenderung nimmt beiden "Ready" wieder
-// weg (kein Tausch in letzter Sekunde). Sind beide ready, tauscht der Server
-// in einem Schritt – vorher prueft er nochmal alles (Besitz, nicht im
-// Loadout, genug Coins/Scrap, Platz im Lager).
+// Ablauf wie gehabt: A schickt B eine Anfrage (B muss online sein), B nimmt
+// an. Beide stellen ihr Angebot zusammen; jede Aenderung nimmt beiden "Ready"
+// wieder weg. Sind beide ready, prueft der Server alles nochmal und tauscht in
+// einem Schritt.
 //
-// h: { accounts, send, clientsOf(key), refresh(c), hubRefresh(c), log(line) }
-
-const I = require('./arena-items');
+// h: { accounts, assets, send, clientsOf(key), refresh(c), log(line) }
 
 const INVITE_MS = 60000;
-const MAX_ITEMS = 20;
+const MAX_REFS = 20;
 
 module.exports = function createTrade(h) {
+    const A = h.assets;
     const invites = new Map();      // id -> { id, from: key, to: key, at }
     const trades = new Map();       // id -> { id, sides: { [key]: side }, keys: [a, b] }
     let seq = 0;
@@ -21,23 +21,27 @@ module.exports = function createTrade(h) {
     const nameOf = key => (h.accounts.get(key) || {}).name || key;
     const tradeOf = key => [...trades.values()].find(t => t.keys.includes(key)) || null;
     const toAll = (key, msg) => h.clientsOf(key).forEach(c => h.send(c, msg));
-    const fresh = () => ({ items: [], scrap: 0, coins: 0, ready: false });
+    const fresh = () => ({ refs: [], scrap: 0, coins: 0, ready: false });
 
-    function inLoadout(a, uid) {
-        const l = a.loadout || {};
-        return Object.entries(l).some(([k, v]) => k !== 'util' && v === uid);
+    // Angebot als Gueter (nur zum Anzeigen, nichts wird bewegt)
+    function preview(key, refs) {
+        const u = h.accounts.get(key);
+        const a = h.accounts.arena(key);
+        return refs.map(r => {
+            if (r.k === 'item') {
+                const it = a.inv.find(x => x.uid === r.uid);
+                return it ? A.view({ k: 'item', item: it }) : null;
+            }
+            if (r.k === 'card') return (u.cards || {})[r.key] >= r.n ? { k: 'card', key: r.key, n: r.n } : null;
+            return { k: 'cos', id: r.id };
+        }).filter(Boolean);
     }
 
-    // Ansicht fuer eine Seite: eigenes und fremdes Angebot mit allen Details
     function view(t, key) {
         const other = t.keys.find(k => k !== key);
         const side = k => {
             const s = t.sides[k];
-            const a = h.accounts.arena(k);
-            return {
-                name: nameOf(k), ready: s.ready, scrap: s.scrap, coins: s.coins,
-                items: s.items.map(uid => a.inv.find(x => x.uid === uid)).filter(Boolean).map(it => ({ ...it, sv: I.salvageValue(it) }))
-            };
+            return { name: nameOf(k), ready: s.ready, scrap: s.scrap, coins: s.coins, refs: s.refs, assets: preview(k, s.refs) };
         };
         return { type: 'trState', id: t.id, me: side(key), them: side(other) };
     }
@@ -92,18 +96,20 @@ module.exports = function createTrade(h) {
         if (!t) return 'No open trade';
         const a = h.accounts.arena(c.account);
         const u = h.accounts.get(c.account);
-        const uids = [...new Set((Array.isArray(d.items) ? d.items : []).map(String))].slice(0, MAX_ITEMS);
-        for (const uid of uids) {
-            const it = a.inv.find(x => x.uid === uid);
-            if (!it) return 'You do not own that item anymore';
-            if (inLoadout(a, uid)) return 'Take it out of your loadout first';
+        const refs = [];
+        for (const raw of (Array.isArray(d.refs) ? d.refs : []).slice(0, MAX_REFS)) {
+            const r = A.clean(raw);
+            if (!r || refs.some(x => A.same(x, r))) continue;
+            const err = A.check(c.account, r);
+            if (err) return err;
+            refs.push(r);
         }
         const scrap = Math.max(0, Math.floor(Number(d.scrap) || 0));
         const coins = Math.max(0, Math.floor(Number(d.coins) || 0));
         if (scrap > a.scrap) return 'Not enough scrap';
         if (coins > u.coins) return 'Not enough coins';
         const s = t.sides[c.account];
-        s.items = uids;
+        s.refs = refs;
         s.scrap = scrap;
         s.coins = coins;
         // Jede Aenderung: beide muessen neu bestaetigen
@@ -123,47 +129,43 @@ module.exports = function createTrade(h) {
     // Tauschen: erst alles pruefen, dann alles auf einmal
     function execute(t) {
         const [ka, kb] = t.keys;
-        const A = { key: ka, a: h.accounts.arena(ka), u: h.accounts.get(ka), s: t.sides[ka] };
-        const B = { key: kb, a: h.accounts.arena(kb), u: h.accounts.get(kb), s: t.sides[kb] };
+        const X = k => ({ key: k, a: h.accounts.arena(k), u: h.accounts.get(k), s: t.sides[k] });
+        const P = X(ka), Q = X(kb);
         const fail = why => {
             for (const k of t.keys) t.sides[k].ready = false;
             for (const k of t.keys) toAll(k, { type: 'trInfo', text: `Trade failed: ${why}`, err: true });
             push(t);
         };
-        for (const X of [A, B]) {
-            for (const uid of X.s.items) {
-                if (!X.a.inv.some(x => x.uid === uid)) return fail(`${X.u.name} no longer has an item`);
-                if (inLoadout(X.a, uid)) return fail(`${X.u.name} has an item in the loadout`);
+        for (const S of [P, Q]) {
+            for (const r of S.s.refs) {
+                const err = A.check(S.key, r);
+                if (err) return fail(`${S.u.name}: ${err}`);
             }
-            if (X.a.scrap < X.s.scrap) return fail(`${X.u.name} lacks scrap`);
-            if (X.u.coins < X.s.coins) return fail(`${X.u.name} lacks coins`);
+            if (S.a.scrap < S.s.scrap) return fail(`${S.u.name} lacks scrap`);
+            if (S.u.coins < S.s.coins) return fail(`${S.u.name} lacks coins`);
         }
-        for (const [X, Y] of [[A, B], [B, A]]) {
-            if (X.a.inv.length - X.s.items.length + Y.s.items.length > I.INV_MAX) return fail(`${X.u.name}'s stash would be full`);
-        }
-        const take = X => {
-            const out = X.a.inv.filter(x => X.s.items.includes(x.uid));
-            X.a.inv = X.a.inv.filter(x => !X.s.items.includes(x.uid));
-            return out;
-        };
-        const fromA = take(A), fromB = take(B);
-        A.a.inv.push(...fromB);
-        B.a.inv.push(...fromA);
-        A.a.scrap += B.s.scrap - A.s.scrap;
-        B.a.scrap += A.s.scrap - B.s.scrap;
-        if (A.s.coins) h.accounts.addCoins(ka, -A.s.coins);
-        if (B.s.coins) h.accounts.addCoins(kb, -B.s.coins);
-        if (A.s.coins) h.accounts.addCoins(kb, A.s.coins);
-        if (B.s.coins) h.accounts.addCoins(ka, B.s.coins);
-        for (const X of [A, B]) h.accounts.stat(X.key, st => { st.trades = (st.trades || 0) + 1; });
+        const items = s => s.refs.filter(r => r.k === 'item').map(() => ({ k: 'item' }));
+        if (!A.room(P.key, items(Q.s), items(P.s).length)) return fail(`${P.u.name}'s stash would be full`);
+        if (!A.room(Q.key, items(P.s), items(Q.s).length)) return fail(`${Q.u.name}'s stash would be full`);
+        const fromP = P.s.refs.map(r => A.take(P.key, r));
+        const fromQ = Q.s.refs.map(r => A.take(Q.key, r));
+        fromQ.forEach(x => A.give(P.key, x));
+        fromP.forEach(x => A.give(Q.key, x));
+        P.a.scrap += Q.s.scrap - P.s.scrap;
+        Q.a.scrap += P.s.scrap - Q.s.scrap;
+        if (P.s.coins) h.accounts.addCoins(ka, -P.s.coins);
+        if (Q.s.coins) h.accounts.addCoins(kb, -Q.s.coins);
+        if (P.s.coins) h.accounts.addCoins(kb, P.s.coins);
+        if (Q.s.coins) h.accounts.addCoins(ka, Q.s.coins);
+        for (const S of [P, Q]) h.accounts.stat(S.key, st => { st.trades = (st.trades || 0) + 1; });
         h.accounts.touch();
-        if (h.log) h.log(`${A.u.name} ↔ ${B.u.name}: ${fromA.length} items, ${A.s.scrap} scrap, ${A.s.coins} coins ↔ ${fromB.length} items, ${B.s.scrap} scrap, ${B.s.coins} coins`);
+        const lbl = list => list.map(A.label).join(', ') || '–';
+        if (h.log) h.log(`${P.u.name} ↔ ${Q.u.name}: ${lbl(fromP)} + ${P.s.scrap} scrap + ${P.s.coins} coins ↔ ${lbl(fromQ)} + ${Q.s.scrap} scrap + ${Q.s.coins} coins`);
         trades.delete(t.id);
-        for (const [X, got] of [[A, fromB], [B, fromA]]) {
-            h.clientsOf(X.key).forEach(c => {
-                h.send(c, { type: 'trDone', got: got.map(it => it.name), scrap: (X === A ? B : A).s.scrap, coins: (X === A ? B : A).s.coins });
+        for (const [S, got, O] of [[P, fromQ, Q], [Q, fromP, P]]) {
+            h.clientsOf(S.key).forEach(c => {
+                h.send(c, { type: 'trDone', got: got.map(A.label), scrap: O.s.scrap, coins: O.s.coins });
                 h.refresh(c);
-                h.hubRefresh(c);
             });
         }
     }
@@ -198,5 +200,7 @@ module.exports = function createTrade(h) {
         if (err) h.send(c, { type: 'trInfo', text: err, err: true });
     }
 
-    return { handle, gone };
+    // Laeuft ein Handel? (dann kein Einstellen ins Auktionshaus mit denselben Sachen noetig –
+    // execute prueft ohnehin nochmal)
+    return { handle, gone, busy: key => !!tradeOf(key) };
 };

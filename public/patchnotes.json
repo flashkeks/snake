@@ -1,5 +1,18 @@
 [
   {
+    "version": "5.2",
+    "date": "24.09.2026",
+    "items": [
+      "🏛️ New world: Market – next to Snake, Arena and Kekémon",
+      "Auction Hall: sell arena items, Kekémon cards and bought cosmetics – as Buy it now or as an auction (optional buy-out, 1–48 h). Bids are held right away and come back if you get outbid; a bid in the last minute extends the auction. 5 % fee for the seller",
+      "Lobby: walk around a plaza with fountain, lanterns and the Auction Hall – no fighting. Press F next to a player to trade, F at a stall to jump to Kekémon, Arena, Cosmetics or the Casino. Chat shows as speech bubbles",
+      "Trading moved from the arena to the market and now works with items, cards, cosmetics, scrap and coins. Requests pop up wherever you are",
+      "💖 New Waifu Booster: only female characters from anime and comics",
+      "Arena: drag an item out of the raid inventory to drop it on the ground (equipped gear too)",
+      "When the server updates, the page now reconnects by itself instead of sitting there dead"
+    ]
+  },
+  {
     "version": "5.1",
     "date": "23.09.2026",
     "items": [

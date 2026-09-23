@@ -34,6 +34,11 @@ Live: **`snake.flashkeks.com`** auf `edge` (Netcup).
 | `cards.js` | Kekémon (5.0): Karten aus Rohdaten rechnen (Typ, Seltenheit, Werte, Attacken — deterministisch aus der Id), Packs, Katalog fuer den Browser |
 | `tools/cards/build.js` | holt die Kartendaten (AniList, Superhero-API, TVMaze) nach `DATA_DIR/cards-raw.json`; `tools/cards/fixture.json` ist eine kleine Stichprobe fuer lokale Tests |
 | `public/kekemon.js`, `public/kekemon.css` | Kekémon im Browser: Karten-Look, Pack-Oeffnen, Album |
+| `assets.js` | Markt (5.2): handelbare Gueter (Arena-Item, Karte, Cosmetic) pruefen, nehmen, geben, anzeigen |
+| `market.js` | Auktionshaus: Sofortkauf/Auktion, Treuhand, Gebote, Abholfach, Ablauf; `DATA_DIR/market.json` |
+| `trade.js` | Direkter Handel zwischen zwei Spielern (vorher `arena-trade.js`), jetzt mit Karten und Cosmetics |
+| `lobby.js` | Markt-Lobby: Positionen annehmen (Tempo/Grenzen pruefen), zehnmal pro Sekunde verteilen |
+| `public/market.js`, `public/market.css` | Markt im Browser: Auction Hall, Lobby-Canvas, Handelsfenster, Einladungen |
 | `arena-items.js` | Arena-Items: Waffen, Ruestungsteile und Sets, Granaten, Grade, Mods, Erzeugung je Quelle, kalibrierte Seltenheit, Salvage-Wert, Migration |
 | `minigames.js` | Map-Events (#6): Labyrinth, Coin Rush, Last Snake Standing – Map-Bau, Schritte, Kollisionen, Punkte |
 | `tables.js` | Casino-Tische Blackjack (mit Sidebets) und Roulette: Runden, Einsaetze, Auszahlung; haengt auch Poker als dritten Tisch ein |
@@ -995,8 +1000,9 @@ Karten, also bleiben Sammlungen gueltig):
 - *Attacken*: eine 1-Energie-Attacke und eine grosse (2–3 Energie) mit
   Effekt (burn, stun, pierce, heal, drain, boost). Kampfregeln folgen in 5.1.
 
-**Packs und Chancen** (5.1a, `PACKS`, `ODDS`, `VARIANTS`): Anime Booster und
-Heroes & Series Booster je 10 000 Coins fuer 5 Karten (1 garantierter Platz
+**Packs und Chancen** (5.1a, `PACKS`, `ODDS`, `VARIANTS`): Anime Booster,
+Heroes & Series Booster und (5.2) Waifu Booster (nur `gender` weiblich aus
+AniList/Superhero-API, Anime + Helden) je 10 000 Coins fuer 5 Karten (1 garantierter Platz
 mind. Rare), Kek Mega Booster 50 000 fuer 8 (3 garantiert, bessere Chancen
 ueberall, Varianten doppelt so oft). Gewichte je Platz:
 
@@ -1043,6 +1049,48 @@ cachebar), nicht ueber den Socket (`maxPayload` 4 KB gilt nur eingehend, aber
 der Katalog muss nicht jedem Tick-Kanal zur Last fallen). Nachrichten:
 `kmState`, `kmBuy {pack}`, `kmSell {id, n}`, `kmSellDupes`. Coins laufen in
 der Statistik unter `earned.cards`.
+
+## 🏛️ Markt (5.2)
+
+Vierte Welt im Umschalter (🏛️ Market) und im Hauptmenue. Zwei Tabs.
+
+**Handelbare Gueter** (`assets.js`): Arena-Items aus dem Lager (nicht im
+Loadout), Kekémon-Karten (jede Variante einzeln, beliebig viele Exemplare —
+die „eins bleibt"-Regel gilt nur beim Verkauf an das Spiel), gekaufte
+Cosmetics (Gratis-Sachen nie; angelegt wird es beim Einstellen abgelegt).
+Scrap und Coins nur im direkten Handel.
+
+**Auction Hall** (`market.js`, `DATA_DIR/market.json`):
+- Einstellen als *Buy it now* (Festpreis) oder *Auktion* (Startgebot,
+  optional Sofortkauf-Preis), Laufzeit 1/6/12/24/48 h, hoechstens 20 Angebote
+  je Spieler.
+- **Treuhand:** Eingestelltes ist beim Verkaeufer sofort weg und liegt in
+  `market.json`. Gebote werden sofort abgebucht; ueberboten = Coins sofort
+  zurueck. Naechstes Gebot mind. +5 %. Gebot in der letzten Minute verlaengert
+  auf eine Minute (kein Sniping). Stornieren nur ohne Gebot.
+- Verkauf: Verkaeufer bekommt Preis minus **5 % Gebuehr** (Coin-Senke).
+- Ware kommt direkt ins Konto, auch offline. Nur wenn das Arena-Lager voll ist
+  (`INV_MAX`), wartet sie im **Abholfach** (📦 Collect).
+- Ablauf alle 5 s geprueft: Auktion mit Gebot → verkauft, sonst zurueck.
+- Aenderungen gehen gebremst (400 ms) an alle, die den Markt offen haben
+  (`c.mkWatch`). Journal: `market: …`.
+- `market.json` wird atomar geschrieben (tmp + rename), 0,5 s nach jeder
+  Aenderung und beim Beenden. Ist sie kaputt, startet der Server nicht (sonst
+  waeren verwahrte Sachen weg) → aus dem Backup holen.
+
+**Lobby** (`lobby.js`, `public/market.js`): Platz 2400 × 1500 mit Auction
+Hall (Tuer: F → Auktionshaus), Brunnen, vier Staenden (F → Kekémon, Arena,
+Cosmetic Shop, Casino), Baeumen, Laternen, Gluehwuermchen. Kein Kampf. Der
+Browser bewegt sich selbst (Hindernisse kennt nur er), der Server prueft
+Tempo und Grenzen und schickt alle Positionen alle 100 ms. Chat-Zeilen
+erscheinen als Sprechblasen. **F neben einem Spieler** schickt eine
+Handelsanfrage. Handy: tippen = hinlaufen, F-Knopf unten rechts.
+
+**Handel** (`trade.js`, vorher `arena-trade.js` im Arena-Hub): gleicher
+Ablauf (Anfrage, beide stellen zusammen, jede Aenderung nimmt Ready weg,
+Server prueft beim Tausch alles nochmal), jetzt mit Items, Karten, Cosmetics,
+Scrap, Coins. Einladungen und Handelsfenster haengen am Body, erscheinen also
+in jeder Welt. Der Trade-Tab im Arena-Hub ist weg.
 
 ## In game und Chat (5.0)
 
