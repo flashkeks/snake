@@ -183,29 +183,26 @@ const ITEMS = [
     { id: 'music_spooky', cat: 'music', name: 'Spooky', icon: '🦇', price: 18000, desc: 'Haunted field (only you hear it)', look: { mode: 'pad', bpm: 60, type: 'triangle', vol: .035, steps: 8, chords: [[294, 349, 440], [233, 294, 349], [196, 233, 294], [220, 277, 330]], bass: [73, 58, 49, 55], lp: 900 } },
     { id: 'music_happy', cat: 'music', name: 'Happy hop', icon: '🐰', price: 14000, desc: 'Bouncy and cheerful (only you hear it)', look: { mode: 'arp', bpm: 150, type: 'square', vol: .025, steps: 16, chords: [[262, 330, 392], [196, 247, 294], [220, 262, 330], [175, 220, 262]], bass: [131, 98, 110, 87] } },
     { id: 'music_lounge', cat: 'music', name: 'Casino lounge', icon: '🍸', price: 26000, desc: 'Smooth jazz chords (only you hear it)', look: { mode: 'pad', bpm: 90, type: 'sine', vol: .04, steps: 8, chords: [[262, 330, 392, 494], [220, 262, 330, 392], [294, 349, 440, 523], [196, 247, 294, 349]], bass: [65, 55, 73, 49], lp: 2200 } },
-    // Gratis fuer alle und ab Werk angelegt (Wunsch Max 23.09.2026): froehlicher Lo-fi-Jazz
-    // mit Swing, Septakkorden, Walking Bass und kleiner Melodie. Nie in der Rotation.
+    // Gratis fuer alle und ab Werk angelegt (Wunsch Max 23.09.2026). Erst Lo-fi-Jazz,
+    // dann auf Wunsch leiser und poppiger: I–V–vi–IV, Beat, pumpender Bass,
+    // Offbeat-Akkorde, Ohrwurm-Melodie. Nie in der Rotation.
     {
-        id: 'music_sunny', cat: 'music', name: 'Sunny jazz', icon: '☀️', price: 0, free: true, desc: 'Happy lo-fi jazz – everyone has it',
+        id: 'music_sunny', cat: 'music', name: 'Sunny pop', icon: '☀️', price: 0, free: true, desc: 'Happy upbeat pop – everyone has it',
         look: {
-            mode: 'jazz', bpm: 92, type: 'sine', vol: .035, steps: 8, lp: 1600, swing: .3,
-            // Cmaj7 – A7 – Dm7 – G7, zweimal, dann Fmaj7 – E7 – Dm7 – G7
-            chords: [[262, 330, 392, 494], [220, 277, 330, 392], [294, 349, 440, 523], [196, 247, 294, 349],
-                [262, 330, 392, 494], [220, 277, 330, 392], [294, 349, 440, 523], [196, 247, 294, 349],
-                [175, 220, 262, 330], [165, 208, 247, 294], [294, 349, 440, 523], [196, 247, 294, 349]],
+            mode: 'pop', bpm: 112, vol: .02, steps: 8,
+            // C – G – Am – F, zweimal
+            chords: [[262, 330, 392], [247, 294, 392], [262, 330, 440], [262, 349, 440],
+                [262, 330, 392], [247, 294, 392], [262, 330, 440], [262, 349, 440]],
+            bass: [131, 98, 110, 87, 131, 98, 110, 87],
             // Melodie in Achteln, 0 = Pause (eine Zeile je Takt)
-            mel: [659, 0, 784, 659, 587, 0, 523, 0,
-                554, 0, 659, 0, 880, 784, 659, 0,
-                698, 0, 659, 587, 523, 0, 440, 0,
-                494, 587, 0, 698, 659, 0, 587, 0,
-                784, 0, 880, 784, 659, 0, 523, 587,
-                659, 0, 0, 554, 587, 659, 0, 0,
-                880, 0, 784, 0, 698, 659, 587, 0,
-                587, 0, 494, 0, 392, 0, 0, 0,
-                880, 0, 784, 659, 523, 0, 440, 0,
-                831, 0, 740, 659, 587, 0, 494, 0,
-                523, 587, 659, 0, 698, 0, 659, 587,
-                523, 0, 494, 0, 523, 0, 0, 0]
+            mel: [659, 784, 659, 784, 880, 784, 659, 0,
+                587, 587, 0, 494, 587, 784, 0, 0,
+                523, 659, 880, 784, 659, 0, 523, 0,
+                523, 587, 659, 0, 698, 659, 587, 0,
+                659, 784, 1047, 0, 988, 880, 784, 0,
+                784, 880, 784, 587, 0, 494, 587, 0,
+                880, 784, 659, 523, 659, 0, 784, 0,
+                698, 659, 587, 523, 0, 0, 523, 0]
         }
     },
     { id: 'music_boss', cat: 'music', name: 'Boss fight', icon: '👹', price: 30000, desc: 'Final level energy (only you hear it)', look: { mode: 'arp', bpm: 170, type: 'square', vol: .025, steps: 16, chords: [[330, 392, 494], [262, 330, 392], [294, 370, 440], [247, 311, 370]], bass: [82, 65, 73, 62] } }

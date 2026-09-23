@@ -10733,11 +10733,12 @@ function drawCosmetics(now, sx, sy, cell) {
 
 let music = null;           // { id, next, step }
 
-function mTone(f, when, dur, type, vol, lp) {
+function mTone(f, when, dur, type, vol, lp, slideTo) {
     if (!sfxOk()) return;
     const o = audio.createOscillator();
     o.type = type;
-    o.frequency.value = f;
+    o.frequency.setValueAtTime(f, when);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, when + dur);
     const g = audio.createGain();
     g.gain.setValueAtTime(.0001, when);
     g.gain.exponentialRampToValueAtTime(vol, when + .01);
@@ -10770,21 +10771,22 @@ function musicTick() {
         const bar = Math.floor(music.step / m.steps) % m.chords.length;
         const ch = m.chords[bar];
         const i = music.step % m.steps;
-        if (m.mode === 'jazz') {
-            // Swing: jede zweite Achtel spaeter. Akkord weich (Rhodes-artig) auf 1 und
-            // synkopiert auf 4+, Walking Bass in Vierteln, Melodie aus der Liste
-            const t = music.next + (i % 2 ? stepDur * m.swing : 0);
-            if (i === 0) ch.forEach(f => mTone(f, t, stepDur * 3.2, m.type, m.vol, m.lp));
-            if (i === 7) ch.forEach(f => mTone(f, t, stepDur * 1.4, 'triangle', m.vol * .55, m.lp * .8));
-            if (i % 2 === 0) {
-                const next = m.chords[(bar + 1) % m.chords.length][0];
-                const walk = [ch[0], ch[1], ch[2], next * (next > ch[0] ? 1.06 : 0.94)][i >> 1] / 2;
-                mTone(walk, t, stepDur * 1.7, 'triangle', m.vol * 2.6, 600);
+        if (m.mode === 'pop') {
+            // Pop: Kick auf jedem Schlag, Snare auf 2 und 4, Hi-Hat auf den
+            // Offbeats, Bass pumpt in Achteln (Grundton/Oktave), kurze
+            // Akkord-Stabs auf den Offbeats, weiche Flaeche auf der 1, Lead-Melodie
+            const t = music.next, v = m.vol;
+            if (i % 2 === 0) mTone(130, t, .16, 'sine', v * 3.4, 0, 45);
+            if (i === 2 || i === 6) {
+                mTone(200, t, .11, 'triangle', v * 1.6, 0, 130);
+                mTone(2400, t, .07, 'square', v * .22, 5200);
             }
-            const mel = m.mel[(music.step % (m.steps * m.chords.length))];
-            if (mel) mTone(mel, t, stepDur * 1.3, 'triangle', m.vol * .9, 2400);
-            // leises Besen-Tick auf den Zaehlzeiten 2 und 4
-            if (i === 2 || i === 6) mTone(3100, t, .04, 'square', m.vol * .12, 5000);
+            if (i % 2 === 1) mTone(6800, t, .025, 'square', v * .1, 9000);
+            mTone(m.bass[bar] * (i % 2 ? 2 : 1), t, stepDur * .75, 'triangle', v * 2.4, 900);
+            if (i % 2 === 1) ch.forEach(f => mTone(f * 2, t, stepDur * .55, 'square', v * .3, 2200));
+            if (i === 0) ch.forEach(f => mTone(f, t, stepDur * 7.5, 'sine', v * .6, 1400));
+            const mel = m.mel[music.step % (m.steps * m.chords.length)];
+            if (mel) mTone(mel, t, stepDur * .9, 'square', v * .55, 3200);
         } else if (m.mode === 'arp') {
             mTone(ch[i % ch.length] * 2, music.next, stepDur * .9, m.type, m.vol, m.lp);
             if (i % 4 === 0) mTone(m.bass[bar], music.next, stepDur * 3.5, 'triangle', m.vol * 2.5);
