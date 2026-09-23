@@ -1017,8 +1017,9 @@ Stand 5.4 (Max: „16 % Legendary im Mega ist way zu hoch", „bei allen deutlic
 seltener"): Standard-Pack Legendary 1,6 %, Secret 1 in 556; Mega-Pack
 Legendary 7,8 %, Secret 1 in 100 — Mega ist damit so viel wert wie 5
 Standard-Packs zum selben Preis. Rueckfluss beim Verkauf ~54 % / ~31 %.
-Varianten je Karte: Pokeball 1 %, Masterball 0,1 %, Shiny 0,05 % (Mega ×2),
-auf der Karte als POKÉBALL / MASTERBALL / ✦ SHINY beschriftet.
+Varianten je Karte bleiben: Pokeball 2,5 %, Masterball 0,25 %, Shiny 0,1 %
+(Mega ×2) — Max: nur die Karten-Seltenheiten sollten runter. Auf der Karte
+als POKÉBALL / MASTERBALL / ✦ SHINY beschriftet.
 Der Shop rechnet die Tabelle „Drop chances" im Browser aus denselben Zahlen.
 
 Verkaufswert (`SELL`): Common 250, Uncommon 600, Rare 1800, Epic 7000,

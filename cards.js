@@ -210,8 +210,8 @@ const ODDS = {
 };
 // Varianten je Karte: Ball (Pokeball selten, Masterball sehr selten) und Shiny (extrem selten).
 // Im Mega-Pack doppelt so oft.
-// 5.4 (Max: "deutlich seltener bei allen"): vorher 2,5 % / 0,25 % / 0,1 %
-const VARIANTS = { poke: 0.01, master: 0.001, shiny: 0.0005 };
+// Varianten bleiben bei 2,5 % / 0,25 % / 0,1 % (Max, 5.4: gesenkt werden nur die Karten-Seltenheiten)
+const VARIANTS = { poke: 0.025, master: 0.0025, shiny: 0.001 };
 // Verkaufswert: Grundwert je Seltenheit, mal Ball und Shiny
 const SELL = { common: 250, uncommon: 600, rare: 1800, epic: 7000, legendary: 35000, secret: 250000 };
 const SELL_MUL = { p: 3, m: 20, s: 25 };

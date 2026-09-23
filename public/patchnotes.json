@@ -6,7 +6,6 @@
       "Fix: pack opening stuck after the pack pops, and cards not clickable under Market → Sell. Cause: after an update your browser kept old game files for up to 4 hours. Every update now forces fresh files",
       "Performance logging on the server to track down the reported lags",
       "🃏 Kekémon odds much lower on every pack: Legendary now ~1.6 % per standard pack (was 3.3 %), ~7.8 % per Mega (was 16 %), Secret Rare 1 in 556 / 1 in 100",
-      "Pokéball 1 % (was 2.5 %), Masterball 0.1 % (was 0.25 %), Shiny 0.05 % (was 0.1 %) per card",
       "Cards now carry clear POKÉBALL / MASTERBALL / ✦ SHINY labels",
       "Zombies and bosses no longer spawn inside walls (and get pushed out if they ever end up in one)",
       "Less network traffic: the snake field is only sent while you are in the Snake world"
