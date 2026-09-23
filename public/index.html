@@ -1295,29 +1295,141 @@ button:disabled {
     to { transform: scale(1.2) rotate(12deg); filter: brightness(1.6) drop-shadow(0 0 10px #ffd23f); }
 }
 
+.s2-cell:has(.s2-orb) {
+    background: rgba(255,255,255,.1);
+    z-index: 1;
+}
+
+/* Multiplikator als Edelstein: Strahlen dahinter, geschliffener Stein, Zahl.
+   Vier Stufen mit eigener Form und Farbe (s2Tier). */
 .s2-orb {
-    width: 88%;
-    height: 88%;
+    --o1: #7dffb0;
+    --o2: #18c26b;
+    --o3: #05532b;
+    --shape: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+    position: relative;
+    width: 92%;
+    height: 92%;
+    display: grid;
+    place-items: center;
+    filter: drop-shadow(0 0 calc(var(--c) * .1) var(--o1));
+    animation: s2bob 2s ease-in-out infinite;
+}
+
+.s2-orb > * {
+    grid-area: 1 / 1;
+}
+
+.s2-orb .rays {
+    width: 165%;
+    height: 165%;
     border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(var(--c) * .26);
+    background: repeating-conic-gradient(var(--o1) 0 5deg, transparent 5deg 22.5deg);
+    -webkit-mask: radial-gradient(circle, #000 18%, transparent 66%);
+    mask: radial-gradient(circle, #000 18%, transparent 66%);
+    opacity: .55;
+    animation: s2rays 9s linear infinite;
+}
+
+.s2-orb .gem {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    clip-path: var(--shape);
+    background:
+        radial-gradient(circle at 34% 24%, rgba(255,255,255,.95) 0 8%, rgba(255,255,255,0) 24%),
+        conic-gradient(from 22.5deg, var(--o1) 0 45deg, var(--o2) 0 90deg, var(--o3) 0 135deg, var(--o2) 0 180deg,
+            var(--o1) 0 225deg, var(--o2) 0 270deg, var(--o3) 0 315deg, var(--o2) 0);
+}
+
+/* Tafel-Facette in der Mitte */
+.s2-orb .gem::after {
+    content: '';
+    position: absolute;
+    inset: 20%;
+    clip-path: var(--shape);
+    background: linear-gradient(155deg, rgba(255,255,255,.6), rgba(255,255,255,.08) 55%, rgba(0,0,0,.15));
+}
+
+/* Glitzern ueber dem Stein */
+.s2-orb .gem::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.75) 48%, transparent 60%);
+    background-size: 250% 100%;
+    animation: s2glint 2.8s ease-in-out infinite;
+    z-index: 1;
+}
+
+.s2-orb span {
+    position: relative;
+    z-index: 2;
+    font-size: calc(var(--c) * .28);
     font-weight: 900;
+    font-style: italic;
+    letter-spacing: -.03em;
     color: #fff;
-    text-shadow: 0 0 6px #000;
-    background: radial-gradient(circle at 35% 30%, #fff, #c86bff 35%, #5b0f9e 80%);
-    box-shadow: 0 0 14px #c86bff;
-    animation: s2orbIdle 1.6s ease-in-out infinite;
+    -webkit-text-stroke: calc(var(--c) * .025) rgba(30, 0, 40, .85);
+    paint-order: stroke fill;
+    text-shadow: 0 0 8px var(--o1), 0 2px 3px rgba(0,0,0,.6);
 }
 
-.s2-orb.big {
-    background: radial-gradient(circle at 35% 30%, #fff, #ffd23f 35%, #b36b00 80%);
-    box-shadow: 0 0 20px #ffd23f;
+.s2-orb.t2 {
+    --o1: #9fe0ff;
+    --o2: #2f7bff;
+    --o3: #0a1f7a;
+    --shape: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%);
 }
 
-@keyframes s2orbIdle {
-    50% { transform: scale(1.06); box-shadow: 0 0 22px #e39bff; }
+.s2-orb.t3 {
+    --o1: #ffa6ec;
+    --o2: #c21fd6;
+    --o3: #4a0668;
+    --shape: polygon(22% 4%, 78% 4%, 100% 36%, 50% 100%, 0 36%);
+}
+
+.s2-orb.t3 .rays {
+    animation-duration: 5s;
+    opacity: .7;
+}
+
+.s2-orb.t4 {
+    --o1: #fff2a8;
+    --o2: #ffb800;
+    --o3: #8a3b00;
+    --shape: polygon(50% 0, 62% 33%, 98% 35%, 70% 57%, 80% 93%, 50% 72%, 20% 93%, 30% 57%, 2% 35%, 38% 33%);
+    animation: s2bob 1.2s ease-in-out infinite, s2hue 3s linear infinite;
+}
+
+.s2-orb.t4 .rays {
+    width: 190%;
+    height: 190%;
+    background: repeating-conic-gradient(#ff5bd6 0 6deg, transparent 6deg 15deg, #ffd23f 15deg 21deg, transparent 21deg 30deg, #56e8ff 30deg 36deg, transparent 36deg 45deg);
+    opacity: .9;
+    animation-duration: 3s;
+}
+
+.s2-orb.t4 span {
+    font-size: calc(var(--c) * .22);
+    margin-top: 12%;
+}
+
+@keyframes s2bob {
+    50% { transform: translateY(-4%) scale(1.04); }
+}
+
+@keyframes s2rays {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes s2glint {
+    0%, 55% { background-position: 150% 0; }
+    100% { background-position: -100% 0; }
+}
+
+@keyframes s2hue {
+    50% { filter: drop-shadow(0 0 calc(var(--c) * .16) #ff5bd6); }
 }
 
 /* Kugel schlaegt ein: Ring laeuft nach aussen */
@@ -1350,20 +1462,20 @@ button:disabled {
     to { transform: scale(1.25); filter: brightness(1.7); }
 }
 
-/* Die fliegende Kopie einer Kugel (liegt ueber allem) */
+/* Die fliegende Kopie eines Multis (liegt ueber allem) */
 .s2-fly {
     position: fixed;
     z-index: 50;
     pointer-events: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 900;
-    color: #fff;
-    text-shadow: 0 0 6px #000;
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, #fff, #c86bff 35%, #5b0f9e 80%);
-    box-shadow: 0 0 24px #e39bff, 0 0 60px rgba(200,107,255,.6);
+    display: grid;
+    place-items: center;
+}
+
+.s2-fly .s2-orb {
+    width: 100%;
+    height: 100%;
+    animation: none;
+    filter: drop-shadow(0 0 12px var(--o1)) drop-shadow(0 0 28px var(--o2));
 }
 
 /* Schwebende Zahl ueber dem Raster */
@@ -3840,12 +3952,30 @@ const S2_BETS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
 const s2Fmt = n => (Math.round(n * 100) / 100).toLocaleString('en-US');
 const s2Cols = () => $('s2-grid').querySelectorAll('.s2-col');
 
+// Skip: alles laeuft auf einer virtuellen Uhr, damit auch schon laufende
+// Pausen, Zaehler und Kugelfluege sofort schneller werden.
+let s2Idx = 0;          // Spin, der gerade laeuft (oder als naechstes kommt)
+let s2SkipAt = -1;      // dieser Spin soll schnell laufen
+const s2Anims = new Set();
+
 function s2Sleep(ms) {
-    return new Promise(r => setTimeout(r, ms / s2Speed));
+    return new Promise(res => {
+        let left = ms;
+        let last = performance.now();
+        const tick = () => {
+            const now = performance.now();
+            left -= (now - last) * s2Speed;
+            last = now;
+            if (left <= 0) res();
+            else setTimeout(tick, Math.min(40, left / s2Speed));
+        };
+        setTimeout(tick, Math.min(40, ms / s2Speed));
+    });
 }
 
 function s2SetSpeed(v) {
     s2Speed = v;
+    s2Anims.forEach(a => a.playbackRate = v);
     $('slots2').querySelector('.card').style.setProperty('--t', 1 / v);
 }
 
@@ -3909,11 +4039,14 @@ function s2HudMode(bonus) {
     $('s2-grid').classList.toggle('free', bonus);
 }
 
+const s2Tier = v => v <= 5 ? 't1' : v <= 15 ? 't2' : v <= 50 ? 't3' : 't4';
+const s2Orb = v => `<div class="s2-orb ${s2Tier(v)}"><i class="rays"></i><b class="gem"></b><span>×${v}</span></div>`;
+
 function s2Cell(sym, cls, delay) {
     const st = delay ? ` style="animation-delay:calc(${delay}ms * var(--t))"` : '';
     if (sym[0] === 'x') {
         const v = Number(sym.slice(1));
-        return `<div class="s2-cell ${cls}"${st}><div class="s2-orb ${v >= 25 ? 'big' : ''}">×${v}</div></div>`;
+        return `<div class="s2-cell ${cls}"${st}>${s2Orb(v)}</div>`;
     }
     if (sym === 'S') return `<div class="s2-cell scatter ${cls}"${st}>⭐</div>`;
     return `<div class="s2-cell ${cls}"${st}>${sym}</div>`;
@@ -3961,11 +4094,13 @@ function s2Float(text, txt) {
 // Count a number up with coin ticks
 function s2Count(el, from, to, ms, ticks) {
     return new Promise(res => {
-        const t0 = performance.now();
-        const dur = Math.max(1, ms / s2Speed);
+        let t = 0;
+        let prev = performance.now();
         let last = 0;
         const step = now => {
-            const k = Math.min(1, (now - t0) / dur);
+            t += (now - prev) * s2Speed;
+            prev = now;
+            const k = Math.min(1, t / Math.max(1, ms));
             el.textContent = s2Fmt(from + (to - from) * (1 - Math.pow(1 - k, 3)));
             if (ticks && now - last > 65 && k < 1) {
                 last = now;
@@ -4048,17 +4183,17 @@ async function s2FlyOrbs(sp) {
         const cell = cols[o.c].children[o.r];
         const from = cell.getBoundingClientRect();
         const to = target.getBoundingClientRect();
-        const size = from.width * .88;
+        const size = from.width * .92;
         const fly = document.createElement('div');
         fly.className = 's2-fly';
-        fly.textContent = '×' + o.v;
+        fly.innerHTML = s2Orb(o.v);
         Object.assign(fly.style, {
             left: from.left + (from.width - size) / 2 + 'px',
             top: from.top + (from.height - size) / 2 + 'px',
             width: size + 'px',
-            height: size + 'px',
-            fontSize: size * .3 + 'px'
+            height: size + 'px'
         });
+        fly.style.setProperty('--c', from.width + 'px');
         document.body.appendChild(fly);
         cell.firstElementChild.style.opacity = '.2';
         const dx = to.left + to.width / 2 - (from.left + from.width / 2);
@@ -4068,8 +4203,11 @@ async function s2FlyOrbs(sp) {
             { transform: 'translate(0, 0) scale(1)' },
             { transform: `translate(${dx * .35}px, ${dy * .35 - 50}px) scale(1.35)`, offset: .4 },
             { transform: `translate(${dx}px, ${dy}px) scale(.45)`, opacity: .85 }
-        ], { duration: 750 / s2Speed, easing: 'cubic-bezier(.5,0,.8,.6)', fill: 'forwards' });
+        ], { duration: 750, easing: 'cubic-bezier(.5,0,.8,.6)', fill: 'forwards' });
+        anim.playbackRate = s2Speed;
+        s2Anims.add(anim);
         flights.push(anim.finished.then(() => {
+            s2Anims.delete(anim);
             fly.remove();
             m += o.v;
             target.textContent = '×' + m;
@@ -4137,6 +4275,8 @@ async function s2PlaySpin(sp, bet) {
 
 async function s2Run(d) {
     s2Busy = true;
+    s2Idx = 0;
+    s2SkipAt = -1;
     s2SetSpeed(1);
     $('s2-spin').textContent = '⏩ Skip';
     $('s2-spin').disabled = false;
@@ -4162,9 +4302,12 @@ async function s2Run(d) {
     };
     if (d.buy) await startBonus('Bonus bought');
 
-    for (const sp of d.spins) {
-        // Skip gilt nur fuer den laufenden Spin
-        s2SetSpeed(1);
+    for (let i = 0; i < d.spins.length; i++) {
+        const sp = d.spins[i];
+        // Skip gilt nur fuer diesen einen Spin. Wer in der Pause davor
+        // geklickt hat, meinte schon diesen.
+        s2Idx = i;
+        s2SetSpeed(s2SkipAt === i ? 5 : 1);
         if (sp.free) {
             // Counter shows the spins left after this one, before a retrigger adds more
             const left = sp.freeLeft - (sp.retrig ? RT : 0);
@@ -4179,7 +4322,9 @@ async function s2Run(d) {
         }
 
         const win = await s2PlaySpin(sp, d.bet);
-        s2SetSpeed(1);  // Ansagen danach wieder in normalem Tempo
+        // Ansagen und Pause danach gehoeren schon zum naechsten Spin
+        s2Idx = i + 1;
+        s2SetSpeed(s2SkipAt === i + 1 ? 5 : 1);
 
         if (sp.free && win > 0) {
             await s2Count($('s2-total'), total, total + win, 800, true);
@@ -4252,6 +4397,7 @@ function s2Start(buy) {
 
 $('s2-spin').onclick = () => {
     if (s2Busy) {
+        s2SkipAt = s2Idx;
         s2SetSpeed(5);
         return;
     }

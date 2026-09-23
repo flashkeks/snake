@@ -9,41 +9,43 @@
 // multipliziert. In den Freispielen sammeln sie sich zu einem Gesamt-
 // multiplikator, der fuer den Rest des Bonus gilt.
 //
-// 4+ Scatter (⭐) irgendwo loesen 15 Freispiele aus, 3+ im Bonus geben +5.
+// 4+ Scatter (⭐) irgendwo loesen 10 Freispiele aus, 3+ im Bonus geben +5.
 // Der Server wuerfelt alles, der Browser spielt die Schritte nur ab.
 // Rueckzahlung nachrechnen: node slots2.js
 
 const COLS = 6;
 const ROWS = 5;
-const MAX_WIN = 5000;       // hoechstens das 5000-fache des Einsatzes je Spin (inkl. Bonus)
-const FREE_SPINS = 15;
+const MAX_WIN = 100000;     // hoechstens das 100.000-fache des Einsatzes je Spin (inkl. Bonus)
+const FREE_SPINS = 10;
 const RETRIGGER = 5;
 
 // Auszahlung (× Einsatz) fuer 8–9, 10–11, 12+ gleiche Symbole
 const PAYS = {
-    '👑': [6.6, 16.5, 33.0],
-    '💎': [1.65, 6.6, 16.5],
-    '🌙': [1.32, 3.3, 9.9],
-    '🍪': [0.99, 1.32, 7.92],
-    '🧁': [0.66, 0.99, 6.6],
-    '🍩': [0.53, 0.79, 5.28],
-    '🍭': [0.33, 0.66, 3.3],
-    '🍬': [0.26, 0.59, 2.64]
+    '👑': [6.93, 17.32, 34.65],
+    '💎': [1.73, 6.93, 17.32],
+    '🌙': [1.39, 3.46, 10.4],
+    '🍪': [1.04, 1.39, 8.32],
+    '🧁': [0.69, 1.04, 6.93],
+    '🍩': [0.56, 0.83, 5.54],
+    '🍭': [0.35, 0.69, 3.46],
+    '🍬': [0.27, 0.62, 2.77]
 };
 const SCATTER = 'S';
 const SCATTER_PAYS = { 4: 3, 5: 5, 6: 100 };
 
-// Symbol-Gewichte je Modus (wie getrennte Walzensaetze): im Basisspiel mehr
-// kleine Suessigkeiten, also oefter kleine Tumble-Gewinne; Kugeln sind dort
-// selten (~6 % der Spins zeigen eine, bei ~1,5 % wirkt sie). Im Bonus kommen
-// sie staendig. Abgestimmt per Simulation (23.09.2026, je 400.000 Spins):
-// Basis 62,5 % + Bonus 32,5 % (jeder ~276. Spin, Ø ~90x) = ~95 % Rueckzahlung,
-// Treffer bei ~47 % der Spins. Kauf fuer 94x zahlt ~95 %.
+// Symbol-Gewichte je Modus (wie getrennte Walzensaetze): in beiden Modi viele
+// kleine Suessigkeiten, also oft kleine Tumble-Gewinne. Kugeln sind im
+// Basisspiel selten (~5 % der Spins zeigen eine), im Bonus kommen sie staendig.
+// Abgestimmt per Simulation (24.09.2026, je 1,6 Mio Basis-Spins und 100.000
+// gekaufte Boni): Basis ~65,8 % + Bonus ~33,7 % (jeder ~280. Spin, Ø ~95x)
+// = ~99,5 % Rueckzahlung. Der Scatter ist extrem empfindlich: 1,72 gibt
+// 99,2 %, 1,735 schon ~100,5 %. Unter ~1 Mio Spins schwankt die Quote um
+// +-1 Prozentpunkt.
 const WEIGHTS = {
     base: { '👑': 8, '💎': 9, '🌙': 9, '🍪': 10, '🧁': 10, '🍩': 14, '🍭': 18, '🍬': 21 },
-    free: { '👑': 8, '💎': 9, '🌙': 9, '🍪': 10, '🧁': 10, '🍩': 11, '🍭': 11, '🍬': 12 }
+    free: { '👑': 8, '💎': 9, '🌙': 9, '🍪': 10, '🧁': 10, '🍩': 13, '🍭': 16, '🍬': 19 }
 };
-const SCATTER_W = { base: 1.72, free: 1.3 };
+const SCATTER_W = { base: 1.725, free: 1.3 };
 const ORB_W = { base: 0.15, free: 6 };
 
 // Kugelwerte und wie oft sie kommen
@@ -52,9 +54,9 @@ const ORBS = [
     [15, 25], [20, 18], [25, 12], [50, 6], [100, 3], [250, 1], [500, 0.4]
 ];
 
-// Bonus kaufen: so viel mal der Einsatz. Ein Bonus bringt im Mittel ~90x,
-// bei 94x Preis sind das ~95 % wie im Basisspiel.
-const BUY_COST = 94;
+// Bonus kaufen: so viel mal der Einsatz. Ein Bonus bringt im Mittel ~95x,
+// bei 96x Preis sind das ~99 %.
+const BUY_COST = 96;
 
 function pick(list) {
     let r = Math.random() * list.reduce((s, [, w]) => s + w, 0);

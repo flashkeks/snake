@@ -15,7 +15,7 @@ Live: **`snake.flashkeks.com`** auf `edge` (Netcup).
 | `server.js` | HTTP + WebSocket, Spiel-Tick, Items, Duelle, Cashout |
 | `accounts.js` | Konten, Sessions, Coins, Statistik (JSON-Datei im Datenordner) |
 | `slots.js` | Slot-Automat „Slots“ (frueher „Kek Slots“); `node slots.js` rechnet die Rueckzahlungsquote aus |
-| `slots2.js` | Tumble-Slot „Budget Starlight“ (frueher „Sweet Kek“, intern weiter `s2`/`spin2`); `node slots2.js 150000` simuliert Rueckzahlung, Bonus-Quote, Bonus-Kauf |
+| `slots2.js` | Tumble-Slot „Budget Starlight“ (frueher „Sweet Kek“, intern weiter `s2`/`spin2`); `node slots2.js N` simuliert grob Rueckzahlung, Bonus-Quote, Bonus-Kauf (zum Abstimmen siehe unten) |
 | `events.js` | Mini-Events (Flag Quiz, Roulette, Blackjack): Ablauf, Einsaetze, Auszahlung |
 | `flags.js` | Laender fuer das Flag Quiz (ISO-Code + englischer Name) |
 | `public/index.html` | der ganze Browser-Teil in einer Datei |
@@ -183,45 +183,60 @@ Princess / Gates of Olympus:
 - **6 × 5 Raster, gezahlt wird ueberall:** 8 oder mehr gleiche Symbole
   irgendwo zaehlen. Gewinnsymbole platzen, der Rest faellt nach, oben kommt
   Neues (Tumble), bis nichts mehr gewinnt.
-- **🔮 Multiplikator-Kugeln** ×2 bis ×500 bleiben liegen. Endet die
+- **💎 Multiplikatoren** ×2 bis ×500 (Edelsteine mit Strahlen in vier
+  Stufen: gruenes Sechseck ×2–5, blaues Achteck ×6–15, pinker Kristall
+  ×20–50, goldener Stern mit Regenbogen ×100–500) bleiben liegen. Endet die
   Tumble-Folge mit Gewinn, fliegen die Kugeln einzeln in die
   MULTIPLIER-Anzeige, werden addiert und dann mit dem Gewinn multipliziert.
   Im Basisspiel sind sie selten (~5 % der Spins zeigen eine) und kommen mit
   Blitz, Wackeln und Donner.
-- **⭐ Scatter:** 4+ irgendwo = 15 Freispiele (dazu ×3/×5/×100 fuer 4/5/6).
+- **⭐ Scatter:** 4+ irgendwo = 10 Freispiele (dazu ×3/×5/×100 fuer 4/5/6).
   Im Bonus gibt es viel mehr Kugeln, und sie sammeln sich zu einem
   Gesamtmultiplikator fuer den Rest des Bonus (zwei ×3 in Freispiel 1 =
   ×6 fuer jeden weiteren Gewinn). Kugeln zaehlen nur in einem Spin mit
   Gewinn. **Retrigger:** 3+ Scatter im Bonus = +5 Freispiele.
 - **Anzeige:** im Basisspiel BET / MULTIPLIER / WIN, im Bonus FREE SPINS
   (verbleibend) / MULTIPLIER / SPIN WIN / BONUS WIN.
-- **Bonus kaufen** fuer 94 × Einsatz.
-- Hoechstens 5000 × Einsatz je Spin (Bonus eingerechnet).
+- **Bonus kaufen** fuer 96 × Einsatz.
+- Hoechstens **100.000 ×** Einsatz je Spin (Bonus eingerechnet) — rein
+  rechnerisch moeglich, in Millionen Simulationen nie erreicht (hoechster
+  Treffer ~10.000 ×).
 
 | Symbol | 8–9 | 10–11 | 12+ |
 |---|---|---|---|
-| 👑 | 6,6 | 16,5 | 33 |
-| 💎 | 1,65 | 6,6 | 16,5 |
-| 🌙 | 1,32 | 3,3 | 9,9 |
-| 🍪 | 0,99 | 1,32 | 7,92 |
-| 🧁 | 0,66 | 0,99 | 6,6 |
-| 🍩 | 0,53 | 0,79 | 5,28 |
-| 🍭 | 0,33 | 0,66 | 3,3 |
-| 🍬 | 0,26 | 0,59 | 2,64 |
+| 👑 | 6,93 | 17,32 | 34,65 |
+| 💎 | 1,73 | 6,93 | 17,32 |
+| 🌙 | 1,39 | 3,46 | 10,4 |
+| 🍪 | 1,04 | 1,39 | 8,32 |
+| 🧁 | 0,69 | 1,04 | 6,93 |
+| 🍩 | 0,56 | 0,83 | 5,54 |
+| 🍭 | 0,35 | 0,69 | 3,46 |
+| 🍬 | 0,27 | 0,62 | 2,77 |
 
 Basisspiel und Freispiele haben **eigene Symbol-Gewichte** (wie getrennte
-Walzensaetze): im Basisspiel mehr kleine Suessigkeiten und seltene Kugeln.
-Abgestimmt per Simulation (je 400.000 Spins, 23.09.2026): **~95 %**
-Rueckzahlung (Basis ~63 %, Freispiele ~32 %), Treffer bei ~47 % der Spins,
-Freispiele etwa jeder 280. Spin, gekaufter Bonus im Mittel ~90 × Einsatz.
-Wer an Gewichten, Kugeln oder Tabelle dreht, laesst `node slots2.js 400000`
-laufen, bevor er deployt — der Bonus hat einen langen Schwanz, unter
-~300.000 Spins schwankt die Quote um mehrere Prozentpunkte.
+Walzensaetze), beide mit vielen kleinen Suessigkeiten; Multis sind im
+Basisspiel selten, im Bonus staendig. Abgestimmt per Simulation (24.09.2026,
+je 1,6 Mio Basis-Spins und 100.000 gekaufte Boni): **~99,5 %** Rueckzahlung
+(Basis ~65,8 %, Freispiele ~33,7 %), Treffer bei ~47 % der Spins, Freispiele
+etwa jeder 280. Spin, gekaufter Bonus im Mittel ~95 × Einsatz (Kauf zahlt
+~99 %).
+
+Beim Nachrechnen Basis und Bonus **getrennt** simulieren (Basis-Mittel und
+Bonus-Quote aus >= 1 Mio Spins, Bonus-Wert aus >= 100.000 Kaeufen) und
+zusammensetzen: RTP = Basis + Quote × Bonus-Wert. Ein gemeinsamer Lauf mit
+`node slots2.js` schwankt wegen des langen Bonus-Schwanzes um mehrere
+Prozentpunkte. Der Scatter ist extrem empfindlich: 1,72 statt 1,725 kostet
+~0,3 Punkte, 1,735 gibt schon ~100,5 %. Mehr Multis im Bonus machen ihn
+uebrigens *schlechter*, weil sie Symbole verdraengen.
 
 Der Server wuerfelt den ganzen Spin samt Freispielen auf einmal und schickt
 alle Zwischenraster, je Spin dazu `tw` (Tumble-Gewinn ohne Multi), `orbSum`,
 `multBefore`/`mult` und `scatterWin`; der Browser spielt nur ab. Waehrend der
-Animation wird SPIN zu ⏩ Skip (5× so schnell, nur fuer den laufenden Spin — der naechste Freispiel und alle Ansagen laufen wieder normal).
+Animation wird SPIN zu ⏩ Skip: 5× so schnell, nur fuer den laufenden
+Spin; ein Klick in der Pause zwischen zwei Freispielen gilt fuer den
+naechsten. Alle Wartezeiten, Zaehler und Fluege laufen auf einer virtuellen
+Uhr (`s2Sleep`, `s2Count`, `s2Anims`), damit auch schon laufende sofort
+schneller werden.
 Der Gewinn wird sofort gutgeschrieben, erscheint aber erst in der
 Bestenliste (und als Gold-Zeile im Feed), wenn der Browser `spin2Done`
 schickt, also nach der Animation. Sonst sieht man direkt nach dem Bonus-Kauf
