@@ -371,6 +371,10 @@ let lastTop = '';
 // damit das Leaderboard (#8) keinen Ausgang vorab verraet.
 const pendingWins = new Map();  // Konto -> { amount, feed, timer, onReveal }
 
+// Leaderboard (#8): Kategorien und Spiele mit sinnvollem Multi
+const BOARD_CATS = ['score', 'coins', 'kills', 'bigwin', 'bestx', 'casino', 'events', 'arena'];
+const BOARD_X_GAMES = ['starlight', 'slots', 'plinko', 'crossy', 'roulette', 'blackjack', 'poker'];
+
 function hideWin(key, amount, feedLine, ms, onReveal) {
     revealWin(key);
     const timer = setTimeout(() => revealWin(key), ms);
@@ -994,6 +998,19 @@ async function handle(c, data) {
             const u = c.account ? accounts.get(c.account) : null;
             const err = shooter.join(c, name, cleanColor(data.color) || (u && u.color) || null);
             if (err) send(c, { type: 'shError', error: err });
+            return;
+        }
+
+        // Leaderboard (#8): eine Liste nach Kategorie, Spiel und Zeitraum
+        case 'board': {
+            const cat = String(data.cat);
+            const period = String(data.period);
+            const game = String(data.game || '');
+            if (!BOARD_CATS.includes(cat) || !['day', 'week', 'all'].includes(period)) return;
+            if (cat === 'bestx' && !BOARD_X_GAMES.includes(game)) return;
+            if (!allow('board:' + c.id, 30, 60e3)) return;
+            const list = accounts.board(cat, game, cat === 'coins' ? 'all' : period, key => pendingWins.has(key) ? pendingWins.get(key).amount : 0);
+            send(c, { type: 'board', cat, game, period, list });
             return;
         }
 

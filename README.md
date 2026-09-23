@@ -597,7 +597,17 @@ aendern, und Antworten, die man belegen kann.
   rechts Rangliste, Bestenliste, Chat. Seit 23.09.2026 groesser: Feld bis
   1000 px (Canvas intern 1000 × 1000), Seitenleisten 320/340 px, groessere
   Schrift. Unter 1320 px Breite untereinander.
-- **Bestenliste** (nur Konten): bester Score, meiste Coins, meiste Kills.
+- **Bestenliste** (nur Konten, dynamisch seit 23.09.2026, Issue #8):
+  Auswahl **Kategorie** (⭐ Score, 🪙 Coins, 🗡️ Kills, 💰 Biggest win,
+  ✖️ Biggest × je Spiel, 🎰 Casino net, 🎪 Event wins, 🔫 Arena kills),
+  bei Biggest × das **Spiel** (Starlight, Slots, Plinko, Crossy, Roulette,
+  Blackjack, Poker) und der **Zeitraum** Today / Week / All time (Coins nur
+  All time). Die Auswahl merkt sich der Browser (`localStorage`).
+  Score/Coins/Kills „All time“ kommen wie bisher per Broadcast
+  (`highscores`); alles andere holt der Browser gezielt (`board {cat, game,
+  period}`, hoechstens 30/min je Verbindung) und frischt es alle 10 s auf.
+  Werte aus `stats` bzw. `stats.periods` (#5); versteckte Gewinne tauchen
+  erst nach der Animation auf, weil sie erst dann verbucht werden.
 - **Chat:** 200 Zeichen, eine Nachricht je 600 ms, die letzten 50 bekommt
   jeder beim Verbinden. Gaeste erst, wenn sie im Spiel sind.
 - **Tod:** Die Kamera bleibt 2,7 s am Todesort stehen, 💀 mit Ring, roter
@@ -712,7 +722,7 @@ Client → Server: `register`, `login`, `resume {token}`, `logout`,
 `tableAction` (`bet`/`clear` beim Roulette, `bet`/`pp`/`t3`/`clear`/`move`
 beim Blackjack, `sit {seat?}`/`stand`/`move` (`fold`, `check`,
 `call`, `raise {to}`, `allin`) beim Poker), `pokerCreate {buyIn, seats, name}`, `daily`, `dailyDone`, `crossStart {bet, diff}`, `crossStep`,
-`crossCash`, `plinko {bet, risk}`, `shJoin {name}`, `shInput {mx, my, a, f}`,
+`crossCash`, `plinko {bet, risk}`, `board {cat, game, period}`, `me`, `shJoin {name}`, `shInput {mx, my, a, f}`,
 `shLeave`, `tickets`, `ticketNew {subject, text}`, `ticketReply {id, text}`,
 `ticketRead {id}`.
 
@@ -720,7 +730,7 @@ Server → Client: `welcome`, `mg` (Schritt im Map-Event), `sh`, `shJoined`
 (mit Map), `shLeft` (Bilanz), `shKill`, `shError`, `auth`, `authError`, `authExpired`, `account`,
 `joined`, `joinError`, `left`, `died` (`cause`, `by`, `byId`, `at`), `swapfx`, `cashedout`, `cashoutCancel`, `state`
 (alle 60 ms, mit `arena` und `paused`), `duel`, `gamble`, `box`, `jackpot`,
-`feed` (mit `who` und `big` fuer den Sound), `chat`, `chatlog`, `highscores`,
+`feed` (mit `who` und `big` fuer den Sound), `chat`, `chatlog`, `highscores`, `board`,
 `spin`, `spinError`, `spin2`, `spin2Error`, `event`, `eventEnd`, `eventError`, `resume`,
 `table` (Tisch-Zustand, nur an die am Tisch, mit `you`), `tableLeft`,
 `tableError`, `lobby`, `daily`, `dailyError`, `cross` (`state`: run, dead,

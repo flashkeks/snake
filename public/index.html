@@ -390,6 +390,32 @@ button:disabled {
     color: #fff;
 }
 
+.tabs button:disabled {
+    opacity: .35;
+}
+
+.hall-ctl {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.hall-ctl select {
+    flex: 1;
+    min-width: 0;
+    height: 32px;
+    background: #0b120e;
+    color: #fff;
+    border: 1px solid rgba(0,255,140,.3);
+    border-radius: 8px;
+    font-size: 13px;
+    padding: 0 4px;
+}
+
+.hall-ctl select[hidden] {
+    display: none;
+}
+
 .whoami {
     display: flex;
     align-items: center;
@@ -4090,10 +4116,31 @@ body.touch input, body.touch textarea {
         </div>
         <div class="panel">
             <h2>🏆 Leaderboard</h2>
+            <div class="hall-ctl">
+                <select id="hall-cat" title="Category">
+                    <option value="score">⭐ Score</option>
+                    <option value="coins">🪙 Coins</option>
+                    <option value="kills">🗡️ Kills</option>
+                    <option value="bigwin">💰 Biggest win</option>
+                    <option value="bestx">✖️ Biggest ×</option>
+                    <option value="casino">🎰 Casino net</option>
+                    <option value="events">🎪 Event wins</option>
+                    <option value="arena">🔫 Arena kills</option>
+                </select>
+                <select id="hall-game" title="Game" hidden>
+                    <option value="starlight">🌟 Starlight</option>
+                    <option value="slots">🎰 Slots</option>
+                    <option value="plinko">🔻 Plinko</option>
+                    <option value="crossy">🐔 Crossy</option>
+                    <option value="roulette">🎡 Roulette</option>
+                    <option value="blackjack">🃏 Blackjack</option>
+                    <option value="poker">♠️ Poker</option>
+                </select>
+            </div>
             <div class="tabs" id="hall-tabs" style="margin-bottom:8px">
-                <button type="button" data-hall="score" class="on">Score</button>
-                <button type="button" data-hall="coins">Coins</button>
-                <button type="button" data-hall="kills">Kills</button>
+                <button type="button" data-period="day">Today</button>
+                <button type="button" data-period="week">Week</button>
+                <button type="button" data-period="all" class="on">All time</button>
             </div>
             <table id="hall"></table>
         </div>
@@ -4213,7 +4260,8 @@ ws.onmessage = event => {
         case 'gamble': queueReel(gambleReel(data)); break;
         case 'box': playBox(data); break;
         case 'feed': addFeed(data); break;
-        case 'highscores': hall = data.top; drawHall(); break;
+        case 'highscores': hall = data.top; if (hallBroadcast()) drawHall(); break;
+        case 'board': onBoard(data); break;
         case 'chatlog': data.list.forEach(addChat); break;
         case 'chat': addChat(data); break;
         case 'jackpot': showJackpot(data); break;
@@ -8097,23 +8145,74 @@ function updatePanels() {
     }
 }
 
+// Leaderboard (#8): Kategorie, Spiel (bei Biggest ×) und Zeitraum.
+// Score/Coins/Kills "All time" kommen per Broadcast (highscores), alles
+// andere holt der Browser gezielt (board) und frischt es alle 10 s auf.
 let hall = { score: [], coins: [], kills: [] };
-let hallTab = 'score';
+let hallSel = { cat: 'score', game: 'starlight', period: 'all' };
+let hallList = null;    // Antwort auf die letzte gezielte Anfrage
+try {
+    const saved = JSON.parse(localStorage.getItem('hallSel') || 'null');
+    if (saved && saved.cat) hallSel = { ...hallSel, ...saved };
+} catch (e) {}
 
-document.querySelectorAll('#hall-tabs button').forEach(b => b.onclick = () => {
-    hallTab = b.dataset.hall;
-    document.querySelectorAll('#hall-tabs button').forEach(x => x.classList.toggle('on', x === b));
+function hallBroadcast() {
+    return hallSel.period === 'all' && ['score', 'coins', 'kills'].includes(hallSel.cat);
+}
+
+function hallRequest() {
+    if (hallBroadcast()) return drawHall();
+    wsSend({ type: 'board', cat: hallSel.cat, game: hallSel.game, period: hallSel.cat === 'coins' ? 'all' : hallSel.period });
+}
+
+function hallChanged() {
+    // Coins gibt es nur als "All time"
+    if (hallSel.cat === 'coins') hallSel.period = 'all';
+    $('hall-cat').value = hallSel.cat;
+    $('hall-game').value = hallSel.game;
+    $('hall-game').hidden = hallSel.cat !== 'bestx';
+    document.querySelectorAll('#hall-tabs button').forEach(x => {
+        x.classList.toggle('on', x.dataset.period === hallSel.period);
+        x.disabled = hallSel.cat === 'coins' && x.dataset.period !== 'all';
+    });
+    try { localStorage.setItem('hallSel', JSON.stringify(hallSel)); } catch (e) {}
+    hallList = null;
     drawHall();
+    hallRequest();
+}
+
+$('hall-cat').onchange = e => { hallSel.cat = e.target.value; hallChanged(); };
+$('hall-game').onchange = e => { hallSel.game = e.target.value; hallChanged(); };
+document.querySelectorAll('#hall-tabs button').forEach(b => b.onclick = () => {
+    if (b.disabled) return;
+    hallSel.period = b.dataset.period;
+    hallChanged();
 });
+setInterval(() => { if (!hallBroadcast() && ws.readyState === WebSocket.OPEN) hallRequest(); }, 10000);
+
+function onBoard(d) {
+    if (d.cat !== hallSel.cat || (d.cat === 'bestx' && d.game !== hallSel.game)) return;
+    if (d.cat !== 'coins' && d.period !== hallSel.period) return;
+    hallList = d.list;
+    drawHall();
+}
 
 function drawHall() {
     const medals = ['🥇', '🥈', '🥉'];
-    const icon = { score: '⭐', coins: '🪙', kills: '🗡️' }[hallTab];
-    $('hall').innerHTML = (hall[hallTab] || []).map((s, i) =>
+    const cat = hallSel.cat;
+    const icon = { score: '⭐', coins: '🪙', kills: '🗡️', bigwin: '🪙', bestx: '×', casino: '🪙', events: '🎪', arena: '🔫' }[cat];
+    const list = hallBroadcast() ? hall[cat] || [] : hallList;
+    if (!list) {
+        $('hall').innerHTML = '<tr><td style="opacity:.5">Loading…</td></tr>';
+        return;
+    }
+    const fmt = v => cat === 'bestx' ? `×${v}` : `${icon} ${cat === 'casino' && v > 0 ? '+' : ''}${Number(v).toLocaleString('en-US')}`;
+    $('hall').innerHTML = list.map((s, i) =>
         `<tr><td class="name">${medals[i] || (i + 1) + '.'} ${esc(s.name)}</td>` +
-        `<td class="num">${icon} ${s.value}</td></tr>`
+        `<td class="num">${fmt(s.value)}</td></tr>`
     ).join('') || '<tr><td style="opacity:.5">Nothing yet</td></tr>';
 }
+hallChanged();
 
 // ---------- Killfeed ----------
 

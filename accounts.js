@@ -359,6 +359,41 @@ module.exports = function createAccounts(dataDir) {
         // Bestenlisten: nur echte Konten
         // hidden(key): Coins, die noch nicht in der Liste stehen sollen
         // (Gewinn, dessen Animation im Browser noch laeuft)
+        // Dynamisches Leaderboard (#8): cat = Kategorie, game = Spiel (nur bei
+        // bestx), period = day | week | all. Coins gibt es nur fuer "all".
+        // hidden(key) = Coins, die gerade versteckt sind (Animation laeuft).
+        board(cat, game, period, hidden) {
+            const day = berlinDay();
+            const ids = { day, week: weekId(day) };
+            const casinoNet = s => Object.entries(s.games || {}).filter(([k]) => !NOT_CASINO.has(k))
+                .reduce((sum, [, g]) => sum + g.won - g.wagered, 0);
+            const value = (u, key) => {
+                const s = u.stats || {};
+                if (cat === 'coins') return u.coins - (hidden ? hidden(key) : 0);
+                if (period !== 'all') {
+                    const p = (s.periods || {})[period];
+                    if (!p || p.id !== ids[period]) return 0;
+                    return {
+                        score: p.bestScore, kills: p.kills, bigwin: p.bestWin, bestx: (p.bestX || {})[game] || 0,
+                        casino: p.casinoNet, events: p.eventWins, arena: p.arenaKills
+                    }[cat] || 0;
+                }
+                const games = s.games || {};
+                return {
+                    score: s.bestScore, kills: s.kills,
+                    bigwin: Math.max(s.biggestWin || 0, ...Object.values(games).map(g => g.bestWin || 0)),
+                    bestx: (games[game] || {}).bestX,
+                    casino: casinoNet(s), events: s.eventWins, arena: s.shooterKills
+                }[cat] || 0;
+            };
+            return Object.entries(db.users)
+                .map(([key, u]) => ({ name: u.name, value: value(u, key) }))
+                // Casino-Bilanz darf negativ sein, sonst nur echte Werte
+                .filter(e => cat === 'casino' ? e.value !== 0 : e.value > 0)
+                .sort((a, b) => b.value - a.value)
+                .slice(0, 10);
+        },
+
         top(hidden) {
             const all = Object.entries(db.users).map(([key, u]) => hidden && hidden(key) ? { ...u, coins: u.coins - hidden(key) } : u);
             const pick = (sortKey, n) => all
