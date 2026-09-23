@@ -129,6 +129,15 @@ Bis 22.09.2026 lief das Spiel im Calibre-Container von Michaffs unter
 - Nur mit Konto. Gaeste spielen mit, haben aber weder Cashout noch Coins.
 - **Verlassen**-Knopf oben links: raus ohne Auszahlung.
 
+
+**Coin-Kurve (5.5, Max):** Der Score bleibt unbegrenzt, beim Cashout gibt es
+aber nur bis 10 000 eins zu eins Coins (`cashCoins` in `server.js`, gleiche
+Formel im Browser fuer die HUD-Anzeige). Darueber Potenzkurve durch die
+Stuetzpunkte 10k -> 10k, 100k -> 30k, 1 Mio -> 100k (Exponent log10(3) bis 100k,
+danach log10(10/3)), glatt ohne Spruenge. Beispiele: 20k -> 13 919, 40k ->
+19 375, 400k -> 61 933, 4 Mio -> 206 445. Anlass: 40k Laenge x 100 aus Double
+or Nothing waren 4 Mio Coins. Statistik `totalCashout`/`bestCashout` zaehlt Coins.
+
 ## Konten
 
 - Oeffentliche Registrierung im Hauptmenue: Name 3–16 Zeichen (Buchstaben,
@@ -1030,6 +1039,13 @@ Karte bleibt immer ein Exemplar; „Sell duplicates" verkauft nur normale.
 Sammlung `u.cards`: Schluessel = Id oder `Id~Variante` (`p`, `m`, `s`,
 kombiniert z. B. `ms`). Legendary+, jeder Masterball und jedes Shiny landen im
 Feed.
+
+**Reset 5.5** (Max: allen alle Karten weg, Stand auf 0, damit fair): alle
+Sammlungen und `stats.packs` geleert, diesmal **ohne** Erstattung (Max'
+Entscheidung); Karten im Auktionshaus/Abholfach verfallen, Gebote darauf gehen
+zurueck. Merker `db.meta.kmReset2` und `market.json` `kmReset2`. Live 24.09.2026:
+Kek 5, SINTHSBen 64, Schmoggi 28, plori 29 Karten, ein Angebot von plori.
+Sicherung vorher: `/srv/snake-data/*.bak-kmreset2-*`.
 
 **Reset 5.1a** (Max): beim ersten Start mit dem neuen Code wurden alle
 Sammlungen geleert und die netto fuer Packs ausgegebenen Coins erstattet

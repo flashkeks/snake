@@ -1,5 +1,13 @@
 [
   {
+    "version": "5.5",
+    "date": "24.09.2026",
+    "items": [
+      "🐍 Snake cash out: score stays unlimited, but coins are 1:1 only up to 10,000. Above that every point is worth less: 100k score ≈ 30k coins, 1M ≈ 100k. Your HUD shows what a cash out would pay",
+      "🃏 Kekémon: all cards were reset once more – everyone starts at 0 again, fair for all"
+    ]
+  },
+  {
     "version": "5.4",
     "date": "24.09.2026",
     "items": [
