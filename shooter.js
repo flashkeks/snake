@@ -30,7 +30,7 @@ const I = require('./arena-items');
 
 const SPEED = Number(process.env.SNAKE_EVENT_SPEED) || 1;
 
-const W = 4000, H = 2800;
+const W = 7200, H = 5000;       // seit 4.1 (vorher 4000 × 2800)
 const R = 18;
 const MOVE = 280;
 const MAX_PLAYERS = 24;
@@ -50,12 +50,17 @@ const BAG_LIFE = 5 * 60e3;
 const INTERACT_R = 75;
 const MED_MS = 2000;
 // Events: Boss laeuft ueber die Map, Versorgungsabwurf mit Ausruestung
-const BOSS_R = 44;
-const BOSS_MOVE = 125;
 const BOSS_EVERY = [2 * 60e3, 10 * 60e3];
 const BOSS_LIFE = 8 * 60e3;
-const BOSS_SLAM_R = 250;
-const BOSS_NAME = 'Raccoon King';
+// Gegner (4.1): so viele laufen herum, geweckt nur in der Naehe von Spielern
+const MOB_BASE = 45, MOB_PER_PLAYER = 8, MOB_MAX = 120;
+const MOB_WAKE = 1700;
+const MIL_RESPAWN = 5 * 60e3;
+const ENFORCERS = 4, ENFORCER_RESPAWN = 3 * 60e3;
+// Stationen: Sani heilt voll gegen Scrap, Haendler kauft und verkauft
+const MEDIC_COST = 40, MEDIC_CD = 60e3;
+const TRADER_BUY = { bandage: 12, medkit: 30, frag: 35, smoke: 25, stim: 45, molotov: 45, flash: 40 };
+const TRADER_SELL = 0.6;          // Anteil des Salvage-Werts beim Verkauf im Raid
 const DROP_EVERY = [3 * 60e3, 6 * 60e3];
 const DROP_WARN = 15000;
 
@@ -72,34 +77,40 @@ function rng(seed) {
 }
 
 function buildMap() {
-    const rand = rng(1337);
+    const rand = rng(4242);
     const walls = [];
     const crates = [];
     const extracts = [
-        { x: 260, y: 260 }, { x: W - 260, y: 260 }, { x: 260, y: H - 260 }, { x: W - 260, y: H - 260 }
+        { x: 300, y: 300 }, { x: W - 300, y: 300 }, { x: 300, y: H - 300 }, { x: W - 300, y: H - 300 },
+        { x: W / 2, y: 260 }, { x: W / 2, y: H - 260 }
     ];
     const overlaps = (a, b, m) => a[0] < b[0] + b[2] + m && a[0] + a[2] + m > b[0] && a[1] < b[1] + b[3] + m && a[1] + a[3] + m > b[1];
     const nearExtract = r => extracts.some(e => e.x > r[0] - 200 && e.x < r[0] + r[2] + 200 && e.y > r[1] - 200 && e.y < r[1] + r[3] + 200);
     const T = WALL_T;
     const doorRects = [];
+    // Freie Plaetze (4.1): Stadt in der Mitte und ein Aussenposten mit Haendler
+    // und Sani-Station, dazu ein Militaerlager der Enforcer mit besseren Kisten
+    const town = [W / 2 - 520, H / 2 - 360, 1040, 720];
+    const outpost = [Math.round(W * 0.16), Math.round(H * 0.62), 620, 480];
+    const military = [Math.round(W * 0.66), Math.round(H * 0.16), 920, 660];
+    const reserved = [town, outpost, military];
+    const stations = [
+        { kind: 'trader', x: town[0] + 260, y: town[1] + town[3] / 2 },
+        { kind: 'medic', x: town[0] + town[2] - 260, y: town[1] + town[3] / 2 },
+        { kind: 'trader', x: outpost[0] + 180, y: outpost[1] + outpost[3] / 2 },
+        { kind: 'medic', x: outpost[0] + outpost[2] - 180, y: outpost[1] + outpost[3] / 2 }
+    ];
     // Gebaeude: Rechteck mit Tueren
     const buildings = [];
-    for (let k = 0; k < 400 && buildings.length < 16; k++) {
-        const bw = 300 + rand() * 240, bh = 240 + rand() * 200;
-        const r = [200 + rand() * (W - 400 - bw), 200 + rand() * (H - 400 - bh), bw, bh];
-        if (buildings.some(b => overlaps(r, b, 160)) || nearExtract(r)) continue;
-        buildings.push(r);
-    }
-    for (const [x, y, w, h] of buildings) {
+    const addBuilding = (x, y, w, hh, doorsWanted, inner) => {
         const sides = [
             { horiz: true, x, y, len: w },
-            { horiz: true, x, y: y + h - T, len: w },
-            { horiz: false, x, y, len: h },
-            { horiz: false, x: x + w - T, y, len: h }
+            { horiz: true, x, y: y + hh - T, len: w },
+            { horiz: false, x, y, len: hh },
+            { horiz: false, x: x + w - T, y, len: hh }
         ];
-        // mindestens zwei Tueren
         const doors = new Set([Math.floor(rand() * 4)]);
-        while (doors.size < 2) doors.add(Math.floor(rand() * 4));
+        while (doors.size < doorsWanted) doors.add(Math.floor(rand() * 4));
         sides.forEach((s, i) => {
             if (doors.has(i) || rand() < 0.3) {
                 const gap = 95;
@@ -115,44 +126,59 @@ function buildMap() {
                 walls.push(s.horiz ? [s.x, s.y, s.len, T] : [s.x, s.y, T, s.len]);
             }
         });
-        // Innen: Kisten und eine Trennwand
-        const n = 1 + Math.floor(rand() * 2);
-        for (let i = 0; i < n; i++) crates.push({ x: x + 60 + rand() * (w - 120), y: y + 60 + rand() * (h - 120) });
-        if (rand() < 0.5) walls.push([x + w / 2 - T / 2, y + 60, T, h * 0.45]);
+        buildings.push([x, y, w, hh]);
+        if (inner) inner(x, y, w, hh);
+    };
+    // Militaerlager zuerst: grosses Gebaeude, drei Militaerkisten, zwei Trennwaende
+    addBuilding(military[0], military[1], military[2], military[3], 3, (x, y, w, hh) => {
+        for (let i = 0; i < 3; i++) crates.push({ x: x + 180 + i * (w - 360) / 2, y: y + hh / 2 + (i % 2 ? 90 : -90), t: 'mil' });
+        walls.push([x + w / 3, y + 80, T, hh * 0.35], [x + 2 * w / 3, y + hh - 80 - hh * 0.35, T, hh * 0.35]);
+    });
+    for (let k = 0; k < 1500 && buildings.length < 48; k++) {
+        const bw = 300 + rand() * 240, bh = 240 + rand() * 200;
+        const r = [200 + rand() * (W - 400 - bw), 200 + rand() * (H - 400 - bh), bw, bh];
+        if (buildings.some(b => overlaps(r, b, 160)) || reserved.some(z => overlaps(r, z, 160)) || nearExtract(r)) continue;
+        addBuilding(r[0], r[1], bw, bh, 2, (x, y, w, hh) => {
+            // Innen: Kisten und eine Trennwand
+            const n = 1 + Math.floor(rand() * 2);
+            for (let i = 0; i < n; i++) crates.push({ x: x + 60 + rand() * (w - 120), y: y + 60 + rand() * (hh - 120), t: 'crate' });
+            if (rand() < 0.5) walls.push([x + w / 2 - T / 2, y + 60, T, hh * 0.45]);
+        });
     }
-    // Hindernisse draussen
+    // Hindernisse draussen: Felsen und Mauern (Kisten-Hindernisse seit 3.1 weg)
     const obstacles = [];
-    for (let k = 0; k < 2000 && obstacles.length < 90; k++) {
-        // Kisten-Hindernisse entfernt (23.09.2026, Max): nur noch Felsen und Mauern
+    for (let k = 0; k < 6000 && obstacles.length < 280; k++) {
         const type = 0.35 + rand() * 0.65;
         const r = type < 0.7 ? [0, 0, 70 + rand() * 60, 50 + rand() * 50]              // Felsen
             : type < 0.85 ? [0, 0, 180 + rand() * 120, T]                         // Mauer quer
             : [0, 0, T, 180 + rand() * 120];                                      // Mauer laengs
         r[0] = 80 + rand() * (W - 160 - r[2]);
         r[1] = 80 + rand() * (H - 160 - r[3]);
-        if (buildings.some(b => overlaps(r, b, 50)) || obstacles.some(o => overlaps(r, o, 70)) || nearExtract(r)) continue;
+        if (buildings.some(b => overlaps(r, b, 50)) || reserved.some(z => overlaps(r, z, 60)) || obstacles.some(o => overlaps(r, o, 70)) || nearExtract(r)) continue;
         obstacles.push(r);
     }
     walls.push(...obstacles.map(o => o.map(Math.round)));
     // Kisten draussen
-    for (let k = 0; k < 500 && crates.length < 44; k++) {
-        const c = { x: 150 + rand() * (W - 300), y: 150 + rand() * (H - 300) };
-        if (walls.some(w => overlaps([c.x - 30, c.y - 30, 60, 60], w, 20))) continue;
+    for (let k = 0; k < 3000 && crates.length < 130; k++) {
+        const c = { x: 150 + rand() * (W - 300), y: 150 + rand() * (H - 300), t: 'crate' };
+        if (walls.some(w => overlaps([c.x - 30, c.y - 30, 60, 60], w, 20)) || reserved.some(z => overlaps([c.x - 30, c.y - 30, 60, 60], z, 0))) continue;
         crates.push(c);
     }
     // Buesche: verstecken, blocken nicht
     const bushes = [];
-    for (let k = 0; k < 3000 && bushes.length < 60; k++) {
+    for (let k = 0; k < 9000 && bushes.length < 190; k++) {
         const r = 45 + rand() * 30;
         const b = [120 + rand() * (W - 240), 120 + rand() * (H - 240), r];
         const box = [b[0] - r, b[1] - r, 2 * r, 2 * r];
-        if (walls.some(w => overlaps(box, w, 10)) || buildings.some(x => overlaps(box, x, 40)) || nearExtract(box)) continue;
+        if (walls.some(w => overlaps(box, w, 10)) || buildings.some(x => overlaps(box, x, 40)) || reserved.some(z => overlaps(box, z, 20)) || nearExtract(box)) continue;
         if (bushes.some(o => Math.hypot(o[0] - b[0], o[1] - b[1]) < o[2] + r + 30)) continue;
         bushes.push(b.map(Math.round));
     }
     return {
-        walls: walls.map(w => w.map(Math.round)), crates: crates.map(c => ({ x: Math.round(c.x), y: Math.round(c.y) })), extracts,
-        buildings: buildings.map(b => b.map(Math.round)), bushes, doors: doorRects.map(d => d.map(Math.round))
+        walls: walls.map(w => w.map(Math.round)), crates: crates.map(c => ({ x: Math.round(c.x), y: Math.round(c.y), t: c.t })), extracts,
+        buildings: buildings.map(b => b.map(Math.round)), bushes, doors: doorRects.map(d => d.map(Math.round)),
+        stations: stations.map(s => ({ kind: s.kind, x: Math.round(s.x), y: Math.round(s.y) })),
+        town: town.map(Math.round), outpost: outpost.map(Math.round), military: military.map(Math.round)
     };
 }
 
@@ -236,22 +262,27 @@ function starterPistol() {
 
 const GEAR = ['primary', 'secondary', ...I.SLOTS, 'backpack'];
 const L = require('./arena-level');
+const M = require('./arena-mobs');
 
 module.exports = function createArena(h) {
     // h: { accounts, send, feed, refresh(c), changed() }
     const players = new Map();       // client id -> Spieler im Raid
     const bullets = [];
-    const crates = MAP.crates.map((c, i) => ({ id: i, x: c.x, y: c.y, readyAt: 0 }));
+    const crates = MAP.crates.map((c, i) => ({ id: i, x: c.x, y: c.y, t: c.t, readyAt: 0 }));
     const bags = [];
     const nades = [];                // Wurfsachen im Flug oder mit Zuender
     const smokes = [];               // Rauchwolken { id, x, y, r, until }
     const fires = [];                // Feuerflaechen { id, x, y, r, until, owner, dps }
     const holes = [];                // Schwarze Loecher { id, x, y, r, until, owner, dmg }
     let seqId = 0;
-    let boss = null;                 // Boss auf der Map (Events weiter unten)
+    const mobs = [];                 // Gegner und Boss (4.1), siehe arena-mobs.js
+    let mobSeq = 0;
+    let bossId = null;               // id des Bosses in mobs
+    let lastBoss = null;
+    let enforcerAt = [];             // Respawn-Zeiten der Enforcer
     let drop = null;                 // angekuendigter Versorgungsabwurf { x, y, at }
     let nextBossAt = 0, nextDropAt = 0;
-    const BOSS_W = { dmg: 16, speed: 620, life: 1.5, how: 'boss' };
+    const boss = () => bossId !== null ? mobs.find(m => m.id === bossId) || null : null;
     let lastTick = Date.now();
     let lastSend = 0;
     const feedLog = [];
@@ -502,6 +533,9 @@ module.exports = function createArena(h) {
             if (blocked(x, y, R + 12)) continue;
             if (MAP.extracts.some(e => Math.hypot(e.x - x, e.y - y) < 500)) continue;
             if (avoidPlayers && [...players.values()].some(p => Math.hypot(p.x - x, p.y - y) < 700)) continue;
+            // Spieler (und Bosse) nicht im Militaerlager oder direkt neben Gegnern absetzen
+            if (avoidPlayers && (x > MAP.military[0] - 400 && x < MAP.military[0] + MAP.military[2] + 400 && y > MAP.military[1] - 400 && y < MAP.military[1] + MAP.military[3] + 400)) continue;
+            if (avoidPlayers && k < 300 && mobs.some(m => Math.hypot(m.x - x, m.y - y) < 650)) continue;
             return { x, y };
         }
         return { x: W / 2, y: H / 2 };
@@ -594,7 +628,9 @@ module.exports = function createArena(h) {
             type: 'shJoined', id: c.id,
             map: {
                 w: W, h: H, walls: MAP.walls, buildings: MAP.buildings, doors: MAP.doors, bushes: MAP.bushes, wallT: WALL_T,
-                extracts: MAP.extracts, extractR: EXTRACT_R, r: R, move: MOVE, view: VIEW, throwRange: I.THROW_RANGE
+                extracts: MAP.extracts, extractR: EXTRACT_R, r: R, move: MOVE, view: VIEW, throwRange: I.THROW_RANGE,
+                stations: MAP.stations, town: MAP.town, outpost: MAP.outpost, military: MAP.military, mobs: M.catalog(),
+                trader: { buy: TRADER_BUY, sell: TRADER_SELL }, medic: { cost: MEDIC_COST, cd: MEDIC_CD }
             },
             packMax: p0PackMax(c), feed: feedLog.slice(-6)
         });
@@ -649,7 +685,8 @@ module.exports = function createArena(h) {
     }
 
     // Tod, Verlassen, Abbruch: Raid vorbei, alles weg
-    function die(p, killer, how) {
+    // by = Name eines Gegners (NPC/Boss), falls der getoetet hat
+    function die(p, killer, how, by) {
         if (!players.has(p.id)) return;
         players.delete(p.id);
         const loot = lootOf(p);
@@ -674,11 +711,11 @@ module.exports = function createArena(h) {
             }
         }
         const w = killer ? (killer.gear[killer.slot] || killer.gear.primary) : null;
-        const line = { killer: killer ? killer.name : how === 'boss' ? '🦝 ' + BOSS_NAME : null, victim: p.name, how, weapon: w ? w.name : null, tier: w ? w.tier : null, loot: loot.length };
+        const line = { killer: killer ? killer.name : by || null, victim: p.name, how, weapon: w ? w.name : null, tier: w ? w.tier : null, loot: loot.length };
         feedLog.push(line);
         if (feedLog.length > 20) feedLog.shift();
         for (const q of players.values()) h.send(q.c, { type: 'shKill', ...line });
-        h.send(p.c, { type: 'shLeft', result: how === 'left' ? 'left' : 'died', by: killer ? killer.name : how === 'boss' ? BOSS_NAME : null, lost: loot.map(brief) });
+        h.send(p.c, { type: 'shLeft', result: how === 'left' ? 'left' : 'died', by: killer ? killer.name : by || null, lost: loot.map(brief) });
         h.changed();
     }
 
@@ -744,6 +781,8 @@ module.exports = function createArena(h) {
             interact(p);
         } else if (d.type === 'shInv') {
             invOp(p, d);
+        } else if (d.type === 'shTrade') {
+            trade(p, d);
         }
     }
 
@@ -816,9 +855,19 @@ module.exports = function createArena(h) {
             const dd = Math.hypot(b.x - p.x, b.y - p.y);
             if (dd < bd) { best = { b }; bd = dd; }
         }
+        for (const s of MAP.stations) {
+            const dd = Math.hypot(s.x - p.x, s.y - p.y);
+            if (dd < bd + 20) { best = { s }; bd = dd; }
+        }
         if (!best) return;
+        if (best.s) return station(p, best.s, now);
         let got = [];
-        if (best.cr) {
+        if (best.cr && best.cr.t === 'mil') {
+            best.cr.readyAt = now + MIL_RESPAWN;
+            const n = 1 + (Math.random() < 0.25 + p.b.loot ? 1 : 0);
+            got = Array.from({ length: n }, () => I.generate('military'));
+            award(p, L.XP.crate * 4, 'military crate');
+        } else if (best.cr) {
             best.cr.readyAt = now + CRATE_RESPAWN;
             const n = 1 + Math.floor(Math.random() * 2) + (Math.random() < p.b.loot ? 1 : 0);
             got = Array.from({ length: n }, () => I.generate('crate'));
@@ -831,6 +880,62 @@ module.exports = function createArena(h) {
         if (rest.length) dropBag(p.x + 20, p.y + 20, rest);
         h.send(p.c, { type: 'shLoot', items: got.filter(it => !rest.includes(it)).map(brief), full: rest.length > 0 });
         sendInv(p);
+    }
+
+    // ---------- Stationen: Sani und Haendler (4.1) ----------
+
+    function nearStation(p, kind) {
+        return MAP.stations.find(s => s.kind === kind && Math.hypot(s.x - p.x, s.y - p.y) < INTERACT_R + 30);
+    }
+
+    // F an einer Station: Sani heilt sofort, Haendler oeffnet sein Angebot
+    function station(p, s, now) {
+        if (s.kind === 'medic') {
+            if (now < (p.medicAt || 0)) return h.send(p.c, { type: 'shEvent', text: `⛑️ Medic again in ${Math.ceil((p.medicAt - now) / 1000)} s`, kind: 'self' });
+            if (p.hp >= p.maxHp) return h.send(p.c, { type: 'shEvent', text: '⛑️ You are already at full health', kind: 'self' });
+            const a = st(p.c);
+            if (a.scrap < MEDIC_COST) return h.send(p.c, { type: 'shEvent', text: `⛑️ Healing costs ${MEDIC_COST} scrap`, kind: 'self' });
+            a.scrap -= MEDIC_COST;
+            h.accounts.touch();
+            p.hp = p.maxHp;
+            p.burn = null;
+            p.medicAt = now + MEDIC_CD / SPEED;
+            fxAt(p.x, p.y, { type: 'shFx', kind: 'phoenix', x: Math.round(p.x), y: Math.round(p.y) });
+            return h.send(p.c, { type: 'shEvent', text: `⛑️ Fully healed (−${MEDIC_COST} scrap)`, kind: 'self' });
+        }
+        sendTrader(p);
+    }
+
+    function sendTrader(p) {
+        const a = st(p.c);
+        h.send(p.c, {
+            type: 'shTrader', scrap: a.scrap,
+            sell: p.pack.map(it => ({ ...brief(it), price: Math.max(1, Math.round(I.salvageValue(it) * TRADER_SELL)) }))
+        });
+    }
+
+    // Kaufen (Verbrauchsgut gegen Scrap aus dem Lager) und Verkaufen (Rucksack -> Scrap)
+    function trade(p, d) {
+        if (!nearStation(p, 'trader')) return h.send(p.c, { type: 'shTrader', close: true });
+        const a = st(p.c);
+        if (d.op === 'buy') {
+            const price = TRADER_BUY[d.base];
+            if (!price) return;
+            if (a.scrap < price) return h.send(p.c, { type: 'shEvent', text: `🏪 You need ${price} scrap`, kind: 'self' });
+            const it = I.plain('util', d.base);
+            const rest = pickUp(p, [it]);
+            if (rest.length) return h.send(p.c, { type: 'shEvent', text: '🏪 Your backpack is full', kind: 'self' });
+            a.scrap -= price;
+        } else if (d.op === 'sell') {
+            const i = p.pack.findIndex(x => x.uid === d.uid);
+            if (i < 0) return;
+            const [it] = p.pack.splice(i, 1);
+            a.scrap += Math.max(1, Math.round(I.salvageValue(it) * TRADER_SELL));
+        } else return;
+        h.accounts.touch();
+        gearStats(p);
+        sendInv(p);
+        sendTrader(p);
     }
 
     // ---------- Verbrauchsgut ----------
@@ -920,8 +1025,11 @@ module.exports = function createArena(h) {
             const k = 1 - Math.hypot(q.x - x, q.y - y) / (r + R) * 0.6;
             damage(q, q === owner ? null : owner, dmg * k, now, q.x, q.y, { how, noDodge: true });
         }
-        if (boss && Math.hypot(boss.x - x, boss.y - y) < r + BOSS_R && (!walls || clear(x, y, boss.x, boss.y))) {
-            hurtBoss(owner, dmg * (1 - Math.hypot(boss.x - x, boss.y - y) / (r + BOSS_R) * 0.6), now, boss.x, boss.y);
+        if (!isMob(g.owner)) {
+            for (const m of mobsNear(x, y, r + 60)) {
+                const d = Math.hypot(m.x - x, m.y - y);
+                if (d < r + m.def.r && (!walls || clear(x, y, m.x, m.y))) hurtMob(m, owner, dmg * (1 - d / (r + m.def.r) * 0.6), now, m.x, m.y);
+            }
         }
     }
 
@@ -1064,9 +1172,9 @@ module.exports = function createArena(h) {
             if (perp > R + 10) continue;
             hitPlayer({ owner: p.id, w, x: q.x, y: q.y, hits: new Set() }, q, now);
         }
-        if (boss) {
-            const t = (boss.x - p.x) * dx + (boss.y - p.y) * dy;
-            if (t >= 0 && t <= len && Math.abs((boss.x - p.x) * dy - (boss.y - p.y) * dx) < BOSS_R + 10) hurtBoss(p, w.dmg, now, boss.x, boss.y);
+        for (const m of [...mobs]) {
+            const t = (m.x - p.x) * dx + (m.y - p.y) * dy;
+            if (t >= 0 && t <= len && Math.abs((m.x - p.x) * dy - (m.y - p.y) * dx) < m.def.r + 10) hurtMob(m, p, w.dmg, now, m.x, m.y);
         }
     }
 
@@ -1122,7 +1230,7 @@ module.exports = function createArena(h) {
         if (!opts.dot && (dmg >= 1 || killed)) h.send(v.c, { type: 'shHurt', dmg: Math.round(dmg) });
         // Dornen: Teil des Schadens zurueck
         if (attacker && v.thorns && !opts.thorns && players.has(attacker.id)) damage(attacker, v, dmg * v.thorns, now, attacker.x, attacker.y, { thorns: true, noDodge: true });
-        if (killed) die(v, attacker && players.has(attacker.id) ? attacker : null, opts.how || 'shot');
+        if (killed) die(v, attacker && players.has(attacker.id) ? attacker : null, opts.how || 'shot', opts.by);
         return killed;
     }
 
@@ -1132,7 +1240,7 @@ module.exports = function createArena(h) {
         let dmg = w.dmg;
         const crit = w.crit && Math.random() < w.crit;
         if (crit) dmg *= shooter ? shooter.b.critMul : 2;
-        const killed = damage(v, shooter, dmg, now, b.x, b.y, { crit, execute: w.execute, how: w.how });
+        const killed = damage(v, shooter, dmg, now, b.x, b.y, { crit, execute: w.execute, how: w.how, by: w.by });
         if (shooter && w.vamp) shooter.hp = Math.min(shooter.maxHp, shooter.hp + dmg * w.vamp);
         if (!killed && players.has(v.id)) {
             if (w.burn) v.burn = { dps: w.burn, until: now + 3000 / SPEED, from: b.owner };
@@ -1160,7 +1268,7 @@ module.exports = function createArena(h) {
             if (q.id === b.owner || q.id === skipId) continue;
             damage(q, shooter, w.dmg * w.explode * (shooter ? shooter.b.expl : 1), now, q.x, q.y, { how: 'explosion' });
         }
-        if (boss && b.owner !== 'boss' && Math.hypot(boss.x - b.x, boss.y - b.y) < r + BOSS_R) hurtBoss(shooter, w.dmg * w.explode, now, boss.x, boss.y);
+        if (!isMob(b.owner)) for (const m of mobsNear(b.x, b.y, r + 60)) if (Math.hypot(m.x - b.x, m.y - b.y) < r + m.def.r) hurtMob(m, shooter, w.dmg * w.explode * (shooter ? shooter.b.expl : 1), now, m.x, m.y);
     }
 
     // ---------- Events: Boss und Versorgungsabwurf ----------
@@ -1171,14 +1279,62 @@ module.exports = function createArena(h) {
         for (const q of players.values()) h.send(q.c, { type: 'shEvent', text, kind });
     }
 
-    function spawnBoss(now) {
-        const s = freeSpot(true);
-        const hp = 5000 + 2500 * players.size;
-        boss = {
-            x: s.x, y: s.y, a: 0, hp, maxHp: hp, tx: s.x, ty: s.y, stuck: 0, born: now,
-            nextShot: now + 1500, nextRing: now + 6000, nextSlam: now + 8000, slamAt: 0, dmgBy: new Map()
+    const isMob = id => typeof id === 'string' && id[0] === 'm' && id[1] === '#';
+
+    // Gegner je Tick in ein Raster (schnelle Suche fuer Kugeln und Explosionen)
+    let mobGrid = new Map();
+    function gridMobs() {
+        mobGrid = new Map();
+        for (const m of mobs) {
+            const k = Math.floor(m.x / CELL) + ',' + Math.floor(m.y / CELL);
+            if (!mobGrid.has(k)) mobGrid.set(k, []);
+            mobGrid.get(k).push(m);
+        }
+    }
+    function mobsNear(x, y, r) {
+        const out = [];
+        for (let gx = Math.floor((x - r) / CELL); gx <= Math.floor((x + r) / CELL); gx++) {
+            for (let gy = Math.floor((y - r) / CELL); gy <= Math.floor((y + r) / CELL); gy++) {
+                const list = mobGrid.get(gx + ',' + gy);
+                if (list) for (const m of list) if (m.hp > 0) out.push(m);
+            }
+        }
+        return out;
+    }
+
+    function spawnMob(kind, x, y, now, home) {
+        const def = M.MOBS[kind];
+        const hp = def.boss ? def.hpBase + def.hpPer * Math.max(1, players.size) : def.hp;
+        const m = {
+            id: 'm#' + (++mobSeq), kind, def, x, y, a: Math.random() * 6.28, hp, maxHp: hp,
+            home: home || { x, y }, tx: x, ty: y, tgt: null, seen: 0, nextThink: 0, nextShot: now + 800 + Math.random() * 800,
+            aimAt: 0, strafe: Math.random() < 0.5 ? 1 : -1, stuck: 0, born: now, burn: null, slowUntil: 0, dmgBy: new Map(),
+            nextRing: now + 6000, nextSlam: now + 8000, slamAt: 0, nextSummon: now + 6000
         };
-        announce(`👑 The ${BOSS_NAME} is roaming the map – kill it for Sovereign loot!`, 'boss');
+        mobs.push(m);
+        return m;
+    }
+
+    // Freier Platz weit weg von Spielern (Gegner tauchen nicht vor der Nase auf)
+    function mobSpot() {
+        for (let k = 0; k < 60; k++) {
+            const s = freeSpot(false);
+            if ([...players.values()].every(p => Math.hypot(p.x - s.x, p.y - s.y) > 1000) && !inZone(s.x, s.y, MAP.town, 150) && !inZone(s.x, s.y, MAP.outpost, 150)) return s;
+        }
+        return null;
+    }
+    const inZone = (x, y, z, m) => x > z[0] - m && x < z[0] + z[2] + m && y > z[1] - m && y < z[1] + z[3] + m;
+    // Stadt und Aussenposten sind Schutzzonen: Gegner kommen nicht hinein (schiessen aber hinein)
+    const mobBlocked = (x, y, r) => blocked(x, y, r) || inZone(x, y, MAP.town, r) || inZone(x, y, MAP.outpost, r);
+
+    function spawnBoss(now, kind) {
+        const pool = M.BOSSES.filter(k => k !== lastBoss);
+        kind = M.MOBS[kind] && M.MOBS[kind].boss ? kind : pool[Math.floor(Math.random() * pool.length)];
+        lastBoss = kind;
+        const s = freeSpot(true);
+        const m = spawnMob(kind, s.x, s.y, now);
+        bossId = m.id;
+        announce(`${m.def.icon} The ${m.def.name} is roaming the map – kill it for Sovereign loot!`, 'boss');
     }
 
     function spawnDrop(now) {
@@ -1187,129 +1343,306 @@ module.exports = function createArena(h) {
         announce('📦 Supply drop incoming – check the map!', 'drop');
     }
 
-    function hurtBoss(attacker, dmg, now, x, y, crit) {
-        if (!boss || dmg <= 0) return;
-        if (attacker && attacker.b) dmg *= attacker.b.hunt;
-        boss.hp -= dmg;
-        if (attacker && attacker.account) boss.dmgBy.set(attacker.id, (boss.dmgBy.get(attacker.id) || 0) + Math.min(dmg, boss.hp + dmg));
-        const dead = boss.hp <= 0;
-        if (attacker && players.has(attacker.id)) h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: Math.round(dmg), kill: dead, crit: !!crit });
-        if (dead) bossDies(attacker && players.has(attacker.id) ? attacker : null);
+    function bossView(now) {
+        const b = boss();
+        return b ? [Math.round(b.x), Math.round(b.y), Math.max(0, Math.round(b.hp)), b.maxHp, Math.round(b.a * 100) / 100,
+            b.slamAt ? Math.max(0, Math.round(b.slamAt - now)) : 0, b.kind] : null;
     }
 
-    function bossDies(killer) {
-        const b = boss;
-        boss = null;
-        nextBossAt = Date.now() + randIn(BOSS_EVERY) / SPEED;
-        // drei Beutel mit je einem Item, jeder darf sie sich schnappen
-        for (let i = 0; i < 3; i++) {
-            const a = i / 3 * Math.PI * 2;
-            const x = b.x + Math.cos(a) * 55, y = b.y + Math.sin(a) * 55;
-            dropBag(blocked(x, y, 10) ? b.x : x, blocked(x, y, 10) ? b.y : y, [I.generate('boss')], 'boss');
+    // Spieler trifft Gegner
+    function hurtMob(m, attacker, dmg, now, x, y, crit, w) {
+        if (!(m.hp > 0) || dmg <= 0) return;
+        if (attacker && attacker.b) {
+            dmg *= attacker.b.hunt;
+            if (attacker.b.exec && m.hp < m.maxHp * 0.3) dmg *= 1 + attacker.b.exec;
         }
-        fxAt(b.x, b.y, { type: 'shBoom', x: Math.round(b.x), y: Math.round(b.y), r: 220, nuke: false });
-        const line = { killer: killer ? killer.name : null, victim: '🦝 ' + BOSS_NAME, how: 'shot', loot: 3 };
-        feedLog.push(line);
-        if (feedLog.length > 20) feedLog.shift();
-        for (const q of players.values()) h.send(q.c, { type: 'shKill', ...line });
-        announce(`👑 ${killer ? killer.name + ' killed' : 'Down goes'} the ${BOSS_NAME}! 3 items dropped`, 'boss');
-        if (killer && killer.account) h.accounts.stat(killer.account, s => { s.bossKills = (s.bossKills || 0) + 1; });
-        // XP: Todesstoss, dazu Anteil nach Schaden fuer alle, die mitgemacht haben
-        if (killer) award(killer, L.XP.boss, 'boss');
-        const total = [...b.dmgBy.values()].reduce((s, n) => s + n, 0);
-        for (const [id, n] of b.dmgBy) {
-            const q = players.get(id);
-            if (q && total > 0) award(q, L.XP.bossHelp * n / total, 'boss damage');
+        dmg *= m.def.taken || 1;
+        const real = Math.min(dmg, m.hp);
+        m.hp -= dmg;
+        if (attacker && attacker.account) m.dmgBy.set(attacker.id, (m.dmgBy.get(attacker.id) || 0) + real);
+        // Wer schiesst, wird zum Ziel (auch von weit weg)
+        if (attacker && players.has(attacker.id)) {
+            m.tgt = attacker.id;
+            m.seen = now;
+            h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: Math.round(dmg), kill: m.hp <= 0, crit: !!crit });
         }
+        if (m.hp > 0 && w) {
+            if (w.burn) m.burn = { dps: w.burn, until: now + 3000 / SPEED, from: attacker ? attacker.id : null };
+            if (w.frost) m.slowUntil = now + 1500 / SPEED;
+            if (w.vamp && attacker) attacker.hp = Math.min(attacker.maxHp, attacker.hp + dmg * w.vamp);
+        }
+        if (m.hp <= 0) mobDies(m, attacker && players.has(attacker.id) ? attacker : null, now);
     }
 
-    function bossBullet(a, now) {
+    function mobDies(m, killer, now) {
+        const i = mobs.indexOf(m);
+        if (i < 0) return;
+        mobs.splice(i, 1);
+        const def = m.def;
+        if (m.id === bossId) {
+            bossId = null;
+            nextBossAt = now + randIn(BOSS_EVERY) / SPEED;
+            // drei Beutel mit je einem Item, jeder darf sie sich schnappen
+            for (let k = 0; k < 3; k++) {
+                const a = k / 3 * Math.PI * 2;
+                const x = m.x + Math.cos(a) * 55, y = m.y + Math.sin(a) * 55;
+                dropBag(blocked(x, y, 10) ? m.x : x, blocked(x, y, 10) ? m.y : y, [I.generate('boss')], 'boss');
+            }
+            fxAt(m.x, m.y, { type: 'shBoom', x: Math.round(m.x), y: Math.round(m.y), r: 220, nuke: false });
+            const line = { killer: killer ? killer.name : null, victim: def.icon + ' ' + def.name, how: 'shot', loot: 3 };
+            feedLog.push(line);
+            if (feedLog.length > 20) feedLog.shift();
+            for (const q of players.values()) h.send(q.c, { type: 'shKill', ...line });
+            announce(`${def.icon} ${killer ? killer.name + ' killed' : 'Down goes'} the ${def.name}! 3 items dropped`, 'boss');
+            if (killer && killer.account) h.accounts.stat(killer.account, s => { s.bossKills = (s.bossKills || 0) + 1; });
+            if (killer) award(killer, L.XP.boss, 'boss');
+            const total = [...m.dmgBy.values()].reduce((s, n) => s + n, 0);
+            for (const [id, n] of m.dmgBy) {
+                const q = players.get(id);
+                if (q && total > 0) award(q, L.XP.bossHelp * n / total, 'boss damage');
+            }
+            // Brut der Koenigin faellt mit ihr
+            for (const o of [...mobs]) if (o.parent === m.id) mobs.splice(mobs.indexOf(o), 1);
+            return;
+        }
+        if (m.kind === 'enforcer') enforcerAt.push(now + ENFORCER_RESPAWN / SPEED);
+        if (killer) {
+            award(killer, L.XP[def.xp] * (def.xpMul || 1), def.name.toLowerCase());
+            if (killer.account) h.accounts.stat(killer.account, s => { s.npcKills = (s.npcKills || 0) + 1; });
+            if (killer.b.bloodlust) killer.hp = Math.min(killer.maxHp, killer.hp + killer.b.bloodlust / 2);
+        }
+        if (def.drop && !m.parent && Math.random() < def.drop.chance) {
+            dropBag(m.x, m.y, Array.from({ length: def.drop.n }, () => I.generate(def.drop.src)));
+        }
+        fxAt(m.x, m.y, { type: 'shFx', kind: 'mobdie', x: Math.round(m.x), y: Math.round(m.y), icon: def.icon });
+    }
+
+    // Gegner-Kugel
+    function mobShot(m, a, now) {
+        const g = m.def.gun;
         bullets.push({
-            id: ++seqId, owner: 'boss',
-            x: boss.x + Math.cos(a) * (BOSS_R + 6), y: boss.y + Math.sin(a) * (BOSS_R + 6),
-            vx: Math.cos(a) * 620, vy: Math.sin(a) * 620,
-            dies: now + 1500 / SPEED, w: BOSS_W, pierce: 0, bounce: 0, hits: new Set(), fx: 1024, tier: 5
+            id: ++seqId, owner: m.id,
+            x: m.x + Math.cos(a) * (m.def.r + 6), y: m.y + Math.sin(a) * (m.def.r + 6),
+            vx: Math.cos(a) * g.speed, vy: Math.sin(a) * g.speed,
+            dies: now + g.life * 1000 / SPEED, pierce: 0, bounce: 0, hits: new Set(),
+            w: { dmg: g.dmg, how: m.def.boss ? 'boss' : 'npc', by: m.def.icon + ' ' + m.def.name, homing: g.homing || 0, mobBoom: g.explode || 0, big: !!g.big, mob: true },
+            fx: m.def.boss ? 1024 : 2048, tier: m.def.boss ? 5 : 0
         });
     }
 
-    function bossTick(now, dt) {
-        const b = boss;
-        if (now - b.born > BOSS_LIFE / SPEED) {
-            boss = null;
+    // Explodierende Gegner-Kugel (Golem-Fels)
+    function mobBoom(b, now) {
+        const r = b.w.mobBoom;
+        fxAt(b.x, b.y, { type: 'shBoom', x: Math.round(b.x), y: Math.round(b.y), r, nuke: false });
+        for (const q of near(b.x, b.y, r + R)) damage(q, null, b.w.dmg * (1 - Math.hypot(q.x - b.x, q.y - b.y) / (r + R) * 0.5), now, q.x, q.y, { how: b.w.how, by: b.w.by, noDodge: true });
+    }
+
+    // Sieht der Gegner den Spieler? Versteckte nur aus der Naehe
+    function mobSees(m, q, now, range) {
+        const d = Math.hypot(q.x - m.x, q.y - m.y);
+        if (d > range || now < q.protect) return false;
+        const hidden = d > SEE_NEAR && now - q.lastShot >= REVEAL_MS * q.b.reveal && (q.zone || q.smoke !== null || stillHidden(q, now));
+        return !hidden && clear(m.x, m.y, q.x, q.y);
+    }
+
+    function mobMove(m, gx, gy, speed, dt) {
+        const d = Math.hypot(gx - m.x, gy - m.y);
+        if (d < 1) return;
+        const step = Math.min(d, speed * dt * (m.slowUntil > Date.now() ? 0.5 : 1));
+        const [nx, ny] = slide(m.x, m.y, (gx - m.x) / d * step, (gy - m.y) / d * step, m.def.r, mobBlocked);
+        const moved = Math.hypot(nx - m.x, ny - m.y);
+        m.x = nx;
+        m.y = ny;
+        m.stuck = moved < step * 0.3 ? m.stuck + dt : 0;
+        if (m.stuck > 1.2) {
+            // festgefahren: neues Ziel in der Naehe
+            m.stuck = 0;
+            m.tx = m.x + (Math.random() - 0.5) * 500;
+            m.ty = m.y + (Math.random() - 0.5) * 500;
+            m.strafe = -m.strafe;
+        }
+    }
+
+    function mobTick(m, now, dt) {
+        const def = m.def;
+        // Brennen
+        if (m.burn) {
+            if (now > m.burn.until) m.burn = null;
+            else {
+                hurtMob(m, players.get(m.burn.from) || null, m.burn.dps * dt, now, m.x, m.y);
+                if (!(m.hp > 0)) return;
+            }
+        }
+        if (def.boss && now - m.born > BOSS_LIFE / SPEED) {
+            mobs.splice(mobs.indexOf(m), 1);
+            bossId = null;
             nextBossAt = now + randIn(BOSS_EVERY) / SPEED;
-            announce(`👑 The ${BOSS_NAME} got bored and left.`, 'boss');
+            announce(`${def.icon} The ${def.name} got bored and left.`, 'boss');
             return;
         }
-        // Ziel: naechster Spieler in 700 mit freier Sicht, der sich nicht versteckt
-        let tgt = null, td = 700;
-        for (const q of players.values()) {
-            if (now < q.protect) continue;
-            const d = Math.hypot(q.x - b.x, q.y - b.y);
-            if (d >= td) continue;
-            const hidden = d > SEE_NEAR && now - q.lastShot >= REVEAL_MS * q.b.reveal && (q.zone || q.smoke !== null || stillHidden(q, now));
-            if (!hidden && clear(b.x, b.y, q.x, q.y)) {
-                tgt = q;
-                td = d;
+        // Ziel pruefen/suchen, nicht jeden Tick
+        let tgt = m.tgt ? players.get(m.tgt) : null;
+        if (now >= m.nextThink) {
+            m.nextThink = now + 250 + Math.random() * 150;
+            if (tgt && mobSees(m, tgt, now, def.aggro * 1.5)) m.seen = now;
+            else if (tgt && now - m.seen > 3500) tgt = m.tgt = null;
+            if (!tgt) {
+                let best = null, bd = def.aggro;
+                for (const q of players.values()) {
+                    const d = Math.hypot(q.x - m.x, q.y - m.y);
+                    if (d < bd && mobSees(m, q, now, def.aggro)) {
+                        best = q;
+                        bd = d;
+                    }
+                }
+                if (best) {
+                    m.tgt = best.id;
+                    m.seen = now;
+                    tgt = best;
+                    // Reaktionszeit: nicht sofort schiessen
+                    m.nextShot = Math.max(m.nextShot, now + (600 + Math.random() * 300) / SPEED);
+                }
             }
         }
-        // Stampfer: kuendigt sich an, steht dabei still
-        if (b.slamAt) {
-            if (now >= b.slamAt) {
-                b.slamAt = 0;
-                b.nextSlam = now + 7000 / SPEED;
-                fxAt(b.x, b.y, { type: 'shBoom', x: Math.round(b.x), y: Math.round(b.y), r: BOSS_SLAM_R, nuke: false });
-                for (const q of near(b.x, b.y, BOSS_SLAM_R + R)) damage(q, null, 70, now, q.x, q.y, { how: 'boss', noDodge: true });
+        // Beruehrung: Nahkaempfer und Bosse
+        const touch = def.melee || def.contact;
+        if (touch) {
+            for (const q of near(m.x, m.y, def.r + R + 4)) {
+                if (Math.hypot(q.x - m.x, q.y - m.y) < def.r + R) damage(q, null, touch * dt, now, q.x, q.y, { how: def.boss ? 'boss' : 'npc', by: def.icon + ' ' + def.name, noDodge: true, dot: true });
             }
-            return;
         }
-        if (now >= b.nextSlam && near(b.x, b.y, BOSS_SLAM_R).length) {
-            b.slamAt = now + 900 / SPEED;
-            return;
+        // Stampfer (Bosse): kuendigt sich an, steht dabei still
+        if (def.slam) {
+            if (m.slamAt) {
+                if (now >= m.slamAt) {
+                    m.slamAt = 0;
+                    m.nextSlam = now + def.slam.ms / SPEED;
+                    fxAt(m.x, m.y, { type: 'shBoom', x: Math.round(m.x), y: Math.round(m.y), r: def.slam.r, nuke: false });
+                    for (const q of near(m.x, m.y, def.slam.r + R)) damage(q, null, def.slam.dmg, now, q.x, q.y, { how: 'boss', by: def.icon + ' ' + def.name, noDodge: true });
+                }
+                return;
+            }
+            if (now >= m.nextSlam && near(m.x, m.y, def.slam.r).length) {
+                m.slamAt = now + 900 / SPEED;
+                return;
+            }
         }
-        // Laufen: auf das Ziel zu (Abstand halten) oder zum naechsten Wegpunkt
-        let gx = b.tx, gy = b.ty;
+        // Brut rufen (Hive Queen)
+        if (def.summon && tgt && now >= m.nextSummon) {
+            m.nextSummon = now + def.summon.ms / SPEED;
+            const brood = mobs.filter(o => o.parent === m.id).length;
+            for (let k = 0; k < def.summon.n && brood + k < def.summon.max; k++) {
+                const a = Math.random() * 6.28;
+                const x = m.x + Math.cos(a) * (def.r + 40), y = m.y + Math.sin(a) * (def.r + 40);
+                if (blocked(x, y, 16)) continue;
+                const d = spawnMob(def.summon.kind, x, y, now);
+                d.parent = m.id;
+                d.tgt = tgt.id;
+                d.seen = now;
+            }
+        }
         if (tgt) {
-            gx = tgt.x;
-            gy = tgt.y;
-        }
-        const d = Math.hypot(gx - b.x, gy - b.y);
-        if (!tgt && d < 60) {
-            const s = freeSpot(false);
-            b.tx = s.x;
-            b.ty = s.y;
-        } else if (d > (tgt ? 170 : 0)) {
-            const step = BOSS_MOVE * (tgt ? 1.2 : 1) * dt;
-            const [nx, ny] = slide(b.x, b.y, (gx - b.x) / d * step, (gy - b.y) / d * step, BOSS_R);
-            const moved = Math.hypot(nx - b.x, ny - b.y);
-            b.x = nx;
-            b.y = ny;
-            if (moved < step * 0.3) b.stuck += dt;
-            else b.stuck = 0;
-            if (b.stuck > 1.2) {
-                const s = freeSpot(false);
-                b.tx = s.x;
-                b.ty = s.y;
-                b.stuck = 0;
+            const d = Math.hypot(tgt.x - m.x, tgt.y - m.y);
+            m.a = Math.atan2(tgt.y - m.y, tgt.x - m.x);
+            if (def.melee) {
+                mobMove(m, tgt.x, tgt.y, def.chase, dt);
+            } else {
+                const keep = def.keep || 200, range = def.range || def.aggro;
+                if (d > range * 0.9) mobMove(m, tgt.x, tgt.y, def.speed * 1.1, dt);
+                else if (d < keep) mobMove(m, m.x - (tgt.x - m.x), m.y - (tgt.y - m.y), def.speed, dt);
+                else {
+                    // seitlich ausweichen
+                    const px = -(tgt.y - m.y) / d * m.strafe, py = (tgt.x - m.x) / d * m.strafe;
+                    mobMove(m, m.x + px * 100, m.y + py * 100, def.speed * 0.7, dt);
+                    if (Math.random() < dt * 0.4) m.strafe = -m.strafe;
+                }
             }
-            if (!tgt) b.a = Math.atan2(gy - b.y, gx - b.x);
+            // Schiessen: nur mit freier Sicht; Sniper zielen erst (Laser)
+            const g = def.gun;
+            if (g && now >= m.nextShot && d < (def.range || def.aggro) * 1.1 && now - m.seen < 400) {
+                if (g.aim && !m.aimAt) m.aimAt = now + g.aim / SPEED;
+                if (!g.aim || now >= m.aimAt) {
+                    m.aimAt = 0;
+                    m.nextShot = now + g.ms / SPEED * (0.85 + Math.random() * 0.3);
+                    // leicht vorhalten
+                    const t = d / g.speed;
+                    const aim = Math.atan2(tgt.y + tgt.my * 280 * t * 0.5 - m.y, tgt.x + tgt.mx * 280 * t * 0.5 - m.x);
+                    for (let k = 0; k < g.burst; k++) {
+                        const off = g.burst > 1 ? (g.fan ? (k / (g.burst - 1) - 0.5) * g.spread * 2 : (Math.random() - 0.5) * g.spread) : (Math.random() - 0.5) * g.spread;
+                        mobShot(m, aim + off, now);
+                    }
+                }
+            } else if (!tgt || now - m.seen >= 400) m.aimAt = 0;
+            if (def.ring && now >= m.nextRing) {
+                m.nextRing = now + def.ring.ms / SPEED;
+                for (let k = 0; k < def.ring.n; k++) mobShot(m, k / def.ring.n * Math.PI * 2, now);
+            }
+        } else {
+            m.aimAt = 0;
+            // umherlaufen: Bosse ueber die ganze Map, andere um ihr Zuhause
+            if (Math.hypot(m.tx - m.x, m.ty - m.y) < 40) {
+                if (def.boss) {
+                    const s = freeSpot(false);
+                    m.tx = s.x;
+                    m.ty = s.y;
+                } else if (Math.random() < 0.02) {
+                    m.tx = m.home.x + (Math.random() - 0.5) * 700;
+                    m.ty = m.home.y + (Math.random() - 0.5) * 700;
+                }
+            } else {
+                mobMove(m, m.tx, m.ty, def.speed * (def.boss ? 1 : 0.5), dt);
+                m.a = Math.atan2(m.ty - m.y, m.tx - m.x);
+            }
         }
-        if (tgt) b.a = Math.atan2(tgt.y - b.y, tgt.x - b.x);
-        // Schiessen: Dreier-Salve aufs Ziel, ab und zu ein Ring rundum
-        if (tgt && now >= b.nextShot) {
-            b.nextShot = now + 850 / SPEED;
-            for (const off of [-0.12, 0, 0.12]) bossBullet(b.a + off, now);
+    }
+
+    // Bestand halten: Streuner nachschieben, Enforcer im Militaerlager
+    function populate(now) {
+        const want = Math.min(MOB_MAX, MOB_BASE + MOB_PER_PLAYER * players.size);
+        let roam = mobs.filter(m => !m.def.boss && m.kind !== 'enforcer' && !m.parent).length;
+        for (let k = 0; k < 3 && roam < want; k++) {
+            const s = mobSpot();
+            if (!s) break;
+            const total = M.ROAMERS.reduce((a, [, w]) => a + w, 0);
+            let r = Math.random() * total, kind = 'scav';
+            for (const [kk, w] of M.ROAMERS) if ((r -= w) < 0) { kind = kk; break; }
+            spawnMob(kind, s.x, s.y, now);
+            roam++;
         }
-        if (now >= b.nextRing && near(b.x, b.y, 600).length) {
-            b.nextRing = now + 9000 / SPEED;
-            for (let k = 0; k < 20; k++) bossBullet(k / 20 * Math.PI * 2, now);
+        const enf = mobs.filter(m => m.kind === 'enforcer').length;
+        enforcerAt = enforcerAt.filter(t => t > now);
+        const z = MAP.military;
+        for (let k = enf + enforcerAt.length; k < ENFORCERS; k++) {
+            if ([...players.values()].some(p => inZone(p.x, p.y, z, 200))) break;
+            for (let tries = 0; tries < 30; tries++) {
+                const x = z[0] + 80 + Math.random() * (z[2] - 160), y = z[1] + 80 + Math.random() * (z[3] - 160);
+                if (!blocked(x, y, 26)) {
+                    spawnMob('enforcer', x, y, now, { x: z[0] + z[2] / 2, y: z[1] + z[3] / 2 });
+                    break;
+                }
+            }
         }
     }
 
     function eventTick(now, dt) {
         if (!nextBossAt) nextBossAt = now + randIn(BOSS_EVERY) / SPEED;
         if (!nextDropAt) nextDropAt = now + randIn(DROP_EVERY) / SPEED;
-        if (!boss && now >= nextBossAt) spawnBoss(now);
-        if (boss) bossTick(now, dt);
+        // Boss weg, ohne abgemeldet zu sein (z. B. Test-Hook): Uhr neu starten
+        if (bossId !== null && !boss()) {
+            bossId = null;
+            nextBossAt = now + randIn(BOSS_EVERY) / SPEED;
+        }
+        if (bossId === null && now >= nextBossAt) spawnBoss(now);
+        populate(now);
+        gridMobs();
+        // Nur Gegner in der Naehe von Spielern denken und laufen
+        const plist = [...players.values()];
+        for (const m of [...mobs]) {
+            if (!(m.hp > 0) || !mobs.includes(m)) continue;
+            if (!m.def.boss && !plist.some(p => Math.abs(p.x - m.x) < MOB_WAKE && Math.abs(p.y - m.y) < MOB_WAKE)) continue;
+            mobTick(m, now, dt);
+        }
+        gridMobs();
         if (!drop && now >= nextDropAt) spawnDrop(now);
         if (drop && now >= drop.at) {
             const n = 2 + (Math.random() < 0.4 ? 1 : 0);
@@ -1335,8 +1668,10 @@ module.exports = function createArena(h) {
             smokes.length = 0;
             fires.length = 0;
             holes.length = 0;
-            // leerer Raid: Events weg, Uhr startet mit dem naechsten Spieler neu
-            boss = null;
+            // leerer Raid: Events und Gegner weg, Uhr startet mit dem naechsten Spieler neu
+            mobs.length = 0;
+            bossId = null;
+            enforcerAt = [];
             drop = null;
             nextBossAt = 0;
             nextDropAt = 0;
@@ -1366,8 +1701,6 @@ module.exports = function createArena(h) {
             const ox = p.x, oy = p.y;
             if (p.mx || p.my) [p.x, p.y] = slide(p.x, p.y, p.mx * sp * dt, p.my * sp * dt, R);
             if (p.x !== ox || p.y !== oy) p.lastMove = now;
-            // Beruehrt den Boss: Schaden ueber Zeit
-            if (boss && Math.hypot(boss.x - p.x, boss.y - p.y) < BOSS_R + R && damage(p, null, 45 * dt, now, p.x, p.y, { how: 'boss', noDodge: true, dot: true })) continue;
             p.zone = zoneOf(p.x, p.y);
             const sm = smokes.find(s => Math.hypot(s.x - p.x, s.y - p.y) < s.r);
             p.smoke = sm ? sm.id : null;
@@ -1418,28 +1751,34 @@ module.exports = function createArena(h) {
                     }
                     if (b.w.explode) explode(b, now, null);
                     if (b.w.hole) bulletHole(b, now);
+                    if (b.w.mobBoom) mobBoom(b, now);
                     gone = true;
                     break;
                 }
                 for (const q of players.values()) {
                     if (q.id === b.owner || b.hits.has(q.id)) continue;
-                    if (Math.hypot(q.x - b.x, q.y - b.y) < R + 4) {
+                    if (Math.hypot(q.x - b.x, q.y - b.y) < R + (b.w.big ? 14 : 4)) {
                         b.hits.add(q.id);
-                        hitPlayer(b, q, now);
+                        if (b.w.mobBoom) mobBoom(b, now);
+                        else hitPlayer(b, q, now);
                         if (b.pierce > 0) b.pierce--;
                         else gone = true;
                         break;
                     }
                 }
-                if (!gone && boss && b.owner !== 'boss' && !b.hits.has('boss') && Math.hypot(boss.x - b.x, boss.y - b.y) < BOSS_R + 4) {
-                    b.hits.add('boss');
-                    const shooter = players.get(b.owner) || null;
-                    const crit = b.w.crit && Math.random() < b.w.crit;
-                    hurtBoss(shooter, b.w.dmg * (crit ? (shooter ? shooter.b.critMul : 2) : 1), now, b.x, b.y, crit);
-                    if (boss && b.w.hole) bulletHole(b, now);
-                    if (b.w.explode) explode(b, now, null);
-                    if (b.pierce > 0) b.pierce--;
-                    else gone = true;
+                if (!gone && !isMob(b.owner)) {
+                    for (const m of mobsNear(b.x, b.y, 60)) {
+                        if (b.hits.has(m.id) || Math.hypot(m.x - b.x, m.y - b.y) >= m.def.r + 4) continue;
+                        b.hits.add(m.id);
+                        const shooter = players.get(b.owner) || null;
+                        const crit = b.w.crit && Math.random() < b.w.crit;
+                        hurtMob(m, shooter, b.w.dmg * (crit ? (shooter ? shooter.b.critMul : 2) : 1), now, b.x, b.y, crit, b.w);
+                        if (b.w.hole) bulletHole(b, now);
+                        if (b.w.explode) explode(b, now, null);
+                        if (b.pierce > 0) b.pierce--;
+                        else gone = true;
+                        break;
+                    }
                 }
             }
             if (gone) bullets.splice(i, 1);
@@ -1476,10 +1815,11 @@ module.exports = function createArena(h) {
                     };
                 }),
                 bullets: bullets.filter(b => inView(b.x, b.y)).map(b => [b.id, Math.round(b.x), Math.round(b.y), Math.round(b.vx), Math.round(b.vy), b.owner, b.fx, b.tier]),
-                crates: crates.filter(cr => inView(cr.x, cr.y)).map(cr => [cr.id, cr.x, cr.y, now >= cr.readyAt ? 1 : 0]),
+                crates: crates.filter(cr => inView(cr.x, cr.y)).map(cr => [cr.id, cr.x, cr.y, now >= cr.readyAt ? 1 : 0, cr.t === 'mil' ? 1 : 0]),
                 bags: bags.filter(b => inView(b.x, b.y)).map(b => [b.id, Math.round(b.x), Math.round(b.y), b.items.length, b.kind === 'boss' ? 2 : b.kind === 'drop' ? 1 : 0]),
                 // Events sieht jeder, egal wo (Karte und Pfeil am Rand)
-                boss: boss ? [Math.round(boss.x), Math.round(boss.y), Math.max(0, Math.round(boss.hp)), boss.maxHp, Math.round(boss.a * 100) / 100, boss.slamAt ? Math.max(0, Math.round(boss.slamAt - now)) : 0] : null,
+                boss: bossView(now),
+                mobs: mobs.filter(m => !m.def.boss && inView(m.x, m.y)).map(m => [m.id, m.kind, Math.round(m.x), Math.round(m.y), Math.max(0, Math.round(m.hp)), m.maxHp, Math.round(m.a * 100) / 100, m.aimAt ? Math.max(0, Math.round(m.aimAt - now)) : 0]),
                 drop: drop ? [Math.round(drop.x), Math.round(drop.y), Math.max(0, Math.round(drop.at - now))] : null,
                 nades: nades.filter(g => inView(g.x, g.y)).map(g => [g.id, Math.round(g.x), Math.round(g.y), g.base, g.landed ? 1 : 0, g.fuseAt ? Math.max(0, Math.round(g.fuseAt - now)) : 0]),
                 smokes: smokes.filter(s => inView(s.x, s.y)).map(s => [s.id, Math.round(s.x), Math.round(s.y), s.r, Math.round(s.until - now)]),
@@ -1495,7 +1835,8 @@ module.exports = function createArena(h) {
         names: () => [...players.values()].map(p => p.name),
         rooms: () => [{ id: 'raid', players: [...players.values()].map(p => p.name) }],
         _players: players, _bags: bags, _crates: crates, _damage: damage, _canSee: canSee,
-        _spawnBoss: () => spawnBoss(Date.now()), _spawnDrop: () => spawnDrop(Date.now()), _boss: () => boss
+        _spawnBoss: kind => spawnBoss(Date.now(), kind), _spawnDrop: () => spawnDrop(Date.now()), _boss: boss, _mobs: mobs,
+        _spawnMob: (kind, x, y) => spawnMob(kind, x, y, Date.now())
     };
 };
 

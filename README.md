@@ -736,6 +736,40 @@ Detailansicht.
 - Nachrechnen: `node arena-items.js 400000` (Stufen je Quelle, Effekt-Anteil,
   haeufigste Specials).
 
+### Extraction-Ausbau (4.2)
+
+- **Map** 7200 × 5000 (vorher 4000 × 2800), Seed 4242: 48 Gebaeude, 280
+  Hindernisse, 190 Buesche, 130 Kisten, 6 Extraction-Zonen (Ecken und Mitte
+  oben/unten). Reservierte Flaechen: **Stadt** (Mitte) und **Aussenposten**
+  (links unten) mit je 🏪 Haendler und ⛑️ Sani, **Militaerlager** (rechts
+  oben) als grosses Gebaeude mit drei 🎖️ Militaerkisten (`military`: nur
+  Ausruestung, wie eine Standard-Case, 5 min zu).
+- **Gegner** (`arena-mobs.js`, Logik `mobTick` in `shooter.js`): Scav
+  (Gewehr), Brute (Nahkampf, verfolgt), Sniper (roter Laser 0,8 s vor dem
+  Schuss, 34 Schaden), Drone (schnell, schwach), Enforcer (Elite, Schrot,
+  bewacht das Lager, 4 Stueck, 3 min Respawn). Bestand 45 + 8 je Spieler
+  (hoechstens 120), neue tauchen nur weiter als 1000 von Spielern auf.
+  Gegner denken nur, wenn ein Spieler naeher als 1700 ist; Ziel suchen alle
+  250–400 ms mit Sichtlinie (Versteckte sehen sie nur aus der Naehe),
+  0,6–0,9 s Reaktionszeit. Wer auf einen Gegner schiesst, wird sein Ziel.
+  Stadt und Aussenposten koennen sie nicht betreten (Schutzzonen), schiessen
+  aber hinein. Drops als Beutel (`npcdrop`: meist Verbrauchsgut), XP 12 /
+  Elite 60 (mal `xpMul`), Statistik `npcKills`.
+- **Bosse** (einer zur Zeit, alle 2–10 min, nie zweimal derselbe
+  hintereinander): Raccoon King (Salven, Kugelring, Stampfer), Iron Golem
+  (sehr zaeh, explodierende Felsen, grosser Stampfer), Hive Queen (zielsuchende
+  Kugeln, ruft bis 8 Drohnen). Beute wie gehabt: 3 Beutel aus `boss`.
+- **Sani:** voll heilen fuer 40 Scrap aus dem Lager, 60 s Abklingzeit.
+  **Haendler:** Verbrauchsgut gegen Scrap kaufen, Rucksack-Items fuer 60 %
+  des Salvage-Werts verkaufen (`shTrade {op: buy|sell}`; Fenster schliesst
+  beim Weggehen, ESC, oder `shTrader {close}` vom Server).
+- Spieler spawnen nicht im/am Militaerlager und nicht naeher als 650 an
+  Gegnern.
+- Test-Hooks (`SNAKE_TEST=1`): `shTestEvent {boss: 'golem'|..., mob, dx, dy,
+  clearMobs, bossHp, drop}`.
+- Protokoll: `sh` hat jetzt `mobs` ([id, art, x, y, hp, max, winkel,
+  zielt-ms]) und `boss` mit Art an Stelle 7; Kisten mit Militaer-Flag.
+
 ### Raid (`shooter.js`)
 
 - **Map** 4000 × 2800, fest aus Seed 1337: 16 Gebaeude mit Tueren, 90

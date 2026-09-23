@@ -188,6 +188,10 @@ const SOURCES = {
     crate: { t: [0.62, 0.27, 0.09, 0.0189, 0.001, 0.00001, 0], kinds: { util: 1 }, uses: ['heal', 'throw'] },
     // Versorgungsabwurf: Ausruestung, etwas besser als eine Standard-Case
     airdrop: { t: [0.3, 0.38, 0.2, 0.1, 0.0195, 0.0005, 0], kinds: { weapon: 0.45, armor: 0.45, pack: 0.1 } },
+    // Normale Gegner (4.1): meist Verbrauchsgut, selten Ausruestung
+    npcdrop: { t: [0.62, 0.27, 0.09, 0.0189, 0.001, 0.00001, 0], kinds: { util: 0.55, weapon: 0.22, armor: 0.18, pack: 0.05 }, uses: null },
+    // Militaerkisten im Lager der Enforcer: nur Ausruestung, wie eine Standard-Case
+    military: { t: [0.45, 0.33, 0.15, 0.06, 0.0095, 0.0005, 0], kinds: { weapon: 0.5, armor: 0.45, pack: 0.05 } },
     // Boss: Sovereign-Stufen, aber nur Ausruestung
     boss: { t: [0, 0, 0.35, 0.6322333, 1 / 60, 0.001, 0.0001], kinds: { weapon: 0.5, armor: 0.4, pack: 0.1 } },
     scrapcase: { t: [0.7, 0.24, 0.055, 0.0049, 0.0001, 0, 0], kinds: { weapon: 0.45, armor: 0.28, util: 0.2, pack: 0.07 } },

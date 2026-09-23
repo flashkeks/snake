@@ -1110,6 +1110,7 @@ async function handle(c, data) {
         case 'shUse':
         case 'shInteract':
         case 'shInv':
+        case 'shTrade':
             shooter.action(c, data);
             return;
 
@@ -1144,9 +1145,14 @@ async function handle(c, data) {
         // Nur fuer lokale Tests (SNAKE_TEST=1): Boss oder Abwurf sofort
         case 'shTestEvent':
             if (process.env.SNAKE_TEST === '1') {
-                if (data.boss) shooter._spawnBoss();
+                if (data.boss) shooter._spawnBoss(data.boss === true ? undefined : String(data.boss));
+                if (data.mob && shooter._players.get(c.id)) {
+                    const p = shooter._players.get(c.id);
+                    shooter._spawnMob(String(data.mob), p.x + (Number(data.dx) || 300), p.y + (Number(data.dy) || 0));
+                }
                 if (data.drop) shooter._spawnDrop();
                 if (data.bossHp && shooter._boss()) shooter._boss().hp = Number(data.bossHp);
+                if (data.clearMobs) shooter._mobs.length = 0;
             }
             return;
 
