@@ -2347,16 +2347,184 @@ body.touch .sh-touchbtn {
 
 .sh-inv {
     position: absolute;
-    top: 8px;
-    right: 8px;
-    bottom: 8px;
-    width: min(560px, calc(100% - 16px));
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(820px, calc(100% - 16px));
+    max-height: calc(100% - 16px);
     overflow-y: auto;
-    padding: 10px;
-    border-radius: 12px;
-    background: rgba(10,12,18,.94);
-    border: 1px solid #ff5bd6;
+    padding: 14px;
+    border-radius: 14px;
+    background: rgba(28,26,20,.95);
+    border: 1px solid rgba(255,255,255,.18);
+    box-shadow: 0 0 60px rgba(0,0,0,.7);
     z-index: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ri-top {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.ri-weapon {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 30px 12px 10px;
+    min-height: 130px;
+    border-radius: 8px;
+    background: rgba(0,0,0,.35);
+    border: 1px solid rgba(255,255,255,.12);
+    border-bottom: 4px solid var(--tc, rgba(255,255,255,.15));
+    cursor: pointer;
+}
+
+.ri-weapon.active {
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,.35);
+}
+
+.ri-label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    background: rgba(255,255,255,.12);
+    border-radius: 8px 0 8px 0;
+}
+
+.ri-big {
+    position: absolute;
+    right: 14px;
+    top: 26px;
+    font-size: 56px;
+    line-height: 1;
+}
+
+.ri-weapon b {
+    font-size: 18px;
+    margin-top: 42px;
+}
+
+.dim {
+    opacity: .3;
+}
+
+.ri-pack {
+    display: flex;
+    justify-content: center;
+    padding: 10px;
+    border-radius: 10px;
+    background: rgba(0,0,0,.3);
+}
+
+.ri-grid {
+    display: grid;
+    grid-template-columns: repeat(10, 58px);
+    gap: 6px;
+}
+
+.ri-cell, .ri-slot {
+    position: relative;
+    width: 58px;
+    height: 58px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    border-radius: 6px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.14);
+    border-bottom: 3px solid var(--tc, rgba(255,255,255,.14));
+    cursor: pointer;
+}
+
+.ri-cell.empty {
+    cursor: default;
+    background: rgba(255,255,255,.02);
+}
+
+.ri-cell.locked {
+    cursor: default;
+    font-size: 18px;
+    opacity: .25;
+}
+
+.ri-cell i, .ri-slot i {
+    position: absolute;
+    right: 4px;
+    bottom: 1px;
+    font-size: 13px;
+    font-style: normal;
+    font-weight: 900;
+}
+
+.ri-cell em, .ri-slot em {
+    position: absolute;
+    left: 3px;
+    top: 1px;
+    font-size: 11px;
+    font-style: normal;
+    font-weight: 900;
+}
+
+.ri-cell.sel, .ri-slot.sel, .ri-weapon.sel {
+    box-shadow: 0 0 0 2px #ffd23f;
+}
+
+.ri-bottom {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ri-slot {
+    width: 70px;
+    height: 70px;
+    flex-direction: column;
+    font-size: 30px;
+}
+
+.ri-slot small {
+    font-size: 10px;
+    font-weight: 800;
+    opacity: .7;
+}
+
+.ri-gap {
+    width: 24px;
+}
+
+.ri-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.ri-actions .ghost:last-child {
+    margin-left: auto;
+}
+
+@media (max-width: 700px) {
+    .ri-grid {
+        grid-template-columns: repeat(6, 44px);
+    }
+    .ri-cell {
+        width: 44px;
+        height: 44px;
+        font-size: 22px;
+    }
 }
 
 .sh-inv h4 {
@@ -2385,6 +2553,149 @@ body.touch .sh-touchbtn {
 }
 
 /* ---------- Arena: Hub ---------- */
+
+.set-tag {
+    display: inline-block;
+    min-width: 16px;
+    padding: 0 3px;
+    margin-left: 3px;
+    border: 1px solid;
+    border-radius: 4px;
+    font-size: 10px;
+    line-height: 14px;
+    vertical-align: 2px;
+}
+
+.loadout.nine {
+    grid-template-columns: repeat(9, 1fr);
+}
+
+.lo-slot[data-slot] {
+    cursor: pointer;
+}
+
+.lo-slot.open .it {
+    box-shadow: 0 0 0 3px #ffd23f;
+}
+
+.picker {
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,210,63,.4);
+    background: rgba(255,210,63,.04);
+}
+
+.picker-head {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.picker-head b {
+    margin-right: auto;
+}
+
+.pick-hint {
+    text-align: center;
+    margin-top: 14px;
+}
+
+.inv-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 520px;
+    overflow-y: auto;
+}
+
+.it-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 34px 1fr auto auto auto;
+    gap: 8px;
+    align-items: center;
+    padding: 5px 10px;
+    border-radius: 8px;
+    background: rgba(255,255,255,.04);
+    border-left: 4px solid var(--tc, rgba(255,255,255,.2));
+    cursor: pointer;
+}
+
+.it-row .it-ico {
+    font-size: 24px;
+}
+
+.it-row.sel {
+    background: rgba(255,255,255,.1);
+}
+
+.it-row .eq-tag {
+    position: static;
+}
+
+.salv-tiers {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+
+.salv-tier {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    border: 2px solid var(--tc);
+    color: var(--tc);
+    background: rgba(255,255,255,.04);
+}
+
+.salv-tier small {
+    color: #fff;
+    opacity: .75;
+    font-weight: 600;
+}
+
+.it-tip {
+    position: fixed;
+    z-index: 200;
+    width: 300px;
+    padding: 10px;
+    border-radius: 10px;
+    background: rgba(12,14,20,.97);
+    border: 1px solid rgba(255,255,255,.2);
+    box-shadow: 0 8px 30px rgba(0,0,0,.6);
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+}
+
+.tip-head {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.tip-head .it-ico {
+    font-size: 34px;
+}
+
+.tip-head b {
+    display: block;
+    font-size: 16px;
+}
+
+.case-won {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px;
+    border-radius: 12px;
+    background: rgba(255,255,255,.04);
+}
 
 #hub-tabs {
     overflow: visible;
@@ -2824,6 +3135,12 @@ span.tier-common, span.tier-uncommon, span.tier-rare, span.tier-epic, span.tier-
 }
 
 @media (max-width: 1000px) {
+    .loadout.nine {
+        grid-template-columns: repeat(5, 1fr);
+    }
+    .salv-tiers {
+        grid-template-columns: repeat(2, 1fr);
+    }
     .loadout.eight {
         grid-template-columns: repeat(4, 1fr);
     }
@@ -4560,7 +4877,9 @@ body.touch input, body.touch textarea {
                     </div>
                     <div class="cs-tabs" id="hub-tabs">
                         <button type="button" data-hubtab="play">🪂 Play</button>
-                        <button type="button" data-hubtab="equip">🎒 Equipment</button>
+                        <button type="button" data-hubtab="equip">🎒 Equip</button>
+                        <button type="button" data-hubtab="inv">📦 Inventory</button>
+                        <button type="button" data-hubtab="salvage">♻️ Salvage</button>
                         <button type="button" data-hubtab="cases">🎁 Cases</button>
                         <button type="button" data-hubtab="shop">🛒 Shop</button>
                     </div>
@@ -5017,7 +5336,7 @@ ws.onmessage = event => {
         case 'shHurt': onShHurt(data); break;
         case 'shLoot': onShLoot(data); break;
         case 'shInv': onShInv(data); break;
-        case 'shBoom': case 'shZap': case 'shFx': onShFx(data); break;
+        case 'shBoom': case 'shZap': case 'shFx': case 'shBeam': onShFx(data); break;
         case 'shFlash': onShFlash(data); break;
         case 'shPong': shRtt = shRtt * .7 + (performance.now() - data.t) * .3; break;
         case 'arHub': onArHub(data); break;
@@ -5268,6 +5587,31 @@ function drawStats() {
 
 const chatInput = $('chat-input');
 let spaceDown = false;
+
+// ESC fuehrt immer eine Ebene zurueck (Wunsch Max): je Screen der eigene
+// Zurueck-Knopf. Im Raid schliesst ESC nur das Inventar – Verlassen waere Tod.
+const ESC_BACK = { casino: 'casino-back', arenahub: 'hub-back', shop: 'shop-back', pokerlobby: 'pkl-back', daily: 'dw-back',
+    cross: 'cr-back', plinko: 'pl-back', slots: 'slots-back', slots2: 's2-back', konto: 'konto-back', support: 'sp-close' };
+document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    const el = document.activeElement;
+    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) return;
+    if (sh) {
+        if (shInvOpen) shInvToggle(false);
+        return;
+    }
+    if (!$('arenahub').classList.contains('hidden') && hubPick) {
+        hubPick = null;
+        return hubDraw();
+    }
+    for (const [screen, btn] of Object.entries(ESC_BACK)) {
+        if ($(screen) && !$(screen).classList.contains('hidden') && $(btn) && !$(btn).disabled) {
+            e.preventDefault();
+            $(btn).click();
+            return;
+        }
+    }
+});
 
 document.addEventListener('keydown', e => {
     const typing = document.activeElement && document.activeElement.tagName === 'INPUT';
@@ -7799,16 +8143,20 @@ let shPingTimer = null;
 let shToast = null;         // { text, t }
 let shInvState = null;      // Rucksack und Ausruestung (shInv)
 let shInvOpen = false;
+let shShakeAt = 0, shShakeMag = 0, shShakeMs = 1;
 let shBlindUntil = 0;       // Flashbang
 let shBlindMs = 1;
 const shTouch = { move: null, aim: null };
 const SH_INTERP = 50;
 const TIER_COLOR = { common: '#cfd8e3', uncommon: '#7dffb0', rare: '#3da5ff', epic: '#b884ff', legendary: '#ffd23f', mythic: '#ff5b5b', ultra: '#ffffff' };
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];
-const GEAR_SLOTS = ['primary', 'secondary', 'helmet', 'vest', 'pants', 'boots'];
-const SLOT_LABEL = { primary: '1 · Primary', secondary: '2 · Secondary', helmet: 'Helmet', vest: 'Vest', pants: 'Pants', boots: 'Boots' };
+const GEAR_SLOTS = ['primary', 'secondary', 'helmet', 'vest', 'pants', 'boots', 'backpack'];
+const SLOT_LABEL = { primary: '1 · Primary', secondary: '2 · Secondary', helmet: 'Helmet', vest: 'Vest', pants: 'Pants', boots: 'Boots', backpack: 'Backpack' };
+const SLOT_EMPTY = { primary: '🔫', secondary: '🔫', helmet: '🪖', vest: '🦺', pants: '👖', boots: '🥾', backpack: '🎒' };
 const UTIL_KEYS = ['Q', 'G'];
-let hubMulti = null;        // Set mit uids im Auswahlmodus, sonst null
+let hubMulti = new Set();   // Auswahl im Salvage-Tab
+let hubPick = null;         // offener Slot im Equip-Tab
+const TIP = new Map();      // uid -> Item, fuer den Tooltip
 
 function tierName(t) {
     const x = arenaCat && arenaCat.tiers.find(y => y.id === t);
@@ -7822,11 +8170,12 @@ function tierIdx(t) {
 // Item-Felder aus Lager (volle Items) und Raid (brief) einheitlich lesen
 function itKind(it) { return it.kind || it.k; }
 function itBase(it) { return it.base || it.b; }
+function itTier(it) { return it.tier || it.t; }
 function itMods(it) { return it.mods || (it.m || []).map(([id, lvl]) => ({ id, lvl })); }
 
 function itemDef(it) {
     const k = itKind(it), b = itBase(it);
-    return (k === 'weapon' ? arenaCat.weapons : k === 'armor' ? arenaCat.armors : arenaCat.utils)[b] || {};
+    return (k === 'weapon' ? arenaCat.weapons : k === 'armor' ? arenaCat.armors : k === 'pack' ? arenaCat.packs : arenaCat.utils)[b] || {};
 }
 
 function itemIcon(it) {
@@ -7836,10 +8185,6 @@ function itemIcon(it) {
 
 function modDefs(it) {
     return itKind(it) === 'armor' ? arenaCat.armorMods : arenaCat.weaponMods;
-}
-
-function oddsText(o) {
-    return o > 1 ? `1 in ${o.toLocaleString('en-US')}` : '';
 }
 
 // Item-Score kurz: 1.2k, 3.4M, 1B
@@ -7854,21 +8199,44 @@ function setOf(it) {
     return a ? a.set : null;
 }
 
-// Karte im Lager; opts: sel, eq (Slot-Name), n (Stapel), pick (Auswahlmodus)
-function itemCard(it, opts = {}) {
-    const mods = itMods(it).map(m => {
+// Kleines Set-Kuerzel [J]
+function setBadge(it) {
+    const s = setOf(it);
+    if (!s) return '';
+    const set = arenaCat.sets[s];
+    return ` <span class="set-tag" style="color:${set.color};border-color:${set.color}">${set.name[0]}</span>`;
+}
+
+// "Rare · ⚡ 66.7k"
+function tierLine(it) {
+    const sc = it.score || it.sc;
+    return `<small class="it-tier">${tierName(itTier(it))}${sc ? ` · <span class="it-score">⚡ ${scoreText(sc)}</span>` : ''}</small>`;
+}
+
+function modIcons(it) {
+    return itMods(it).map(m => {
         const d = modDefs(it)[m.id];
-        return d ? `<span class="mod" title="${esc(d.desc[m.lvl - 1])}">${d.icon}${d.max > 1 ? ' ' + ROMAN[m.lvl] : ''}</span>` : '';
+        return d ? `<span class="mod">${d.icon}${d.max > 1 ? ROMAN[m.lvl] : ''}</span>` : '';
     }).join('');
-    const set = setOf(it);
-    const odds = it.odds || it.o, score = it.score || it.sc;
-    return `<div class="it tier-${it.tier || it.t} ${opts.sel ? 'sel' : ''} ${opts.pick ? 'picked' : ''}" data-uid="${esc(it.uid)}">` +
+}
+
+// Kompakte Karte; opts: sel, eq (Slot-Name), n (Stapel), pick (Auswahl)
+function itemCard(it, opts = {}) {
+    TIP.set(it.uid, it);
+    const mods = modIcons(it);
+    return `<div class="it tier-${itTier(it)} ${opts.sel ? 'sel' : ''} ${opts.pick ? 'picked' : ''}" data-uid="${esc(it.uid)}" data-tip="${esc(it.uid)}">` +
         (opts.pick !== undefined ? `<span class="pick">${opts.pick ? '☑' : '☐'}</span>` : '') +
-        `<span class="it-ico">${itemIcon(it)}</span><b>${esc(it.name || it.n)}${opts.n > 1 ? ` ×${opts.n}` : ''}</b>` +
-        (set ? `<small class="it-set" style="color:${arenaCat.sets[set].color}">${arenaCat.sets[set].name} set</small>` : '') +
-        `<small class="it-tier">${tierName(it.tier || it.t)}${odds > 1 ? ' · ' + oddsText(odds) : ''}</small>` +
-        (score ? `<small class="it-score" title="Item score: coins you would spend on average to unbox something this rare">⚡ ${scoreText(score)}</small>` : '') +
-        (mods ? `<div class="mods">${mods}</div>` : '') +
+        `<span class="it-ico">${itemIcon(it)}</span><b>${esc(it.name || it.n)}${opts.n > 1 ? ` ×${opts.n}` : ''}${setBadge(it)}</b>` +
+        tierLine(it) + (mods ? `<div class="mods">${mods}</div>` : '') +
+        (opts.eq ? `<span class="eq-tag">${opts.eq}</span>` : '') + '</div>';
+}
+
+// Zeile fuer Listen (Inventar)
+function itemRow(it, opts = {}) {
+    TIP.set(it.uid, it);
+    return `<div class="it-row tier-${itTier(it)} ${opts.sel ? 'sel' : ''}" data-uid="${esc(it.uid)}" data-tip="${esc(it.uid)}">` +
+        `<span class="it-ico">${itemIcon(it)}</span><b>${esc(it.name || it.n)}${opts.n > 1 ? ` ×${opts.n}` : ''}${setBadge(it)}</b>` +
+        `<span class="mods">${modIcons(it)}</span>${tierLine(it)}` +
         (opts.eq ? `<span class="eq-tag">${opts.eq}</span>` : '') + '</div>';
 }
 
@@ -7876,35 +8244,60 @@ const INNATE_TEXT = { homing: l => `bullets curve towards enemies${l > 1 ? ' (st
     burn: l => `sets targets on fire (${l * 6} dmg/s)`, frost: l => `slows targets by ${l * 25}%`, tesla: () => 'hits arc to 2 nearby enemies',
     multishot: l => `+${l} extra bullets` };
 
-// Werte und Effekte eines Items im Detail
+// Alles zu einem Item (Tooltip, Detail)
 function itemDetail(it) {
-    const k = itKind(it), b = itBase(it), def = itemDef(it);
-    const bonus = arenaCat.tierBonus[tierIdx(it.tier || it.t)] || 0;
+    const k = itKind(it), def = itemDef(it);
+    const bonus = arenaCat.tierBonus[tierIdx(itTier(it))] || 0;
     const mods = itMods(it);
     const inn = def.innate || {};
     const L = id => ((mods.find(m => m.id === id) || {}).lvl || 0) + (inn[id] || 0);
-    let stats = '';
+    const odds = it.odds || it.o, sc = it.score || it.sc;
+    let s = `<div class="tip-head tier-${itTier(it)}"><span class="it-ico">${itemIcon(it)}</span><div><b>${esc(it.name || it.n)}</b>` +
+        `<small class="it-tier">${tierName(itTier(it))}${odds > 1 ? ` · 1 in ${odds.toLocaleString('en-US')}` : ''}${sc ? ` · ⚡ ${scoreText(sc)}` : ''}</small></div></div>`;
     if (k === 'weapon') {
         const dmg = def.dmg * (1 + bonus) * (1 + L('sharp') * 0.12), rate = 1000 / (def.ms / (1 + L('rapid') * 0.1)), pel = def.pellets + L('multishot');
-        stats = `<div class="it-stats"><span>💥 ${Math.round(dmg)}${pel > 1 ? ' × ' + pel : ''}</span><span>⚡ ${rate.toFixed(1)}/s</span>` +
+        s += `<div class="it-stats"><span>💥 ${Math.round(dmg)}${pel > 1 ? ' × ' + pel : ''}</span><span>⚡ ${rate.toFixed(1)}/s</span>` +
             `<span>📏 ${Math.round(def.speed * def.life * (1 + L('velocity') * 0.25) * (1 + L('velocity') * 0.15))}</span>` +
             (def.explode ? '<span>💣 explodes</span>' : '') + '</div>' +
             (Object.keys(inn).length ? `<div class="set-box"><b>Built in</b>${Object.entries(inn).map(([id, l]) => `<small>${(arenaCat.weaponMods[id] || {}).icon || ''} ${esc(INNATE_TEXT[id] ? INNATE_TEXT[id](l) : id)}</small>`).join('')}</div>` : '');
     } else if (k === 'armor') {
-        const s = arenaCat.sets[def.set];
-        stats = `<div class="it-stats"><span>❤️ +${Math.round(def.hp * (1 + bonus) + L('plating') * 8)} HP</span>` +
+        const set = arenaCat.sets[def.set];
+        s += `<div class="it-stats"><span>❤️ +${Math.round(def.hp * (1 + bonus) + L('plating') * 8)} HP</span>` +
             (def.speed ? `<span>👟 ${def.speed > 0 ? '+' : ''}${Math.round(def.speed * 100)}% speed</span>` : '') + '</div>' +
-            `<div class="set-box" style="border-color:${s.color}"><b style="color:${s.color}">${s.name} set</b>${s.bonus.map(x => `<small>${esc(x)} pieces</small>`).join('')}</div>`;
+            `<div class="set-box" style="border-color:${set.color}"><b style="color:${set.color}">${set.name} set · ${arenaCat.slotNames[def.slot]}</b>${set.bonus.map(x => `<small>${esc(x)} pieces</small>`).join('')}</div>`;
+    } else if (k === 'pack') {
+        s += `<div class="it-stats"><span>🎒 ${def.cap} slots in the raid</span></div><div class="hint">Without a backpack you have ${arenaCat.basePack}.</div>`;
     } else {
-        stats = `<div class="it-stats"><span>${esc(def.desc)}</span></div><div class="hint">Stack up to ${def.stack} in a slot (Q / G)</div>`;
+        s += `<div class="it-stats"><span>${esc(def.desc)}</span></div><div class="hint">Stack up to ${def.stack} in a slot (Q / G)</div>`;
     }
-    if (bonus && k !== 'util') stats += `<div class="hint">${tierName(it.tier || it.t)}: +${Math.round(bonus * 100)}% ${k === 'weapon' ? 'damage' : 'HP'}</div>`;
+    if (bonus && (k === 'weapon' || k === 'armor')) s += `<div class="hint">${tierName(itTier(it))}: +${Math.round(bonus * 100)}% ${k === 'weapon' ? 'damage' : 'HP'}</div>`;
     const ml = mods.map(m => {
         const d = modDefs(it)[m.id];
         return d ? `<li>${d.icon} <b>${d.name}${d.max > 1 ? ' ' + ROMAN[m.lvl] : ''}</b> – ${esc(d.desc[m.lvl - 1])}</li>` : '';
     }).join('');
-    return stats + (ml ? `<ul class="it-mods">${ml}</ul>` : '');
+    return s + (ml ? `<ul class="it-mods">${ml}</ul>` : '');
 }
+
+// Tooltip beim Drueberfahren (Hub und Raid-Inventar)
+const itTip = document.createElement('div');
+itTip.className = 'it-tip';
+itTip.hidden = true;
+document.body.appendChild(itTip);
+document.addEventListener('mouseover', e => {
+    const el = e.target.closest && e.target.closest('[data-tip]');
+    const it = el && TIP.get(el.dataset.tip);
+    if (!it || !arenaCat) { itTip.hidden = true; return; }
+    itTip.innerHTML = itemDetail(it);
+    itTip.hidden = false;
+    const r = el.getBoundingClientRect();
+    const w = itTip.offsetWidth, hh = itTip.offsetHeight;
+    let x = r.right + 8, y = r.top;
+    if (x + w > innerWidth - 8) x = r.left - w - 8;
+    if (x < 8) x = 8;
+    if (y + hh > innerHeight - 8) y = innerHeight - hh - 8;
+    itTip.style.left = x + 'px';
+    itTip.style.top = Math.max(8, y) + 'px';
+});
 
 // Aktive Set-Boni aus einer Menge Ruestungsteile (Items oder briefs)
 function setBonusText(items) {
@@ -7937,7 +8330,7 @@ function onArHub(d) {
     if (d.caseItem) hubCaseAnim(d.caseItem, d.reel);
     if (d.got) showMsg('hub-msg', `Bought ${d.got.n > 1 ? d.got.n + '× ' : ''}${d.got.name}`, 'ok');
     if (d.salvaged) showMsg('hub-msg', `Salvaged ${d.salvaged.count} item${d.salvaged.count > 1 ? 's' : ''} for ${d.salvaged.scrap} scrap`, 'ok');
-    if (hubMulti) for (const u of [...hubMulti]) if (!d.inv.some(x => x.uid === u)) hubMulti.delete(u);
+    for (const u of [...hubMulti]) if (!d.inv.some(x => x.uid === u)) hubMulti.delete(u);
     if (!d.caseItem) hubDraw();
 }
 
@@ -7947,31 +8340,68 @@ function hubEquippedAs(uid) {
     return s ? SLOT_LABEL[s].replace(/^\d · /, '') : '';
 }
 
+// Welche Items passen in einen Slot
+function fitsSlot(it, slot) {
+    if (slot === 'primary' || slot === 'secondary') return it.kind === 'weapon';
+    if (slot === 'backpack') return it.kind === 'pack';
+    if (slot === 'util0' || slot === 'util1') return it.kind === 'util';
+    return it.kind === 'armor' && it.slot === slot;
+}
+
+function utilHave() {
+    const have = {};
+    for (const x of hub.inv) if (x.kind === 'util') have[x.base] = (have[x.base] || 0) + 1;
+    return have;
+}
+
+// Loadout: 7 Slots + 2 Verbrauchsgut-Slots, Klick oeffnet die Auswahl
 function hubLoadout() {
-    const inv = hub.inv, l = hub.loadout;
-    const byUid = uid => inv.find(x => x.uid === uid);
+    const l = hub.loadout;
+    const byUid = uid => hub.inv.find(x => x.uid === uid);
     const slotCard = s => {
         const it = l[s] && byUid(l[s]);
-        const empty = s === 'primary' ? '🔫 Starter pistol<br><small>free, never lost</small>' : 'empty';
-        return `<div class="lo-slot"><small>${SLOT_LABEL[s]}</small>${it ? itemCard(it) : `<div class="it empty">${empty}</div>`}</div>`;
+        return `<div class="lo-slot ${hubPick === s ? 'open' : ''}" data-slot="${s}"><small>${SLOT_LABEL[s]}</small>` +
+            (it ? itemCard(it) : `<div class="it empty"><span class="it-ico">${SLOT_EMPTY[s]}</span>${s === 'primary' ? '<small>Starter pistol</small>' : s === 'backpack' ? `<small>${arenaCat.basePack} slots</small>` : '<small>empty</small>'}</div>`) + '</div>';
     };
-    // Verbrauchsgut im Lager je Sorte
-    const have = {};
-    for (const x of inv) if (x.kind === 'util') have[x.base] = (have[x.base] || 0) + 1;
+    const have = utilHave();
     const utilSlot = i => {
         const u = (l.util || [])[i];
         const def = u && arenaCat.utils[u.base];
         const other = (l.util || [])[1 - i];
-        const opts = Object.keys(have).map(b => `<option value="${b}" ${u && u.base === b ? 'selected' : ''}>${arenaCat.utils[b].icon} ${esc(arenaCat.utils[b].name)} (${have[b]})</option>`).join('');
-        const free = u ? have[u.base] - (other && other.base === u.base ? other.n : 0) : 0;
-        return `<div class="lo-slot util"><small>${UTIL_KEYS[i]} · Consumable</small><div class="it ${u ? 'tier-' + arenaCat.tiers[def.tier].id : 'empty'}">` +
-            (u ? `<span class="it-ico">${def.icon}</span><b>${esc(def.name)}</b><div class="cons"><button type="button" class="ghost" data-util="${i}" data-d="-1">−</button><b>${u.n}</b>` +
-                `<button type="button" class="ghost" data-util="${i}" data-d="1" ${u.n >= Math.min(def.stack, free) ? 'disabled' : ''}>+</button><small>max ${def.stack}</small></div>` : '<span class="it-ico">➕</span>') +
-            `<select data-utilpick="${i}"><option value="">${u ? '– remove –' : 'choose…'}</option>${opts}</select></div></div>`;
+        const free = u ? (have[u.base] || 0) - (other && other.base === u.base ? other.n : 0) : 0;
+        return `<div class="lo-slot util ${hubPick === 'util' + i ? 'open' : ''}" data-slot="util${i}"><small>${UTIL_KEYS[i]} · Consumable</small>` +
+            (u ? `<div class="it tier-${arenaCat.tiers[def.tier].id}"><span class="it-ico">${def.icon}</span><b>${esc(def.name)}</b>` +
+                `<div class="cons"><button type="button" class="ghost" data-util="${i}" data-d="-1">−</button><b>${u.n}</b>` +
+                `<button type="button" class="ghost" data-util="${i}" data-d="1" ${u.n >= Math.min(def.stack, free) ? 'disabled' : ''}>+</button></div></div>`
+                : '<div class="it empty"><span class="it-ico">➕</span><small>empty</small></div>') + '</div>';
     };
     const bonus = setBonusText(['helmet', 'vest', 'pants', 'boots'].map(s => l[s] && byUid(l[s])));
-    return `<div class="loadout eight">${GEAR_SLOTS.map(slotCard).join('')}${utilSlot(0)}${utilSlot(1)}</div>` +
+    return `<div class="loadout nine">${GEAR_SLOTS.map(slotCard).join('')}${utilSlot(0)}${utilSlot(1)}</div>` +
         (bonus ? `<div class="set-active">🧩 ${bonus}</div>` : '');
+}
+
+// Auswahl fuer einen Slot (Equip-Tab)
+function hubPicker() {
+    if (!hubPick) return '<div class="hint pick-hint">Click a slot to choose what goes in it.</div>';
+    const l = hub.loadout;
+    const isUtil = hubPick.startsWith('util');
+    let cards;
+    if (isUtil) {
+        const have = utilHave();
+        cards = Object.entries(have).map(([b, n]) => {
+            const it = hub.inv.find(x => x.kind === 'util' && x.base === b);
+            return itemCard(it, { n });
+        }).join('');
+    } else {
+        cards = hub.inv.filter(it => fitsSlot(it, hubPick))
+            .sort((a, b) => (b.score || 0) - (a.score || 0) || tierIdx(b.tier) - tierIdx(a.tier))
+            .map(it => itemCard(it, { eq: hubEquippedAs(it.uid), sel: l[hubPick] === it.uid })).join('');
+    }
+    const filled = isUtil ? l.util[hubPick === 'util0' ? 0 : 1] : l[hubPick];
+    return `<div class="picker"><div class="picker-head"><b>Choose: ${isUtil ? 'consumable ' + UTIL_KEYS[hubPick === 'util0' ? 0 : 1] : SLOT_LABEL[hubPick].replace(/^\d · /, '').toLowerCase()}</b>` +
+        (filled ? `<button type="button" class="ghost" data-takeoff="${hubPick}">Take off</button>` : '') +
+        `<button type="button" class="ghost" data-pickclose="1">Close</button></div>` +
+        `<div class="inv-grid">${cards || '<div class="hint">Nothing for this slot in your stash.</div>'}</div></div>`;
 }
 
 // Verbrauchsgut im Lager zu Stapeln zusammenfassen
@@ -7986,18 +8416,24 @@ function hubStacks(list) {
     return out;
 }
 
-const HUB_FILTERS = [['all', 'All'], ['weapon', '🔫 Weapons'], ['helmet', '🪖 Helmets'], ['vest', '🦺 Vests'], ['pants', '👖 Pants'], ['boots', '🥾 Boots'], ['util', '💣 Consumables']];
+const HUB_FILTERS = [['all', 'All'], ['weapon', '🔫 Weapons'], ['helmet', '🪖 Helmets'], ['vest', '🦺 Vests'], ['pants', '👖 Pants'],
+    ['boots', '🥾 Boots'], ['pack', '🎒 Backpacks'], ['util', '💣 Consumables']];
+const hubFilterFn = x => hubFilter === 'all' || x.kind === hubFilter || (x.kind === 'armor' && x.slot === hubFilter);
+const hubSort = (a, b) => tierIdx(b.tier) - tierIdx(a.tier) || (b.score || 0) - (a.score || 0) || (a.kind > b.kind ? 1 : -1);
 
 function hubDraw() {
     if (!arenaCat) return;
     document.querySelectorAll('#hub-tabs [data-hubtab]').forEach(b => b.classList.toggle('on', b.dataset.hubtab === hubTab));
     $('hub-coins').textContent = me ? me.coins.toLocaleString('en-US') : '–';
     $('hub-scrap').textContent = hub ? hub.scrap.toLocaleString('en-US') : '–';
+    itTip.hidden = true;
+    TIP.clear();
     if (!hub) {
         $('hub-body').innerHTML = '<div class="hint">Loading…</div>';
         return;
     }
     const inv = hub.inv;
+    const filters = `<div class="cr-diffs">${HUB_FILTERS.map(([k, n]) => `<button type="button" data-filter="${k}" class="${hubFilter === k ? 'on' : ''}">${n}</button>`).join('')}</div>`;
     let html = '';
     if (hubTab === 'play') {
         html = hubLoadout() +
@@ -8006,27 +8442,27 @@ function hubDraw() {
             `If you die or leave, the killer gets it all. Hide in buildings, bushes and smoke – nobody outside sees you until you shoot.</div></div>` +
             (hubLast ? `<div class="raid-result ${hubLast.result}">${hubLast.html}</div>` : '');
     } else if (hubTab === 'equip') {
-        const list = inv.filter(x => hubFilter === 'all' || x.kind === hubFilter || (x.kind === 'armor' && x.slot === hubFilter))
-            .sort((a, b) => tierIdx(b.tier) - tierIdx(a.tier) || (b.score || 0) - (a.score || 0) || (a.kind > b.kind ? 1 : -1));
+        html = hubLoadout() + hubPicker();
+    } else if (hubTab === 'inv') {
+        const list = inv.filter(hubFilterFn).sort(hubSort);
         const sel = hubSel && inv.find(x => x.uid === hubSel);
-        let bar = `<div class="cr-diffs">${HUB_FILTERS.map(([k, n]) => `<button type="button" data-filter="${k}" class="${hubFilter === k ? 'on' : ''}">${n}</button>`).join('')}</div>` +
-            `<span class="hint">${inv.length} / ${arenaCat.invMax}</span>`;
-        if (!hubMulti) bar += `<button type="button" class="ghost" id="hub-multi">☑ Select to salvage</button>`;
-        else {
-            const picked = inv.filter(x => hubMulti.has(x.uid));
-            const val = picked.reduce((s, x) => s + (x.sv || 0), 0);
-            bar += `<button type="button" class="ghost" data-pickall="common">+ Commons</button><button type="button" class="ghost" data-pickall="uncommon">+ Uncommons</button>` +
-                `<button type="button" class="ghost" data-pickall="none">Clear</button>` +
-                `<button type="button" class="danger" id="hub-salvage-picked" ${picked.length ? '' : 'disabled'}>♻️ Salvage ${picked.length} (+${val} ⚙️)</button>` +
-                `<button type="button" class="ghost" id="hub-multi-off">Done</button>`;
-        }
-        const cards = hubStacks(list).map(({ it, uids }) => itemCard(it, {
-            sel: !hubMulti && uids.includes(hubSel), eq: hubEquippedAs(it.uid), n: uids.length,
-            pick: hubMulti ? uids.every(u => hubMulti.has(u)) : undefined
-        })).join('');
-        html = hubLoadout() + `<div class="inv-bar">${bar}</div>` +
-            `<div class="inv-main"><div class="inv-grid">${cards || '<div class="hint">Nothing here. Buy something in the shop or open a case.</div>'}</div>` +
-            `<div class="inv-detail">${sel ? itemCard(sel) + itemDetail(sel) + hubActions(sel) : '<div class="hint">Click an item to see its stats.</div>'}</div></div>`;
+        html = `<div class="inv-bar">${filters}<span class="hint">${inv.length} / ${arenaCat.invMax}</span></div>` +
+            `<div class="inv-main"><div class="inv-list">${hubStacks(list).map(({ it, uids }) => itemRow(it, { sel: uids.includes(hubSel), eq: hubEquippedAs(it.uid), n: uids.length })).join('') || '<div class="hint">Nothing here.</div>'}</div>` +
+            `<div class="inv-detail">${sel ? itemDetail(sel) + hubActions(sel) : '<div class="hint">Click an item to equip or salvage it.</div>'}</div></div>`;
+    } else if (hubTab === 'salvage') {
+        const free = inv.filter(x => !hubEquippedAs(x.uid));
+        const tierBtns = arenaCat.tiers.slice(0, 4).map(t => {
+            const xs = free.filter(x => x.tier === t.id && x.kind !== 'util');
+            const val = xs.reduce((s, x) => s + (x.sv || 0), 0);
+            return `<button type="button" class="salv-tier tier-${t.id}" data-salvtier="${t.id}" ${xs.length ? '' : 'disabled'}>♻️ All ${t.name}<small>${xs.length} items · +${val} ⚙️</small></button>`;
+        }).join('');
+        const list = inv.filter(hubFilterFn).sort(hubSort);
+        const picked = inv.filter(x => hubMulti.has(x.uid));
+        const val = picked.reduce((s, x) => s + (x.sv || 0), 0);
+        html = `<div class="salv-tiers">${tierBtns}</div><div class="hint">Equipped items and consumables are never included in these buttons.</div>` +
+            `<div class="inv-bar">${filters}<button type="button" class="ghost" data-pickall="none">Clear</button>` +
+            `<button type="button" class="danger" id="hub-salvage-picked" ${picked.length ? '' : 'disabled'}>♻️ Salvage ${picked.length} selected (+${val} ⚙️)</button></div>` +
+            `<div class="inv-grid">${hubStacks(list).map(({ it, uids }) => itemCard(it, { eq: hubEquippedAs(it.uid), n: uids.length, pick: uids.every(u => hubMulti.has(u)) })).join('') || '<div class="hint">Nothing here.</div>'}</div>`;
     } else if (hubTab === 'cases') {
         const chances = t => arenaCat.tiers.map((x, i) => t[i] > 0 ? `<span class="tier-${x.id} it-tier">${x.name} ${t[i] >= 0.1 ? Math.round(t[i] * 100) + '%' : '1 in ' + Math.round(1 / t[i]).toLocaleString('en-US')}</span>` : '').join('');
         html = `<div class="cases">${Object.entries(arenaCat.cases).map(([k, c]) =>
@@ -8038,14 +8474,15 @@ function hubDraw() {
     } else if (hubTab === 'shop') {
         const btn = (o, n = 1) => `<button type="button" class="${o.currency === 'scrap' ? 'ghost' : 'gold'}" data-buy="${o.id}" data-n="${n}">${n > 1 ? n + '× ' : ''}${o.currency === 'scrap' ? '⚙️' : '🪙'} ${(o.price * n).toLocaleString('en-US')}</button>`;
         const card = o => {
-            const def = o.kind === 'gen' ? { name: 'Weapon with a random effect', icon: '🎲' } : o.kind === 'util' ? arenaCat.utils[o.base] : arenaCat.weapons[o.base];
-            return `<div class="case-card"><span class="it-ico">${def.icon}</span><b>${esc(def.name)}</b>${def.desc ? `<small>${esc(def.desc)}</small>` : ''}${btn(o)}${o.kind === 'util' ? btn(o, 5) : ''}</div>`;
+            const def = o.kind === 'gen' ? { name: 'Weapon with a random effect', icon: '🎲' } : o.kind === 'util' ? arenaCat.utils[o.base] : o.kind === 'pack' ? arenaCat.packs[o.base] : arenaCat.weapons[o.base];
+            const desc = def.desc || (o.kind === 'pack' ? `${def.cap} slots instead of ${arenaCat.basePack}` : '');
+            return `<div class="case-card"><span class="it-ico">${def.icon}</span><b>${esc(def.name)}</b>${desc ? `<small>${esc(desc)}</small>` : ''}${btn(o)}${o.kind === 'util' ? btn(o, 5) : ''}</div>`;
         };
         const coins = arenaCat.shop.filter(o => o.currency === 'coins');
         html = `<h3>Weapons</h3><div class="cases">${coins.filter(o => o.kind === 'weapon').map(card).join('')}</div>` +
-            `<h3>Consumables</h3><div class="cases">${coins.filter(o => o.kind === 'util').map(card).join('')}</div>` +
+            `<h3>Gear</h3><div class="cases">${coins.filter(o => o.kind === 'util' || o.kind === 'pack').map(card).join('')}</div>` +
             `<h3>For scrap</h3><div class="cases">${arenaCat.shop.filter(o => o.currency === 'scrap').map(card).join('')}</div>` +
-            `<div class="hint">Armor, rarer weapons and special consumables only come from cases and crates.</div>`;
+            `<div class="hint">Armor, bigger backpacks, rarer weapons and special consumables only come from cases and crates.</div>`;
     }
     $('hub-body').innerHTML = html;
 }
@@ -8058,6 +8495,8 @@ function hubActions(it) {
         b += `<button type="button" class="ghost" data-equip="secondary" data-uid="${it.uid}">Equip as secondary (2)</button>`;
     } else if (it.kind === 'armor') {
         b += `<button type="button" data-equip="${it.slot}" data-uid="${it.uid}">Equip ${arenaCat.slotNames[it.slot].toLowerCase()}</button>`;
+    } else if (it.kind === 'pack') {
+        b += `<button type="button" data-equip="backpack" data-uid="${it.uid}">Equip backpack</button>`;
     } else {
         const n = hub.inv.filter(x => x.kind === 'util' && x.base === it.base).length;
         const def = arenaCat.utils[it.base];
@@ -8086,7 +8525,7 @@ function hubCaseAnim(item, reel) {
     sfx.spin();
     setTimeout(() => {
         hubCaseBusy = false;
-        $('hub-caseres').innerHTML = itemCard(item) + itemDetail(item);
+        $('hub-caseres').innerHTML = `<div class="case-won">${itemDetail(item)}</div>`;
         sfx.fanfare(tierIdx(item.tier) >= 3 ? 'big' : 'end');
         $('hub-scrap').textContent = hub.scrap.toLocaleString('en-US');
         $('hub-coins').textContent = me ? me.coins.toLocaleString('en-US') : '–';
@@ -8104,35 +8543,30 @@ function hubSetUtil(i, base, n) {
     wsSend({ type: 'arEquip', slot: 'util' + i, base: base || null, n });
 }
 
-$('hub-body').addEventListener('change', e => {
-    const s = e.target.closest('[data-utilpick]');
-    if (!s) return;
-    const i = Number(s.dataset.utilpick);
-    if (!s.value) return hubSetUtil(i, null, 0);
-    hubSetUtil(i, s.value, arenaCat.utils[s.value].stack);
-});
+function hubSalvage(uids) {
+    const rare = hub.inv.filter(x => uids.includes(x.uid) && tierIdx(x.tier) >= 2 && x.kind !== 'util').length;
+    const eq = hub.inv.filter(x => uids.includes(x.uid) && hubEquippedAs(x.uid)).length;
+    if ((rare || eq) && !confirm(`Salvage ${uids.length} items?${rare ? ` ${rare} of them are Rare or better.` : ''}${eq ? ` ${eq} are in your loadout.` : ''}`)) return;
+    hubMulti.clear();
+    wsSend({ type: 'arSalvage', uids });
+}
 
 $('hub-body').addEventListener('click', e => {
-    const t = e.target.closest('button, .it[data-uid]');
+    const t = e.target.closest('button, .it[data-uid], .it-row[data-uid], .lo-slot[data-slot]');
     if (!t || hubCaseBusy || t.disabled) return;
     const ds = t.dataset;
     if (t.id === 'hub-deploy') return wsSend({ type: 'shJoin' });
-    if (t.id === 'hub-multi') { hubMulti = new Set(); return hubDraw(); }
-    if (t.id === 'hub-multi-off') { hubMulti = null; return hubDraw(); }
-    if (t.id === 'hub-salvage-picked') {
-        const uids = [...hubMulti];
-        const rare = hub.inv.filter(x => hubMulti.has(x.uid) && tierIdx(x.tier) >= 2 && x.kind !== 'util').length;
-        const eq = hub.inv.filter(x => hubMulti.has(x.uid) && hubEquippedAs(x.uid)).length;
-        if ((rare || eq) && !confirm(`Salvage ${uids.length} items?${rare ? ` ${rare} of them are Rare or better.` : ''}${eq ? ` ${eq} are in your loadout.` : ''}`)) return;
-        hubMulti = new Set();
-        return wsSend({ type: 'arSalvage', uids });
-    }
-    if (ds.pickall) {
-        if (ds.pickall === 'none') hubMulti.clear();
-        else for (const x of hub.inv) if (x.tier === ds.pickall && x.kind !== 'util' && !hubEquippedAs(x.uid)) hubMulti.add(x.uid);
-        return hubDraw();
-    }
+    if (t.id === 'hub-salvage-picked') return hubSalvage([...hubMulti]);
+    if (ds.salvtier) return hubSalvage(hub.inv.filter(x => x.tier === ds.salvtier && x.kind !== 'util' && !hubEquippedAs(x.uid)).map(x => x.uid));
+    if (ds.pickall) { hubMulti.clear(); return hubDraw(); }
     if (ds.filter) { hubFilter = ds.filter; return hubDraw(); }
+    if (ds.pickclose) { hubPick = null; return hubDraw(); }
+    if (ds.takeoff) {
+        const s = ds.takeoff;
+        if (s.startsWith('util')) hubSetUtil(Number(s.slice(4)), null, 0);
+        else wsSend({ type: 'arEquip', slot: s, uid: null });
+        return;
+    }
     if (ds.util !== undefined) {
         const u = hub.loadout.util[Number(ds.util)];
         if (u) hubSetUtil(Number(ds.util), u.base, u.n + Number(ds.d));
@@ -8149,17 +8583,29 @@ $('hub-body').addEventListener('click', e => {
     }
     if (ds.case) return wsSend({ type: 'arCase', id: ds.case });
     if (ds.buy) return wsSend({ type: 'arBuy', id: ds.buy, n: Number(ds.n) || 1 });
-    if (ds.uid) {
-        if (hubMulti) {
-            // Stapel (Verbrauchsgut) als Ganzes waehlen
-            const it = hub.inv.find(x => x.uid === ds.uid);
-            const group = it && it.kind === 'util' ? hub.inv.filter(x => x.kind === 'util' && x.base === it.base).map(x => x.uid) : [ds.uid];
-            const on = group.every(u => hubMulti.has(u));
-            for (const u of group) on ? hubMulti.delete(u) : hubMulti.add(u);
-            return hubDraw();
-        }
-        hubSel = ds.uid;
+    // Item in der Auswahl eines Slots: ausruesten
+    if (hubTab === 'equip' && ds.uid && t.closest('.picker')) {
+        const it = hub.inv.find(x => x.uid === ds.uid);
+        if (!it) return;
+        if (hubPick.startsWith('util')) hubSetUtil(Number(hubPick.slice(4)), it.base, arenaCat.utils[it.base].stack);
+        else wsSend({ type: 'arEquip', slot: hubPick, uid: it.uid });
+        return;
+    }
+    if (ds.slot) {
+        hubPick = hubPick === ds.slot ? null : ds.slot;
         if (hubTab !== 'equip') hubTab = 'equip';
+        return hubDraw();
+    }
+    if (ds.uid && hubTab === 'salvage') {
+        const it = hub.inv.find(x => x.uid === ds.uid);
+        const group = it && it.kind === 'util' ? hub.inv.filter(x => x.kind === 'util' && x.base === it.base).map(x => x.uid) : [ds.uid];
+        const on = group.every(u => hubMulti.has(u));
+        for (const u of group) on ? hubMulti.delete(u) : hubMulti.add(u);
+        return hubDraw();
+    }
+    if (ds.uid) {
+        hubSel = ds.uid;
+        hubTab = 'inv';
         hubDraw();
     }
 });
@@ -8203,41 +8649,98 @@ function shInvToggle(open) {
     if (shInvOpen) shInvDraw();
 }
 
+// Raid-Inventar im Stil von Apex: oben die zwei Waffen, in der Mitte der
+// Rucksack als Raster (gesperrte Felder zeigen, was ein groesserer Rucksack
+// braeuchte), unten Ruestung, Rucksack und die zwei Verbrauchsgut-Slots.
+// Drueberfahren zeigt alles zum Item, Klick waehlt es fuer die Aktionen aus.
+let shInvSel = null;        // { where: 'pack'|'gear'|'util', uid|slot }
+
 function shInvDraw() {
     const d = shInvState;
     if (!d || !arenaCat) return;
-    const slot = s => {
+    TIP.clear();
+    const cur = shSnaps.length ? shSnaps[shSnaps.length - 1].me.slot : 'primary';
+    const isSel = (where, key) => shInvSel && shInvSel.where === where && shInvSel.key === key;
+    const weapon = (s, n) => {
         const it = d.gear[s];
-        return `<div class="lo-slot"><small>${SLOT_LABEL[s]}</small>${it ? itemCard(it) : '<div class="it empty">empty</div>'}` +
-            (it && !it.s ? `<button type="button" class="ghost" data-inv-unequip="${s}">Take off</button>` : '') + '</div>';
+        if (it) TIP.set(it.uid, it);
+        return `<div class="ri-weapon ${cur === s ? 'active' : ''} ${it ? 'tier-' + it.t : ''} ${isSel('gear', s) ? 'sel' : ''}" data-ri="gear" data-key="${s}" ${it ? `data-tip="${esc(it.uid)}"` : ''}>` +
+            `<span class="ri-label">${n} WEAPON</span>` +
+            (it ? `<span class="ri-big">${itemIcon(it)}</span><b>${esc(it.n)}</b>${tierLine(it)}<div class="mods">${modIcons(it)}</div>` : '<span class="ri-big dim">🔫</span><small>empty</small>') + '</div>';
     };
-    const bonus = setBonusText(['helmet', 'vest', 'pants', 'boots'].map(s => d.gear[s]));
-    const pack = d.pack.map(it => {
-        const k = it.k;
-        const act = k === 'weapon'
-            ? `<button type="button" data-inv-equip="${it.uid}" data-slot="primary">1</button><button type="button" data-inv-equip="${it.uid}" data-slot="secondary">2</button>`
-            : k === 'armor' ? `<button type="button" data-inv-equip="${it.uid}">Wear</button>`
-            : `<button type="button" data-inv-equip="${it.uid}" data-slot="0">Q</button><button type="button" data-inv-equip="${it.uid}" data-slot="1">G</button>`;
-        return `<div class="inv-item">${itemCard(it)}<div class="inv-act">${act}<button type="button" class="ghost" data-inv-drop="${it.uid}" title="Drop">⬇</button></div></div>`;
+    // Rucksack: Verbrauchsgut gleicher Sorte in ein Feld
+    const cells = [];
+    for (const it of d.pack) {
+        const c = it.k === 'util' && cells.find(x => x.it.k === 'util' && x.it.b === it.b);
+        if (c) c.n++;
+        else cells.push({ it, n: 1 });
+    }
+    const used = d.pack.length;
+    let grid = cells.map(({ it, n }) => {
+        TIP.set(it.uid, it);
+        return `<div class="ri-cell tier-${it.t} ${isSel('pack', it.uid) ? 'sel' : ''}" data-ri="pack" data-key="${esc(it.uid)}" data-tip="${esc(it.uid)}">` +
+            `<span>${itemIcon(it)}</span>${n > 1 ? `<i>${n}</i>` : ''}${setOf(it) ? `<em style="color:${arenaCat.sets[setOf(it)].color}">${arenaCat.sets[setOf(it)].name[0]}</em>` : ''}</div>`;
     }).join('');
-    $('sh-inv').innerHTML = `<div class="s2-head"><b>🎒 Inventory</b><span class="hint">Tab / I to close</span><button type="button" class="s2-icon" data-inv-close="1">✕</button></div>` +
-        `<div class="loadout six">${GEAR_SLOTS.map(slot).join('')}</div>` + (bonus ? `<div class="set-active">🧩 ${bonus}</div>` : '') +
-        `<div class="loadout two">${[0, 1].map(i => {
-            const u = d.util[i], def = u && arenaCat.utils[u.base];
-            return `<div class="lo-slot"><small>${UTIL_KEYS[i]} · Consumable</small>${u ? `<div class="it tier-${arenaCat.tiers[def.tier].id}"><span class="it-ico">${def.icon}</span><b>${esc(def.name)} ×${u.n}</b><small>${esc(def.desc)}</small></div>` +
-                `<button type="button" class="ghost" data-inv-unequip="util${i}">Take off</button>` : '<div class="it empty">empty</div>'}</div>`;
-        }).join('')}</div>` +
-        `<h4>Backpack ${d.pack.length} / ${d.packMax}</h4><div class="inv-grid">${pack || '<div class="hint">Empty – open 📦 crates (F) or loot 💰 bags.</div>'}</div>`;
+    // freie Felder, dann gesperrte bis zur naechsten vollen Reihe (mind. eine)
+    const free = Math.max(0, d.packMax - used);
+    grid += '<div class="ri-cell empty"></div>'.repeat(free);
+    const shown = cells.length + free;
+    const locked = Math.min(10, (10 - shown % 10) % 10 + (d.packMax < 50 ? 10 : 0));
+    grid += '<div class="ri-cell locked">🔒</div>'.repeat(locked);
+    const gearSlot = s => {
+        const it = d.gear[s];
+        if (it) TIP.set(it.uid, it);
+        return `<div class="ri-slot ${it ? 'tier-' + it.t : ''} ${isSel('gear', s) ? 'sel' : ''}" data-ri="gear" data-key="${s}" ${it ? `data-tip="${esc(it.uid)}"` : ''}>` +
+            `<span>${it ? itemIcon(it) : `<span class="dim">${SLOT_EMPTY[s]}</span>`}</span>${it && setOf(it) ? `<em style="color:${arenaCat.sets[setOf(it)].color}">${arenaCat.sets[setOf(it)].name[0]}</em>` : ''}` +
+            `<small>${s === 'backpack' ? `${used}/${d.packMax}` : SLOT_LABEL[s]}</small></div>`;
+    };
+    const utilSlot = i => {
+        const u = d.util[i], def = u && arenaCat.utils[u.base];
+        return `<div class="ri-slot util ${def ? 'tier-' + arenaCat.tiers[def.tier].id : ''} ${isSel('util', 'util' + i) ? 'sel' : ''}" data-ri="util" data-key="util${i}" title="${def ? esc(def.name + ' – ' + def.desc) : 'empty'}">` +
+            `<span>${def ? def.icon : '<span class="dim">➕</span>'}</span>${u ? `<i>${u.n}</i>` : ''}<small>${UTIL_KEYS[i]}</small></div>`;
+    };
+    // Aktionen zur Auswahl
+    let actions = '<span class="hint">Hover an item for details · click to select</span>';
+    const s = shInvSel;
+    if (s && s.where === 'pack') {
+        const it = d.pack.find(x => x.uid === s.key);
+        if (it) {
+            const k = it.k;
+            actions = `<b>${itemIcon(it)} ${esc(it.n)}</b>` + (k === 'weapon'
+                ? `<button type="button" data-inv-equip="${it.uid}" data-slot="primary">Equip as 1</button><button type="button" data-inv-equip="${it.uid}" data-slot="secondary">Equip as 2</button>`
+                : k === 'armor' || k === 'pack' ? `<button type="button" data-inv-equip="${it.uid}">Wear</button>`
+                : `<button type="button" data-inv-equip="${it.uid}" data-slot="0">Put in Q</button><button type="button" data-inv-equip="${it.uid}" data-slot="1">Put in G</button>`) +
+                `<button type="button" class="ghost" data-inv-drop="${it.uid}">Drop</button>`;
+        }
+    } else if (s && (s.where === 'gear' || s.where === 'util')) {
+        const it = s.where === 'gear' ? d.gear[s.key] : null;
+        const u = s.where === 'util' ? d.util[Number(s.key.slice(4))] : null;
+        if ((it && !it.s) || u) actions = `<b>${it ? itemIcon(it) + ' ' + esc(it.n) : arenaCat.utils[u.base].icon + ' ' + esc(arenaCat.utils[u.base].name)}</b><button type="button" data-inv-unequip="${s.key}">Take off (into backpack)</button>`;
+    }
+    const bonus = setBonusText(['helmet', 'vest', 'pants', 'boots'].map(x => d.gear[x]));
+    $('sh-inv').innerHTML =
+        `<div class="ri-top">${weapon('primary', 1)}${weapon('secondary', 2)}</div>` +
+        `<div class="ri-pack"><div class="ri-grid">${grid}</div></div>` +
+        `<div class="ri-bottom">${['helmet', 'vest', 'pants', 'boots', 'backpack'].map(gearSlot).join('')}<span class="ri-gap"></span>${utilSlot(0)}${utilSlot(1)}</div>` +
+        (bonus ? `<div class="set-active">🧩 ${bonus}</div>` : '') +
+        `<div class="ri-actions">${actions}<button type="button" class="ghost" data-inv-close="1">Close (Tab)</button></div>`;
 }
 
 $('sh-inv').addEventListener('click', e => {
     const b = e.target.closest('button');
-    if (!b) return;
-    const d = b.dataset;
-    if (d.invClose) return shInvToggle(false);
-    if (d.invEquip) return wsSend({ type: 'shInv', op: 'equip', uid: d.invEquip, slot: d.slot });
-    if (d.invUnequip) return wsSend({ type: 'shInv', op: 'unequip', slot: d.invUnequip });
-    if (d.invDrop) return wsSend({ type: 'shInv', op: 'drop', uid: d.invDrop });
+    if (b) {
+        const d = b.dataset;
+        if (d.invClose) return shInvToggle(false);
+        shInvSel = null;
+        if (d.invEquip) return wsSend({ type: 'shInv', op: 'equip', uid: d.invEquip, slot: d.slot });
+        if (d.invUnequip) return wsSend({ type: 'shInv', op: 'unequip', slot: d.invUnequip });
+        if (d.invDrop) return wsSend({ type: 'shInv', op: 'drop', uid: d.invDrop });
+        return;
+    }
+    const c = e.target.closest('[data-ri]');
+    if (!c) return;
+    shInvSel = shInvSel && shInvSel.key === c.dataset.key ? null : { where: c.dataset.ri, key: c.dataset.key };
+    shInvDraw();
 });
 
 function onShLeft(d) {
@@ -8287,11 +8790,42 @@ function onShLoot(d) {
     beep(900, 0.08, 0.05);
 }
 
+function shShake(mag, ms) {
+    const now = performance.now();
+    const left = shShakeMag * Math.max(0, 1 - (now - shShakeAt) / shShakeMs);
+    if (mag < left) return;
+    shShakeAt = now;
+    shShakeMag = mag;
+    shShakeMs = ms;
+}
+
 function onShFx(d) {
     shFx.push({ ...d, t: performance.now() });
     if (shFx.length > 30) shFx.shift();
     if (d.type === 'shBoom') sNoise({ dur: d.nuke ? 1.6 : .4, vol: d.nuke ? .4 : .22, type: 'lowpass', f: d.nuke ? 600 : 900, f2: 60, rev: .3, a: .002 });
-    if (d.nuke) shHurtAt = performance.now();
+    if (d.nuke) {
+        // tiefes Grollen und Druckwelle
+        sTone(55, { dur: 2.2, type: 'sine', vol: .35, slide: 28, rev: .4 });
+        sTone(110, { dur: .6, type: 'triangle', vol: .15, slide: 40, rev: .3 });
+        shShake(34, 1300);
+    }
+    if (d.hole) {
+        sTone(70, { dur: 1.2, type: 'sawtooth', vol: .12, slide: 30, rev: .5, lp: 500 });
+        shShake(22, 900);
+    }
+    if (d.type === 'shFx' && d.kind === 'hole') sTone(200, { dur: 1.1, type: 'sine', vol: .12, slide: 40, rev: .5 });
+    if (d.type === 'shFx' && d.kind === 'phoenix') {
+        [523, 659, 784, 1047].forEach((f, i) => sTone(f, { t: i * .08, dur: .5, type: 'triangle', vol: .06, rev: .4 }));
+        sNoise({ dur: .6, vol: .1, type: 'lowpass', f: 1500, f2: 300, rev: .3, a: .05 });
+    }
+    if (d.type === 'shBeam') {
+        // Railgun: Aufladen, Knall, Nachklingen
+        const mine = sh && d.owner === sh.id;
+        sTone(420, { dur: .09, type: 'sawtooth', vol: mine ? .07 : .045, slide: 2400, rev: .1 });
+        sNoise({ t: .07, dur: .35, vol: mine ? .3 : .18, type: 'bandpass', f: 2600, f2: 500, rev: .35, a: .002 });
+        sTone(1900, { t: .07, dur: .5, type: 'sine', vol: mine ? .06 : .035, slide: 300, rev: .4 });
+        shShake(mine ? 14 : 6, 350);
+    }
     if (d.type === 'shFx' && d.kind === 'heal') sTone(660, { dur: .15, type: 'sine', vol: .05, slide: 990, rev: .1 });
     if (d.type === 'shFx' && d.kind === 'nova') sNoise({ dur: .5, vol: .12, type: 'lowpass', f: 700, f2: 200, rev: .3, a: .01 });
     if (d.type === 'shFx' && d.kind === 'blink') sTone(300, { dur: .2, type: 'sine', vol: .06, slide: 1200, rev: .2 });
@@ -8438,8 +8972,10 @@ function shFrame() {
     let camX = clamp(focus.x, viewW / 2, m.w - viewW / 2);
     let camY = clamp(focus.y, viewH / 2, m.h - viewH / 2);
     const hurt = Math.max(0, 1 - (now - shHurtAt) / 250);
-    camX += (Math.random() - .5) * 8 * hurt;
-    camY += (Math.random() - .5) * 8 * hurt;
+    // Wackeln: Treffer klein, Railgun/Nuke gross
+    const shake = Math.max(8 * hurt, shShakeMag * Math.max(0, 1 - (now - shShakeAt) / shShakeMs));
+    camX += (Math.random() - .5) * shake;
+    camY += (Math.random() - .5) * shake;
     shCam = { x: camX - viewW / 2, y: camY - viewH / 2, s };
     const vis = (x, y, pad) => x > shCam.x - pad && x < shCam.x + viewW + pad && y > shCam.y - pad && y < shCam.y + viewH + pad;
 
@@ -8492,8 +9028,8 @@ function shFrame() {
         c.beginPath();
         c.arc(x, y, r, 0, Math.PI * 2);
         c.fill();
-        for (let k = 0; k < 7; k++) {
-            const a = k / 7 * Math.PI * 2 + now / 900, rr = r * (.3 + (k % 3) * .22);
+        for (let k = 0; k < 3; k++) {
+            const a = k / 3 * Math.PI * 2 + now / 900, rr = r * (.3 + (k % 3) * .22);
             drawEmojiC(c, '🔥', x + Math.cos(a) * rr, y + Math.sin(a) * rr - pulse * 4, 26);
         }
     }
@@ -8513,10 +9049,37 @@ function shFrame() {
 
     // Kugeln (Farbe nach Effekt)
     const age = (now - latest.recv) / 1000;
-    for (const [, x, y, vx, vy, owner, fx] of latest.bullets) {
+    for (const [, x, y, vx, vy, owner, fx, bt] of latest.bullets) {
         const t = owner === sh.id ? age + shRtt / 2000 : Math.max(0, age - SH_INTERP / 1000);
         const bx = x + vx * t, by = y + vy * t;
         const sp = Math.hypot(vx, vy) || 1;
+        if (fx & 64) {
+            // Mini-Nuke: Rauchspur und ☢
+            for (let k = 1; k <= 6; k++) {
+                c.fillStyle = `rgba(160,160,160,${.35 - k * .05})`;
+                c.beginPath();
+                c.arc(bx - vx / sp * k * 14, by - vy / sp * k * 14, 6 + k * 2, 0, Math.PI * 2);
+                c.fill();
+            }
+            c.save();
+            c.translate(bx, by);
+            c.rotate(now / 120);
+            drawEmojiC(c, '☢️', 0, 0, 34);
+            c.restore();
+            continue;
+        }
+        if (fx & 128) {
+            // Singularity: schwarze Kugel mit violettem Glimmen
+            const g = c.createRadialGradient(bx, by, 2, bx, by, 26);
+            g.addColorStop(0, 'rgba(0,0,0,1)');
+            g.addColorStop(.5, 'rgba(90,20,160,.8)');
+            g.addColorStop(1, 'rgba(184,132,255,0)');
+            c.fillStyle = g;
+            c.beginPath();
+            c.arc(bx, by, 26, 0, Math.PI * 2);
+            c.fill();
+            continue;
+        }
         if (fx & 32) {
             c.fillStyle = `rgba(255,${120 + Math.random() * 90},30,.75)`;
             c.beginPath();
@@ -8524,10 +9087,70 @@ function shFrame() {
             c.fill();
             continue;
         }
-        c.strokeStyle = fx & 8 ? '#c78bff' : fx & 1 ? '#ff9b3d' : fx & 2 ? '#ff5b5b' : fx & 4 ? '#8fe9ff' : fx & 16 ? '#7dffb0' : owner === sh.id ? 'rgba(255,246,194,.95)' : 'rgba(255,170,170,.95)';
+        if (fx & 256) {
+            // Rakete mit Rauchspur
+            for (let k = 1; k <= 5; k++) {
+                c.fillStyle = `rgba(200,200,200,${.3 - k * .05})`;
+                c.beginPath();
+                c.arc(bx - vx / sp * k * 12, by - vy / sp * k * 12, 4 + k * 2, 0, Math.PI * 2);
+                c.fill();
+            }
+            c.fillStyle = `rgba(255,${150 + Math.random() * 80},40,.9)`;
+            c.beginPath();
+            c.arc(bx - vx / sp * 14, by - vy / sp * 14, 6 + Math.random() * 3, 0, Math.PI * 2);
+            c.fill();
+            c.save();
+            c.translate(bx, by);
+            c.rotate(Math.atan2(vy, vx) + Math.PI / 4);
+            drawEmojiC(c, '🚀', 0, 0, 30);
+            c.restore();
+            continue;
+        }
+        if (fx & 512) {
+            // Stab: leuchtende Kugel in Elementfarbe mit Schweif
+            const col = fx & 8 ? [199, 139, 255] : fx & 2 ? [255, 140, 40] : fx & 4 ? [143, 233, 255] : [255, 91, 214];
+            const big = bt >= 4 ? 13 : 9;
+            for (let k = 4; k >= 1; k--) {
+                c.fillStyle = `rgba(${col},${.12 * (5 - k)})`;
+                c.beginPath();
+                c.arc(bx - vx / sp * k * 9, by - vy / sp * k * 9, big - k, 0, Math.PI * 2);
+                c.fill();
+            }
+            const g = c.createRadialGradient(bx, by, 1, bx, by, big * 1.8);
+            g.addColorStop(0, 'rgba(255,255,255,1)');
+            g.addColorStop(.35, `rgba(${col},.95)`);
+            g.addColorStop(1, `rgba(${col},0)`);
+            c.fillStyle = g;
+            c.beginPath();
+            c.arc(bx, by, big * 1.8, 0, Math.PI * 2);
+            c.fill();
+            if (fx & 8 && Math.random() < .5) {
+                c.strokeStyle = 'rgba(220,190,255,.9)';
+                c.lineWidth = 2;
+                c.beginPath();
+                c.moveTo(bx, by);
+                for (let j = 1; j < 4; j++) c.lineTo(bx + (Math.random() - .5) * 30, by + (Math.random() - .5) * 30);
+                c.stroke();
+            }
+            continue;
+        }
+        const col = fx & 8 ? '#c78bff' : fx & 1 ? '#ff9b3d' : fx & 2 ? '#ff5b5b' : fx & 4 ? '#8fe9ff' : fx & 16 ? '#7dffb0' : owner === sh.id ? 'rgba(255,246,194,.95)' : 'rgba(255,170,170,.95)';
+        const len = bt >= 3 ? 30 : 18;
+        if (bt >= 3) {
+            // Epic und hoeher: breite Leuchtspur in Stufenfarbe (Ultra: Regenbogen)
+            c.strokeStyle = bt >= 6 ? `hsla(${(now / 3 + x) % 360},100%,65%,.45)` : `${TIER_COLOR[['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'ultra'][bt]]}66`;
+            c.lineWidth = 10 + bt;
+            c.lineCap = 'round';
+            c.beginPath();
+            c.moveTo(bx - vx / sp * len, by - vy / sp * len);
+            c.lineTo(bx, by);
+            c.stroke();
+            c.lineCap = 'butt';
+        }
+        c.strokeStyle = bt >= 3 ? '#fff' : col;
         c.lineWidth = fx ? 5 : 4;
         c.beginPath();
-        c.moveTo(bx - vx / sp * 18, by - vy / sp * 18);
+        c.moveTo(bx - vx / sp * len, by - vy / sp * len);
         c.lineTo(bx, by);
         c.stroke();
     }
@@ -8633,10 +9256,86 @@ function shFrame() {
     }
 
     // Explosionen, Blitze
-    shFx = shFx.filter(f => now - f.t < (f.nuke ? 1400 : 500));
+    const fxMs = f => f.nuke ? 1400 : f.type === 'shBeam' ? 450 : f.kind === 'phoenix' || f.kind === 'hole' ? 1100 : 500;
+    shFx = shFx.filter(f => now - f.t < fxMs(f));
     for (const f of shFx) {
-        const k = (now - f.t) / (f.nuke ? 1400 : 500);
-        if (f.type === 'shBoom') {
+        const k = (now - f.t) / fxMs(f);
+        if (f.type === 'shBeam') {
+            // Strahl: breiter Schein, heller Kern, Funken am Ende
+            const a = 1 - k;
+            c.lineCap = 'round';
+            c.strokeStyle = `rgba(0,200,255,${.25 * a})`;
+            c.lineWidth = 34 * (1 - k * .5);
+            c.beginPath(); c.moveTo(f.x1, f.y1); c.lineTo(f.x2, f.y2); c.stroke();
+            c.strokeStyle = `rgba(120,240,255,${.7 * a})`;
+            c.lineWidth = 12 * (1 - k * .5);
+            c.beginPath(); c.moveTo(f.x1, f.y1); c.lineTo(f.x2, f.y2); c.stroke();
+            c.strokeStyle = `rgba(255,255,255,${a})`;
+            c.lineWidth = 4;
+            c.beginPath(); c.moveTo(f.x1, f.y1); c.lineTo(f.x2, f.y2); c.stroke();
+            // Spirale um den Strahl
+            const L = Math.hypot(f.x2 - f.x1, f.y2 - f.y1), ux = (f.x2 - f.x1) / L, uy = (f.y2 - f.y1) / L;
+            c.fillStyle = `rgba(160,245,255,${a})`;
+            for (let s = 0; s < L; s += 26) {
+                const o = Math.sin(s / 30 + now / 40) * 14 * (1 - k);
+                c.fillRect(f.x1 + ux * s - uy * o - 2, f.y1 + uy * s + ux * o - 2, 4, 4);
+            }
+            c.lineCap = 'butt';
+            c.fillStyle = `rgba(255,255,255,${a})`;
+            c.beginPath(); c.arc(f.x1, f.y1, 14 * a + 4, 0, Math.PI * 2); c.fill();
+        } else if (f.type === 'shBoom') {
+            if (f.hole) {
+                // Implosion: violetter Blitz, Ringe nach innen
+                c.fillStyle = `rgba(184,132,255,${.6 * (1 - k)})`;
+                c.beginPath();
+                c.arc(f.x, f.y, f.r * (1 - k * .8), 0, Math.PI * 2);
+                c.fill();
+                for (let i = 0; i < 3; i++) {
+                    c.strokeStyle = `rgba(255,255,255,${.8 * (1 - k)})`;
+                    c.lineWidth = 3;
+                    c.beginPath();
+                    c.arc(f.x, f.y, f.r * Math.max(0, 1 - k * 1.5 - i * .15), 0, Math.PI * 2);
+                    c.stroke();
+                }
+                continue;
+            }
+            if (f.nuke) {
+                // Feuerball, drei Druckwellen, Pilz
+                const g = c.createRadialGradient(f.x, f.y, 5, f.x, f.y, f.r * (0.5 + k * 0.6));
+                g.addColorStop(0, `rgba(255,255,230,${1 - k})`);
+                g.addColorStop(.35, `rgba(255,170,40,${.85 * (1 - k)})`);
+                g.addColorStop(1, 'rgba(255,60,0,0)');
+                c.fillStyle = g;
+                c.beginPath();
+                c.arc(f.x, f.y, f.r * (0.5 + k * 0.6), 0, Math.PI * 2);
+                c.fill();
+                for (let i = 0; i < 3; i++) {
+                    const kk = Math.min(1, k * 1.6 - i * .2);
+                    if (kk <= 0) continue;
+                    c.strokeStyle = `rgba(255,240,200,${.8 * (1 - kk)})`;
+                    c.lineWidth = 10 * (1 - kk) + 2;
+                    c.beginPath();
+                    c.arc(f.x, f.y, f.r * 1.5 * kk, 0, Math.PI * 2);
+                    c.stroke();
+                }
+                // Rauchpilz: Stiel und Kappe steigen auf
+                const up = 40 + k * 150, cap = 60 + k * 80;
+                c.globalAlpha = Math.max(0, 1 - k * .9);
+                c.fillStyle = 'rgba(120,90,70,.8)';
+                c.fillRect(f.x - 18 - k * 8, f.y - up, 36 + k * 16, up);
+                for (let i = 0; i < 7; i++) {
+                    const a = i / 7 * Math.PI, rx = Math.cos(a) * cap, ry = -Math.sin(a) * cap * .45;
+                    const g2 = c.createRadialGradient(f.x + rx, f.y - up + ry, 4, f.x + rx, f.y - up + ry, cap * .55);
+                    g2.addColorStop(0, `rgba(255,${160 - k * 80},60,.9)`);
+                    g2.addColorStop(1, 'rgba(90,70,60,0)');
+                    c.fillStyle = g2;
+                    c.beginPath();
+                    c.arc(f.x + rx, f.y - up + ry, cap * .55, 0, Math.PI * 2);
+                    c.fill();
+                }
+                c.globalAlpha = 1;
+                continue;
+            }
             c.fillStyle = `rgba(255,150,40,${.5 * (1 - k)})`;
             c.beginPath();
             c.arc(f.x, f.y, f.r * (0.4 + k * 0.6), 0, Math.PI * 2);
@@ -8645,7 +9344,24 @@ function shFrame() {
             c.lineWidth = 4;
             c.stroke();
         } else if (f.type === 'shFx') {
-            if (f.kind === 'heal') {
+            if (f.kind === 'phoenix') {
+                for (let i = 0; i < 10; i++) {
+                    const a = i / 10 * Math.PI * 2 + k * 3;
+                    c.fillStyle = `hsla(${20 + i * 4},100%,${55 + 20 * (1 - k)}%,${1 - k})`;
+                    c.beginPath();
+                    c.arc(f.x + Math.cos(a) * 60 * k, f.y + Math.sin(a) * 60 * k - k * 50, 10 * (1 - k) + 3, 0, Math.PI * 2);
+                    c.fill();
+                }
+                c.globalAlpha = 1 - k;
+                drawEmojiC(c, '🐦‍🔥', f.x, f.y - 40 - k * 60, 60 + k * 30);
+                c.globalAlpha = 1;
+            } else if (f.kind === 'hole') {
+                c.strokeStyle = `rgba(184,132,255,${1 - k})`;
+                c.lineWidth = 6;
+                c.beginPath();
+                c.arc(f.x, f.y, 260 * (1 - k), 0, Math.PI * 2);
+                c.stroke();
+            } else if (f.kind === 'heal') {
                 c.fillStyle = `rgba(0,255,136,${1 - k})`;
                 c.font = 'bold 22px system-ui';
                 c.textAlign = 'center';
@@ -8722,6 +9438,15 @@ function shFrame() {
     // ---- Bildschirm-Ebene ----
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
     const W = r.width, H = r.height;
+    // Brennen/Feuer: nur ein roter Rand beim Getroffenen, kein Ton, kein Wackeln
+    if (my.burn) {
+        const a = .22 + .08 * Math.sin(now / 160);
+        const g = c.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .42, W / 2, H / 2, Math.max(W, H) * .72);
+        g.addColorStop(0, 'rgba(255,40,0,0)');
+        g.addColorStop(1, `rgba(255,40,0,${a})`);
+        c.fillStyle = g;
+        c.fillRect(0, 0, W, H);
+    }
     if (hurt > 0) {
         const g = c.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .3, W / 2, H / 2, Math.max(W, H) * .7);
         g.addColorStop(0, 'rgba(255,0,0,0)');
@@ -8772,7 +9497,7 @@ function shFrame() {
     c.fillStyle = '#fff';
     c.font = 'bold 13px system-ui';
     const ut = (my.util || []).map((u, i) => `${UTIL_KEYS[i]} ${u ? arenaCat.utils[u.base].icon + '×' + u.n : '–'}`).join('   ');
-    c.fillText(`${ut}   🎒 ${my.pack}/${sh.packMax} (Tab)`, x0 + 6, H - 29);
+    c.fillText(`${ut}   🎒 ${my.pack}/${my.packMax || sh.packMax} (Tab)`, x0 + 6, H - 29);
 
     // Hinweise: Loot in Reichweite, Extraction
     c.textAlign = 'center';
@@ -8842,7 +9567,7 @@ function shFrame() {
         c.arc(bx + Math.cos(ang) * len, by + Math.sin(ang) * len, 22, 0, Math.PI * 2);
         c.fill();
     }
-    $('sh-stats').textContent = `🎒 ${my.pack}/${sh.packMax}`;
+    $('sh-stats').textContent = `🎒 ${my.pack}/${my.packMax || sh.packMax}`;
 }
 
 // Emoji auf einem beliebigen Canvas (Sprite-Cache aus dem Snake-Teil)
@@ -8890,7 +9615,24 @@ function shDrawPlayer(c, p, x, y, a, mine, now, my) {
         c.arc(0, 0, 6, 0, Math.PI * 2);
         c.fill();
     }
-    if (p.burn) drawEmojiC(c, '🔥', 12, -12, 18);
+    if (p.ar === 'titan' || p.ar === 'phantom') {
+        const titan = p.ar === 'titan';
+        const pulse = .5 + .5 * Math.sin(now / (titan ? 220 : 140));
+        const g = c.createRadialGradient(0, 0, m.r, 0, 0, m.r + 16 + pulse * 6);
+        g.addColorStop(0, titan ? 'rgba(255,60,60,.45)' : 'rgba(143,233,255,.4)');
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = g;
+        c.beginPath();
+        c.arc(0, 0, m.r + 22 + pulse * 6, 0, Math.PI * 2);
+        c.fill();
+    }
+    if (p.burn) {
+        c.strokeStyle = 'rgba(255,120,40,.7)';
+        c.lineWidth = 2;
+        c.beginPath();
+        c.arc(0, 0, m.r + 2, 0, Math.PI * 2);
+        c.stroke();
+    }
     if (p.slow) drawEmojiC(c, '❄️', -12, -12, 16);
     c.globalAlpha = 1;
     if (!mine) {
@@ -8963,6 +9705,27 @@ function shLocalFire(now) {
     // dumpf: Tiefpass statt Hochpass, schnelle Waffen leiser (Max: SMG tat in den Ohren weh)
     const fast = s.me.ms < 120;
     const heavy = ['sniper', 'launcher', 'railgun', 'nukelauncher', 'singularity', 'crossbow'].includes(b);
+    if (b === 'railgun') return;
+    if (b === 'nukelauncher') {
+        sNoise({ dur: .35, vol: .25, type: 'lowpass', f: 400, f2: 90, rev: .2, a: .01 });
+        sTone(90, { dur: .4, type: 'sine', vol: .2, slide: 45, rev: .2 });
+        return;
+    }
+    if (b === 'minigun') return sNoise({ dur: .04, vol: .05, type: 'lowpass', f: 700, f2: 150, rev: .03, a: .001 });
+    if (b === 'launcher') {
+        sNoise({ dur: .45, vol: .14, type: 'bandpass', f: 500, f2: 1600, rev: .2, a: .02 });
+        return;
+    }
+    const wd = arenaCat.weapons[b];
+    if (wd && wd.tag === 'mage') {
+        // Stab: magisches "Pew", hoeherer Rang klingt voller
+        const tg = (s.me.gear[s.me.slot] || {}).t;
+        const rich = ['legendary', 'mythic', 'ultra'].includes(tg) || wd.tier >= 4;
+        sTone(b === 'firestaff' ? 520 : b === 'froststaff' ? 1100 : b === 'stormstaff' ? 300 : 880, { dur: .16, type: b === 'stormstaff' ? 'sawtooth' : 'sine', vol: .05, slide: b === 'froststaff' ? 1600 : 1300, rev: .25 });
+        if (rich) sTone(1320, { t: .03, dur: .3, type: 'triangle', vol: .03, slide: 2200, rev: .4 });
+        if (b === 'stormstaff' || b === 'archstaff') sNoise({ dur: .12, vol: .05, type: 'highpass', f: 2500, rev: .1, a: .002 });
+        return;
+    }
     if (b === 'flamethrower') sNoise({ dur: .08, vol: .04, type: 'lowpass', f: 500, rev: .05, a: .01 });
     else sNoise({ dur: fast ? .05 : .08, vol: heavy ? .16 : fast ? .045 : .08, type: 'lowpass', f: heavy ? 700 : b === 'shotgun' ? 900 : 1300, f2: 200, rev: .05, a: .002 });
 }

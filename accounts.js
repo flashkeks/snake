@@ -499,16 +499,16 @@ module.exports = function createAccounts(dataDir) {
             const I = arenaItems;
             if (op === 'give') {
                 const kind = String(d.kind), base = String(d.base);
-                const defs = kind === 'weapon' ? I.WEAPONS : kind === 'armor' ? I.ARMORS : kind === 'util' ? I.UTILS : null;
+                const defs = kind === 'weapon' ? I.WEAPONS : kind === 'armor' ? I.ARMORS : kind === 'util' ? I.UTILS : kind === 'pack' ? I.PACKS : null;
                 if (!defs || !defs[base]) return 'unknown base';
                 const count = Math.max(1, Math.min(50, Math.floor(Number(d.count)) || 1));
                 if (a.inv.length + count > I.INV_MAX) return `stash full (${a.inv.length}/${I.INV_MAX})`;
                 const mdefs = kind === 'weapon' ? I.WEAPON_MODS : I.ARMOR_MODS;
-                const mods = kind !== 'util' ? (Array.isArray(d.mods) ? d.mods : [])
+                const mods = kind === 'weapon' || kind === 'armor' ? (Array.isArray(d.mods) ? d.mods : [])
                     .filter(m => mdefs[m.id]).slice(0, 6)
                     .map(m => ({ id: m.id, lvl: Math.max(1, Math.min(mdefs[m.id].max, Math.floor(Number(m.lvl)) || 1)) }))
                     .filter((m, i, arr) => arr.findIndex(x => x.id === m.id) === i) : [];
-                const tier = kind === 'util' ? defs[base].tier : Math.max(0, Math.min(6, Math.floor(Number(d.tier)) || 0));
+                const tier = kind === 'util' || kind === 'pack' ? defs[base].tier : Math.max(0, Math.min(6, Math.floor(Number(d.tier)) || 0));
                 const made = [];
                 for (let i = 0; i < count; i++) made.push(I.craft(kind, base, tier, mods));
                 a.inv.push(...made);
@@ -528,10 +528,25 @@ module.exports = function createAccounts(dataDir) {
             } else return 'unknown op';
             // Loadout zeigt nie auf Geloeschtes
             const l = a.loadout || {};
-            for (const s of ['primary', 'secondary', 'armor', 'helmet', 'vest', 'pants', 'boots']) if (l[s] && !a.inv.some(x => x.uid === l[s])) l[s] = null;
+            for (const s of ['primary', 'secondary', 'armor', 'helmet', 'vest', 'pants', 'boots', 'backpack']) if (l[s] && !a.inv.some(x => x.uid === l[s])) l[s] = null;
             if (Array.isArray(l.util)) l.util = l.util.map(u => u && a.inv.some(x => x.kind === 'util' && x.base === u.base) ? u : null);
             touch();
             return null;
+        },
+
+        // Alles zuruecksetzen wie ein frisches Konto: Coins, Statistik,
+        // Achievements, Titel, Cosmetics, Arena, Daily, Luck. Name, Passwort,
+        // Farbe, Erstellungsdatum und Sessions bleiben.
+        adminResetAll(key) {
+            const u = db.users[key];
+            if (!u) return null;
+            const before = { coins: u.coins, items: (u.arena && u.arena.inv.length) || 0, cosmetics: (u.inventory || []).length };
+            db.users[key] = {
+                name: u.name, salt: u.salt, hash: u.hash, color: u.color, created: u.created, lastSeen: u.lastSeen,
+                coins: START_COINS, stats: newStats()
+            };
+            touch();
+            return before;
         },
 
         adminResetDaily(key) {

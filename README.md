@@ -265,7 +265,8 @@ oder eigener Betrag; Server-Grenze 1.000.000, nur ganze Zahlen).
 | 💎 | 2 | ×1000 |
 
 Zwei 🍒 irgendwo zahlen ×2. Rueckzahlung im Mittel **95,6 %**
-(`node slots.js`). Ab ×80 gibt es eine Gold-Zeile im Feed. Hoechstens ein
+(`node slots.js`). Ab ×80 gibt es eine Gold-Zeile im Feed – erst wenn die
+Walzen stehen (2 s, `hideWin`), sonst verriet der Feed den Treffer vorher. Hoechstens ein
 Spin je 1,2 s.
 
 ## Items
@@ -579,9 +580,16 @@ Tabs:
 | Tab | Inhalt |
 |---|---|
 | 🪂 Play | Loadout-Ueberblick, **Deploy**, Ergebnis des letzten Raids |
-| 🎒 Equipment | Loadout (2 Waffen, Helm, Weste, Hose, Schuhe, zwei Verbrauchsgut-Slots Q/G), aktive Set-Boni, Lager (max. 100, Verbrauchsgut gestapelt), Tabs je Slot (Waffen, Helme, Westen, Hosen, Schuhe, Verbrauchsgut), Detailansicht mit Score, **Salvage mit Mehrfachauswahl** |
+| 🎒 Equip | nur das Loadout: 2 Waffen, Helm, Weste, Hose, Schuhe, **Rucksack**, zwei Verbrauchsgut-Slots (Q/G). Klick auf einen Slot oeffnet darunter die passende Auswahl (nach Score sortiert), Klick ruestet aus, „Take off“ legt ab |
+| 📦 Inventory | alle Items als Liste, Filter je Art/Slot; Klick zeigt alles zum Item mit Ausruesten und Salvage |
+| ♻️ Salvage | Knoepfe „alle Common/Uncommon/Rare/Epic“ (ohne Ausgeruestetes und Verbrauchsgut, Scrap-Wert vorab) und Mehrfachauswahl |
 | 🎁 Cases | Standard, Mage, Demolition, Elite, Sovereign, Scrap – mit Chancen je Stufe; CS-Band mit 34 Feldern, Treffer auf Feld 29 |
-| 🛒 Shop | Grundwaffen, Bandage, Medkit, Frag, Smoke (×1 oder ×5) fuer Coins; dasselbe Verbrauchsgut und „Waffe mit Zufallseffekt“ (600) fuer Scrap. Keine Ruestung |
+| 🛒 Shop | Grundwaffen, Bandage, Medkit, Frag, Smoke (×1 oder ×5) und Daypack fuer Coins; Verbrauchsgut und „Waffe mit Zufallseffekt“ fuer Scrap. Keine Ruestung |
+
+**Anzeige (Wunsch Max, Runde 4):** Karten und Listen zeigen kompakt
+„Rare · ⚡ 66.7k“, Sets nur als Kuerzel [J]. Alles andere – „1 in X“,
+Werte, Set-Boni, Effekte – steht im **Tooltip beim Drueberfahren** und in der
+Detailansicht.
 
 ### Items (`arena-items.js`, Runde 3)
 
@@ -640,6 +648,10 @@ Tabs:
   umgestellt (Grade faellt weg, Medkits/Granaten werden Verbrauchsgut und
   wandern in die Slots, Seltenheit und Score neu). Achievements „Loot goblin“,
   neu „Mythical“ und „One in a million“ haengen an der Stufe (`stats.bestTier`).
+- **Rucksaecke** (eigener Slot, Runde 4): ohne 12 Plaetze im Raid, Daypack 18
+  (Shop, 500), Field pack 22, Assault pack 26, Expedition pack 32, Bag of
+  holding 40 (Legendary), Void satchel 50 (Mythic). Einen kleineren nimmt man
+  im Raid nur, wenn der Inhalt reinpasst.
 - **Salvage** nach Stufe und Effekten (`salvageValue`).
 - Nachrechnen: `node arena-items.js 400000` (Stufen je Quelle, Effekt-Anteil,
   haeufigste Specials).
@@ -663,10 +675,26 @@ Tabs:
 - **Kisten 📦** (Taste F): 1–3 Items aus der Quelle `crate` (auch Medkits
   und Granaten), danach 150 s zu. Verbrauchsgut stapelt sich (Medkits bis 6,
   Granaten bis 4 je Sorte), alles andere in den Rucksack (20).
-- **Raid-Inventar** (Tab oder I, auf dem Handy 🎒): Ausruestung aller sechs
-  Slots mit Set-Boni, Medkits/Granaten, Rucksack. Aus dem Rucksack
-  ausruesten (Waffe auf 1 oder 2, Ruestung in ihren Slot; das Alte wandert in
-  den Rucksack), ablegen, fallen lassen (als Beutel vor die Fuesse).
+- **Raid-Inventar** (Tab oder I, auf dem Handy 🎒), mittig im Stil von Apex:
+  oben die zwei Waffen gross, in der Mitte der Rucksack als Raster (freie
+  Felder, dahinter gesperrte 🔒 bis zur naechsten Rucksack-Groesse), unten
+  Helm, Weste, Hose, Schuhe, Rucksack und Q/G. Drueberfahren zeigt alles zum
+  Item, Klick waehlt aus; dann ausruesten (das Alte wandert in den Rucksack),
+  ablegen oder fallen lassen (als Beutel vor die Fuesse).
+- **Specials sehen und klingen nach was** (Runde 4, Max: „Railgun ist wie
+  ne Deagle“): Railgun ist ein sofortiger Strahl (3000 weit, durch Waende und
+  alle Gegner auf der Linie, 250 Schaden, `shBeam`) mit Leuchtstrahl,
+  Wackeln und Lade-Zap. Fat Boy ist eine Mini-Nuke (☢ mit Rauchspur, 300
+  Radius, 480 Schaden, trifft auch den direkt Getroffenen) mit Feuerball,
+  Druckwellen, Rauchpilz, Bildschirmblitz und Grollen. Singularity reisst
+  bei jedem Einschlag ein schwarzes Loch auf. Epic und hoeher ziehen
+  Leuchtspuren in Stufenfarbe (Ultra: Regenbogen), der Launcher fliegt als
+  Rakete, Staebe schiessen leuchtende Element-Kugeln; Minigun, Launcher und
+  Staebe haben eigene Toene; Phoenix und Black hole eigene Effekte; Titan-
+  und Phantom-Set eine Aura.
+- **Brennen und Feuerflaechen** sind seit Runde 4 leise: keine Trefferzahlen,
+  kein Ton, kein Wackeln je Tick – nur der Getroffene sieht einen roten Rand
+  (`me.burn`); ueber brennenden Figuren ein duenner oranger Ring.
 - **Tod:** Der Killer bekommt **alles** – Ausruestung, Verbrauchsgut,
   Rucksack –, soweit er es tragen kann; der Rest faellt als 💰-Beutel
   (5 min, Taste F). Ohne Killer (Verlassen, Verbindung weg) faellt alles als
@@ -831,6 +859,13 @@ bleiben seine Tickets lesbar, der Name bekommt „(deleted)“.
 Gespeichert in `DATA_DIR/tickets.json` (wie `accounts.json`: gebuendelt,
 atomar, kaputt = Server startet nicht).
 
+## Bedienung allgemein
+
+**ESC** fuehrt ueberall eine Ebene zurueck (Casino-Spiele → Casino → Menue,
+Arena-Hub → Menue, Shop, Konto, Support). Im Arena-Hub schliesst ESC erst
+die offene Slot-Auswahl. Im Raid schliesst ESC nur das Inventar – den Raid
+zu verlassen waere Tod.
+
 ## Admin-Interface (admin-snake.flashkeks.com)
 
 Laeuft im selben Prozess, aber als **eigener HTTP-Server nur auf
@@ -869,12 +904,19 @@ Coins gesamt, offene Tickets. Die Seite fragt alle 5 s neu.
 | 🎰 Luck | garantierter Mindestgewinn fuer die naechsten N Runden (`u.rig`, `luck.js`): Slots (Drilling mit Quote ≥ Ziel wird gebaut), Budget Starlight fuer Spins und Bonus Buy (neu gewuerfelt bis ≥ Ziel, optional „Freispiele muessen kommen“; Zeitbudget 0,4 s, sonst der beste Versuch), Plinko (Fach ≥ Ziel, Pfad passend gebaut), Daily Wheel (neu gedreht), Crossy Road (N Laeufe ohne Unfall). Jede Runde verbraucht eins; der Spieler sieht nichts davon (`u.rig` geht nie an den Browser) |
 | 🔫 Arena | Scrap setzen; Item bauen (Art, Basis, Grade, bis zu drei Effekte mit Stufe, Anzahl) – die Seltenheit wird wie bei einem echten Drop berechnet; Lager ansehen, einzeln/ausgewaehlt loeschen, leeren |
 
+Im Coins-Tab gibt es **„Reset EVERYTHING…“** (Name eintippen zur
+Bestaetigung): Coins zurueck auf 100, Statistik, Achievements, Titel,
+Cosmetics, Arena-Lager, Daily und Luck weg; Name, Passwort, Farbe und
+Sessions bleiben. Laufende Runden (Feld, Tisch, Raid, Crossy) werden vorher
+beendet, der Spieler bleibt angemeldet. API: `POST /api/users/KEY/reset-all
+{confirm: NAME}`.
+
 Tischspiele (Roulette, Blackjack, Poker) haben kein Luck: die Tische sind
 geteilt, ein erzwungenes Ergebnis traefe alle am Tisch.
 
 API (alles JSON): `GET /api/overview`, `GET /api/users`,
 `POST /api/users/KEY/coins {delta | set, note}`, `POST /api/users/KEY/reset-daily`,
-`POST /api/users/KEY/logout-all`, `DELETE /api/users/KEY {confirm: NAME}`,
+`POST /api/users/KEY/logout-all`, `POST /api/users/KEY/reset-all {confirm}`, `DELETE /api/users/KEY {confirm: NAME}`,
 `GET /api/tickets`, `GET /api/tickets/ID`, `POST /api/tickets/ID/reply {text}`,
 `POST /api/tickets/ID/status {status}`, `GET /api/log`,
 `GET /api/catalog` (Cosmetics, Arena-Basen und -Effekte, Luck-Spiele),

@@ -1317,9 +1317,10 @@ async function handle(c, data) {
                 s.biggestWin = Math.max(s.biggestWin, r.win);
             });
 
-            accounts.game(c.account, 'slots', { wager: bet, win: r.win, x: r.mult });
             send(c, { type: 'spin', reels: r.reels, win: r.win, mult: r.mult, bet, balance });
-            if (r.mult >= 80) feed(`🎰 ${u.name} hit ${r.reels.join('')} → ${r.win} coins`, 'gold', c.id);
+            // Feed und Bestenliste erst, wenn die Walzen im Browser stehen (~1,8 s)
+            const line = r.mult >= 80 ? [`🎰 ${u.name} hit ${r.reels.join('')} → ${r.win} coins`, 'gold', c.id] : null;
+            hideWin(c.account, r.win, line, 2000, () => accounts.game(c.account, 'slots', { wager: bet, win: r.win, x: r.mult }));
             return;
         }
     }
@@ -1579,6 +1580,19 @@ startAdmin({
     pushAccount: key => clientsOf(key).forEach(c => sendAccount(c)),
     pushTicket: key => clientsOf(key).forEach(c => sendTickets(c)),
     // Konto abmelden (Logout ueberall, Loeschen): raus aus Feld, Tisch und Crossy
+    // Reset (Admin v2): raus aus Feld, Tisch, Raid und Crossy, aber angemeldet bleiben
+    stopPlay: key => clientsOf(key).forEach(c => {
+        const p = players.get(c.id);
+        if (p) {
+            recordScore(p);
+            events.leave(c.id);
+            removeFromField(c.id);
+            send(c, { type: 'left' });
+        }
+        tables.leave(c);
+        shooter.leave(c);
+        crossClose(c);
+    }),
     kickAccount: key => clientsOf(key).forEach(c => {
         const p = players.get(c.id);
         if (p) {

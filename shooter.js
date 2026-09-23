@@ -37,7 +37,6 @@ const MAX_PLAYERS = 24;
 const TICK_MS = 33;
 const SEND_MS = 33;
 const VIEW = 1400;              // so weit sieht man andere, Kugeln, Kisten
-const PACK_MAX = 20;            // Rucksack im Raid
 const PHANTOM_MS = 1500;         // so lange stillstehen, dann unsichtbar (4 Phantom-Teile)
 const REGEN_BASE = 1;            // HP/s fuer alle ...
 const REGEN_DELAY = 6000;        // ... nach so langer Zeit ohne Schaden
@@ -192,6 +191,8 @@ function starterPistol() {
     return { ...I.plain('weapon', 'pistol'), uid: 'starter', name: 'Starter pistol', starter: true };
 }
 
+const GEAR = ['primary', 'secondary', ...I.SLOTS, 'backpack'];
+
 module.exports = function createArena(h) {
     // h: { accounts, send, feed, refresh(c), changed() }
     const players = new Map();       // client id -> Spieler im Raid
@@ -210,7 +211,7 @@ module.exports = function createArena(h) {
     // ---------- Hub: Lager, Loadout, Kaufen, Cases, Salvage ----------
 
     const EMPTY_LOADOUT = () => ({
-        primary: null, secondary: null, helmet: null, vest: null, pants: null, boots: null, util: [null, null]
+        primary: null, secondary: null, helmet: null, vest: null, pants: null, boots: null, backpack: null, util: [null, null]
     });
 
     // Lager holen und alte Staende nachziehen (Runde 1/2 -> 3)
@@ -294,7 +295,7 @@ module.exports = function createArena(h) {
     // Loadout nach Salvage/Verkauf: nichts zeigen lassen, was fehlt
     function fixLoadout(a) {
         const l = a.loadout;
-        for (const s of ['primary', 'secondary', ...I.SLOTS]) if (l[s] && !a.inv.some(x => x.uid === l[s])) l[s] = null;
+        for (const s of GEAR) if (l[s] && !a.inv.some(x => x.uid === l[s])) l[s] = null;
         if (!Array.isArray(l.util)) l.util = [null, null];
         const used = {};
         l.util = l.util.map(u => {
@@ -333,7 +334,11 @@ module.exports = function createArena(h) {
             // Band fuer die Animation: Zufallsware aus demselben Case
             const reel = Array.from({ length: 34 }, () => brief(I.generate(cs.source)));
             reel[29] = brief(item);
-            if (I.TIER_IDX[item.tier] >= 4) h.feed(`${cs.icon} ${h.accounts.get(c.account).name} unboxed a ${I.TIERS[I.TIER_IDX[item.tier]].name} ${item.name}!`, 'gold');
+            // Feed erst, wenn das Band im Browser steht (4 s)
+            if (I.TIER_IDX[item.tier] >= 4) {
+                const line = `${cs.icon} ${h.accounts.get(c.account).name} unboxed a ${I.TIERS[I.TIER_IDX[item.tier]].name} ${item.name}!`;
+                setTimeout(() => h.feed(line, 'gold'), 4300);
+            }
             return sendHub(c, { caseItem: { ...item, sv: I.salvageValue(item) }, reel });
         }
         if (d.type === 'arSalvage') {
@@ -360,11 +365,11 @@ module.exports = function createArena(h) {
                     const n = Math.max(0, Math.min(I.UTILS[b].stack, free, Math.floor(Number(d.n)) || 0));
                     a.loadout.util[i] = n ? { base: b, n } : null;
                 }
-            } else if (['primary', 'secondary', ...I.SLOTS].includes(slot)) {
+            } else if (GEAR.includes(slot)) {
                 if (d.uid === null) a.loadout[slot] = null;
                 else {
                     const it = a.inv.find(x => x.uid === d.uid);
-                    const ok = it && (slot === 'primary' || slot === 'secondary' ? it.kind === 'weapon' : it.kind === 'armor' && it.slot === slot);
+                    const ok = it && (slot === 'primary' || slot === 'secondary' ? it.kind === 'weapon' : slot === 'backpack' ? it.kind === 'pack' : it.kind === 'armor' && it.slot === slot);
                     if (!ok) return h.send(c, { type: 'arError', error: 'That does not fit there' });
                     // dieselbe Waffe nicht in beiden Slots
                     for (const s of ['primary', 'secondary']) if (a.loadout[s] === it.uid) a.loadout[s] = null;
@@ -406,6 +411,7 @@ module.exports = function createArena(h) {
         p.homing = s.homing;
         p.phantom = s.phantom;
         p.sets = s.sets;
+        p.packMax = p.gear.backpack ? I.PACKS[p.gear.backpack.base].cap : I.BASE_PACK;
     }
 
     function join(c, name, color) {
@@ -426,7 +432,7 @@ module.exports = function createArena(h) {
         };
         // Loadout verlaesst das Lager
         const gear = { primary: take(a.loadout.primary) || starterPistol(), secondary: take(a.loadout.secondary) };
-        for (const s of I.SLOTS) gear[s] = take(a.loadout[s]);
+        for (const s of [...I.SLOTS, 'backpack']) gear[s] = take(a.loadout[s]);
         const util = a.loadout.util.map(u => {
             if (!u) return null;
             let n = 0;
@@ -462,15 +468,20 @@ module.exports = function createArena(h) {
                 w: W, h: H, walls: MAP.walls, buildings: MAP.buildings, doors: MAP.doors, bushes: MAP.bushes, wallT: WALL_T,
                 extracts: MAP.extracts, extractR: EXTRACT_R, r: R, move: MOVE, view: VIEW, throwRange: I.THROW_RANGE
             },
-            packMax: PACK_MAX, feed: feedLog.slice(-6)
+            packMax: p0PackMax(c), feed: feedLog.slice(-6)
         });
+    }
+
+    function p0PackMax(c) {
+        const p = players.get(c.id);
+        return p ? p.packMax : I.BASE_PACK;
     }
 
     // Rucksack und Ausruestung an den Spieler (Raid-Inventar)
     function sendInv(p) {
         const gear = {};
-        for (const s of ['primary', 'secondary', ...I.SLOTS]) gear[s] = brief(p.gear[s]);
-        h.send(p.c, { type: 'shInv', gear, pack: p.pack.map(brief), util: p.util, packMax: PACK_MAX, sets: p.sets });
+        for (const s of GEAR) gear[s] = brief(p.gear[s]);
+        h.send(p.c, { type: 'shInv', gear, pack: p.pack.map(brief), util: p.util, packMax: p.packMax, sets: p.sets });
     }
 
     // Verbrauchsgut stapelt sich in die Slots, alles andere in den Rucksack.
@@ -485,7 +496,7 @@ module.exports = function createArena(h) {
                 const empty = p.util.findIndex(u => !u);
                 if (empty >= 0) { p.util[empty] = { base: it.base, n: 1 }; continue; }
             }
-            if (p.pack.length < PACK_MAX) p.pack.push(it);
+            if (p.pack.length < p.packMax) p.pack.push(it);
             else rest.push(it);
         }
         return rest;
@@ -499,7 +510,7 @@ module.exports = function createArena(h) {
 
     // Was jemand am Leib und im Rucksack hat (ohne Starter-Pistole)
     function lootOf(p) {
-        const items = ['primary', 'secondary', ...I.SLOTS].map(s => p.gear[s]).filter(it => it && !it.starter);
+        const items = GEAR.map(s => p.gear[s]).filter(it => it && !it.starter);
         return items.concat(utilItems(p), p.pack);
     }
 
@@ -545,7 +556,7 @@ module.exports = function createArena(h) {
         // Mitgebrachtes wieder ins Loadout, soweit noch da
         const a = st(p.c);
         a.loadout = EMPTY_LOADOUT();
-        for (const s of ['primary', 'secondary', ...I.SLOTS]) {
+        for (const s of GEAR) {
             const it = p.gear[s];
             if (it && !it.starter && a.inv.some(x => x.uid === it.uid)) a.loadout[s] = it.uid;
         }
@@ -604,7 +615,7 @@ module.exports = function createArena(h) {
 
     // Raid-Inventar: ausruesten, ablegen, fallen lassen, Verbrauchsgut in Slots
     function invOp(p, d) {
-        const slots = ['primary', 'secondary', ...I.SLOTS];
+        const slots = GEAR;
         if (d.op === 'equip') {
             const i = p.pack.findIndex(x => x.uid === d.uid);
             if (i < 0) return;
@@ -624,9 +635,11 @@ module.exports = function createArena(h) {
                 }
                 p.util[si] = { base: it.base, n };
             } else {
-                const slot = it.kind === 'armor' ? it.slot : (d.slot === 'secondary' ? 'secondary' : 'primary');
-                p.pack.splice(i, 1);
+                const slot = it.kind === 'armor' ? it.slot : it.kind === 'pack' ? 'backpack' : (d.slot === 'secondary' ? 'secondary' : 'primary');
                 const old = p.gear[slot];
+                // Rucksack tauschen: der neue muss alles fassen (samt dem alten)
+                if (slot === 'backpack' && I.PACKS[it.base].cap < p.pack.length - 1 + (old ? 1 : 0)) return h.send(p.c, { type: 'shLoot', items: [], full: true });
+                p.pack.splice(i, 1);
                 if (old && !old.starter) p.pack.push(old);
                 p.gear[slot] = it;
                 if (slot === 'primary' || slot === 'secondary') p.slot = slot;
@@ -637,12 +650,13 @@ module.exports = function createArena(h) {
                 const si = slot === 'util0' ? 0 : 1;
                 const u = p.util[si];
                 if (!u) return;
-                if (p.pack.length + u.n > PACK_MAX) return h.send(p.c, { type: 'shLoot', items: [], full: true });
+                if (p.pack.length + u.n > p.packMax) return h.send(p.c, { type: 'shLoot', items: [], full: true });
                 for (let k = 0; k < u.n; k++) p.pack.push(I.plain('util', u.base));
                 p.util[si] = null;
             } else {
                 if (!slots.includes(slot) || !p.gear[slot] || p.gear[slot].starter) return;
-                if (p.pack.length >= PACK_MAX) return h.send(p.c, { type: 'shLoot', items: [], full: true });
+                const cap = slot === 'backpack' ? I.BASE_PACK : p.packMax;
+                if (p.pack.length >= cap) return h.send(p.c, { type: 'shLoot', items: [], full: true });
                 p.pack.push(p.gear[slot]);
                 p.gear[slot] = slot === 'primary' ? starterPistol() : null;
                 if (slot === 'secondary' && p.slot === 'secondary') p.slot = 'primary';
@@ -706,7 +720,7 @@ module.exports = function createArena(h) {
                     p.stim = def.speed;
                 }
             }
-            fxAt(p.x, p.y, { type: 'shFx', kind: 'heal', x: Math.round(p.x), y: Math.round(p.y) });
+            fxAt(p.x, p.y, { type: 'shFx', kind: def.full ? 'phoenix' : 'heal', x: Math.round(p.x), y: Math.round(p.y) });
         } else if (def.use === 'throw') {
             if (!Number.isFinite(tx) || !Number.isFinite(ty)) return;
             throwNade(p, u.base, tx, ty, now);
@@ -764,7 +778,7 @@ module.exports = function createArena(h) {
     // Explosion mit Abfall nach aussen; walls = Waende schirmen ab
     function blast(g, x, y, r, dmg, now, walls, how) {
         const owner = players.get(g.owner) || null;
-        fxAt(x, y, { type: 'shBoom', x: Math.round(x), y: Math.round(y), r, nuke: !!g.def.nuke });
+        fxAt(x, y, { type: 'shBoom', x: Math.round(x), y: Math.round(y), r, nuke: !!g.def.nuke, hole: how === 'blackhole' });
         for (const q of near(x, y, r + R)) {
             if (walls && !clear(x, y, q.x, q.y)) continue;
             const k = 1 - Math.hypot(q.x - x, q.y - y) / (r + R) * 0.6;
@@ -812,6 +826,7 @@ module.exports = function createArena(h) {
                 fires.push({ id: g.id, x: g.x, y: g.y, r: def.r, until: now + def.dur / SPEED, owner: g.owner, dps: def.dps });
             } else if (g.base === 'blackhole') {
                 holes.push({ id: g.id, x: g.x, y: g.y, r: def.r, until: now + def.pull / SPEED, owner: g.owner, dmg: def.dmg, def });
+                fxAt(g.x, g.y, { type: 'shFx', kind: 'hole', x: Math.round(g.x), y: Math.round(g.y) });
             }
             nades.splice(i, 1);
         }
@@ -877,6 +892,7 @@ module.exports = function createArena(h) {
         w.homing += p.homing;
         if (now - p.lastShot < w.ms / SPEED) return;
         p.lastShot = now;
+        if (w.beam) return railBeam(p, w, now);
         for (let k = 0; k < w.pellets; k++) {
             const off = w.pellets > 1 ? (k / (w.pellets - 1) - 0.5) * Math.max(w.spread, 0.08 * w.pellets) : (Math.random() - 0.5) * w.spread;
             const a = p.a + off;
@@ -885,9 +901,34 @@ module.exports = function createArena(h) {
                 x: p.x + Math.cos(a) * (R + 6), y: p.y + Math.sin(a) * (R + 6),
                 vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed,
                 dies: now + w.life * 1000 / SPEED, w, pierce: w.pierce, bounce: w.bounce, hits: new Set(),
-                fx: (w.explode ? 1 : 0) | (w.burn ? 2 : 0) | (w.frost ? 4 : 0) | (w.tesla ? 8 : 0) | (w.homing ? 16 : 0) | (w.flame ? 32 : 0)
+                fx: (w.explode ? 1 : 0) | (w.burn ? 2 : 0) | (w.frost ? 4 : 0) | (w.tesla ? 8 : 0) | (w.homing ? 16 : 0) | (w.flame ? 32 : 0) | (w.nukeShell ? 64 : 0) | (w.hole ? 128 : 0) |
+                    (w.rocket ? 256 : 0) | (w.magic ? 512 : 0),
+                tier: I.TIER_IDX[item.tier] || 0
             });
         }
+    }
+
+    // Railgun: sofortiger Strahl durch Waende und alle Gegner auf der Linie
+    function railBeam(p, w, now) {
+        const len = w.speed * w.life;
+        const dx = Math.cos(p.a), dy = Math.sin(p.a);
+        const x1 = p.x + dx * (R + 6), y1 = p.y + dy * (R + 6);
+        const x2 = p.x + dx * len, y2 = p.y + dy * len;
+        fxAt(p.x, p.y, { type: 'shBeam', x1: Math.round(x1), y1: Math.round(y1), x2: Math.round(x2), y2: Math.round(y2), owner: p.id });
+        for (const q of [...players.values()]) {
+            if (q === p) continue;
+            const t = (q.x - p.x) * dx + (q.y - p.y) * dy;
+            if (t < 0 || t > len) continue;
+            const perp = Math.abs((q.x - p.x) * dy - (q.y - p.y) * dx);
+            if (perp > R + 10) continue;
+            hitPlayer({ owner: p.id, w, x: q.x, y: q.y, hits: new Set() }, q, now);
+        }
+    }
+
+    // Schwarzes Loch der Singularity an einer Stelle
+    function bulletHole(b, now) {
+        holes.push({ id: ++seqId, x: b.x, y: b.y, r: 240, until: now + 1100 / SPEED, owner: b.owner, dmg: b.w.dmg * 1.8, def: {} });
+        fxAt(b.x, b.y, { type: 'shFx', kind: 'hole', x: Math.round(b.x), y: Math.round(b.y) });
     }
 
     function near(x, y, r) {
@@ -910,8 +951,9 @@ module.exports = function createArena(h) {
         v.lastHurt = now;
         v.extractAt = null;
         const killed = v.hp <= 0 || (opts.execute && v.hp <= v.maxHp * opts.execute);
-        if (attacker) h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: Math.round(dmg), kill: killed, crit: !!opts.crit });
-        if (dmg >= 1 || killed) h.send(v.c, { type: 'shHurt', dmg: Math.round(dmg) });
+        // Schaden ueber Zeit (Brennen, Feuer) meldet sich nur beim Getroffenen als Rand
+        if (attacker && (!opts.dot || killed)) h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: Math.round(dmg), kill: killed, crit: !!opts.crit });
+        if (!opts.dot && (dmg >= 1 || killed)) h.send(v.c, { type: 'shHurt', dmg: Math.round(dmg) });
         // Dornen: Teil des Schadens zurueck
         if (attacker && v.thorns && !opts.thorns && players.has(attacker.id)) damage(attacker, v, dmg * v.thorns, now, attacker.x, attacker.y, { thorns: true, noDodge: true });
         if (killed) die(v, attacker && players.has(attacker.id) ? attacker : null, opts.how || 'shot');
@@ -938,13 +980,15 @@ module.exports = function createArena(h) {
             if (others.length) fxAt(v.x, v.y, { type: 'shZap', pts: [[v.x, v.y], ...others.map(q => [Math.round(q.x), Math.round(q.y)])] });
             for (const q of others) damage(q, shooter, w.dmg * 0.5, now, q.x, q.y, { how: 'tesla' });
         }
-        if (w.explode) explode(b, now, v.id);
+        if (w.hole) bulletHole(b, now);
+        // Mini-Nuke trifft auch den direkt Getroffenen voll
+        if (w.explode) explode(b, now, w.nukeShell ? null : v.id);
     }
 
     function explode(b, now, skipId) {
         const w = b.w;
-        const r = 70 + w.explode * 40;
-        fxAt(b.x, b.y, { type: 'shBoom', x: Math.round(b.x), y: Math.round(b.y), r: Math.round(r) });
+        const r = w.nukeShell ? 300 : 70 + w.explode * 40;
+        fxAt(b.x, b.y, { type: 'shBoom', x: Math.round(b.x), y: Math.round(b.y), r: Math.round(r), nuke: !!w.nukeShell });
         const shooter = players.get(b.owner);
         for (const q of near(b.x, b.y, r + R)) {
             if (q.id === b.owner || q.id === skipId) continue;
@@ -975,12 +1019,13 @@ module.exports = function createArena(h) {
             // Brennen, Feuerflaechen, Heilen, Regeneration
             if (p.burn) {
                 if (now > p.burn.until) p.burn = null;
-                else if (damage(p, players.get(p.burn.from) || null, p.burn.dps * dt, now, p.x, p.y, { how: 'fire', noDodge: true })) continue;
+                else if (damage(p, players.get(p.burn.from) || null, p.burn.dps * dt, now, p.x, p.y, { how: 'fire', noDodge: true, dot: true })) continue;
             }
             const fire = fires.find(f => Math.hypot(f.x - p.x, f.y - p.y) < f.r);
+            p.inFire = !!fire;
             if (fire) {
                 const owner = players.get(fire.owner);
-                if (damage(p, owner && owner !== p ? owner : null, fire.dps * dt, now, p.x, p.y, { how: 'fire', noDodge: true })) continue;
+                if (damage(p, owner && owner !== p ? owner : null, fire.dps * dt, now, p.x, p.y, { how: 'fire', noDodge: true, dot: true })) continue;
             }
             if (now < p.healUntil) p.hp = Math.min(p.maxHp, p.hp + p.healRate * dt);
             // Alle regenerieren langsam; Ruestung (Mod, Medic-Set) legt drauf
@@ -1042,6 +1087,7 @@ module.exports = function createArena(h) {
                         continue;
                     }
                     if (b.w.explode) explode(b, now, null);
+                    if (b.w.hole) bulletHole(b, now);
                     gone = true;
                     break;
                 }
@@ -1071,12 +1117,12 @@ module.exports = function createArena(h) {
             h.send(p.c, {
                 type: 'sh', t: now, ack: p.seq,
                 me: {
-                    hp: Math.max(0, Math.round(p.hp)), mh: p.maxHp, slot: p.slot, pack: p.pack.length, util: p.util,
+                    hp: Math.max(0, Math.round(p.hp)), mh: p.maxHp, slot: p.slot, pack: p.pack.length, packMax: p.packMax, util: p.util,
                     gear: { primary: brief(p.gear.primary), secondary: brief(p.gear.secondary) },
                     ms: Math.round(I.weaponStats(w).ms / p.rateMul),
                     spd: Math.round(p.speedMul * (now < p.slowUntil ? 1 - p.slow : 1) * (now < p.stimUntil ? 1 + p.stim : 1) * 100) / 100,
                     ex: p.extractAt ? Math.max(0, p.extractAt - now) : null,
-                    burn: !!p.burn, heal: now < p.healUntil, pr: now < p.protect,
+                    burn: !!p.burn || !!p.inFire, heal: now < p.healUntil, pr: now < p.protect,
                     hid: (!!(p.zone || p.smoke !== null) && now - p.lastShot >= REVEAL_MS) || stillHidden(p, now)
                 },
                 players: plist.filter(q => q === p || (inView(q.x, q.y) && canSee(p, q, now))).map(q => {
@@ -1089,7 +1135,7 @@ module.exports = function createArena(h) {
                         burn: !!q.burn, slow: now < q.slowUntil, pr: now < q.protect
                     };
                 }),
-                bullets: bullets.filter(b => inView(b.x, b.y)).map(b => [b.id, Math.round(b.x), Math.round(b.y), Math.round(b.vx), Math.round(b.vy), b.owner, b.fx]),
+                bullets: bullets.filter(b => inView(b.x, b.y)).map(b => [b.id, Math.round(b.x), Math.round(b.y), Math.round(b.vx), Math.round(b.vy), b.owner, b.fx, b.tier]),
                 crates: crates.filter(cr => inView(cr.x, cr.y)).map(cr => [cr.id, cr.x, cr.y, now >= cr.readyAt ? 1 : 0]),
                 bags: bags.filter(b => inView(b.x, b.y)).map(b => [b.id, Math.round(b.x), Math.round(b.y), b.items.length]),
                 nades: nades.filter(g => inView(g.x, g.y)).map(g => [g.id, Math.round(g.x), Math.round(g.y), g.base, g.landed ? 1 : 0, g.fuseAt ? Math.max(0, Math.round(g.fuseAt - now)) : 0]),

@@ -195,7 +195,7 @@ module.exports = function startAdmin(h) {
 
             if (m === 'GET' && p === '/api/users') return json(res, 200, { users: h.accounts.adminList() });
 
-            let mm = p.match(/^\/api\/users\/([^/]+)\/(coins|reset-daily|logout-all)$/);
+            let mm = p.match(/^\/api\/users\/([^/]+)\/(coins|reset-daily|reset-all|logout-all)$/);
             if (m === 'POST' && mm) {
                 const key = decodeURIComponent(mm[1]);
                 const u = h.accounts.get(key);
@@ -217,6 +217,15 @@ module.exports = function startAdmin(h) {
                     log(email, 'coins', u.name, { before, after, note: String(b.note || '').slice(0, 200) });
                     h.pushAccount(key);
                     return json(res, 200, { coins: after });
+                }
+                if (mm[2] === 'reset-all') {
+                    // Doppelte Absicherung wie beim Loeschen: der Name muss mitkommen
+                    if (b.confirm !== u.name) return json(res, 400, { error: 'confirm with the exact name' });
+                    h.stopPlay(key);
+                    const before = h.accounts.adminResetAll(key);
+                    log(email, 'reset-all', u.name, before);
+                    h.pushAccount(key);
+                    return json(res, 200, { ok: true });
                 }
                 if (mm[2] === 'reset-daily') {
                     h.accounts.adminResetDaily(key);
@@ -254,7 +263,7 @@ module.exports = function startAdmin(h) {
                 return json(res, 200, {
                     cosmetics: { cats: h.shop.CATS, items: h.shop.ITEMS.map(({ id, cat, name, icon, price, rarity }) => ({ id, cat, name, icon, price, rarity })) },
                     arena: {
-                        weapons: A.weapons, armors: A.armors, sets: A.sets, utils: A.utils, tierBonus: A.tierBonus, tiers: A.tiers,
+                        weapons: A.weapons, armors: A.armors, sets: A.sets, utils: A.utils, packs: A.packs, tierBonus: A.tierBonus, tiers: A.tiers,
                         weaponMods: A.weaponMods, armorMods: A.armorMods, invMax: A.invMax
                     },
                     luck: h.luck.GAMES

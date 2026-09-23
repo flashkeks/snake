@@ -45,14 +45,17 @@ const WEAPONS = {
     firestaff: { name: 'Fire staff', icon: '☄️', tier: 2, tag: 'mage', ms: 450, dmg: 28, speed: 850, life: 1.0, spread: 0.02, pellets: 1, innate: { burn: 2 } },
     froststaff: { name: 'Frost staff', icon: '🧊', tier: 2, tag: 'mage', ms: 450, dmg: 26, speed: 850, life: 1.0, spread: 0.02, pellets: 1, innate: { frost: 2 } },
     minigun: { name: 'Minigun', icon: '⚙️', tier: 3, ms: 55, dmg: 9, speed: 1100, life: 0.8, spread: 0.14, pellets: 1 },
-    launcher: { name: 'Launcher', icon: '🚀', tier: 3, tag: 'demo', ms: 1000, dmg: 45, speed: 700, life: 1.4, spread: 0, pellets: 1, explode: 1 },
+    launcher: { name: 'Launcher', icon: '🚀', tier: 3, tag: 'demo', ms: 1000, dmg: 45, speed: 700, life: 1.4, spread: 0, pellets: 1, explode: 1, rocket: true },
     flamethrower: { name: 'Flamethrower', icon: '🔥', tier: 3, tag: 'demo', ms: 60, dmg: 5, speed: 520, life: 0.42, spread: 0.35, pellets: 1, flame: true, innate: { burn: 2 } },
     stormstaff: { name: 'Storm staff', icon: '🌩️', tier: 3, tag: 'mage', ms: 500, dmg: 34, speed: 1000, life: 1.0, spread: 0.02, pellets: 1, innate: { tesla: 1 } },
-    railgun: { name: 'Railgun', icon: '⚡', tier: 4, ms: 1400, dmg: 140, speed: 3200, life: 1.2, spread: 0, pellets: 1, innate: { pierce: 5 } },
+    // Railgun: Strahl sofort ueber 3000, durch Waende und alle Gegner
+    railgun: { name: 'Railgun', icon: '⚡', tier: 4, ms: 1300, dmg: 250, speed: 3200, life: 0.95, spread: 0, pellets: 1, beam: true },
     arcaneorb: { name: 'Arcane orb', icon: '🔮', tier: 4, tag: 'mage', ms: 300, dmg: 36, speed: 900, life: 1.4, spread: 0.02, pellets: 1, innate: { homing: 2, pierce: 1 } },
-    nukelauncher: { name: 'Fat Boy', icon: '☢️', tier: 5, tag: 'demo', ms: 2500, dmg: 120, speed: 600, life: 1.6, spread: 0, pellets: 1, explode: 2.5 },
+    // Fat Boy: Mini-Nuke, 300 Radius, trifft auch den direkt Getroffenen voll
+    nukelauncher: { name: 'Fat Boy', icon: '☢️', tier: 5, tag: 'demo', ms: 2500, dmg: 120, speed: 650, life: 1.6, spread: 0, pellets: 1, explode: 4, nukeShell: true },
     archstaff: { name: 'Staff of the Archmage', icon: '🧙', tier: 5, tag: 'mage', ms: 380, dmg: 40, speed: 950, life: 1.3, spread: 0.02, pellets: 1, innate: { multishot: 2, homing: 2, tesla: 1 } },
-    singularity: { name: 'Singularity', icon: '🌀', tier: 6, tag: 'demo', ms: 1600, dmg: 90, speed: 450, life: 2.0, spread: 0, pellets: 1, explode: 2, innate: { homing: 2, tesla: 1 } }
+    // Singularity: jeder Einschlag reisst ein kleines schwarzes Loch auf
+    singularity: { name: 'Singularity', icon: '🌀', tier: 6, tag: 'demo', ms: 1600, dmg: 90, speed: 450, life: 2.0, spread: 0, pellets: 1, hole: true, innate: { homing: 2, tesla: 1 } }
 };
 // Im Shop fuer Coins (nur Grundwaffen, immer Common)
 const WEAPON_PRICES = { smg: 600, shotgun: 900, rifle: 1400, sniper: 2500 };
@@ -130,6 +133,18 @@ const UTILS = {
     nuke: { name: 'Tactical nuke', icon: '☢️', tier: 5, tag: 'demo', use: 'throw', stack: 1, r: 420, dmg: 320, fuse: 3000, nuke: true, desc: '3 s fuse, 320 damage in a huge radius, walls do not help' },
     blackhole: { name: 'Black hole', icon: '🕳️', tier: 6, tag: 'demo', use: 'throw', stack: 1, r: 300, dmg: 220, pull: 1600, desc: 'Pulls everyone in for 1.6 s, then collapses (220)' }
 };
+// ---------- Rucksaecke: eigener Slot, bestimmen den Platz im Raid ----------
+const BASE_PACK = 12;            // Plaetze ohne Rucksack
+const PACKS = {
+    daypack: { name: 'Daypack', icon: '🎒', tier: 0, cap: 18 },
+    fieldpack: { name: 'Field pack', icon: '🎒', tier: 1, cap: 22 },
+    assaultpack: { name: 'Assault pack', icon: '🎒', tier: 2, cap: 26 },
+    expedition: { name: 'Expedition pack', icon: '🧳', tier: 3, cap: 32 },
+    holding: { name: 'Bag of holding', icon: '👜', tier: 4, cap: 40 },
+    voidsatchel: { name: 'Void satchel', icon: '🌌', tier: 5, cap: 50 }
+};
+const PACK_PRICES = { daypack: 500 };
+
 // Im Shop (nur Grundware)
 const UTIL_PRICES = { bandage: 80, medkit: 150, frag: 250, smoke: 150 };
 const UTIL_SCRAP = { bandage: 5, medkit: 8, frag: 12, smoke: 8 };
@@ -169,13 +184,13 @@ const ARMOR_MODS = {
 // t = Wahrscheinlichkeit je Stufe (Common..Ultra), kinds = Anteil der Arten,
 // tag = Themen-Case: so viel Anteil geht an Basen mit diesem Tag
 const SOURCES = {
-    crate: { t: [0.62, 0.27, 0.09, 0.0189, 0.001, 0.00001, 0], kinds: { weapon: 0.3, armor: 0.3, util: 0.4 } },
-    scrapcase: { t: [0.7, 0.24, 0.055, 0.0049, 0.0001, 0, 0], kinds: { weapon: 0.45, armor: 0.35, util: 0.2 } },
-    standard: { t: [0.55, 0.3, 0.12, 0.0298, 0.0002, 0, 0], kinds: { weapon: 0.45, armor: 0.35, util: 0.2 } },
-    mage: { t: [0.4, 0.33, 0.2, 0.069, 0.001, 0.000005, 0], kinds: { weapon: 0.45, armor: 0.3, util: 0.25 }, tag: 'mage', tagShare: 0.75 },
-    demo: { t: [0.4, 0.33, 0.2, 0.069, 0.001, 0.000005, 0], kinds: { weapon: 0.45, armor: 0.2, util: 0.35 }, tag: 'demo', tagShare: 0.75 },
-    elite: { t: [0, 0.4, 0.4, 0.19745, 0.0025, 0.00005, 0.000005], kinds: { weapon: 0.45, armor: 0.4, util: 0.15 } },
-    sovereign: { t: [0, 0, 0.35, 0.6322333, 1 / 60, 0.001, 0.0001], kinds: { weapon: 0.45, armor: 0.4, util: 0.15 } },
+    crate: { t: [0.62, 0.27, 0.09, 0.0189, 0.001, 0.00001, 0], kinds: { weapon: 0.28, armor: 0.27, util: 0.37, pack: 0.08 } },
+    scrapcase: { t: [0.7, 0.24, 0.055, 0.0049, 0.0001, 0, 0], kinds: { weapon: 0.45, armor: 0.28, util: 0.2, pack: 0.07 } },
+    standard: { t: [0.55, 0.3, 0.12, 0.0298, 0.0002, 0, 0], kinds: { weapon: 0.45, armor: 0.28, util: 0.2, pack: 0.07 } },
+    mage: { t: [0.4, 0.33, 0.2, 0.069, 0.001, 0.000005, 0], kinds: { weapon: 0.45, armor: 0.25, util: 0.25, pack: 0.05 }, tag: 'mage', tagShare: 0.75 },
+    demo: { t: [0.4, 0.33, 0.2, 0.069, 0.001, 0.000005, 0], kinds: { weapon: 0.45, armor: 0.15, util: 0.35, pack: 0.05 }, tag: 'demo', tagShare: 0.75 },
+    elite: { t: [0, 0.4, 0.4, 0.19745, 0.0025, 0.00005, 0.000005], kinds: { weapon: 0.45, armor: 0.33, util: 0.15, pack: 0.07 } },
+    sovereign: { t: [0, 0, 0.35, 0.6322333, 1 / 60, 0.001, 0.0001], kinds: { weapon: 0.45, armor: 0.33, util: 0.15, pack: 0.07 } },
     // Scrap-Shop: Waffe mit garantiert einem Effekt
     modded: { t: [0.6, 0.3, 0.1, 0, 0, 0, 0], kinds: { weapon: 1 }, effects: [0, 0.9, 0.095, 0.005] }
 };
@@ -194,6 +209,7 @@ const CASES = {
 const SHOP = [
     ...Object.entries(WEAPON_PRICES).map(([k, p]) => ({ id: 'w_' + k, kind: 'weapon', base: k, price: p, currency: 'coins' })),
     ...Object.entries(UTIL_PRICES).map(([k, p]) => ({ id: 'u_' + k, kind: 'util', base: k, price: p, currency: 'coins' })),
+    ...Object.entries(PACK_PRICES).map(([k, p]) => ({ id: 'p_' + k, kind: 'pack', base: k, price: p, currency: 'coins' })),
     ...Object.entries(UTIL_SCRAP).map(([k, p]) => ({ id: 's_' + k, kind: 'util', base: k, price: p, currency: 'scrap' })),
     { id: 's_modded', kind: 'gen', source: 'modded', price: 600, currency: 'scrap' }
 ];
@@ -216,7 +232,7 @@ function uid() {
 }
 
 function defsOf(kind) {
-    return kind === 'weapon' ? WEAPONS : kind === 'armor' ? ARMORS : UTILS;
+    return kind === 'weapon' ? WEAPONS : kind === 'armor' ? ARMORS : kind === 'pack' ? PACKS : UTILS;
 }
 
 // Basis zu einer gewuerfelten Stufe: nur Basen bis zu dieser Stufe; je hoeher
@@ -244,7 +260,7 @@ function generate(sourceId) {
     const tier = pickWeighted(src.t.map((w, i) => [i, w]).filter(([, w]) => w > 0));
     const base = pickBase(kind, tier, src);
     const mods = [];
-    if (kind !== 'util') {
+    if (kind === 'weapon' || kind === 'armor') {
         const n = pickWeighted((src.effects || EFFECT_N).map((w, i) => [i, w]).filter(([, w]) => w > 0));
         const pool = { ...(kind === 'weapon' ? WEAPON_MODS : ARMOR_MODS) };
         for (let i = 0; i < n; i++) {
@@ -254,7 +270,9 @@ function generate(sourceId) {
         }
         mods.sort((a, b) => b.lvl - a.lvl);
     }
-    return finish({ kind, base, tier: TIERS[tier].id, mods });
+    // Verbrauchsgut und Rucksaecke haben immer die Stufe ihrer Basis
+    const t = kind === 'util' || kind === 'pack' ? defsOf(kind)[base].tier : tier;
+    return finish({ kind, base, tier: TIERS[t].id, mods });
 }
 
 // Feste Items (Shop, Starter): Common, keine Mods
@@ -290,7 +308,7 @@ function finish(item, isPlain) {
     const t = TIER_IDX[item.tier] || 0;
     const f = effectFactor(item.mods);
     const odds = Math.max(1, Math.round(TIER_ODDS[t] * f));
-    const bought = isPlain && (WEAPON_PRICES[item.base] || UTIL_PRICES[item.base]);
+    const bought = isPlain && (WEAPON_PRICES[item.base] || UTIL_PRICES[item.base] || PACK_PRICES[item.base]);
     const score = Math.round(bought || TIER_COST[t] * f * (item.kind === 'util' ? 0.3 : 1));
     const out = { uid: uid(), ...item, odds, score, name: defsOf(item.kind)[item.base].name, v: 3 };
     if (item.kind === 'armor') out.slot = ARMORS[item.base].slot;
@@ -301,6 +319,7 @@ function finish(item, isPlain) {
 function salvageValue(item) {
     if (item.starter) return 0;
     if (item.kind === 'util') return 3 + 4 * (TIER_IDX[item.tier] || 0);
+    if (item.kind === 'pack') return 10 + 6 * Math.pow(3, TIER_IDX[item.tier] || 0);
     const t = TIER_IDX[item.tier] || 0;
     return Math.round(8 + 6 * Math.pow(3, t) + (item.mods || []).reduce((s, m) => s + m.lvl * 15, 0));
 }
@@ -356,7 +375,12 @@ function weaponStats(item) {
         homing: L('homing'),
         tesla: L('tesla'),
         execute: L('execute') * 0.15,
-        flame: !!b.flame
+        flame: !!b.flame,
+        beam: !!b.beam,
+        nukeShell: !!b.nukeShell,
+        hole: !!b.hole,
+        rocket: !!b.rocket,
+        magic: b.tag === 'mage'
     };
 }
 
@@ -396,14 +420,14 @@ function catalog() {
     }]));
     const cases = Object.fromEntries(Object.entries(CASES).map(([k, c]) => [k, { ...c, tiers: SOURCES[c.source].t }]));
     return {
-        weapons: WEAPONS, armors: ARMORS, sets: SETS, slots: SLOTS, slotNames: SLOT_NAMES, utils: UTILS, tierBonus: TIER_BONUS,
+        weapons: WEAPONS, armors: ARMORS, sets: SETS, slots: SLOTS, slotNames: SLOT_NAMES, utils: UTILS, packs: PACKS, basePack: BASE_PACK, tierBonus: TIER_BONUS,
         weaponMods: mods(WEAPON_MODS), armorMods: mods(ARMOR_MODS),
         cases, shop: SHOP, tiers: TIERS, invMax: INV_MAX
     };
 }
 
 module.exports = {
-    TIERS, TIER_IDX, TIER_ODDS, TIER_BONUS, WEAPONS, ARMORS, SETS, SLOTS, UTILS, THROW_RANGE, WEAPON_MODS, ARMOR_MODS,
+    TIERS, TIER_IDX, TIER_ODDS, TIER_BONUS, WEAPONS, ARMORS, SETS, SLOTS, UTILS, PACKS, BASE_PACK, THROW_RANGE, WEAPON_MODS, ARMOR_MODS,
     SOURCES, CASES, SHOP, INV_MAX, generate, plain, craft, salvageValue, weaponStats, armorStats, catalog, migrate, effectFactor
 };
 

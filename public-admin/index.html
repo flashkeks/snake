@@ -185,6 +185,7 @@ dialog h2 { margin: 0 0 10px; }
     <div class="row">
         <button type="button" id="d-daily">Reset daily wheel</button>
         <button type="button" id="d-logout">Log out everywhere</button>
+        <button type="button" class="danger" id="d-reset">Reset EVERYTHING…</button>
         <button type="button" class="danger" id="d-delete">Delete account…</button>
     </div>
     </div>
@@ -396,15 +397,16 @@ function drawArena() {
     const A = cat.arena, a = det.arena;
     const bases = aKind === 'weapon' ? Object.entries(A.weapons).map(([k, w]) => [k, `${w.icon} ${w.name}${w.special ? ' (case only)' : ''}`])
         : aKind === 'armor' ? Object.entries(A.armors).map(([k, x]) => [k, `${x.icon} ${x.name} · ${A.sets[x.set].name} ${x.slot}`])
+        : aKind === 'pack' ? Object.entries(A.packs).map(([k, t]) => [k, `${t.icon} ${t.name} · ${t.cap} slots`])
         : Object.entries(A.utils).map(([k, t]) => [k, `${t.icon} ${t.name} · ${A.tiers[t.tier].name}`]);
     const modDefs = aKind === 'armor' ? A.armorMods : A.weaponMods;
     const modRow = i => `<select data-am="${i}"><option value="">– no effect –</option>${Object.entries(modDefs).map(([k, m]) => `<option value="${k}">${m.icon} ${m.name} (max ${m.max})</option>`).join('')}</select>` +
         `<input type="number" min="1" max="5" value="1" style="width:55px" data-al="${i}">`;
     const gear = aKind === 'weapon' || aKind === 'armor';
-    if (!['weapon', 'armor', 'util'].includes(aKind)) aKind = 'weapon';
+    if (!['weapon', 'armor', 'util', 'pack'].includes(aKind)) aKind = 'weapon';
     const loadout = new Set(Object.values(a.loadout || {}).filter(v => typeof v === 'string'));
     const rows = a.inv.slice().sort((x, y) => (y.odds || 1) - (x.odds || 1)).map(it => {
-        const icon = ((it.kind === 'util' ? A.utils : it.kind === 'armor' ? A.armors : A.weapons)[it.base] || {}).icon;
+        const icon = ((it.kind === 'util' ? A.utils : it.kind === 'armor' ? A.armors : it.kind === 'pack' ? A.packs : A.weapons)[it.base] || {}).icon;
         const mods = (it.mods || []).map(m => { const d = (it.kind === 'armor' ? A.armorMods : A.weaponMods)[m.id]; return d ? `${d.icon}${d.name} ${m.lvl}` : m.id; }).join(', ');
         return `<tr><td><input type="checkbox" data-auid="${esc(it.uid)}"></td><td>${icon || '❔'} <b>${esc(it.name)}</b>${loadout.has(it.uid) ? ' <span class="muted">(loadout)</span>' : ''}</td>` +
             `<td class="t-${it.tier}">${it.tier}${it.odds > 1 ? ' · 1 in ' + fmt(it.odds) : ''}</td><td class="muted">⚡ ${fmt(it.score || 0)}</td>` +
@@ -414,7 +416,7 @@ function drawArena() {
         `<div class="row"><b>Scrap</b> <input type="number" id="a-scrap" value="${a.scrap || 0}" style="width:120px"><button type="button" id="a-scrap-set">Set</button>` +
         `<span class="muted">Stash ${a.inv.length} / ${A.invMax}</span></div>` +
         `<div class="panel"><div class="row"><b>Create item</b>` +
-        `<select id="a-kind">${[['weapon', 'Weapon'], ['armor', 'Armor'], ['util', 'Consumable']].map(([k, n]) => `<option value="${k}" ${k === aKind ? 'selected' : ''}>${n}</option>`).join('')}</select>` +
+        `<select id="a-kind">${[['weapon', 'Weapon'], ['armor', 'Armor'], ['util', 'Consumable'], ['pack', 'Backpack']].map(([k, n]) => `<option value="${k}" ${k === aKind ? 'selected' : ''}>${n}</option>`).join('')}</select>` +
         `<select id="a-base">${bases.map(([k, n]) => `<option value="${k}">${esc(n)}</option>`).join('')}</select>` +
         (gear ? `<select id="a-tier">${A.tiers.map((t, i) => `<option value="${i}">${t.name} (+${Math.round(A.tierBonus[i] * 100)}%)</option>`).join('')}</select>` : '') +
         `<input type="number" id="a-count" min="1" max="50" value="1" style="width:60px"> ×</div>` +
@@ -475,6 +477,21 @@ $('d-delete').onclick = async () => {
         await api(`/api/users/${encodeURIComponent(cur.key)}`, { method: 'DELETE', body: { confirm: typed } });
         $('dlg').close();
         loadUsers();
+        loadOverview();
+    } catch (e) {
+        msg('d-msg', e.message, 'err');
+    }
+};
+$('d-reset').onclick = async () => {
+    const typed = prompt(`Reset ${cur.name} completely?\nCoins back to 100, stats, achievements, title, cosmetics, arena stash, daily and luck are wiped.\nName and password stay. Type the name to confirm:`);
+    if (typed === null) return;
+    try {
+        await api(`/api/users/${encodeURIComponent(cur.key)}/reset-all`, { method: 'POST', body: { confirm: typed } });
+        msg('d-msg', `${cur.name} was reset`, 'ok');
+        await loadUsers();
+        cur = users.find(u => u.key === cur.key) || cur;
+        $('d-coins').textContent = fmt(cur.coins);
+        loadDetail();
         loadOverview();
     } catch (e) {
         msg('d-msg', e.message, 'err');
