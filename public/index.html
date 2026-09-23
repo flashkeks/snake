@@ -2216,7 +2216,7 @@ button:disabled {
 
 /* ---------- Casino-Lobby ---------- */
 
-#casino .card, #daily .card, #cross .card {
+#casino .card, #daily .card, #cross .card, #plinko .card {
     width: min(760px, 100%);
     border-color: #ffd23f;
     box-shadow: 0 0 50px rgba(255, 210, 63, .3);
@@ -2513,21 +2513,21 @@ button:disabled {
     to { top: 360px; }
 }
 
-.cr-diffs {
+.cr-diffs, .pl-risks {
     display: flex;
     gap: 6px;
     justify-content: center;
     flex-wrap: wrap;
 }
 
-.cr-diffs button {
+.cr-diffs button, .pl-risks button {
     background: rgba(255,255,255,.06);
     color: #fff;
     border: 1px solid rgba(255,255,255,.2);
     font-size: 14px;
 }
 
-.cr-diffs button.on {
+.cr-diffs button.on, .pl-risks button.on {
     background: #ffd23f;
     color: #2a1a00;
 }
@@ -2546,6 +2546,109 @@ button:disabled {
 
 #cr-cash:disabled {
     background: rgba(125,255,176,.25);
+}
+
+/* ---------- Plinko ---------- */
+
+.pl-main {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+    justify-content: center;
+}
+
+.pl-board {
+    position: relative;
+    flex: 0 1 auto;
+    width: min(100%, 580px);
+    min-width: 0;
+}
+
+#pl-canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 18 / 13;
+    min-width: 0;
+    min-height: 0;
+    border-radius: 12px;
+    border: 2px solid rgba(255,210,63,.25);
+    background: radial-gradient(ellipse at 50% 0%, #1f2a4a, #0b1020 70%);
+    box-shadow: none;
+    image-rendering: auto;
+}
+
+.pl-hist {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 58px;
+    flex: none;
+}
+
+.pl-hist span {
+    padding: 5px 2px;
+    border-radius: 6px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 900;
+    color: #1b0f00;
+    animation: pop .3s ease-out;
+}
+
+.pl-opts {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.pl-rows {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.pl-rows input {
+    width: 130px;
+    accent-color: #ffd23f;
+}
+
+#pl-drop {
+    min-width: 120px;
+    height: 42px;
+    font-size: 19px;
+}
+
+#pl-auto {
+    height: 42px;
+    font-size: 14px;
+}
+
+#pl-auto.on {
+    background: #ff5bd6;
+    color: #fff;
+}
+
+#pl-auto-n {
+    height: 42px;
+    background: #0b120e;
+    color: #ffd23f;
+    border: 1px solid rgba(255,210,63,.4);
+    border-radius: 8px;
+    font-weight: 800;
+}
+
+@media (max-width: 700px) {
+    .pl-hist {
+        display: none;
+    }
+    .pl-board {
+        width: 100%;
+    }
 }
 
 /* ---------- Events: Trivia, Weltkarte, Schaetzen ---------- */
@@ -3106,7 +3209,7 @@ body.touch input, body.touch textarea {
                         </div>
                         <div class="menu-sect gamba">
                             <h3>🎰 Gamba</h3>
-                            <div class="gamba-list">🎁 Daily Wheel<br>🎰 Slots · 🌟 Budget Starlight<br>🐔 Crossy Road<br>🃏 Blackjack · 🎡 Roulette</div>
+                            <div class="gamba-list">🎁 Daily Wheel<br>🎰 Slots · 🌟 Budget Starlight<br>🐔 Crossy Road · 🔻 Plinko<br>🃏 Blackjack · 🎡 Roulette</div>
                             <div class="gamba-live" id="gamba-live"></div>
                             <button type="button" class="gold" id="casino-btn">Enter the casino →</button>
                         </div>
@@ -3165,6 +3268,7 @@ body.touch input, body.touch textarea {
                         <button type="button" class="cs-tile" id="slots-btn"><span class="ico">🎰</span><b>Slots</b><small>Classic three reels</small></button>
                         <button type="button" class="cs-tile" id="slots2-btn"><span class="ico">🌟</span><b>Budget Starlight</b><small>Tumbles · multipliers · free spins</small></button>
                         <button type="button" class="cs-tile" id="cross-btn"><span class="ico">🐔</span><b>Crossy Road</b><small>Cross lanes, cash out in time</small></button>
+                        <button type="button" class="cs-tile" id="plinko-btn"><span class="ico">🔻</span><b>Plinko</b><small>Drop balls, up to ×2062</small></button>
                         <button type="button" class="cs-tile" data-table="blackjack"><span class="ico">🃏</span><b>Blackjack</b><small class="cs-who" id="who-blackjack">Table is empty</small></button>
                         <button type="button" class="cs-tile" data-table="roulette"><span class="ico">🎡</span><b>Roulette</b><small class="cs-who" id="who-roulette">Table is empty</small></button>
                     </div>
@@ -3211,6 +3315,39 @@ body.touch input, body.touch textarea {
                         <button type="button" id="cr-cash" disabled>CASH OUT</button>
                     </div>
                     <div class="msg" id="cr-msg"></div>
+                </div>
+            </div>
+
+            <!-- Plinko -->
+            <div id="plinko" class="overlay hidden">
+                <div class="card">
+                    <div class="s2-head">
+                        <div class="cs-title">🔻 Plinko</div>
+                        <span class="coins">🪙 <span id="pl-coins">0</span></span>
+                        <button type="button" class="s2-icon" id="pl-back" title="Back">✕</button>
+                    </div>
+                    <div class="pl-main">
+                        <div class="pl-board"><canvas id="pl-canvas" width="720" height="520"></canvas></div>
+                        <div class="pl-hist" id="pl-hist"></div>
+                    </div>
+                    <div class="pl-opts">
+                        <div class="pl-risks" id="pl-risks"></div>
+                        <label class="pl-rows">Rows <input type="range" id="pl-rows" min="8" max="16" step="1" value="12"> <b id="pl-rows-n">12</b></label>
+                    </div>
+                    <div class="s2-bar">
+                        <div class="s2-bet">
+                            <small>BET</small>
+                            <button type="button" class="ghost" id="pl-minus">−</button>
+                            <input id="pl-bet" type="number" min="10" step="1" value="10">
+                            <button type="button" class="ghost" id="pl-plus">+</button>
+                        </div>
+                        <button type="button" class="gold" id="pl-drop">DROP</button>
+                        <select id="pl-auto-n" title="Balls per autoplay">
+                            <option>10</option><option selected>25</option><option>50</option><option>100</option>
+                        </select>
+                        <button type="button" id="pl-auto">AUTO</button>
+                    </div>
+                    <div class="msg" id="pl-msg"></div>
                 </div>
             </div>
 
@@ -3517,6 +3654,8 @@ ws.onmessage = event => {
         case 'dailyError': dwSpinning = false; showMsg('dw-msg', data.error, 'err'); casinoRefresh(); break;
         case 'cross': onCross(data); break;
         case 'crossError': showMsg('cr-msg', data.error, 'err'); break;
+        case 'plinko': onPlinko(data); break;
+        case 'plinkoError': onPlinkoError(data); break;
         case 'eventEnd': onEventEnd(); break;
         case 'eventError': showMsg('ev-msg', data.error, 'err'); break;
         case 'resume': onResume(data.in); break;
@@ -3543,7 +3682,7 @@ function showMsg(id, text, kind) {
 // ---------- Screens ----------
 
 function showScreen(name) {
-    ['menu', 'casino', 'daily', 'cross', 'support', 'slots', 'slots2', 'konto', 'event', 'offer'].forEach(s => $(s).classList.toggle('hidden', s !== name));
+    ['menu', 'casino', 'daily', 'cross', 'plinko', 'support', 'slots', 'slots2', 'konto', 'event', 'offer'].forEach(s => $(s).classList.toggle('hidden', s !== name));
 }
 
 function backToMenu(resultHtml) {
@@ -3729,6 +3868,12 @@ document.addEventListener('keydown', e => {
     if (e.code === 'Space' && !joined) {
         const s2 = !$('slots2').classList.contains('hidden');
         const s1 = !$('slots').classList.contains('hidden');
+        if (!$('plinko').classList.contains('hidden')) {
+            e.preventDefault();
+            if (document.activeElement && document.activeElement.tagName === 'BUTTON') document.activeElement.blur();
+            if (!e.repeat) plDrop();
+            return;
+        }
         if (s2 || s1) {
             e.preventDefault();
             if (document.activeElement && document.activeElement.tagName === 'BUTTON') document.activeElement.blur();
@@ -5876,11 +6021,12 @@ let casinoInfo = null;      // { wheel, cross } aus welcome
 let lobbyNow = { blackjack: [], roulette: [] };
 
 function buildCasino(d) {
-    casinoInfo = { wheel: d.wheel, cross: d.cross };
+    casinoInfo = { wheel: d.wheel, cross: d.cross, plinko: d.plinko };
     onLobby(d.lobby || lobbyNow);
     drawDailyWheel(0);
     crBuildDiffs();
     crBuildRoad();
+    plBuild();
 }
 
 function onLobby(l) {
@@ -5897,7 +6043,7 @@ function onLobby(l) {
 
 function casinoRefresh() {
     const acc = !!me;
-    for (const id of ['daily-btn', 'slots-btn', 'slots2-btn', 'cross-btn']) {
+    for (const id of ['daily-btn', 'slots-btn', 'slots2-btn', 'cross-btn', 'plinko-btn']) {
         $(id).disabled = !acc;
         $(id).title = acc ? '' : 'Accounts only';
     }
@@ -5908,6 +6054,7 @@ function casinoRefresh() {
         $('cs-coins').textContent = me.coins;
         if (!dwSpinning) $('dw-coins').textContent = me.coins;
         if (!crRun) $('cr-coins').textContent = me.coins;
+        plShowCoins();
     }
     $('dw-spin').disabled = !ready || dwSpinning;
     $('dw-spin').textContent = dwSpinning ? '…' : ready ? 'SPIN' : 'Come back tomorrow';
@@ -5934,6 +6081,16 @@ $('cross-btn').onclick = () => {
     crBuildRoad();
 };
 $('cr-back').onclick = () => { if (!crRun) showScreen('casino'); };
+$('plinko-btn').onclick = () => {
+    casinoRefresh();
+    showScreen('plinko');
+    plDraw();
+};
+$('pl-back').onclick = () => {
+    plStopAuto();
+    plSettleAll();
+    showScreen('casino');
+};
 
 // ---------- Casino: Daily Wheel ----------
 
@@ -6194,6 +6351,335 @@ function onCross(d) {
         crButtons();
         casinoRefresh();
     }
+}
+
+// ---------- Casino: Plinko ----------
+// Der Server wuerfelt den Pfad und bucht sofort ab; hier faellt die Kugel nur.
+// Der Gewinn steht erst auf der Anzeige, wenn die Kugel unten ist
+// (plPending = Gewinne von Kugeln, die noch fallen).
+
+let plRisk = 'medium';
+let plRows = 12;
+let plBet = 10;
+let plBalls = [];           // { path, slot, mult, win, rows, t0 }
+let plPending = 0;
+let plInFlight = 0;         // gesendet, Antwort steht noch aus
+let plLastSend = 0;
+let plAuto = null;          // { left, timer }
+let plHits = new Map();     // Nagel "reihe:index" -> Zeitpunkt des Treffers
+let plSlotHit = new Map();  // Fach -> Zeitpunkt der Landung
+let plLoop = false;
+const PL_ROW_MS = 130;
+const PL_BETS = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000];
+
+function plInfo() {
+    return casinoInfo && casinoInfo.plinko;
+}
+
+function plMults() {
+    return plInfo().tables[plRisk][plRows];
+}
+
+function plBusy() {
+    return plBalls.length > 0 || plInFlight > 0;
+}
+
+function plBuild() {
+    const info = plInfo();
+    if (!info) return;
+    $('pl-risks').innerHTML = Object.entries(info.risks).map(([k, label]) =>
+        `<button type="button" data-risk="${k}" class="${k === plRisk ? 'on' : ''}">${label} · ×${info.tables[k][plRows][0].toLocaleString('en-US')}</button>`).join('');
+    $('pl-risks').querySelectorAll('button').forEach(b => b.onclick = () => {
+        if (plBusy()) return;
+        plRisk = b.dataset.risk;
+        plBuild();
+    });
+    $('pl-rows').min = info.rowsMin;
+    $('pl-rows').max = info.rowsMax;
+    $('pl-rows').value = plRows;
+    $('pl-rows-n').textContent = plRows;
+    $('pl-bet').min = info.minBet;
+    plControls();
+    plDraw();
+}
+
+function plControls() {
+    const busy = plBusy();
+    $('pl-rows').disabled = busy;
+    $('pl-risks').querySelectorAll('button').forEach(b => { b.disabled = busy && b.dataset.risk !== plRisk; });
+    $('pl-auto').textContent = plAuto ? `STOP (${plAuto.left})` : 'AUTO';
+    $('pl-auto').classList.toggle('on', !!plAuto);
+    $('pl-auto-n').disabled = !!plAuto;
+}
+
+function plShowCoins() {
+    if (me) $('pl-coins').textContent = Math.max(0, me.coins - plPending);
+}
+
+$('pl-rows').oninput = e => {
+    if (plBusy()) return;
+    plRows = Number(e.target.value);
+    plBuild();
+};
+
+function plSetBet(v) {
+    const min = plInfo() ? plInfo().minBet : 10;
+    plBet = Math.max(min, Math.floor(v) || min);
+    $('pl-bet').value = plBet;
+}
+
+$('pl-minus').onclick = () => plSetBet(PL_BETS.filter(b => b < plBet).pop() || plBet);
+$('pl-plus').onclick = () => plSetBet(PL_BETS.find(b => b > plBet) || plBet);
+$('pl-bet').oninput = e => { const v = Math.floor(Number(e.target.value)); if (v >= 1) plBet = v; };
+$('pl-bet').onchange = () => plSetBet(plBet);
+
+// Eine Kugel anfordern. false = ging nicht (kein Geld, zu schnell)
+function plDrop() {
+    if (!me || !plInfo()) return false;
+    const now = Date.now();
+    if (now - plLastSend < 130) return true;
+    if (plBet < plInfo().minBet) {
+        showMsg('pl-msg', `Minimum bet is ${plInfo().minBet}`, 'err');
+        return false;
+    }
+    if (me.coins < plBet) {
+        showMsg('pl-msg', 'Not enough coins', 'err');
+        return false;
+    }
+    sfxInit();
+    plLastSend = now;
+    plInFlight++;
+    plControls();
+    showMsg('pl-msg', '');
+    wsSend({ type: 'plinko', bet: plBet, rows: plRows, risk: plRisk });
+    return true;
+}
+
+$('pl-drop').onclick = () => plDrop();
+
+function plStopAuto() {
+    if (!plAuto) return;
+    clearInterval(plAuto.timer);
+    plAuto = null;
+    plControls();
+}
+
+$('pl-auto').onclick = () => {
+    if (plAuto) return plStopAuto();
+    plSetBet(plBet);
+    plAuto = { left: Number($('pl-auto-n').value) || 10 };
+    const tick = () => {
+        if (!plAuto) return;
+        if (plAuto.left <= 0 || !plDrop()) return plStopAuto();
+        plAuto.left--;
+        plControls();
+    };
+    plAuto.timer = setInterval(tick, 260);
+    tick();
+};
+
+function onPlinko(d) {
+    plInFlight = Math.max(0, plInFlight - 1);
+    if (me) me.coins = d.balance;
+    plPending += d.win;
+    plBalls.push({ path: d.path, slot: d.slot, mult: d.mult, win: d.win, bet: d.bet, rows: d.rows, t0: performance.now(), hit: -1 });
+    plShowCoins();
+    plControls();
+    plStartLoop();
+}
+
+function onPlinkoError(d) {
+    plInFlight = Math.max(0, plInFlight - 1);
+    plControls();
+    if (d.quiet) return;
+    plStopAuto();
+    showMsg('pl-msg', d.error, 'err');
+}
+
+// Screen verlassen: alle fallenden Kugeln sofort verbuchen
+function plSettleAll() {
+    for (const b of plBalls) plHistory(b.mult);
+    plBalls = [];
+    plPending = 0;
+    plShowCoins();
+    plControls();
+}
+
+function plColor(k, n) {
+    // Mitte gelb, Rand rot
+    const d = Math.abs(k - n / 2) / (n / 2);
+    return `hsl(${Math.round(48 - d * 48)}, 100%, ${Math.round(58 - d * 8)}%)`;
+}
+
+// Auf schmalen Faechern (viele Reihen) ohne "×" und ohne fuehrende Null
+function plLabel(m, narrow) {
+    if (m >= 100 || (narrow && m >= 10)) return String(m);
+    if (narrow) return m < 1 ? String(m).replace(/^0/, '') : String(m);
+    return '×' + m;
+}
+
+function plHistory(mult) {
+    const n = plRows;
+    const mults = plMults();
+    const k = mults.indexOf(mult);
+    const el = document.createElement('span');
+    el.textContent = plLabel(mult);
+    el.style.background = plColor(k < 0 ? n / 2 : k, n);
+    $('pl-hist').prepend(el);
+    while ($('pl-hist').children.length > 8) $('pl-hist').lastChild.remove();
+}
+
+// Brett-Geometrie fuer n Reihen: Reihe i hat i + 3 Naegel, unten n + 1 Faecher
+function plGeo(n) {
+    const cv = $('pl-canvas');
+    const W = cv.width, H = cv.height;
+    const top = 36, bucketH = 40;
+    const sx = (W - 24) / (n + 2);
+    const sy = Math.min(sx, (H - top - bucketH - 16) / n);
+    const cx = W / 2;
+    return {
+        W, H, sx, sy, cx, top,
+        pegR: Math.max(3, sx * 0.09),
+        ballR: Math.max(5, sx * 0.2),
+        pegY: i => top + i * sy,
+        pegX: (i, j) => cx + (j - (i + 2) / 2) * sx,
+        slotX: k => cx + (k - n / 2) * sx,
+        slotY: top + (n - 1) * sy + sy * 0.75
+    };
+}
+
+// Kugelposition t ms nach dem Start. Vor Reihe i steht sie ueber dem Nagel
+// cx + (rechts_bisher - i/2) * sx und huepft von dort zum naechsten.
+function plBallPos(b, g, t) {
+    const n = b.rows;
+    const xAt = i => {
+        let r = 0;
+        for (let k = 0; k < i; k++) r += b.path[k];
+        return g.cx + (r - i / 2) * g.sx;
+    };
+    const yAt = i => g.pegY(i) - g.pegR - g.ballR;
+    const drop = PL_ROW_MS * 1.4;
+    if (t < drop) {
+        const u = t / drop;
+        return { x: g.cx, y: 6 + (yAt(0) - 6) * u * u, row: -1 };
+    }
+    const s = (t - drop) / PL_ROW_MS;
+    const i = Math.floor(s);
+    if (i >= n) return { x: g.slotX(b.slot), y: g.slotY, row: n, done: true };
+    const u = s - i;
+    const x0 = xAt(i), x1 = i + 1 < n ? xAt(i + 1) : g.slotX(b.slot);
+    const y0 = yAt(i), y1 = i + 1 < n ? yAt(i + 1) : g.slotY;
+    // kleiner Hops nach oben, dann faellt sie
+    const y = y0 + (y1 - y0) * u * u - g.sy * 0.28 * Math.sin(Math.PI * u) * (1 - u);
+    return { x: x0 + (x1 - x0) * u, y, row: i };
+}
+
+function plDraw() {
+    const cv = $('pl-canvas');
+    if (!cv || !plInfo()) return;
+    const c = cv.getContext('2d');
+    const n = plRows;
+    const g = plGeo(n);
+    const now = performance.now();
+    c.clearRect(0, 0, g.W, g.H);
+
+    // Naegel
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < i + 3; j++) {
+            const hit = plHits.get(i + ':' + j);
+            const glow = hit ? Math.max(0, 1 - (now - hit) / 300) : 0;
+            c.beginPath();
+            c.arc(g.pegX(i, j), g.pegY(i), g.pegR * (1 + glow * 0.6), 0, Math.PI * 2);
+            c.fillStyle = glow ? `rgba(255,${210 + 45 * glow},${63 + 150 * glow},1)` : '#e8ecff';
+            c.shadowColor = glow ? '#ffd23f' : 'transparent';
+            c.shadowBlur = glow ? 14 : 0;
+            c.fill();
+        }
+    }
+    c.shadowBlur = 0;
+
+    // Faecher
+    const mults = plMults();
+    const bw = g.sx - 4, bh = 30;
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    mults.forEach((m, k) => {
+        const hit = plSlotHit.get(k);
+        const a = hit ? Math.max(0, 1 - (now - hit) / 350) : 0;
+        const x = g.slotX(k) - bw / 2;
+        const y = g.slotY - bh / 2 + 6 + a * 8;
+        c.fillStyle = plColor(k, n);
+        c.shadowColor = plColor(k, n);
+        c.shadowBlur = a * 20;
+        c.beginPath();
+        c.roundRect(x, y, bw, bh, 6);
+        c.fill();
+        c.shadowBlur = 0;
+        c.fillStyle = '#1b0f00';
+        const label = plLabel(m, bw < 48);
+        c.font = `900 ${Math.min(16, Math.floor(bw / Math.max(3, label.length) * 1.6))}px system-ui`;
+        c.fillText(label, g.slotX(k), y + bh / 2 + 1);
+    });
+
+    // Kugeln
+    for (const b of plBalls) {
+        const p = plBallPos(b, g, now - b.t0);
+        c.beginPath();
+        c.arc(p.x, p.y, g.ballR, 0, Math.PI * 2);
+        const gr = c.createRadialGradient(p.x - g.ballR * .35, p.y - g.ballR * .35, 1, p.x, p.y, g.ballR);
+        gr.addColorStop(0, '#fff');
+        gr.addColorStop(1, '#ff5bd6');
+        c.fillStyle = gr;
+        c.shadowColor = '#ff5bd6';
+        c.shadowBlur = 12;
+        c.fill();
+        c.shadowBlur = 0;
+    }
+}
+
+// Treffer und Landungen aus dem Stand der Kugeln ableiten, dann zeichnen
+function plTick() {
+    const g = plGeo(plRows);
+    const now = performance.now();
+    const landed = [];
+    for (const b of plBalls) {
+        const p = plBallPos(b, g, now - b.t0);
+        if (p.row > b.hit && p.row >= 0 && p.row < b.rows) {
+            // Nagel in Reihe p.row unter der Kugel: Index = rechts_bisher + 1
+            let r = 0;
+            for (let k = 0; k < p.row; k++) r += b.path[k];
+            plHits.set(p.row + ':' + (r + 1), now);
+            b.hit = p.row;
+            if (plBalls.length < 6) sTone(900 + p.row * 60 + Math.random() * 80, { dur: .05, type: 'triangle', vol: .035, rev: .1 });
+        }
+        if (p.done) landed.push(b);
+    }
+    for (const b of landed) {
+        plBalls.splice(plBalls.indexOf(b), 1);
+        plPending = Math.max(0, plPending - b.win);
+        plSlotHit.set(b.slot, now);
+        plHistory(b.mult);
+        plShowCoins();
+        if (b.mult >= 10) sfx.fanfare(b.mult >= 100 ? 'big' : 'end');
+        else if (b.mult >= 1) sBell(PENTA[Math.min(PENTA.length - 1, 3 + Math.round(Math.log2(b.mult) * 2))], 0, .08, .5);
+        else sTone(260, { dur: .12, type: 'triangle', vol: .08, slide: 180, rev: .1 });
+        if (b.mult >= 100) showMsg('pl-msg', `🔥 ×${b.mult} → +${b.win.toLocaleString('en-US')} coins`, 'ok');
+    }
+    if (landed.length) plControls();
+    plDraw();
+}
+
+function plStartLoop() {
+    if (plLoop) return;
+    plLoop = true;
+    (function frame() {
+        plTick();
+        // Nach der letzten Landung noch kurz weiter, damit Glow und Fach ausklingen
+        const last = Math.max(0, ...plSlotHit.values());
+        if (plBalls.length || performance.now() - last < 400) return requestAnimationFrame(frame);
+        plLoop = false;
+        plDraw();
+    })();
 }
 
 // ---------- Support-Tickets ----------

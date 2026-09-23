@@ -15,6 +15,7 @@ function validBet(n) {
 const createEvents = require('./events');
 const createTables = require('./tables');
 const casino = require('./casino');
+const plinko = require('./plinko');
 const createTickets = require('./tickets');
 const startAdmin = require('./admin');
 
@@ -1017,6 +1018,38 @@ async function handle(c, data) {
             if (c.cross && c.cross.step > 0) crossCash(c, false);
             return;
 
+        // --- Casino: Plinko ---
+        // Ein Drop = eine Nachricht. Mehrere Kugeln duerfen gleichzeitig fallen,
+        // der Server rechnet jede sofort ab; der Browser zieht den Gewinn erst
+        // bei der Landung auf die Anzeige.
+
+        case 'plinko': {
+            if (!c.account) return send(c, { type: 'plinkoError', error: 'Accounts only' });
+            const now = Date.now();
+            if (now - (c.lastPlinko || 0) < 120) return send(c, { type: 'plinkoError', error: 'Too fast', quiet: true });
+            const bet = Number(data.bet);
+            const rows = Number(data.rows);
+            const risk = String(data.risk);
+            // Mindestens 10: darunter frisst das Abrunden die kleinen Multis auf
+            if (!validBet(bet) || bet < plinko.MIN_BET || !plinko.valid(risk, rows)) return send(c, { type: 'plinkoError', error: `Invalid bet (min ${plinko.MIN_BET})` });
+            const u = accounts.get(c.account);
+            if (!u || u.coins < bet) return send(c, { type: 'plinkoError', error: 'Not enough coins' });
+            c.lastPlinko = now;
+
+            accounts.addCoins(c.account, -bet);
+            const r = plinko.drop(bet, risk, rows);
+            const balance = accounts.addCoins(c.account, r.win);
+            accounts.stat(c.account, s => {
+                s.spins++;
+                s.biggestWin = Math.max(s.biggestWin, r.win);
+            });
+            send(c, { type: 'plinko', bet, rows, risk, path: r.path, slot: r.slot, mult: r.mult, win: r.win, balance });
+            // Bis die Kugel unten ist (~0,13 s je Reihe) nicht in Bestenliste und Feed
+            const line = r.mult >= 100 && r.win >= 1000 ? [`🔻 ${u.name} hit ×${r.mult} on Plinko: ${r.win} coins`, 'gold', c.id] : null;
+            hideWin(c.account, r.win, line, 1000 + rows * 150);
+            return;
+        }
+
         // Nur fuer lokale Tests (SNAKE_TEST=1): Schlange wachsen lassen
         case 'testGrow': {
             const p = players.get(c.id);
@@ -1131,6 +1164,7 @@ wss.on('connection', (ws, req) => {
         slots2: { pays: slots2.PAYS, scatterPays: slots2.SCATTER_PAYS, buyCost: slots2.BUY_COST, freeSpins: slots2.FREE_SPINS, retrigger: slots2.RETRIGGER, maxWin: slots2.MAX_WIN, rtp: slots2.RTP },
         wheel: casino.WHEEL,
         cross: casino.crossTable(),
+        plinko: plinko.info(),
         lobby: tables.lobby()
     });
     send(c, { type: 'highscores', top: topNow() });
