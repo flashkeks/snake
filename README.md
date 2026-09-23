@@ -152,6 +152,10 @@ Seit 23.09.2026 in `stats` je Konto:
   `bestScore`, `kills`, `bestWin`, `bestX` je Spiel, `casinoNet`,
   `eventWins`, `arenaKills`. Setzen sich beim ersten Zugriff im neuen
   Zeitraum zurueck (`accounts.period()`); Grundlage fuers Leaderboard (#8).
+  Beim **Score** zaehlt seit 3.1 jede Runde einzeln: `topRuns` (die besten
+  10 Runden je Konto, gesamt und je Zeitraum), damit ein Spieler mehrfach
+  auf dem Board stehen kann (Wunsch Max). Alte Konten ohne `topRuns` stehen
+  mit `bestScore` drin.
 - **Versteckte Gewinne:** Starlight, Plinko und Daily verbuchen ihre Runde
   erst beim Aufloesen (`hideWin(..., onReveal)`), damit Leaderboard und
   Statistik keinen Ausgang vorab verraten.
@@ -196,7 +200,11 @@ und Todes-Effekt (im Zustand als `sk`, der Todes-Effekt als `deathfx` an
 alle), Musik hoert nur man selbst.
 
 **134 Designs** in sechs Kategorien: 40 Skins, 36 Koepfe, 23 Trails, 15
-Todes-Effekte, 13 Namensfarben, 7 Musikstuecke. Preise 4k–150k (beim Umbau
+Todes-Effekte, 13 Namensfarben, 7 Musikstuecke. Dazu **„☀️ Sunny jazz“**
+(seit 3.1): gratis, gehoert jedem (`free: true`, `shop.FREE`), nie in der
+Rotation und ab Werk angelegt (`shop.DEFAULTS`). Legt man es ab, merkt sich
+`u.equipped.music = false`, sonst kaeme es zurueck. Eigener Modus `jazz`
+im Sequencer: Swing, Septakkorde, Walking Bass, Melodie aus einer Liste. Preise 4k–150k (beim Umbau
 etwa verdoppelt, Wunsch Max „ein wenig teurer“). Seltenheit nach Preis:
 Common < 10k ≤ Rare < 25k ≤ Epic < 60k ≤ Legendary.
 
@@ -652,14 +660,18 @@ Detailansicht.
   (Shop, 500), Field pack 22, Assault pack 26, Expedition pack 32, Bag of
   holding 40 (Legendary), Void satchel 50 (Mythic). Einen kleineren nimmt man
   im Raid nur, wenn der Inhalt reinpasst.
-- **Salvage** nach Stufe und Effekten (`salvageValue`).
+- **Salvage** nach Stufe und Effekten (`salvageValue`), seit 3.1 etwa 40 %
+  der alten Werte: Common 6, Uncommon 11, Rare 26, Epic 71, Legendary 206
+  Scrap, je Effekt-Stufe +6; Verbrauchsgut 1 + 2 je Stufe, Rucksaecke
+  4 + 3·3^Stufe. Mehrfach-Salvage fragt immer nach (Menge und Scrap).
 - Nachrechnen: `node arena-items.js 400000` (Stufen je Quelle, Effekt-Anteil,
   haeufigste Specials).
 
 ### Raid (`shooter.js`)
 
 - **Map** 4000 × 2800, fest aus Seed 1337: 16 Gebaeude mit Tueren, 90
-  Hindernisse, **60 Buesche**, 44 Loot-Kisten, 4 Extraction-Zonen in den
+  Hindernisse (seit 3.1 nur Felsen und Mauern, die Kisten-Hindernisse sind
+  weg, kleine Felsen steingrau), **60 Buesche**, 44 Loot-Kisten, 4 Extraction-Zonen in den
   Ecken. Beim Bau per Flood-Fill geprueft: alle Kisten und Zonen erreichbar.
 - **Rein:** Loadout-Items verlassen das Lager. Ohne Primaerwaffe gibt es die
   **Starter-Pistole** (gratis, geht nie verloren). Spawn weit weg von Zonen
@@ -672,8 +684,28 @@ Detailansicht.
   „🌿 Hidden“, solange man versteckt ist.
 - **Regeneration:** alle +1 HP/s nach 6 s ohne Schaden, dazu Mod und
   Medic-Set.
-- **Kisten 📦** (Taste F): 1–3 Items aus der Quelle `crate` (auch Medkits
-  und Granaten), danach 150 s zu. Verbrauchsgut stapelt sich (Medkits bis 6,
+- **Bewegung** (`slide()` im Server, `shSlide()` im Browser, gleiche
+  Logik): in 4-px-Schritten bis an die Wand, an Ecken bis 3/4 Radius
+  seitlich vorbei statt haengenzubleiben. Weil Vorhersage und Server gleich
+  rechnen, korrigiert der Server an Waenden nicht mehr (war das „Stocken").
+- **Kisten 📦** (Taste F): seit 3.1 **nur Granaten und Heilung**, 1–2 Stueck
+  aus der Quelle `crate` (`uses: ['heal','throw']`, Waffen, Ruestung und
+  Rucksaecke gibt es dort nicht mehr – das Inventar lief zu schnell voll),
+  danach 150 s zu.
+- **👑 Boss „Raccoon King“:** alle 2–10 min, sonst hoechstens 8 min auf der
+  Map. HP 5.000 + 2.500 je Spieler im Raid. Laeuft Wegpunkte ab, jagt den
+  naechsten sichtbaren Spieler in 700 (Versteckte sieht er nicht), Dreier-
+  Salve (16 je Kugel), alle 9 s ein Ring aus 20 Kugeln, Stampfer (70 in 250,
+  0,9 s rot angekuendigt), Beruehrung 45/s. Stirbt er, fallen **3 Beutel mit
+  je einem Item aus der Quelle `boss`** (Sovereign-Stufen, nur Waffen,
+  Ruestung, Rucksaecke) – wer zuerst da ist, hat sie. Alle sehen ihn auf der
+  Minimap, als Pfeil am Bildrand und die Lebensleiste oben. Statistik
+  `bossKills`.
+- **🪂 Versorgungsabwurf:** alle 3–6 min, 15 s vorher angekuendigt (Zielkreis,
+  Minimap, Pfeil), dann ein Beutel mit 2–3 Items aus `airdrop` (etwas besser
+  als die Standard-Case, nur Ausruestung).
+- Leerer Raid setzt beide Uhren zurueck. Test-Hook (nur `SNAKE_TEST=1`):
+  `shTestEvent {boss, drop, bossHp}`. Verbrauchsgut stapelt sich (Medkits bis 6,
   Granaten bis 4 je Sorte), alles andere in den Rucksack (20).
 - **Raid-Inventar** (Tab oder I, auf dem Handy 🎒), mittig im Stil von Apex:
   oben die zwei Waffen gross, in der Mitte der Rucksack als Raster (freie

@@ -1,5 +1,19 @@
 [
   {
+    "version": "3.1",
+    "date": "23.09.2026",
+    "items": [
+      "Arena: smoother movement, no more getting stuck on corners",
+      "Boss: the Raccoon King roams the map every 2–10 min – kill him for 3 Sovereign-tier drops",
+      "Supply drops with gear every 3–6 min, announced 15 s ahead",
+      "Crates now only give grenades and heals",
+      "Box obstacles removed from the map",
+      "Salvage gives less scrap",
+      "Free default music for everyone: Sunny jazz",
+      "Leaderboard: every run counts, you can hold several spots"
+    ]
+  },
+  {
     "version": "3.0",
     "date": "23.09.2026",
     "items": [

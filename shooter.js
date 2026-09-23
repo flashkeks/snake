@@ -49,6 +49,15 @@ const CRATE_RESPAWN = 150000;
 const BAG_LIFE = 5 * 60e3;
 const INTERACT_R = 75;
 const MED_MS = 2000;
+// Events: Boss laeuft ueber die Map, Versorgungsabwurf mit Ausruestung
+const BOSS_R = 44;
+const BOSS_MOVE = 125;
+const BOSS_EVERY = [2 * 60e3, 10 * 60e3];
+const BOSS_LIFE = 8 * 60e3;
+const BOSS_SLAM_R = 250;
+const BOSS_NAME = 'Raccoon King';
+const DROP_EVERY = [3 * 60e3, 6 * 60e3];
+const DROP_WARN = 15000;
 
 // ---------- Map (fester Seed, damit sie nach jedem Neustart gleich ist) ----------
 
@@ -114,9 +123,9 @@ function buildMap() {
     // Hindernisse draussen
     const obstacles = [];
     for (let k = 0; k < 2000 && obstacles.length < 90; k++) {
-        const type = rand();
-        const r = type < 0.35 ? [0, 0, 50 + rand() * 20, 50 + rand() * 20]        // Kisten
-            : type < 0.7 ? [0, 0, 70 + rand() * 60, 50 + rand() * 50]              // Felsen
+        // Kisten-Hindernisse entfernt (23.09.2026, Max): nur noch Felsen und Mauern
+        const type = 0.35 + rand() * 0.65;
+        const r = type < 0.7 ? [0, 0, 70 + rand() * 60, 50 + rand() * 50]              // Felsen
             : type < 0.85 ? [0, 0, 180 + rand() * 120, T]                         // Mauer quer
             : [0, 0, T, 180 + rand() * 120];                                      // Mauer laengs
         r[0] = 80 + rand() * (W - 160 - r[2]);
@@ -179,6 +188,40 @@ function blocked(x, y, r) {
     return false;
 }
 
+// Bewegen mit Rutschen: in kleinen Schritten bis an die Wand heran und an
+// Ecken seitlich vorbei, statt an Kanten haengenzubleiben. Dieselbe Logik
+// steckt im Browser (shSlide), sonst korrigiert der Server staendig.
+function slide(x, y, dx, dy, r, isBlocked = blocked) {
+    const n = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 4));
+    const sx = dx / n, sy = dy / n;
+    for (let i = 0; i < n; i++) {
+        if (sx) {
+            if (!isBlocked(x + sx, y, r)) x += sx;
+            else if (!sy) y += cornerNudge(x, y, sx, 0, r, isBlocked);
+        }
+        if (sy) {
+            if (!isBlocked(x, y + sy, r)) y += sy;
+            else if (!sx) x += cornerNudge(x, y, 0, sy, r, isBlocked);
+        }
+    }
+    return [x, y];
+}
+
+// Steht nur eine Ecke im Weg (frei, wenn man bis 3/4 Radius ausweicht),
+// einen Schritt zur freien Seite
+function cornerNudge(x, y, sx, sy, r, isBlocked) {
+    const step = Math.abs(sx || sy);
+    for (let off = step; off <= r * 0.75; off += step) {
+        for (const sgn of [1, -1]) {
+            const ox = sx ? 0 : sgn * off, oy = sx ? sgn * off : 0;
+            if (isBlocked(x + ox + sx, y + oy + sy, r)) continue;
+            const mx = sx ? 0 : sgn * step, my = sx ? sgn * step : 0;
+            if (!isBlocked(x + mx, y + my, r)) return sgn * step;
+        }
+    }
+    return 0;
+}
+
 // Kurzform fuer den Browser
 function brief(it) {
     return it ? {
@@ -204,6 +247,10 @@ module.exports = function createArena(h) {
     const fires = [];                // Feuerflaechen { id, x, y, r, until, owner, dps }
     const holes = [];                // Schwarze Loecher { id, x, y, r, until, owner, dmg }
     let seqId = 0;
+    let boss = null;                 // Boss auf der Map (Events weiter unten)
+    let drop = null;                 // angekuendigter Versorgungsabwurf { x, y, at }
+    let nextBossAt = 0, nextDropAt = 0;
+    const BOSS_W = { dmg: 16, speed: 620, life: 1.5, how: 'boss' };
     let lastTick = Date.now();
     let lastSend = 0;
     const feedLog = [];
@@ -514,9 +561,10 @@ module.exports = function createArena(h) {
         return items.concat(utilItems(p), p.pack);
     }
 
-    function dropBag(x, y, items) {
+    // kind: undefined = Beutel eines Toten, 'drop' = Versorgungsabwurf, 'boss' = Boss-Beute
+    function dropBag(x, y, items, kind) {
         if (!items.length) return;
-        bags.push({ id: ++seqId, x, y, items, expires: Date.now() + BAG_LIFE });
+        bags.push({ id: ++seqId, x, y, items, kind, expires: Date.now() + BAG_LIFE });
     }
 
     // Tod, Verlassen, Abbruch: Raid vorbei, alles weg
@@ -541,11 +589,11 @@ module.exports = function createArena(h) {
             }
         }
         const w = killer ? (killer.gear[killer.slot] || killer.gear.primary) : null;
-        const line = { killer: killer ? killer.name : null, victim: p.name, how, weapon: w ? w.name : null, tier: w ? w.tier : null, loot: loot.length };
+        const line = { killer: killer ? killer.name : how === 'boss' ? '🦝 ' + BOSS_NAME : null, victim: p.name, how, weapon: w ? w.name : null, tier: w ? w.tier : null, loot: loot.length };
         feedLog.push(line);
         if (feedLog.length > 20) feedLog.shift();
         for (const q of players.values()) h.send(q.c, { type: 'shKill', ...line });
-        h.send(p.c, { type: 'shLeft', result: how === 'left' ? 'left' : 'died', by: killer ? killer.name : null, lost: loot.map(brief) });
+        h.send(p.c, { type: 'shLeft', result: how === 'left' ? 'left' : 'died', by: killer ? killer.name : how === 'boss' ? BOSS_NAME : null, lost: loot.map(brief) });
         h.changed();
     }
 
@@ -686,7 +734,7 @@ module.exports = function createArena(h) {
         let got = [];
         if (best.cr) {
             best.cr.readyAt = now + CRATE_RESPAWN;
-            const n = 1 + Math.floor(Math.random() * 3);
+            const n = 1 + Math.floor(Math.random() * 2);
             got = Array.from({ length: n }, () => I.generate('crate'));
         } else {
             got = best.b.items;
@@ -783,6 +831,9 @@ module.exports = function createArena(h) {
             if (walls && !clear(x, y, q.x, q.y)) continue;
             const k = 1 - Math.hypot(q.x - x, q.y - y) / (r + R) * 0.6;
             damage(q, q === owner ? null : owner, dmg * k, now, q.x, q.y, { how, noDodge: true });
+        }
+        if (boss && Math.hypot(boss.x - x, boss.y - y) < r + BOSS_R && (!walls || clear(x, y, boss.x, boss.y))) {
+            hurtBoss(owner, dmg * (1 - Math.hypot(boss.x - x, boss.y - y) / (r + BOSS_R) * 0.6), now, boss.x, boss.y);
         }
     }
 
@@ -923,6 +974,10 @@ module.exports = function createArena(h) {
             if (perp > R + 10) continue;
             hitPlayer({ owner: p.id, w, x: q.x, y: q.y, hits: new Set() }, q, now);
         }
+        if (boss) {
+            const t = (boss.x - p.x) * dx + (boss.y - p.y) * dy;
+            if (t >= 0 && t <= len && Math.abs((boss.x - p.x) * dy - (boss.y - p.y) * dx) < BOSS_R + 10) hurtBoss(p, w.dmg, now, boss.x, boss.y);
+        }
     }
 
     // Schwarzes Loch der Singularity an einer Stelle
@@ -966,7 +1021,7 @@ module.exports = function createArena(h) {
         let dmg = w.dmg;
         const crit = w.crit && Math.random() < w.crit;
         if (crit) dmg *= 2;
-        const killed = damage(v, shooter, dmg, now, b.x, b.y, { crit, execute: w.execute });
+        const killed = damage(v, shooter, dmg, now, b.x, b.y, { crit, execute: w.execute, how: w.how });
         if (shooter && w.vamp) shooter.hp = Math.min(shooter.maxHp, shooter.hp + dmg * w.vamp);
         if (!killed && players.has(v.id)) {
             if (w.burn) v.burn = { dps: w.burn, until: now + 3000 / SPEED, from: b.owner };
@@ -994,6 +1049,156 @@ module.exports = function createArena(h) {
             if (q.id === b.owner || q.id === skipId) continue;
             damage(q, shooter, w.dmg * w.explode, now, q.x, q.y, { how: 'explosion' });
         }
+        if (boss && b.owner !== 'boss' && Math.hypot(boss.x - b.x, boss.y - b.y) < r + BOSS_R) hurtBoss(shooter, w.dmg * w.explode, now, boss.x, boss.y);
+    }
+
+    // ---------- Events: Boss und Versorgungsabwurf ----------
+
+    const randIn = ([a, b]) => a + Math.random() * (b - a);
+
+    function announce(text, kind) {
+        for (const q of players.values()) h.send(q.c, { type: 'shEvent', text, kind });
+    }
+
+    function spawnBoss(now) {
+        const s = freeSpot(true);
+        const hp = 5000 + 2500 * players.size;
+        boss = {
+            x: s.x, y: s.y, a: 0, hp, maxHp: hp, tx: s.x, ty: s.y, stuck: 0, born: now,
+            nextShot: now + 1500, nextRing: now + 6000, nextSlam: now + 8000, slamAt: 0
+        };
+        announce(`👑 The ${BOSS_NAME} is roaming the map – kill it for Sovereign loot!`, 'boss');
+    }
+
+    function spawnDrop(now) {
+        const s = freeSpot(false);
+        drop = { x: s.x, y: s.y, at: now + DROP_WARN / SPEED };
+        announce('📦 Supply drop incoming – check the map!', 'drop');
+    }
+
+    function hurtBoss(attacker, dmg, now, x, y, crit) {
+        if (!boss || dmg <= 0) return;
+        boss.hp -= dmg;
+        const dead = boss.hp <= 0;
+        if (attacker && players.has(attacker.id)) h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: Math.round(dmg), kill: dead, crit: !!crit });
+        if (dead) bossDies(attacker && players.has(attacker.id) ? attacker : null);
+    }
+
+    function bossDies(killer) {
+        const b = boss;
+        boss = null;
+        nextBossAt = Date.now() + randIn(BOSS_EVERY) / SPEED;
+        // drei Beutel mit je einem Item, jeder darf sie sich schnappen
+        for (let i = 0; i < 3; i++) {
+            const a = i / 3 * Math.PI * 2;
+            const x = b.x + Math.cos(a) * 55, y = b.y + Math.sin(a) * 55;
+            dropBag(blocked(x, y, 10) ? b.x : x, blocked(x, y, 10) ? b.y : y, [I.generate('boss')], 'boss');
+        }
+        fxAt(b.x, b.y, { type: 'shBoom', x: Math.round(b.x), y: Math.round(b.y), r: 220, nuke: false });
+        const line = { killer: killer ? killer.name : null, victim: '🦝 ' + BOSS_NAME, how: 'shot', loot: 3 };
+        feedLog.push(line);
+        if (feedLog.length > 20) feedLog.shift();
+        for (const q of players.values()) h.send(q.c, { type: 'shKill', ...line });
+        announce(`👑 ${killer ? killer.name + ' killed' : 'Down goes'} the ${BOSS_NAME}! 3 items dropped`, 'boss');
+        if (killer && killer.account) h.accounts.stat(killer.account, s => { s.bossKills = (s.bossKills || 0) + 1; });
+    }
+
+    function bossBullet(a, now) {
+        bullets.push({
+            id: ++seqId, owner: 'boss',
+            x: boss.x + Math.cos(a) * (BOSS_R + 6), y: boss.y + Math.sin(a) * (BOSS_R + 6),
+            vx: Math.cos(a) * 620, vy: Math.sin(a) * 620,
+            dies: now + 1500 / SPEED, w: BOSS_W, pierce: 0, bounce: 0, hits: new Set(), fx: 1024, tier: 5
+        });
+    }
+
+    function bossTick(now, dt) {
+        const b = boss;
+        if (now - b.born > BOSS_LIFE / SPEED) {
+            boss = null;
+            nextBossAt = now + randIn(BOSS_EVERY) / SPEED;
+            announce(`👑 The ${BOSS_NAME} got bored and left.`, 'boss');
+            return;
+        }
+        // Ziel: naechster Spieler in 700 mit freier Sicht, der sich nicht versteckt
+        let tgt = null, td = 700;
+        for (const q of players.values()) {
+            if (now < q.protect) continue;
+            const d = Math.hypot(q.x - b.x, q.y - b.y);
+            if (d >= td) continue;
+            const hidden = d > SEE_NEAR && now - q.lastShot >= REVEAL_MS && (q.zone || q.smoke !== null || stillHidden(q, now));
+            if (!hidden && clear(b.x, b.y, q.x, q.y)) {
+                tgt = q;
+                td = d;
+            }
+        }
+        // Stampfer: kuendigt sich an, steht dabei still
+        if (b.slamAt) {
+            if (now >= b.slamAt) {
+                b.slamAt = 0;
+                b.nextSlam = now + 7000 / SPEED;
+                fxAt(b.x, b.y, { type: 'shBoom', x: Math.round(b.x), y: Math.round(b.y), r: BOSS_SLAM_R, nuke: false });
+                for (const q of near(b.x, b.y, BOSS_SLAM_R + R)) damage(q, null, 70, now, q.x, q.y, { how: 'boss', noDodge: true });
+            }
+            return;
+        }
+        if (now >= b.nextSlam && near(b.x, b.y, BOSS_SLAM_R).length) {
+            b.slamAt = now + 900 / SPEED;
+            return;
+        }
+        // Laufen: auf das Ziel zu (Abstand halten) oder zum naechsten Wegpunkt
+        let gx = b.tx, gy = b.ty;
+        if (tgt) {
+            gx = tgt.x;
+            gy = tgt.y;
+        }
+        const d = Math.hypot(gx - b.x, gy - b.y);
+        if (!tgt && d < 60) {
+            const s = freeSpot(false);
+            b.tx = s.x;
+            b.ty = s.y;
+        } else if (d > (tgt ? 170 : 0)) {
+            const step = BOSS_MOVE * (tgt ? 1.2 : 1) * dt;
+            const [nx, ny] = slide(b.x, b.y, (gx - b.x) / d * step, (gy - b.y) / d * step, BOSS_R);
+            const moved = Math.hypot(nx - b.x, ny - b.y);
+            b.x = nx;
+            b.y = ny;
+            if (moved < step * 0.3) b.stuck += dt;
+            else b.stuck = 0;
+            if (b.stuck > 1.2) {
+                const s = freeSpot(false);
+                b.tx = s.x;
+                b.ty = s.y;
+                b.stuck = 0;
+            }
+            if (!tgt) b.a = Math.atan2(gy - b.y, gx - b.x);
+        }
+        if (tgt) b.a = Math.atan2(tgt.y - b.y, tgt.x - b.x);
+        // Schiessen: Dreier-Salve aufs Ziel, ab und zu ein Ring rundum
+        if (tgt && now >= b.nextShot) {
+            b.nextShot = now + 850 / SPEED;
+            for (const off of [-0.12, 0, 0.12]) bossBullet(b.a + off, now);
+        }
+        if (now >= b.nextRing && near(b.x, b.y, 600).length) {
+            b.nextRing = now + 9000 / SPEED;
+            for (let k = 0; k < 20; k++) bossBullet(k / 20 * Math.PI * 2, now);
+        }
+    }
+
+    function eventTick(now, dt) {
+        if (!nextBossAt) nextBossAt = now + randIn(BOSS_EVERY) / SPEED;
+        if (!nextDropAt) nextDropAt = now + randIn(DROP_EVERY) / SPEED;
+        if (!boss && now >= nextBossAt) spawnBoss(now);
+        if (boss) bossTick(now, dt);
+        if (!drop && now >= nextDropAt) spawnDrop(now);
+        if (drop && now >= drop.at) {
+            const n = 2 + (Math.random() < 0.4 ? 1 : 0);
+            dropBag(drop.x, drop.y, Array.from({ length: n }, () => I.generate('airdrop')), 'drop');
+            fxAt(drop.x, drop.y, { type: 'shBoom', x: Math.round(drop.x), y: Math.round(drop.y), r: 90, nuke: false });
+            announce('📦 The supply drop has landed!', 'drop');
+            drop = null;
+            nextDropAt = now + randIn(DROP_EVERY) / SPEED;
+        }
     }
 
     function tick() {
@@ -1010,8 +1215,14 @@ module.exports = function createArena(h) {
             smokes.length = 0;
             fires.length = 0;
             holes.length = 0;
+            // leerer Raid: Events weg, Uhr startet mit dem naechsten Spieler neu
+            boss = null;
+            drop = null;
+            nextBossAt = 0;
+            nextDropAt = 0;
             return;
         }
+        eventTick(now, dt);
         nadeTick(now, dt);
 
         for (const p of [...players.values()]) {
@@ -1033,11 +1244,10 @@ module.exports = function createArena(h) {
             else if (p.regen && now - p.lastHurt > 3000 / SPEED) p.hp = Math.min(p.maxHp, p.hp + p.regen * dt);
             const sp = MOVE * p.speedMul * (now < p.slowUntil ? 1 - p.slow : 1) * (now < p.stimUntil ? 1 + p.stim : 1);
             const ox = p.x, oy = p.y;
-            const nx = p.x + p.mx * sp * dt;
-            if (!blocked(nx, p.y, R)) p.x = nx;
-            const ny = p.y + p.my * sp * dt;
-            if (!blocked(p.x, ny, R)) p.y = ny;
+            if (p.mx || p.my) [p.x, p.y] = slide(p.x, p.y, p.mx * sp * dt, p.my * sp * dt, R);
             if (p.x !== ox || p.y !== oy) p.lastMove = now;
+            // Beruehrt den Boss: Schaden ueber Zeit
+            if (boss && Math.hypot(boss.x - p.x, boss.y - p.y) < BOSS_R + R && damage(p, null, 45 * dt, now, p.x, p.y, { how: 'boss', noDodge: true, dot: true })) continue;
             p.zone = zoneOf(p.x, p.y);
             const sm = smokes.find(s => Math.hypot(s.x - p.x, s.y - p.y) < s.r);
             p.smoke = sm ? sm.id : null;
@@ -1101,6 +1311,16 @@ module.exports = function createArena(h) {
                         break;
                     }
                 }
+                if (!gone && boss && b.owner !== 'boss' && !b.hits.has('boss') && Math.hypot(boss.x - b.x, boss.y - b.y) < BOSS_R + 4) {
+                    b.hits.add('boss');
+                    const shooter = players.get(b.owner) || null;
+                    const crit = b.w.crit && Math.random() < b.w.crit;
+                    hurtBoss(shooter, b.w.dmg * (crit ? 2 : 1), now, b.x, b.y, crit);
+                    if (boss && b.w.hole) bulletHole(b, now);
+                    if (b.w.explode) explode(b, now, null);
+                    if (b.pierce > 0) b.pierce--;
+                    else gone = true;
+                }
             }
             if (gone) bullets.splice(i, 1);
         }
@@ -1137,7 +1357,10 @@ module.exports = function createArena(h) {
                 }),
                 bullets: bullets.filter(b => inView(b.x, b.y)).map(b => [b.id, Math.round(b.x), Math.round(b.y), Math.round(b.vx), Math.round(b.vy), b.owner, b.fx, b.tier]),
                 crates: crates.filter(cr => inView(cr.x, cr.y)).map(cr => [cr.id, cr.x, cr.y, now >= cr.readyAt ? 1 : 0]),
-                bags: bags.filter(b => inView(b.x, b.y)).map(b => [b.id, Math.round(b.x), Math.round(b.y), b.items.length]),
+                bags: bags.filter(b => inView(b.x, b.y)).map(b => [b.id, Math.round(b.x), Math.round(b.y), b.items.length, b.kind === 'boss' ? 2 : b.kind === 'drop' ? 1 : 0]),
+                // Events sieht jeder, egal wo (Karte und Pfeil am Rand)
+                boss: boss ? [Math.round(boss.x), Math.round(boss.y), Math.max(0, Math.round(boss.hp)), boss.maxHp, Math.round(boss.a * 100) / 100, boss.slamAt ? Math.max(0, Math.round(boss.slamAt - now)) : 0] : null,
+                drop: drop ? [Math.round(drop.x), Math.round(drop.y), Math.max(0, Math.round(drop.at - now))] : null,
                 nades: nades.filter(g => inView(g.x, g.y)).map(g => [g.id, Math.round(g.x), Math.round(g.y), g.base, g.landed ? 1 : 0, g.fuseAt ? Math.max(0, Math.round(g.fuseAt - now)) : 0]),
                 smokes: smokes.filter(s => inView(s.x, s.y)).map(s => [s.id, Math.round(s.x), Math.round(s.y), s.r, Math.round(s.until - now)]),
                 fires: fires.filter(f => inView(f.x, f.y)).map(f => [f.id, Math.round(f.x), Math.round(f.y), f.r, Math.round(f.until - now)]),
@@ -1151,11 +1374,13 @@ module.exports = function createArena(h) {
         has: c => players.has(c.id),
         names: () => [...players.values()].map(p => p.name),
         rooms: () => [{ id: 'raid', players: [...players.values()].map(p => p.name) }],
-        _players: players, _bags: bags, _crates: crates, _damage: damage, _canSee: canSee
+        _players: players, _bags: bags, _crates: crates, _damage: damage, _canSee: canSee,
+        _spawnBoss: () => spawnBoss(Date.now()), _spawnDrop: () => spawnDrop(Date.now()), _boss: () => boss
     };
 };
 
 module.exports.MAP = MAP;
 module.exports.blocked = blocked;
+module.exports.slide = slide;
 module.exports.W = W;
 module.exports.H = H;

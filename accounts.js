@@ -135,7 +135,8 @@ module.exports = function createAccounts(dataDir) {
         return {
             name: u.name, coins: u.coins, color: u.color || null, stats: u.stats, dailyReady: u.daily !== berlinDay(),
             // Shop (#9)
-            inventory: u.inventory || [], equipped: u.equipped || {},
+            // Gratis-Items gehoeren jedem; Standard-Musik laeuft, bis man sie ablegt (dann false)
+            inventory: [...new Set([...shop.FREE, ...(u.inventory || [])])], equipped: { ...shop.DEFAULTS, ...(u.equipped || {}) },
             // Achievements (#3)
             achievements: u.achievements || {}, title: u.title || null
         };
@@ -311,10 +312,13 @@ module.exports = function createAccounts(dataDir) {
             const u = db.users[key];
             if (!u || !shop.CATS[cat]) return 'Unknown category';
             u.equipped = { ...u.equipped };
-            if (id === null) delete u.equipped[cat];
-            else {
+            // Ablegen einer Kategorie mit Standard merkt sich false, sonst kaeme der Standard zurueck
+            if (id === null) {
+                if (shop.DEFAULTS[cat]) u.equipped[cat] = false;
+                else delete u.equipped[cat];
+            } else {
                 const item = shop.BY_ID[id];
-                if (!item || item.cat !== cat || !(u.inventory || []).includes(id)) return 'You do not own that';
+                if (!item || item.cat !== cat || !(item.free || (u.inventory || []).includes(id))) return 'You do not own that';
                 u.equipped[cat] = id;
             }
             touch();
@@ -610,6 +614,16 @@ module.exports = function createAccounts(dataDir) {
                     casino: casinoNet(s), events: s.eventWins, arena: s.shooterKills
                 }[cat] || 0;
             };
+            // Score: jede Runde ein eigener Eintrag (alte Konten ohne topRuns: bestScore)
+            if (cat === 'score') {
+                return Object.values(db.users).flatMap(u => {
+                    const s = u.stats || {};
+                    const src = period === 'all' ? s : ((s.periods || {})[period] || {});
+                    if (period !== 'all' && src.id !== ids[period]) return [];
+                    const runs = src.topRuns || (src.bestScore ? [src.bestScore] : []);
+                    return runs.map(v => ({ name: u.name, value: v, tt: ach.titleOf(u) || undefined }));
+                }).sort((a, b) => b.value - a.value).slice(0, 10);
+            }
             return Object.entries(db.users)
                 .map(([key, u]) => ({ name: u.name, value: value(u, key), tt: ach.titleOf(u) || undefined }))
                 // Casino-Bilanz darf negativ sein, sonst nur echte Werte
@@ -625,8 +639,12 @@ module.exports = function createAccounts(dataDir) {
                 .filter(e => e.value > 0)
                 .sort((a, b) => b.value - a.value)
                 .slice(0, n);
+            const runs = all.flatMap(u => {
+                const s = u.stats || {};
+                return (s.topRuns || (s.bestScore ? [s.bestScore] : [])).map(v => ({ name: u.name, value: v, tt: ach.titleOf(u) || undefined }));
+            }).sort((a, b) => b.value - a.value).slice(0, 10);
             return {
-                score: pick(u => (u.stats || {}).bestScore || 0, 10),
+                score: runs,
                 coins: pick(u => u.coins, 10),
                 kills: pick(u => (u.stats || {}).kills || 0, 10)
             };

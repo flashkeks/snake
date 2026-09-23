@@ -438,8 +438,11 @@ setInterval(() => pushTop(false), 5000);
 function recordScore(p) {
     if (!p.account) return;
     const score = scoreOf(p);
-    accounts.stat(p.account, s => { s.bestScore = Math.max(s.bestScore, score); });
-    accounts.period(p.account, x => { x.bestScore = Math.max(x.bestScore, score); });
+    // Jede Runde zaehlt einzeln (Max): die besten 10 Runden je Konto und Zeitraum,
+    // damit man mehrfach auf dem Score-Leaderboard stehen kann
+    const keep = (arr, v) => [...(arr || []), v].sort((a, b) => b - a).slice(0, 10);
+    accounts.stat(p.account, s => { s.bestScore = Math.max(s.bestScore, score); if (score > 0) s.topRuns = keep(s.topRuns, score); });
+    accounts.period(p.account, x => { x.bestScore = Math.max(x.bestScore, score); if (score > 0) x.topRuns = keep(x.topRuns, score); });
 }
 
 // ---------- Tod, Verlassen, Cashout ----------
@@ -1135,6 +1138,15 @@ async function handle(c, data) {
             }
             return;
         }
+
+        // Nur fuer lokale Tests (SNAKE_TEST=1): Boss oder Abwurf sofort
+        case 'shTestEvent':
+            if (process.env.SNAKE_TEST === '1') {
+                if (data.boss) shooter._spawnBoss();
+                if (data.drop) shooter._spawnDrop();
+                if (data.bossHp && shooter._boss()) shooter._boss().hp = Number(data.bossHp);
+            }
+            return;
 
         // Nur fuer lokale Tests (SNAKE_TEST=1): naechste Roulette-Zahl vorgeben
         case 'testTable':

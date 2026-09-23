@@ -184,7 +184,12 @@ const ARMOR_MODS = {
 // t = Wahrscheinlichkeit je Stufe (Common..Ultra), kinds = Anteil der Arten,
 // tag = Themen-Case: so viel Anteil geht an Basen mit diesem Tag
 const SOURCES = {
-    crate: { t: [0.62, 0.27, 0.09, 0.0189, 0.001, 0.00001, 0], kinds: { weapon: 0.28, armor: 0.27, util: 0.37, pack: 0.08 } },
+    // Kisten auf der Map: nur Granaten und Heilung (Max: Inventar lief sonst zu schnell voll)
+    crate: { t: [0.62, 0.27, 0.09, 0.0189, 0.001, 0.00001, 0], kinds: { util: 1 }, uses: ['heal', 'throw'] },
+    // Versorgungsabwurf: Ausruestung, etwas besser als eine Standard-Case
+    airdrop: { t: [0.3, 0.38, 0.2, 0.1, 0.0195, 0.0005, 0], kinds: { weapon: 0.45, armor: 0.45, pack: 0.1 } },
+    // Boss: Sovereign-Stufen, aber nur Ausruestung
+    boss: { t: [0, 0, 0.35, 0.6322333, 1 / 60, 0.001, 0.0001], kinds: { weapon: 0.5, armor: 0.4, pack: 0.1 } },
     scrapcase: { t: [0.7, 0.24, 0.055, 0.0049, 0.0001, 0, 0], kinds: { weapon: 0.45, armor: 0.28, util: 0.2, pack: 0.07 } },
     standard: { t: [0.55, 0.3, 0.12, 0.0298, 0.0002, 0, 0], kinds: { weapon: 0.45, armor: 0.28, util: 0.2, pack: 0.07 } },
     mage: { t: [0.4, 0.33, 0.2, 0.069, 0.001, 0.000005, 0], kinds: { weapon: 0.45, armor: 0.25, util: 0.25, pack: 0.05 }, tag: 'mage', tagShare: 0.75 },
@@ -239,7 +244,8 @@ function defsOf(kind) {
 // die eigene Stufe der Basis, desto wahrscheinlicher (Specials setzen sich
 // oben durch). Themen-Case: tagShare aus den Basen mit Tag, wenn es welche gibt.
 function pickBase(kind, tier, src) {
-    const all = Object.entries(defsOf(kind)).filter(([, b]) => b.tier <= tier);
+    let all = Object.entries(defsOf(kind)).filter(([, b]) => b.tier <= tier);
+    if (src.uses) all = all.filter(([, b]) => src.uses.includes(b.use));
     let pool = all;
     if (src.tag) {
         const tagged = all.filter(([, b]) => b.tag === src.tag);
@@ -318,10 +324,11 @@ function finish(item, isPlain) {
 // Scrap beim Salvagen: nach Stufe und Effekten
 function salvageValue(item) {
     if (item.starter) return 0;
-    if (item.kind === 'util') return 3 + 4 * (TIER_IDX[item.tier] || 0);
-    if (item.kind === 'pack') return 10 + 6 * Math.pow(3, TIER_IDX[item.tier] || 0);
+    // 23.09.2026 etwa auf 40 % gesenkt (Max: zu viel Scrap)
+    if (item.kind === 'util') return 1 + 2 * (TIER_IDX[item.tier] || 0);
+    if (item.kind === 'pack') return 4 + 3 * Math.pow(3, TIER_IDX[item.tier] || 0);
     const t = TIER_IDX[item.tier] || 0;
-    return Math.round(8 + 6 * Math.pow(3, t) + (item.mods || []).reduce((s, m) => s + m.lvl * 15, 0));
+    return Math.round(3 + 2.5 * Math.pow(3, t) + (item.mods || []).reduce((s, m) => s + m.lvl * 6, 0));
 }
 
 // Alte Items auf Runde 3 bringen: Verbrauchsgut wird 'util', Grade entfaellt

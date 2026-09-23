@@ -5500,6 +5500,7 @@ ws.onmessage = event => {
         case 'shJoined': onShJoined(data); break;
         case 'shLeft': onShLeft(data); break;
         case 'shKill': onShKill(data); break;
+        case 'shEvent': onShEvent(data); break;
         case 'shError': showMsg($('arenahub').classList.contains('hidden') ? 'sh-menu-msg' : 'hub-msg', data.error, 'err'); break;
         case 'table': onTable(data); break;
         case 'tableLeft': onTableLeft(); break;
@@ -8292,6 +8293,7 @@ let shCam = { x: 0, y: 0, s: 1 };
 let shLastFrame = 0;
 let shPingTimer = null;
 let shToast = null;         // { text, t }
+let shEventMsg = null;      // Ansage Boss/Abwurf { text, kind, t }
 let shInvState = null;      // Rucksack und Ausruestung (shInv)
 let shInvOpen = false;
 let shShakeAt = 0, shShakeMag = 0, shShakeMs = 1;
@@ -9008,6 +9010,35 @@ function shBlocked(x, y, r) {
     return false;
 }
 
+// Gleiche Logik wie slide() in shooter.js: kleine Schritte bis an die Wand,
+// an Ecken seitlich vorbei statt haengenzubleiben
+function shSlide(x, y, dx, dy, r) {
+    const n = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 4));
+    const sx = dx / n, sy = dy / n;
+    const nudge = (sx, sy) => {
+        const step = Math.abs(sx || sy);
+        for (let off = step; off <= r * 0.75; off += step) {
+            for (const sgn of [1, -1]) {
+                const ox = sx ? 0 : sgn * off, oy = sx ? sgn * off : 0;
+                if (shBlocked(x + ox + sx, y + oy + sy, r)) continue;
+                if (!shBlocked(x + (sx ? 0 : sgn * step), y + (sx ? sgn * step : 0), r)) return sgn * step;
+            }
+        }
+        return 0;
+    };
+    for (let i = 0; i < n; i++) {
+        if (sx) {
+            if (!shBlocked(x + sx, y, r)) x += sx;
+            else if (!sy) y += nudge(sx, 0);
+        }
+        if (sy) {
+            if (!shBlocked(x, y + sy, r)) y += sy;
+            else if (!sx) x += nudge(0, sy);
+        }
+    }
+    return [x, y];
+}
+
 function shPredict(dt) {
     const s = shSnaps[shSnaps.length - 1];
     const me = shMeServer();
@@ -9017,10 +9048,7 @@ function shPredict(dt) {
         shHist = [];
     }
     const m = sh.map, sp = m.move * (s.me.spd || 1);
-    const nx = shPred.x + shIn.mx * sp * dt;
-    if (!shBlocked(nx, shPred.y, m.r)) shPred.x = nx;
-    const ny = shPred.y + shIn.my * sp * dt;
-    if (!shBlocked(shPred.x, ny, m.r)) shPred.y = ny;
+    if (shIn.mx || shIn.my) [shPred.x, shPred.y] = shSlide(shPred.x, shPred.y, shIn.mx * sp * dt, shIn.my * sp * dt, m.r);
     const now = performance.now();
     shHist.push({ t: now, x: shPred.x, y: shPred.y });
     while (shHist.length && now - shHist[0].t > 1500) shHist.shift();
@@ -9075,6 +9103,25 @@ function shOthers() {
         if (da < -Math.PI) da += Math.PI * 2;
         return { ...p, x: q.x + (p.x - q.x) * k, y: q.y + (p.y - q.y) * k, a: q.a + da * k };
     });
+}
+
+// Boss wie die anderen Spieler 50 ms verzoegert zwischen zwei Staenden
+function shBossPos() {
+    const t = performance.now() - SH_INTERP;
+    let a = null, b = shSnaps[shSnaps.length - 1];
+    if (!b || !b.boss) return null;
+    for (let i = 0; i < shSnaps.length - 1; i++) {
+        if (shSnaps[i].recv <= t && shSnaps[i + 1].recv >= t) {
+            a = shSnaps[i];
+            b = shSnaps[i + 1];
+            break;
+        }
+    }
+    if (!b.boss) return null;
+    const [x, y, hp, mh, ang, slam] = b.boss;
+    if (!a || !a.boss) return { x, y, hp, mh, a: ang, slam };
+    const k = b.recv > a.recv ? Math.max(0, Math.min(1, (t - a.recv) / (b.recv - a.recv))) : 1;
+    return { x: a.boss[0] + (x - a.boss[0]) * k, y: a.boss[1] + (y - a.boss[1]) * k, hp, mh, a: ang, slam };
 }
 
 // Naechste Kiste/Beutel in Reichweite (fuer den F-Hinweis)
@@ -9167,9 +9214,9 @@ function shFrame() {
         if (!vis(x, y, Math.max(w, h))) continue;
         c.fillStyle = 'rgba(0,0,0,.35)';
         c.fillRect(x + 6, y + 6, w, h);
-        c.fillStyle = w < 90 && h < 90 ? '#5a4632' : '#3a4658';
+        c.fillStyle = w < 90 && h < 90 ? '#474c55' : '#3a4658';
         c.fillRect(x, y, w, h);
-        c.fillStyle = w < 90 && h < 90 ? '#6f5840' : '#51627c';
+        c.fillStyle = w < 90 && h < 90 ? '#5f6671' : '#51627c';
         c.fillRect(x, y, w, 5);
     }
     c.strokeStyle = '#ff5bd6';
@@ -9193,20 +9240,64 @@ function shFrame() {
         drawEmojiC(c, '📦', x, y, 38);
     }
     c.globalAlpha = 1;
-    for (const [, x, y, n] of latest.bags) {
-        drawEmojiC(c, '💰', x, y + Math.sin(now / 250) * 3, 36);
+    for (const [, x, y, n, kind] of latest.bags) {
+        if (kind) {
+            // Boss-Beute golden, Abwurf blau, beide mit Lichtsaeule
+            const col = kind === 2 ? '255,210,63' : '90,170,255';
+            const g = c.createRadialGradient(x, y, 4, x, y, 60);
+            g.addColorStop(0, `rgba(${col},${.55 + .2 * Math.sin(now / 200)})`);
+            g.addColorStop(1, `rgba(${col},0)`);
+            c.fillStyle = g;
+            c.beginPath();
+            c.arc(x, y, 60, 0, Math.PI * 2);
+            c.fill();
+        }
+        drawEmojiC(c, kind === 2 ? '👑' : kind === 1 ? '🪂' : '💰', x, y + Math.sin(now / 250) * 3, kind ? 42 : 36);
         c.fillStyle = '#ffd23f';
         c.font = 'bold 13px system-ui';
         c.textAlign = 'center';
         c.fillText(`${n}`, x + 18, y - 16);
     }
 
+    // Angekuendigter Abwurf: Zielkreis mit Countdown
+    if (latest.drop) {
+        const [dx, dy, left] = latest.drop;
+        const k = .5 + .5 * Math.sin(now / 150);
+        c.strokeStyle = `rgba(90,170,255,${.5 + .4 * k})`;
+        c.lineWidth = 4;
+        c.setLineDash([14, 10]);
+        c.beginPath();
+        c.arc(dx, dy, 70, now / 600, now / 600 + Math.PI * 2);
+        c.stroke();
+        c.setLineDash([]);
+        drawEmojiC(c, '🪂', dx, dy - 10 - k * 6, 40);
+        c.fillStyle = '#9fd0ff';
+        c.font = 'bold 16px system-ui';
+        c.textAlign = 'center';
+        c.fillText(`Supply drop in ${Math.ceil(Math.max(0, left - (now - latest.recv)) / 1000)} s`, dx, dy + 50);
+    }
     // Kugeln (Farbe nach Effekt)
     const age = (now - latest.recv) / 1000;
     for (const [, x, y, vx, vy, owner, fx, bt] of latest.bullets) {
         const t = owner === sh.id ? age + shRtt / 2000 : Math.max(0, age - SH_INTERP / 1000);
         const bx = x + vx * t, by = y + vy * t;
         const sp = Math.hypot(vx, vy) || 1;
+        if (fx & 1024) {
+            // Boss: dicke rote Kugeln mit Schweif
+            c.fillStyle = 'rgba(255,60,60,.3)';
+            c.beginPath();
+            c.arc(bx - vx / sp * 10, by - vy / sp * 10, 9, 0, Math.PI * 2);
+            c.fill();
+            c.fillStyle = '#ff3b3b';
+            c.beginPath();
+            c.arc(bx, by, 8, 0, Math.PI * 2);
+            c.fill();
+            c.fillStyle = '#ffd0d0';
+            c.beginPath();
+            c.arc(bx, by, 3.5, 0, Math.PI * 2);
+            c.fill();
+            continue;
+        }
         if (fx & 64) {
             // Mini-Nuke: Rauchspur und ☢
             for (let k = 1; k <= 6; k++) {
@@ -9396,6 +9487,52 @@ function shFrame() {
         c.lineWidth = 2;
         c.strokeRect(x, y, w, dh);
         drawEmojiC(c, '🚪', x + w / 2, y + dh / 2, 22);
+    }
+    // Boss
+    const bs = shBossPos();
+    if (bs && vis(bs.x, bs.y, 120)) {
+        const BR = 44;
+        if (bs.slam) {
+            // Stampfer kuendigt sich an: roter Kreis zieht sich zusammen
+            const k = Math.max(0, Math.min(1, (bs.slam - (now - latest.recv)) / 900));
+            c.fillStyle = `rgba(255,40,40,${.18 + .2 * (1 - k)})`;
+            c.beginPath();
+            c.arc(bs.x, bs.y, 250, 0, Math.PI * 2);
+            c.fill();
+            c.strokeStyle = '#ff3b3b';
+            c.lineWidth = 4;
+            c.beginPath();
+            c.arc(bs.x, bs.y, 250 * (1 - k) + BR, 0, Math.PI * 2);
+            c.stroke();
+        }
+        const glow = c.createRadialGradient(bs.x, bs.y, BR * .6, bs.x, bs.y, BR * 2);
+        glow.addColorStop(0, 'rgba(255,60,60,.45)');
+        glow.addColorStop(1, 'rgba(255,60,60,0)');
+        c.fillStyle = glow;
+        c.beginPath();
+        c.arc(bs.x, bs.y, BR * 2, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = '#2a0f14';
+        c.strokeStyle = '#ff3b3b';
+        c.lineWidth = 4;
+        c.beginPath();
+        c.arc(bs.x, bs.y, BR, 0, Math.PI * 2);
+        c.fill();
+        c.stroke();
+        // Blickrichtung
+        c.strokeStyle = '#ffd23f';
+        c.lineWidth = 8;
+        c.beginPath();
+        c.moveTo(bs.x + Math.cos(bs.a) * BR * .6, bs.y + Math.sin(bs.a) * BR * .6);
+        c.lineTo(bs.x + Math.cos(bs.a) * (BR + 18), bs.y + Math.sin(bs.a) * (BR + 18));
+        c.stroke();
+        drawEmojiC(c, '🦝', bs.x, bs.y + 4, 58);
+        drawEmojiC(c, '👑', bs.x, bs.y - BR + 2 + Math.sin(now / 300) * 2, 30);
+        const bw = 120;
+        c.fillStyle = 'rgba(0,0,0,.7)';
+        c.fillRect(bs.x - bw / 2, bs.y - BR - 34, bw, 9);
+        c.fillStyle = '#ff3b3b';
+        c.fillRect(bs.x - bw / 2 + 1, bs.y - BR - 33, (bw - 2) * bs.hp / bs.mh, 7);
     }
     // Rauch
     for (const [, x, y, r, left] of latest.smokes || []) {
@@ -9609,13 +9746,14 @@ function shFrame() {
         c.fillRect(0, 0, W, H);
     }
     shMinimap(c, latest, W, H);
+    shEventHud(c, latest, W, H, now, dpr);
 
     // Kill-Feed
     c.textAlign = 'right';
     c.textBaseline = 'middle';
     c.font = 'bold 13px system-ui';
     shFeed.filter(f => !f.at || now - f.at < 7000).slice(-5).forEach((f, i) => {
-        const how = f.how === 'left' ? '🏃 left' : f.how === 'fire' ? '🔥' : f.how === 'explosion' ? '💣' : '🔫';
+        const how = f.how === 'left' ? '🏃 left' : f.how === 'fire' ? '🔥' : f.how === 'explosion' ? '💣' : f.how === 'boss' ? '👊' : '🔫';
         const text = f.killer ? `${f.killer} ${how} ${f.victim}${f.loot ? ` · ${f.loot} items` : ''}` : `${f.victim} ${how}`;
         const w = c.measureText(text).width + 16;
         c.fillStyle = 'rgba(0,0,0,.6)';
@@ -9703,7 +9841,7 @@ function shFrame() {
     if (my.pr) {
         c.fillStyle = '#8fe9ff';
         c.font = 'bold 15px system-ui';
-        c.fillText('🛡️ spawn protection', W / 2, 40);
+        c.fillText('🛡️ spawn protection', W / 2, latest.boss ? 52 : 40);
     }
 
     // Touch-Sticks
@@ -9807,6 +9945,79 @@ function shDrawPlayer(c, p, x, y, a, mine, now, my) {
     c.restore();
 }
 
+// Boss-Lebensleiste oben, Pfeile am Bildrand zu Boss und Abwurf, Ansage
+function shEventHud(c, latest, W, H, now, dpr) {
+    const bs = shBossPos();
+    if (bs) {
+        const bw = Math.min(420, W * .5);
+        c.fillStyle = 'rgba(0,0,0,.7)';
+        c.fillRect(W / 2 - bw / 2 - 4, 14, bw + 8, 26);
+        c.fillStyle = '#ff3b3b';
+        c.fillRect(W / 2 - bw / 2, 18, bw * bs.hp / bs.mh, 18);
+        c.fillStyle = '#fff';
+        c.font = 'bold 13px system-ui';
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.fillText(`👑 Raccoon King · ${bs.hp.toLocaleString('en-US')} HP`, W / 2, 27);
+    }
+    // Pfeil, wenn das Ziel ausserhalb des Bildes liegt
+    const arrow = (wx, wy, icon, col) => {
+        const sx = (wx - shCam.x) * shCam.s / dpr, sy = (wy - shCam.y) * shCam.s / dpr;
+        if (sx > 0 && sx < W && sy > 0 && sy < H) return;
+        const cx = W / 2, cy = H / 2, a = Math.atan2(sy - cy, sx - cx);
+        const k = Math.min((W / 2 - 40) / Math.abs(Math.cos(a) || 1e-6), (H / 2 - 40) / Math.abs(Math.sin(a) || 1e-6));
+        const ax = cx + Math.cos(a) * k, ay = cy + Math.sin(a) * k;
+        c.save();
+        c.translate(ax, ay);
+        c.fillStyle = 'rgba(0,0,0,.6)';
+        c.beginPath();
+        c.arc(0, 0, 20, 0, Math.PI * 2);
+        c.fill();
+        c.rotate(a);
+        c.fillStyle = col;
+        c.beginPath();
+        c.moveTo(30, 0);
+        c.lineTo(20, -8);
+        c.lineTo(20, 8);
+        c.fill();
+        c.restore();
+        c.font = '20px system-ui';
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.fillText(icon, ax, ay + 1);
+        c.fillStyle = col;
+        c.font = 'bold 11px system-ui';
+        c.fillText(`${Math.round(Math.hypot(wx - (shPred ? shPred.x : wx), wy - (shPred ? shPred.y : wy)) / 10)} m`, ax, ay + 30);
+    };
+    if (bs) arrow(bs.x, bs.y, '👑', '#ff3b3b');
+    if (latest.drop) arrow(latest.drop[0], latest.drop[1], '🪂', '#5aaaff');
+    for (const [, x, y, , kind] of latest.bags) if (kind === 2) arrow(x, y, '💰', '#ffd23f');
+    if (shEventMsg && now - shEventMsg.t < 4500) {
+        c.globalAlpha = Math.min(1, (4500 - (now - shEventMsg.t)) / 600);
+        c.font = 'bold 20px system-ui';
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        const w = Math.min(W - 30, c.measureText(shEventMsg.text).width + 32);
+        const y = bs ? 64 : 40;
+        c.fillStyle = shEventMsg.kind === 'boss' ? 'rgba(60,8,12,.9)' : 'rgba(8,24,50,.9)';
+        c.fillRect(W / 2 - w / 2, y - 18, w, 36);
+        c.fillStyle = shEventMsg.kind === 'boss' ? '#ff9b9b' : '#9fd0ff';
+        c.fillText(shEventMsg.text, W / 2, y, W - 50);
+        c.globalAlpha = 1;
+    }
+}
+
+function onShEvent(d) {
+    shEventMsg = { text: d.text, kind: d.kind, t: performance.now() };
+    if (d.kind === 'boss') {
+        sTone(90, { dur: .9, type: 'sawtooth', vol: .1, slide: 60, rev: .4 });
+        sTone(130, { dur: .7, type: 'square', vol: .05, slide: 90, rev: .4 });
+    } else {
+        sTone(700, { dur: .15, type: 'sine', vol: .06, rev: .2 });
+        setTimeout(() => sTone(950, { dur: .2, type: 'sine', vol: .06, rev: .2 }), 160);
+    }
+}
+
 function shMinimap(c, latest, W, H) {
     const m = sh.map;
     const mw = Math.min(200, W * .3), mh = mw * m.h / m.w;
@@ -9825,6 +10036,19 @@ function shMinimap(c, latest, W, H) {
         c.beginPath();
         c.arc(x0 + e.x * k, y0 + e.y * k, 4, 0, Math.PI * 2);
         c.fill();
+    }
+    if (latest.drop) {
+        c.fillStyle = '#5aaaff';
+        c.beginPath();
+        c.arc(x0 + latest.drop[0] * k, y0 + latest.drop[1] * k, 4 + Math.sin(performance.now() / 150) * 1.5, 0, Math.PI * 2);
+        c.fill();
+    }
+    if (latest.boss) {
+        c.fillStyle = '#ff3b3b';
+        c.fillRect(x0 + latest.boss[0] * k - 4.5, y0 + latest.boss[1] * k - 4.5, 9, 9);
+        c.strokeStyle = '#ffd23f';
+        c.lineWidth = 1.5;
+        c.strokeRect(x0 + latest.boss[0] * k - 4.5, y0 + latest.boss[1] * k - 4.5, 9, 9);
     }
     for (const p of latest.players) {
         const mine = p.id === sh.id;
@@ -10388,7 +10612,22 @@ function musicTick() {
         const bar = Math.floor(music.step / m.steps) % m.chords.length;
         const ch = m.chords[bar];
         const i = music.step % m.steps;
-        if (m.mode === 'arp') {
+        if (m.mode === 'jazz') {
+            // Swing: jede zweite Achtel spaeter. Akkord weich (Rhodes-artig) auf 1 und
+            // synkopiert auf 4+, Walking Bass in Vierteln, Melodie aus der Liste
+            const t = music.next + (i % 2 ? stepDur * m.swing : 0);
+            if (i === 0) ch.forEach(f => mTone(f, t, stepDur * 3.2, m.type, m.vol, m.lp));
+            if (i === 7) ch.forEach(f => mTone(f, t, stepDur * 1.4, 'triangle', m.vol * .55, m.lp * .8));
+            if (i % 2 === 0) {
+                const next = m.chords[(bar + 1) % m.chords.length][0];
+                const walk = [ch[0], ch[1], ch[2], next * (next > ch[0] ? 1.06 : 0.94)][i >> 1] / 2;
+                mTone(walk, t, stepDur * 1.7, 'triangle', m.vol * 2.6, 600);
+            }
+            const mel = m.mel[(music.step % (m.steps * m.chords.length))];
+            if (mel) mTone(mel, t, stepDur * 1.3, 'triangle', m.vol * .9, 2400);
+            // leises Besen-Tick auf den Zaehlzeiten 2 und 4
+            if (i === 2 || i === 6) mTone(3100, t, .04, 'square', m.vol * .12, 5000);
+        } else if (m.mode === 'arp') {
             mTone(ch[i % ch.length] * 2, music.next, stepDur * .9, m.type, m.vol, m.lp);
             if (i % 4 === 0) mTone(m.bass[bar], music.next, stepDur * 3.5, 'triangle', m.vol * 2.5);
         } else {
