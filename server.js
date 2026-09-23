@@ -1093,6 +1093,9 @@ async function handle(c, data) {
         case 'shSlot':
         case 'shMed':
         case 'shInteract':
+        case 'shNade':
+        case 'shNadeSel':
+        case 'shInv':
             shooter.action(c, data);
             return;
 

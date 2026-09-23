@@ -29,7 +29,7 @@ Live: **`snake.flashkeks.com`** auf `edge` (Netcup).
 | `achievements.js` | Achievements (#3): Katalog, Pruefungen, Titel |
 | `shop.js` | Shop (#9): Katalog, was andere von einem sehen |
 | `shooter.js` | Arena: Hub (Shop, Cases, Salvage, Loadout) und Raid (Map, Kisten, Beutel, Extraction, Kampf mit Effekten) |
-| `arena-items.js` | Arena-Items: Waffen, Ruestungen, Mods, Erzeugung je Quelle, kalibrierte Seltenheit, Salvage-Wert |
+| `arena-items.js` | Arena-Items: Waffen, Ruestungsteile und Sets, Granaten, Grade, Mods, Erzeugung je Quelle, kalibrierte Seltenheit, Salvage-Wert, Migration |
 | `minigames.js` | Map-Events (#6): Labyrinth, Coin Rush, Last Snake Standing – Map-Bau, Schritte, Kollisionen, Punkte |
 | `tables.js` | Casino-Tische Blackjack (mit Sidebets) und Roulette: Runden, Einsaetze, Auszahlung; haengt auch Poker als dritten Tisch ein |
 | `poker.js` | Poker (Texas Hold'em No-Limit, Spieler gegen Spieler): Sitze, Blinds, Setzrunden, Side-Pots, Handbewertung, Showdown |
@@ -568,6 +568,9 @@ Screen mitten im Fall verlaesst, bekommt die Anzeige sofort verbucht
 Ersetzt die drei Arenen (Free / 100 / 1k je Leben, Kopfgeld-Escrow) von
 #7/#12. Idee von Max: Loadout bauen, rein in eine grosse Map, Beute machen,
 an einem Extraction-Punkt raus – wie Arc Raiders. **Nur mit Konto.**
+Runde 2 am selben Tag (Feedback Max): normale Namen, Effekte sehr selten,
+Grade-System, vier Ruestungsslots mit Sets, Granaten, Verstecken,
+Regeneration, Raid-Inventar, Salvage mit Mehrfachauswahl.
 
 Hauptmenue → Bereich „Arena“ → **Enter the arena** oeffnet den Hub mit vier
 Tabs:
@@ -575,88 +578,104 @@ Tabs:
 | Tab | Inhalt |
 |---|---|
 | 🪂 Play | Loadout-Ueberblick, **Deploy**, Ergebnis des letzten Raids |
-| 🎒 Equipment | Lager (max. 60), Filter, Detailansicht mit Werten und Effekten, Ausruesten, Salvage einzeln oder „alle Commons“ |
+| 🎒 Equipment | Loadout (2 Waffen, Helm, Weste, Hose, Schuhe, Medkits, drei Granatensorten), aktive Set-Boni, Lager (max. 80, Verbrauchsgut gestapelt), Filter, Detailansicht, **Salvage mit Mehrfachauswahl** („Select to salvage“, „+ Commons“, „+ Uncommons“, Summe in Scrap vorab) |
 | 🎁 Cases | Standard (1000 Coins), Elite (10.000 Coins), Scrap-Case (60 Scrap); CS-Band mit 34 Feldern, Treffer auf Feld 29 |
-| 🛒 Shop | Grundwaffen und Ruestungen ohne Effekte, Medkits (Coins); Medkit und „Waffe mit Zufallseffekt“ fuer Scrap |
+| 🛒 Shop | Waffen, alle 16 Ruestungsteile nach Set, Medkits und Granaten (×1 oder ×5) fuer Coins; Verbrauchsgut und „Waffe mit Zufallseffekt“ (600) fuer Scrap |
 
 ### Items (`arena-items.js`)
 
+- **Namen = Basis** („Sniper“, „Combat helmet“). Effekte stehen nicht mehr
+  im Namen (Max: „Rapid Sniper ist doof“). Alte Items werden beim ersten
+  Hub-Aufruf umbenannt, alte Ruestung light/medium/heavy wird zur Weste des
+  Scout-/Soldier-/Juggernaut-Sets (`migrate`, `u.arena.v2`).
 - **Waffen:** Pistol, SMG, Shotgun, Rifle, Sniper (Shop), dazu nur aus Cases
   und Kisten Golden Deagle, Minigun, Launcher (explodiert immer).
-- **Ruestungen:** Light vest +25 HP, Plate carrier +50 HP (−5 % Tempo),
-  Juggernaut +100 HP (−13 % Tempo).
-- **Medkit:** heilt 50 HP ueber 2 s (Taste Q), hoechstens 3 im Raid.
-- **Effekte (Mods) mit Stufen**, jede Stufe exponentiell seltener (`decay`):
-  Waffen – Sharp, Rapid, Velocity, Critical, **Multishot I–IV**, Piercing,
-  Ricochet, Incendiary, Frost, Vampire, Explosive, Homing, Tesla,
-  Executioner; Ruestung – Plating, Swift, Regeneration, Thorns, Dodge. Die
-  Beschreibungen kommen mit dem Katalog in den Browser (`welcome.arenaItems`).
-- **Anzahl Effekte** haengt an der Quelle: Kiste im Raid < Scrap-Case <
-  Standard-Case < Elite-Case (Elite hat immer mindestens einen, bis zu sechs).
-- **„1 in X“ ist ehrlich kalibriert:** fuer jedes Item wird die
-  Wahrscheinlichkeit berechnet, aus einem Standard-Case etwas mindestens so
-  Seltenes zu ziehen (gleiche Mods auf mindestens dieser Stufe), und ueber eine
-  Monte-Carlo-Tabelle (`CALIBRATION`, 4 Mio Ziehungen,
-  `node arena-items.js calibrate`) in „nur jede X-te Ziehung ist so selten“
-  umgerechnet. Daraus die Stufe:
+- **Grade I–V** (★): +0/6/12/20/32 % Schaden bzw. HP. Der Grade traegt den
+  Grossteil der Seltenheit. Shop-Ware ist immer Grade I.
+- **Ruestung:** vier Slots × vier Sets. Die Set-Werte verteilen sich auf die
+  Teile (Helm 25 %, Weste 40 %, Hose 20 %, Schuhe 15 %):
 
-| Stufe | ab 1 in | Anteil im Standard-Case |
-|---|---|---|
-| Common | – | ~59 % |
-| Uncommon | 3 | ~36 % |
-| Rare | 20 | ~4,6 % |
-| Epic | 200 | ~0,5 % |
-| Legendary | 5.000 | ~0,02 % |
-| Mythic | 100.000 | ~0,001 % |
-| ✦ One in a million | 1.000.000 | — |
+| Set | HP gesamt | Tempo | 2 Teile | 4 Teile | Preis alle 4 |
+|---|---|---|---|---|---|
+| Scout | 30 | +8 % | +6 % Tempo | +12 % Tempo, 10 % Dodge | 900 |
+| Soldier | 60 | ±0 | +8 % Schaden | +15 % Schaden, +10 % Feuerrate | 1800 |
+| Juggernaut | 110 | −13 % | +20 HP | +50 HP, 15 % weniger Schaden | 3500 |
+| Medic | 45 | +2 % | +2 HP/s | +4 HP/s, Medkits doppelt so schnell und +25 HP | 1600 |
 
-  Nachrechnen: `node arena-items.js 200000` (Verteilung je Quelle).
-- **Salvage** gibt Scrap nach Stufe und Basis (`salvageValue`); Scrap zahlt
-  den Scrap-Case und die Scrap-Angebote im Shop.
+- **Granaten** (Taste G wirft auf den Mauszeiger, max. 560 weit, T wechselt
+  die Sorte; im Raid je Sorte bis 4): 💣 Frag (1,3 s Zuender, 85 Schaden im
+  Radius 140, faellt nach aussen ab, **Waende schirmen ab**), 💨 Smoke (9 s
+  Wolke, versteckt), 🔥 Molotov (5 s Feuerflaeche, 22 Schaden/s).
+- **Medkit:** heilt 50 HP ueber 2 s (Q). Im Loadout bis 3, im Raid bis 6.
+- **Effekte (Mods) sind ein seltener Zusatz**, mit Stufen (jede exponentiell
+  seltener): Waffen – Sharp, Rapid, Velocity, Critical, Multishot I–IV,
+  Piercing, Ricochet, Incendiary, Frost, Vampire, Explosive, Homing, Tesla,
+  Executioner; Ruestung – Plating, Swift, Regeneration, Thorns, Dodge.
+  Anteil mit mindestens einem Effekt: Kiste ~1 %, Standard-Case ~4 %,
+  Elite-Case ~15 %, Scrap-„modded“ 100 %.
+- **„1 in X“ ist ehrlich kalibriert:** Wahrscheinlichkeit, aus einem
+  Standard-Case etwas mindestens so Seltenes zu ziehen (mindestens dieser
+  Grade, mindestens diese Mods, bei Case-only-Waffen deren Anteil),
+  umgerechnet ueber eine Monte-Carlo-Tabelle (`CALIBRATION`, 3 Mio
+  Ziehungen, `node arena-items.js calibrate`) in „nur jede X-te Ziehung ist
+  so selten“. Stufen: Common, Uncommon ab 3, Rare ab 20, Epic ab 200,
+  Legendary ab 5.000, Mythic ab 100.000, ✦ One in a million ab 1.000.000.
+  Standard-Case nach Runde 2: ~46 % Common, ~49 % Uncommon, ~4,9 % Rare,
+  ~0,5 % Epic, ~0,02 % Legendary. Nachrechnen: `node arena-items.js 300000`.
+- **Salvage** gibt Scrap nach Stufe, Basis und Effekten (`salvageValue`,
+  der Hub zeigt den Wert als `sv` je Item).
 
 ### Raid (`shooter.js`)
 
 - **Map** 4000 × 2800, fest aus Seed 1337: 16 Gebaeude mit Tueren, 90
-  Hindernisse (Kisten, Mauern), 44 Loot-Kisten, 4 Extraction-Zonen in den
+  Hindernisse, **60 Buesche**, 44 Loot-Kisten, 4 Extraction-Zonen in den
   Ecken. Beim Bau per Flood-Fill geprueft: alle Kisten und Zonen erreichbar.
-- **Rein:** Loadout-Items verlassen das Lager und sind im Raid. Ohne
-  Primaerwaffe gibt es die **Starter-Pistole** (gratis, geht nie verloren).
-  Spawn weit weg von Zonen und anderen Spielern, 3 s Schutz. Bis 24 Spieler.
-- **Kisten 📦** (Taste F): 1–3 Items aus der Quelle `crate`, danach 150 s zu.
-  Rucksack fasst 20.
-- **Tod:** Der Killer bekommt **alles** – Loadout und Rucksack –, soweit sein
-  Rucksack reicht; der Rest faellt als 💰-Beutel (5 min, Taste F). Ohne Killer
-  (Verlassen, Verbindung weg) faellt alles als Beutel.
-- **Verlassen oder Verbindung weg = Tod**, Beute bleibt liegen (Entscheidung
-  Max).
-- **Extraction:** 6 s in einer 🚁-Zone stehen (Fortschrittsbalken; raus aus
-  der Zone setzt zurueck). Danach landen Loadout und Rucksack im Lager; was
-  ueber 60 hinausgeht, wird automatisch zu Scrap.
-- **Server-Neustart** (SIGTERM): `shooter.refundAll()` extrahiert alle still,
-  niemand verliert etwas.
-- **Effekte im Kampf:** Crit, Vampir-Heilung, Brennen (Schaden je Sekunde),
-  Frost (verlangsamt), Tesla (Blitz auf 2 Gegner in der Naehe, `shZap`),
-  Explosion (Flaechenschaden, `shBoom`), Homing und Ricochet in der
-  Kugel-Schleife, Execute unter x % HP; Ruestung: Dodge, Thorns, Regeneration.
-- Der Server schickt je Spieler nur, was in Sichtweite ist (`VIEW` 1400):
-  Spieler, Kugeln, Kisten, Beutel.
+- **Rein:** Loadout-Items verlassen das Lager. Ohne Primaerwaffe gibt es die
+  **Starter-Pistole** (gratis, geht nie verloren). Spawn weit weg von Zonen
+  und anderen Spielern, 3 s Schutz. Bis 24 Spieler.
+- **Verstecken:** Wer in einem Gebaeude, Busch oder in Rauch steckt, wird
+  Spielern ausserhalb **gar nicht geschickt** (kein Wallhack moeglich).
+  Ausnahmen: naeher als 110 und 400 ms nach einem eigenen Schuss
+  (Muendungsfeuer). Von aussen liegt ein Dach auf jedem Gebaeude, drinnen
+  sieht man hinein; Buesche liegen ueber den Figuren. Oben steht
+  „🌿 Hidden“, solange man versteckt ist.
+- **Regeneration:** alle +1 HP/s nach 6 s ohne Schaden, dazu Mod und
+  Medic-Set.
+- **Kisten 📦** (Taste F): 1–3 Items aus der Quelle `crate` (auch Medkits
+  und Granaten), danach 150 s zu. Verbrauchsgut stapelt sich (Medkits bis 6,
+  Granaten bis 4 je Sorte), alles andere in den Rucksack (20).
+- **Raid-Inventar** (Tab oder I, auf dem Handy 🎒): Ausruestung aller sechs
+  Slots mit Set-Boni, Medkits/Granaten, Rucksack. Aus dem Rucksack
+  ausruesten (Waffe auf 1 oder 2, Ruestung in ihren Slot; das Alte wandert in
+  den Rucksack), ablegen, fallen lassen (als Beutel vor die Fuesse).
+- **Tod:** Der Killer bekommt **alles** – Ausruestung, Verbrauchsgut,
+  Rucksack –, soweit er es tragen kann; der Rest faellt als 💰-Beutel
+  (5 min, Taste F). Ohne Killer (Verlassen, Verbindung weg) faellt alles als
+  Beutel. **Verlassen = Tod** (Entscheidung Max).
+- **Extraction:** 6 s in einer 🚁-Zone stehen. Danach landen Ausruestung,
+  Verbrauchsgut und Rucksack im Lager und das Mitgebrachte wieder im
+  Loadout; was ueber 80 hinausgeht, wird automatisch zu Scrap.
+- **Server-Neustart** (SIGTERM): `shooter.refundAll()` extrahiert alle still.
+- **Effekte im Kampf:** Crit, Vampir, Brennen, Frost, Tesla (`shZap`),
+  Explosion (`shBoom`), Homing, Ricochet, Execute; Ruestung: Dodge, Thorns,
+  Regeneration; Sets wie oben.
 
 **Steuerung:** WASD/Pfeile laufen, Maus zielt, Klick/Leertaste schiesst,
-1/2 oder Mausrad wechselt die Waffe, Q Medkit, F (oder E) Kiste/Beutel.
-Touch: zwei Sticks wie bisher, dazu Knoepfe 🔄 💉 ✋ im Kopf. Minimap oben
-links mit Waenden, Zonen und Sichtfenster.
+1/2 oder Mausrad Waffe, Q Medkit, G Granate, T Granatensorte, F (oder E)
+Kiste/Beutel, Tab/I Inventar. Touch: zwei Sticks, dazu Knoepfe
+🔄 💉 ✋ 💣 🎒. Minimap mit Waenden, Gebaeuden, Bueschen, Zonen und
+Sichtfenster.
 
-Netzcode wie zuvor: eigene Bewegung wird vorausberechnet und mit Totzone
-(14 Einheiten) an den Server-Stand von vor einer Laufzeit angeglichen, andere
-50 ms verzoegert interpoliert, Kugeln mit Geschwindigkeit weitergerechnet.
-Kugelfarbe zeigt den Effekt, Waffen mit Stufe ab Uncommon sind in Stufenfarbe
-und tragen ihren Namen unter der Figur.
+Netzcode: eigene Bewegung wird vorausberechnet und mit Totzone (14
+Einheiten) an den Server-Stand von vor einer Laufzeit angeglichen, andere
+50 ms verzoegert interpoliert, Kugeln weitergerechnet. Der Server schickt je
+Spieler nur, was in Sichtweite (`VIEW` 1400) und nicht versteckt ist.
 
-**Speicher:** `u.arena = { inv: [...], loadout: { primary, secondary, armor,
-meds }, scrap }`. Statistik: `raids`, `arenaExtracts`, `shooterKills`,
-`shooterDeaths`, `casesOpened`, `bestOdds` (seltenstes je besessenes Item),
-`earned.shooter` (Coins fuer Cases und Shop, negativ). Die Bestenliste
-„Arena kills“ zaehlt weiter ueber `periods.arenaKills`.
+**Speicher:** `u.arena = { inv, loadout: { primary, secondary, helmet,
+vest, pants, boots, meds, nades: { frag, smoke, molotov } }, scrap, v2 }`.
+Statistik: `raids`, `arenaExtracts`, `shooterKills`, `shooterDeaths`,
+`casesOpened`, `bestOdds`, `earned.shooter`. Die Bestenliste „Arena kills“
+zaehlt ueber `periods.arenaKills`.
 
 **Test-Hook** (nur `SNAKE_TEST=1`): `shTp {x, y}` versetzt die eigene Figur
 und hebt den Spawnschutz auf.
@@ -860,12 +879,12 @@ Client → Server: `register`, `login`, `resume {token}`, `logout`,
 beim Blackjack, `sit {seat?}`/`stand`/`move` (`fold`, `check`,
 `call`, `raise {to}`, `allin`) beim Poker), `pokerCreate {buyIn, seats, name}`, `daily`, `dailyDone`, `crossStart {bet, diff}`, `crossStep`,
 `crossCash`, `plinko {bet, risk}`, `board {cat, game, period}`, `me`, `shJoin`,
-`shInput {mx, my, a, f, s}`, `shSlot {slot}`, `shMed`, `shInteract`, `shPing {t}`, `shLeave`, `arHub`, `arBuy {id}`, `arCase {id}`, `arSalvage {uids}`, `arEquip {slot, uid|null, n}`, `shopRot`, `shopBuy {id}`, `shopEquip {cat, id|null}`, `setTitle {id|null}`, `tickets`, `ticketNew {subject, text}`, `ticketReply {id, text}`,
+`shInput {mx, my, a, f, s}`, `shSlot {slot}`, `shMed`, `shInteract`, `shNade {x, y}`, `shNadeSel {base}`, `shInv {op: equip|unequip|drop, uid, slot}`, `shPing {t}`, `shLeave`, `arHub`, `arBuy {id, n}`, `arCase {id}`, `arSalvage {uids}`, `arEquip {slot, uid|null, n, base}`, `shopRot`, `shopBuy {id}`, `shopEquip {cat, id|null}`, `setTitle {id|null}`, `tickets`, `ticketNew {subject, text}`, `ticketReply {id, text}`,
 `ticketRead {id}`.
 
 Server → Client: `welcome`, `mg` (Schritt im Map-Event), `sh`, `shJoined`
 (mit Map und Waffen), `shLeft` (Bilanz, Rueckgabe), `shKill`, `shHit`, `shHurt`,
-`shLoot`, `shBoom`, `shZap`, `shPong`, `shRooms`, `shError`, `arHub`, `arError`, `shopOk`, `shopRot`, `shopError`, `deathfx`, `achievement`, `auth`, `authError`, `authExpired`, `account`,
+`shLoot`, `shInv`, `shBoom`, `shZap`, `shPong`, `shRooms`, `shError`, `arHub`, `arError`, `shopOk`, `shopRot`, `shopError`, `deathfx`, `achievement`, `auth`, `authError`, `authExpired`, `account`,
 `joined`, `joinError`, `left`, `died` (`cause`, `by`, `byId`, `at`), `swapfx`, `cashedout`, `cashoutCancel`, `state`
 (alle 60 ms, mit `arena` und `paused`), `duel`, `gamble`, `box`, `jackpot`,
 `feed` (mit `who` und `big` fuer den Sound), `chat`, `chatlog`, `highscores`, `board`,
