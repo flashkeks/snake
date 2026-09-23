@@ -2250,7 +2250,7 @@ button:disabled {
 
 /* ---------- Casino-Lobby ---------- */
 
-#casino .card, #daily .card, #cross .card, #plinko .card {
+#casino .card, #daily .card, #cross .card, #plinko .card, #pokerlobby .card {
     width: min(760px, 100%);
     border-color: #ffd23f;
     box-shadow: 0 0 50px rgba(255, 210, 63, .3);
@@ -2360,6 +2360,73 @@ button:disabled {
     font-size: 70px;
 }
 
+/* ---------- Poker-Lobbys ---------- */
+
+.pkl-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.pkl-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,210,63,.25);
+}
+
+.pkl-row b {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pkl-row small {
+    opacity: .75;
+}
+
+.pkl-buy {
+    font-weight: 900;
+    color: #ffd23f;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.pkl-empty {
+    text-align: center;
+    opacity: .7;
+    padding: 14px;
+}
+
+.pkl-create {
+    border-top: 1px solid rgba(255,210,63,.25);
+    padding-top: 8px;
+}
+
+.pkl-create h3 {
+    margin: 0 0 6px;
+}
+
+#pkl-name, #pkl-seats {
+    height: 36px;
+    background: #0b120e;
+    color: #fff;
+    border: 1px solid rgba(255,210,63,.4);
+    border-radius: 8px;
+    padding: 0 8px;
+}
+
+#pkl-name {
+    width: 190px;
+}
+
 /* ---------- Poker ---------- */
 
 .pk {
@@ -2371,7 +2438,7 @@ button:disabled {
 .pk-table {
     position: relative;
     height: 380px;
-    margin: 30px 70px 40px;
+    margin: 48px 70px 40px;
 }
 
 .pk-felt {
@@ -3584,9 +3651,39 @@ body.touch input, body.touch textarea {
                     <div class="cs-grid" data-pane="tables" hidden>
                         <button type="button" class="cs-tile" data-table="blackjack"><span class="ico">🃏</span><b>Blackjack</b><small class="cs-who" id="who-blackjack">Table is empty</small></button>
                         <button type="button" class="cs-tile" data-table="roulette"><span class="ico">🎡</span><b>Roulette</b><small class="cs-who" id="who-roulette">Table is empty</small></button>
-                        <button type="button" class="cs-tile" data-table="poker"><span class="ico">♠️</span><b>Poker</b><small class="cs-who" id="who-poker">Table is empty</small></button>
+                        <button type="button" class="cs-tile" id="poker-btn"><span class="ico">♠️</span><b>Poker</b><small class="cs-who" id="who-poker">No tables yet</small></button>
                     </div>
                     <div class="msg" id="casino-msg"></div>
+                </div>
+            </div>
+
+            <!-- Poker-Lobbys -->
+            <div id="pokerlobby" class="overlay hidden">
+                <div class="card">
+                    <div class="s2-head">
+                        <div class="cs-title">♠️ Poker tables</div>
+                        <span class="coins">🪙 <span id="pkl-coins">0</span></span>
+                        <button type="button" class="s2-icon" id="pkl-back" title="Back">✕</button>
+                    </div>
+                    <div class="pkl-list" id="pkl-list"></div>
+                    <div class="pkl-create">
+                        <h3>Create a table</h3>
+                        <div class="s2-bar">
+                            <input id="pkl-name" maxlength="24" placeholder="Table name (optional)">
+                            <div class="s2-bet">
+                                <small>BUY-IN</small>
+                                <button type="button" class="ghost" id="pkl-minus">−</button>
+                                <input id="pkl-buyin" type="number" min="100" step="1" value="1000">
+                                <button type="button" class="ghost" id="pkl-plus">+</button>
+                            </div>
+                            <select id="pkl-seats" title="Seats">
+                                <option value="2">2 seats</option><option value="4">4 seats</option><option value="6" selected>6 seats</option>
+                            </select>
+                            <button type="button" class="gold" id="pkl-create">Create &amp; sit</button>
+                        </div>
+                        <div class="hint" id="pkl-blinds"></div>
+                    </div>
+                    <div class="msg" id="pkl-msg"></div>
                 </div>
             </div>
 
@@ -3953,7 +4050,7 @@ ws.onmessage = event => {
         case 'event': onEvent(data); break;
         case 'table': onTable(data); break;
         case 'tableLeft': onTableLeft(); break;
-        case 'tableError': showMsg('ev-msg', data.error, 'err'); showMsg('casino-msg', data.error, 'err'); break;
+        case 'tableError': showMsg('ev-msg', data.error, 'err'); showMsg('casino-msg', data.error, 'err'); showMsg('pkl-msg', data.error, 'err'); break;
         case 'lobby': onLobby(data.lobby); break;
         case 'tickets':
             if (data.open) {
@@ -3995,7 +4092,7 @@ function showMsg(id, text, kind) {
 // ---------- Screens ----------
 
 function showScreen(name) {
-    ['menu', 'casino', 'daily', 'cross', 'plinko', 'support', 'slots', 'slots2', 'konto', 'event', 'offer'].forEach(s => $(s).classList.toggle('hidden', s !== name));
+    ['menu', 'casino', 'daily', 'cross', 'plinko', 'pokerlobby', 'support', 'slots', 'slots2', 'konto', 'event', 'offer'].forEach(s => $(s).classList.toggle('hidden', s !== name));
 }
 
 function backToMenu(resultHtml) {
@@ -4922,9 +5019,13 @@ function onTable(d) {
 }
 
 function onTableLeft() {
+    const wasPoker = ev && ev.kind === 'poker';
     if (ev && ev.table) ev = null;
     $('ev-leave').style.display = 'none';
-    if (!$('event').classList.contains('hidden')) showScreen('casino');
+    if (!$('event').classList.contains('hidden')) {
+        if (wasPoker) pklOpen();
+        else showScreen('casino');
+    }
 }
 
 $('ev-leave').onclick = () => wsSend({ type: 'tableLeave' });
@@ -5584,11 +5685,14 @@ function renderBlackjack(main, d, member) {
 
 let pkControlsKey = '';
 let pkRaise = 0;
-let pkBuyIn = 1000;
 let pkLastTurn = null;
 
-// Sitzplaetze am Oval, von unten Mitte im Uhrzeigersinn (in % der Tischflaeche)
-const PK_POS = [[50, 96], [8, 72], [8, 24], [50, 3], [92, 24], [92, 72]];
+// Sitzplaetze am Oval je Tischgroesse, von unten Mitte im Uhrzeigersinn (in % der Tischflaeche)
+const PK_POS = {
+    2: [[50, 96], [50, 3]],
+    4: [[50, 96], [6, 50], [50, 3], [94, 50]],
+    6: [[50, 96], [8, 72], [8, 24], [50, 3], [92, 24], [92, 72]]
+};
 
 function pkFmt(n) {
     return Number(n).toLocaleString('en-US');
@@ -5624,7 +5728,8 @@ function renderPoker(main, d, member) {
     const winners = new Set((p.results || []).filter(r => r.amount > 0).map(r => r.seat));
     const bestCards = new Set((p.results || []).flatMap(r => r.amount > 0 && r.cards ? r.cards : []));
     p.seats.forEach((s, i) => {
-        const pos = PK_POS[(i - rot + 6) % 6];
+        const n = p.seats.length;
+        const pos = PK_POS[n][(i - rot + n) % n];
         const style = `left:${pos[0]}%;top:${pos[1]}%`;
         if (!s) {
             const canSit = my < 0 && member && me;
@@ -5655,11 +5760,9 @@ function renderPoker(main, d, member) {
         } else if (my < 0) {
             if (!me) c = '<div class="hint">Log in to take a seat</div>';
             else {
-                const [lo, hi] = p.buyIn;
-                pkBuyIn = Math.max(lo, Math.min(hi, pkBuyIn, me.coins));
-                c = `<div class="pk-sit"><small>BUY-IN ${pkFmt(lo)}–${pkFmt(hi)}</small>` +
-                    `<input type="number" id="pk-buyin" min="${lo}" max="${hi}" step="10" value="${pkBuyIn}">` +
-                    `<button type="button" class="gold" data-ev="pksit">Sit down</button></div>`;
+                const free = p.seats.some(s => !s);
+                c = `<div class="pk-sit"><small>BUY-IN</small><b>🪙 ${pkFmt(p.buyIn)}</b>` +
+                    (free ? `<button type="button" class="gold" data-ev="pksit" ${me.coins < p.buyIn ? 'disabled title="Not enough coins"' : ''}>Sit down</button>` : '<span class="hint">Table is full</span>') + '</div>';
             }
         } else if (a) {
             pkRaise = a.minTo;
@@ -5691,8 +5794,6 @@ function renderPoker(main, d, member) {
             range.oninput = () => { pkRaise = Number(range.value); to.value = pkRaise; };
             to.oninput = () => { const v = Math.floor(Number(to.value)); if (v > 0) { pkRaise = v; range.value = v; } };
         }
-        const bi = $('pk-buyin');
-        if (bi) bi.oninput = () => { const v = Math.floor(Number(bi.value)); if (v > 0) pkBuyIn = v; };
     }
     const yh = p.yourHand && seat && !seat.folded ? `<div class="pk-yourhand">${esc(p.yourHand)}</div>` : '';
     const old = $('pk-controls').querySelector('.pk-yourhand');
@@ -5758,7 +5859,7 @@ $('event').addEventListener('click', e => {
         pkQuick(b.dataset.q);
     } else if (t === 'pksit') {
         const seat = b.dataset.seat !== undefined ? Number(b.dataset.seat) : undefined;
-        evSend({ sit: true, buyIn: pkBuyIn, seat });
+        evSend({ sit: true, seat });
     } else if (t === 'pkstand') {
         evSend({ stand: true });
     }
@@ -6536,15 +6637,21 @@ function buildCasino(d) {
 
 function onLobby(l) {
     lobbyNow = l;
-    for (const k of ['blackjack', 'roulette', 'poker']) {
-        // Poker: wer sitzt, nicht wer zuschaut
-        const names = (k === 'poker' ? l.pokerSeated : l[k]) || [];
+    for (const k of ['blackjack', 'roulette']) {
+        const names = l[k] || [];
         const el = $('who-' + k);
         el.textContent = names.length ? `${names.length} playing: ${names.slice(0, 3).join(', ')}${names.length > 3 ? '…' : ''}` : 'Table is empty';
         el.classList.toggle('busy', names.length > 0);
     }
-    const ico = { blackjack: '🃏', roulette: '🎡', poker: '♠️' };
-    const busy = ['blackjack', 'roulette', 'poker'].filter(k => (l[k] || []).length).map(k => `${(l[k] || []).length} at ${ico[k]}`);
+    // Poker: Anzahl Lobbys und wer sitzt
+    const pt = l.poker || [];
+    const seatedAll = pt.reduce((n, t) => n + t.seated.length, 0);
+    $('who-poker').textContent = pt.length ? `${pt.length} table${pt.length > 1 ? 's' : ''} · ${seatedAll} seated` : 'No tables yet – create one';
+    $('who-poker').classList.toggle('busy', seatedAll > 0);
+    if (!$('pokerlobby').classList.contains('hidden')) pklRender();
+    const ico = { blackjack: '🃏', roulette: '🎡' };
+    const busy = ['blackjack', 'roulette'].filter(k => (l[k] || []).length).map(k => `${(l[k] || []).length} at ${ico[k]}`);
+    if (seatedAll) busy.push(`${seatedAll} at ♠️`);
     $('gamba-live').textContent = busy.length ? '● Live: ' + busy.join(' · ') : '';
 }
 
@@ -6573,6 +6680,61 @@ $('casino-btn').onclick = () => {
     showScreen('casino');
 };
 $('casino-back').onclick = () => showScreen('menu');
+
+// ---------- Poker-Lobbys: Liste und neuen Tisch anlegen ----------
+
+let pklBuyIn = 1000;
+const PKL_STEPS = [100, 200, 250, 500, 1000, 2000, 2500, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000];
+
+function pklBlinds(b) {
+    const bb = Math.max(2, Math.round(b / 100));
+    return [Math.floor(bb / 2), bb];
+}
+
+function pklRender() {
+    const list = lobbyNow.poker || [];
+    $('pkl-coins').textContent = me ? me.coins : '–';
+    $('pkl-list').innerHTML = list.length ? list.map(t => {
+        const full = t.seated.length >= t.seats;
+        const who = t.seated.length ? esc(t.seated.join(', ')) : 'nobody seated yet';
+        return `<div class="pkl-row"><div><b>${esc(t.name)}</b><small>${t.seated.length}/${t.seats} seated · ${who}${t.watching > t.seated.length ? ' · ' + (t.watching - t.seated.length) + ' watching' : ''}</small></div>` +
+            `<div class="pkl-buy">🪙 ${t.buyIn.toLocaleString('en-US')}<br><small>blinds ${t.sb}/${t.bb}</small></div>` +
+            `<button type="button" data-pkjoin="${esc(t.key)}">${full ? 'Watch' : 'Join'}</button></div>`;
+    }).join('') : '<div class="pkl-empty">No tables open. Create one below – you pick the buy-in.</div>';
+    $('pkl-list').querySelectorAll('[data-pkjoin]').forEach(b => b.onclick = () => {
+        unlockAudio();
+        wsSend({ type: 'tableJoin', kind: b.dataset.pkjoin });
+    });
+    const [sb, bb] = pklBlinds(pklBuyIn);
+    $('pkl-blinds').textContent = `Everyone at the table buys in for ${pklBuyIn.toLocaleString('en-US')} · blinds ${sb}/${bb} (100 big blinds)`;
+    $('pkl-create').disabled = !me;
+    $('pkl-create').title = me ? '' : 'Accounts only';
+}
+
+function pklOpen() {
+    showMsg('pkl-msg', '');
+    pklRender();
+    showScreen('pokerlobby');
+}
+
+function pklSetBuyIn(v) {
+    pklBuyIn = Math.max(100, Math.min(1000000, Math.floor(v) || 100));
+    $('pkl-buyin').value = pklBuyIn;
+    pklRender();
+}
+
+$('poker-btn').onclick = () => { unlockAudio(); pklOpen(); };
+$('pkl-back').onclick = () => showScreen('casino');
+$('pkl-minus').onclick = () => pklSetBuyIn(PKL_STEPS.filter(s => s < pklBuyIn).pop() || 100);
+$('pkl-plus').onclick = () => pklSetBuyIn(PKL_STEPS.find(s => s > pklBuyIn) || pklBuyIn);
+$('pkl-buyin').oninput = e => { const v = Math.floor(Number(e.target.value)); if (v >= 100) { pklBuyIn = Math.min(1000000, v); pklRender(); } };
+$('pkl-buyin').onchange = () => pklSetBuyIn(pklBuyIn);
+$('pkl-create').onclick = () => {
+    if (!me) return;
+    if (me.coins < pklBuyIn) return showMsg('pkl-msg', `Not enough coins for a ${pklBuyIn} buy-in`, 'err');
+    unlockAudio();
+    wsSend({ type: 'pokerCreate', buyIn: pklBuyIn, seats: Number($('pkl-seats').value), name: $('pkl-name').value });
+};
 
 // Lobby-Tabs; der zuletzt offene Tab bleibt (nur in diesem Browser)
 function csTab(name) {

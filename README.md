@@ -278,7 +278,8 @@ Wunsch Max): **🎁 Daily Bonus** (Daily Wheel), **🎰 Slots & more** (Slots,
 Budget Starlight, Crossy Road, Plinko) und **🃏 Table Games** (Blackjack,
 Roulette, Poker). Der zuletzt offene Tab bleibt im Browser gemerkt
 (`localStorage`, nur Komfort). Die Tisch-Kacheln zeigen live, wer gerade
-dort sitzt (Nachricht `lobby`; bei Poker nur, wer einen Platz hat). Alles ausser den
+dort sitzt (Nachricht `lobby`); die Poker-Kachel zaehlt offene Tische und
+wer dort sitzt. Alles ausser den
 Tischen nur mit Konto; an den Tischen duerfen Gaeste zuschauen. Wer im
 Casino ist, ist nicht auf dem Snake-Feld (und umgekehrt: `join` wirft einen
 vom Tisch, `tableJoin` geht nur ohne Schlange).
@@ -325,13 +326,28 @@ also schlechter als die Haupthand – wie im echten Casino.
 
 ### ♠️ Poker (`poker.js`, Issue #1)
 
-Texas Hold'em No-Limit, **Spieler gegen Spieler**, ein Dauertisch mit 6
-Plaetzen. Zuschauen darf jeder am Tisch, spielen nur mit Konto.
+Texas Hold'em No-Limit, **Spieler gegen Spieler**. Es gibt keinen festen
+Tisch, sondern **Lobbys, die Spieler selbst anlegen** (Wunsch Max,
+23.09.2026): Poker-Kachel → Liste der offenen Tische (Name, Buy-in, Blinds,
+wer sitzt) → „Join“ bzw. „Watch“, wenn voll. Unten „Create a table“:
+Name (optional, bis 24 Zeichen), **Buy-in** (100–1.000.000, − / + oder
+tippen) und 2, 4 oder 6 Plaetze; wer anlegt, sitzt sofort. Zuschauen darf
+jeder, spielen nur mit Konto.
+
+- Der **Buy-in ist je Lobby fest**, alle kaufen fuer denselben Betrag ein.
+  Die Blinds folgen daraus: Big Blind = Buy-in / 100 (mind. 2), Small Blind
+  die Haelfte. 1000 → 5/10, 100 → 1/2, 10.000 → 50/100.
+- Eine Lobby **verschwindet von allein**, sobald keiner mehr zuschaut und
+  keiner mehr sitzt (auch nicht als „mitten in der Hand gegangen“).
+  Hoechstens 20 Lobbys gleichzeitig.
+- Wer eine Lobby verlaesst, landet wieder in der Lobby-Liste.
+- Schluessel intern `poker:ID` (`tableJoin {kind: 'poker:ID'}`), angelegt
+  per `pokerCreate {buyIn, seats, name}`.
 
 | Regel | Wert |
 |---|---|
-| Blinds | 5/10, Heads-up ist der Dealer Small Blind |
-| Buy-in | 100–10.000 Coins vom Konto; der Stack liegt am Tisch |
+| Blinds | Buy-in / 100 als Big Blind, Heads-up ist der Dealer Small Blind |
+| Buy-in | fest je Lobby, vom Konto; der Stack liegt am Tisch |
 | Rake | keiner, alles geht an die Spieler |
 | Start | ab 2 Spielern mit Chips, 3 s Pause, danach Hand auf Hand |
 | Zugzeit | 20 s, dann Check, wenn moeglich, sonst Fold |
@@ -586,8 +602,8 @@ Client → Server: `register`, `login`, `resume {token}`, `logout`,
 `eventAction` (`choice` bei Flaggen/Trivia, `lat`/`lon` bei Where is it?,
 `value` bei Guess the number), `tableJoin {kind}`, `tableLeave`,
 `tableAction` (`bet`/`clear` beim Roulette, `bet`/`pp`/`t3`/`clear`/`move`
-beim Blackjack, `sit {buyIn, seat?}`/`stand`/`move` (`fold`, `check`,
-`call`, `raise {to}`, `allin`) beim Poker), `daily`, `dailyDone`, `crossStart {bet, diff}`, `crossStep`,
+beim Blackjack, `sit {seat?}`/`stand`/`move` (`fold`, `check`,
+`call`, `raise {to}`, `allin`) beim Poker), `pokerCreate {buyIn, seats, name}`, `daily`, `dailyDone`, `crossStart {bet, diff}`, `crossStep`,
 `crossCash`, `plinko {bet, risk}`, `tickets`, `ticketNew {subject, text}`, `ticketReply {id, text}`,
 `ticketRead {id}`.
 

@@ -3,8 +3,10 @@
 // Beitritt, Zuschauer und das Versenden, hier nur das Spiel.
 //
 // Regeln in Kurzform:
-// - bis 6 Plaetze, eine Hand startet ab 2 Spielern mit Chips
-// - Blinds 5/10, Buy-in 100–10.000 Coins, kein Rake (alles geht an Spieler)
+// - Tische sind Lobbys, die Spieler selbst anlegen (tables.js): wer anlegt,
+//   bestimmt Buy-in und Plaetze (2, 4 oder 6). Der Buy-in ist fest, die
+//   Blinds folgen daraus: Big Blind = Buy-in / 100, Small Blind die Haelfte
+// - eine Hand startet ab 2 Spielern mit Chips, kein Rake
 // - 20 s je Zug, danach Check, wenn moeglich, sonst Fold
 // - Aufstehen, Tisch verlassen oder Verbindung weg: laufende Hand ist
 //   gefoldet, der Rest vom Stack geht sofort aufs Konto
@@ -22,11 +24,17 @@ function shuffle(a) {
     return a;
 }
 
-const SEATS = 6;
-const SB = 5;
-const BB = 10;
 const BUYIN_MIN = 100;
-const BUYIN_MAX = 10000;
+const BUYIN_MAX = 1000000;
+const SEAT_CHOICES = [2, 4, 6];
+
+// Einstellungen einer Lobby pruefen und die Blinds ausrechnen; null = ungueltig
+function config(buyIn, seats) {
+    if (!Number.isInteger(buyIn) || buyIn < BUYIN_MIN || buyIn > BUYIN_MAX) return null;
+    if (!SEAT_CHOICES.includes(seats)) return null;
+    const bb = Math.max(2, Math.round(buyIn / 100));
+    return { buyIn, seats, bb, sb: Math.floor(bb / 2) };
+}
 
 const SPEED = Number(process.env.SNAKE_EVENT_SPEED) || 1;
 const MS = {
@@ -120,8 +128,11 @@ function buildPots(seats) {
     return pots;
 }
 
-module.exports = function createPoker(h) {
-    // h: { accounts, feed, refresh(account), changed() }
+module.exports = function createPoker(h, cfg) {
+    // h: { accounts, feed, refresh(account) }, cfg aus config()
+    const SEATS = cfg.seats;
+    const SB = cfg.sb;
+    const BB = cfg.bb;
     const seats = new Array(SEATS).fill(null);
     const g = {
         phase: 'waiting',   // waiting, starting, preflop, flop, turn, river, showdown
@@ -162,12 +173,13 @@ module.exports = function createPoker(h) {
 
     // ---------- Sitzen und aufstehen ----------
 
-    function sit(m, account, buyIn, want) {
+    // Buy-in ist fest (cfg.buyIn), der Browser schickt keinen Betrag mehr
+    function sit(m, account, want) {
         if (seatOf(m.id) >= 0) return 'You are already seated';
         const u = h.accounts.get(account);
         if (!u) return 'Log in to play';
-        if (!Number.isInteger(buyIn) || buyIn < BUYIN_MIN || buyIn > BUYIN_MAX) return `Buy-in ${BUYIN_MIN}–${BUYIN_MAX}`;
-        if (u.coins < buyIn) return 'Not enough coins';
+        const buyIn = cfg.buyIn;
+        if (u.coins < buyIn) return `Not enough coins (buy-in ${buyIn})`;
         // gleiches Konto nur einmal am Tisch (zwei Tabs)
         if (seated().some(s => s.account === account && !s.gone)) return 'This account already has a seat';
         let i = Number.isInteger(want) && want >= 0 && want < SEATS && !seats[want] ? want : seats.findIndex(s => !s);
@@ -219,8 +231,8 @@ module.exports = function createPoker(h) {
         else setPhase('waiting', null);
     }
 
-    function startHand() {
-        // Weg sind, wer gegangen ist oder nichts mehr hat
+    // Weg sind, wer gegangen ist oder nichts mehr hat
+    function sweep() {
         for (let i = 0; i < SEATS; i++) {
             const s = seats[i];
             if (!s) continue;
@@ -230,6 +242,10 @@ module.exports = function createPoker(h) {
                 seats[i] = null;
             }
         }
+    }
+
+    function startHand() {
+        sweep();
         const players = seated();
         if (players.length < 2) {
             g.results = null;
@@ -344,6 +360,7 @@ module.exports = function createPoker(h) {
     function finishFold() {
         g.turn = -1;
         g.turnEnds = null;
+        if (!live().length) return endHand(MS.fold);
         const [[w, wi]] = live();
         const amount = pot();
         w.stack += amount;
@@ -476,6 +493,7 @@ module.exports = function createPoker(h) {
         }
         if (g.phase === 'showdown') {
             for (const s of seated()) s.inHand = false;
+            sweep();
             maybeStart();
             // direkt weiter, ohne erneut 3 s zu warten
             if (g.phase === 'starting') startHand();
@@ -520,7 +538,7 @@ module.exports = function createPoker(h) {
             pot: pot(),
             currentBet: g.currentBet,
             blinds: [SB, BB],
-            buyIn: [BUYIN_MIN, BUYIN_MAX],
+            buyIn: cfg.buyIn,
             hand: g.hand,
             results: g.phase === 'showdown' ? g.results : null
         };
@@ -547,6 +565,11 @@ module.exports = function createPoker(h) {
     return {
         sit, standUp, act, tick, view, header, refundAll,
         seatOf,
+        cfg,
+        // Belegte Plaetze (ohne die, die mitten in der Hand gegangen sind)
+        seatedCount: () => seated().filter(s => !s.gone).length,
+        // noch etwas am Tisch, das nicht verloren gehen darf?
+        busy: () => seated().length > 0,
         // fuer die Tisch-Bilanz: was ein Spieler gerade am Tisch hat
         stackOf: id => {
             const i = seatOf(id);
@@ -564,5 +587,7 @@ module.exports.best = best;
 module.exports.eval5 = eval5;
 module.exports.cmp = cmp;
 module.exports.buildPots = buildPots;
-module.exports.SEATS = SEATS;
-module.exports.BLINDS = [SB, BB];
+module.exports.config = config;
+module.exports.BUYIN_MIN = BUYIN_MIN;
+module.exports.BUYIN_MAX = BUYIN_MAX;
+module.exports.SEAT_CHOICES = SEAT_CHOICES;

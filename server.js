@@ -949,6 +949,11 @@ async function handle(c, data) {
             tables.join(c, String(data.kind));
             return;
 
+        case 'pokerCreate':
+            if (c.joined) return send(c, { type: 'tableError', error: 'Leave the snake field first' });
+            tables.create(c, data);
+            return;
+
         case 'tableLeave':
             tables.leave(c);
             return;

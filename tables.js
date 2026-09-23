@@ -1,6 +1,8 @@
 // Casino-Tische: Blackjack, Roulette und Poker laufen dauerhaft im Casino-Bereich.
 // Poker (Spieler gegen Spieler) hat seine Spiellogik in poker.js; hier nur
-// Beitritt, Zuschauen und Versenden.
+// Beitritt, Zuschauen und Versenden. Pokertische sind Lobbys, die Spieler
+// selbst anlegen (`create`), mit eigenem Buy-in; Schluessel `poker:ID`.
+// Eine Lobby ohne Zuschauer und ohne Sitzende verschwindet von allein.
 //
 // Jeder Tisch dreht Runden, solange jemand daran sitzt: Einsaetze, Spiel,
 // Ergebnis, naechste Runde. Wer dazukommt, spielt ab der naechsten
@@ -16,6 +18,7 @@ const MAX_BET = 1000000;
 const validBet = n => Number.isInteger(n) && n >= 1 && n <= MAX_BET;
 
 const createPoker = require('./poker');
+const POKER_MAX_TABLES = 20;
 
 const KINDS = {
     blackjack: { title: '🃏 Blackjack' },
@@ -138,7 +141,7 @@ function rouletteWin(bet, n) {
 module.exports = function createTables(h) {
     // h: { accounts, send, feed, onChange }
     const tables = {};
-    for (const kind of Object.keys(KINDS)) {
+    for (const kind of ['blackjack', 'roulette']) {
         tables[kind] = {
             kind,
             members: new Map(),     // client id -> { id, c, name, color, account, net }
@@ -156,14 +159,31 @@ module.exports = function createTables(h) {
             nextStep: 0
         };
     }
-    const pk = tables.poker;
-    pk.game = createPoker({
-        accounts: h.accounts,
-        feed: h.feed,
-        refresh: account => {
-            for (const m of pk.members.values()) if (m.account === account) refreshAccount(m);
+    let pokerSeq = 0;
+    const pokerTables = () => Object.values(tables).filter(t => t.kind === 'poker');
+
+    function newPokerTable(cfg, name) {
+        const key = 'poker:' + (++pokerSeq).toString(36);
+        const t = { key, kind: 'poker', name, members: new Map(), phase: 'waiting', phaseEnds: null, round: 0, lastPush: 0 };
+        t.game = createPoker({
+            accounts: h.accounts,
+            feed: h.feed,
+            refresh: account => {
+                for (const m of t.members.values()) if (m.account === account) refreshAccount(m);
+            }
+        }, cfg);
+        tables[key] = t;
+        return t;
+    }
+
+    // Leere Lobby weg: keiner schaut zu, keiner sitzt (auch keiner, der mitten
+    // in der Hand gegangen ist und noch im Pot steckt)
+    function cleanup(t) {
+        if (t.kind === 'poker' && !t.members.size && !t.game.busy()) {
+            delete tables[t.key];
+            h.onChange();
         }
-    });
+    }
 
     function phase(t, name, ms) {
         t.phase = name;
@@ -226,7 +246,8 @@ module.exports = function createTables(h) {
         const base = {
             type: 'table',
             kind: 'poker',
-            title: KINDS.poker.title,
+            key: t.key,
+            title: `♠️ ${t.name}`,
             eventType: 'gamble',
             phase: hd.phase,
             round: t.game._g.hand,
@@ -243,13 +264,44 @@ module.exports = function createTables(h) {
         if (m && m.account) h.send(m.c, { type: 'account', user: h.accounts.publicUser(h.accounts.get(m.account)) });
     }
 
-    // Wer im Moment an welchem Tisch sitzt, fuer die Casino-Lobby
+    // Wer im Moment an welchem Tisch sitzt, fuer die Casino-Lobby.
+    // Poker: Liste der Lobbys mit Buy-in und wer sitzt (nicht, wer zuschaut)
     function lobby() {
-        const out = {};
-        for (const t of Object.values(tables)) out[t.kind] = [...t.members.values()].map(m => m.name);
-        // Poker: wer sitzt (nicht, wer zuschaut)
-        out.pokerSeated = tables.poker.game.players();
+        const out = { poker: [] };
+        for (const t of Object.values(tables)) {
+            if (t.kind !== 'poker') {
+                out[t.kind] = [...t.members.values()].map(m => m.name);
+                continue;
+            }
+            const g = t.game;
+            out.poker.push({
+                key: t.key, name: t.name,
+                buyIn: g.cfg.buyIn, sb: g.cfg.sb, bb: g.cfg.bb, seats: g.cfg.seats,
+                seated: g.players(), watching: t.members.size,
+                playing: g._g.phase !== 'waiting' && g._g.phase !== 'starting'
+            });
+        }
         return out;
+    }
+
+    // Neue Poker-Lobby: wer sie anlegt, setzt sich direkt mit dem Buy-in hin
+    function create(c, data) {
+        if (!c.account) return h.send(c, { type: 'tableError', error: 'Log in to create a table' });
+        const u = h.accounts.get(c.account);
+        if (!u) return;
+        const cfg = createPoker.config(Number(data.buyIn), Number(data.seats));
+        if (!cfg) return h.send(c, { type: 'tableError', error: `Buy-in ${createPoker.BUYIN_MIN}–${createPoker.BUYIN_MAX.toLocaleString('en-US')}, 2/4/6 seats` });
+        if (u.coins < cfg.buyIn) return h.send(c, { type: 'tableError', error: `Not enough coins for a ${cfg.buyIn} buy-in` });
+        if (pokerTables().length >= POKER_MAX_TABLES) return h.send(c, { type: 'tableError', error: 'Too many open tables, join one of them' });
+        // Nur Steuerzeichen raus; der Browser escaped beim Anzeigen
+        const name = String(data.name || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 24) || `${u.name}'s table`;
+        const t = newPokerTable(cfg, name);
+        join(c, t.key);
+        const m = t.members.get(c.id);
+        const err = t.game.sit({ id: c.id, name: u.name, color: u.color || m.color }, c.account);
+        if (err) h.send(c, { type: 'tableError', error: err });
+        push(t);
+        h.onChange();
     }
 
     // ---------- Sitzen und gehen ----------
@@ -285,6 +337,7 @@ module.exports = function createTables(h) {
             h.send(c, { type: 'tableLeft' });
             push(t);
             h.onChange();
+            cleanup(t);
             return;
         }
         const seat = t.hands.get(c.id);
@@ -513,17 +566,23 @@ module.exports = function createTables(h) {
 
     function tick() {
         for (const t of Object.values(tables)) {
-            if (t.kind !== 'poker') tickTable(t);
+            if (t.kind !== 'poker') {
+                tickTable(t);
+                continue;
+            }
+            const before = t.game._g.phase;
+            const seatedBefore = t.game.seatedCount();
+            if (t.game.tick()) {
+                push(t);
+                t.lastPush = Date.now();
+                if (t.game._g.phase !== before || t.game.seatedCount() !== seatedBefore) h.onChange();
+            } else if (t.members.size && Date.now() - t.lastPush > 1000) {
+                // Restzeit einmal je Sekunde nachschieben
+                push(t);
+                t.lastPush = Date.now();
+            }
+            cleanup(t);
         }
-        const pkPhase = pk.game._g.phase;
-        if (pk.game.tick()) {
-            push(pk);
-            if (pk.game._g.phase !== pkPhase) h.onChange();
-        } else if (pk.members.size && Date.now() - (pk.lastPush || 0) > 1000) {
-            // Restzeit einmal je Sekunde nachschieben
-            push(pk);
-        }
-        if (pk.members.size) pk.lastPush = Date.now();
     }
 
     // ---------- Aktionen ----------
@@ -539,7 +598,7 @@ module.exports = function createTables(h) {
         if (t.kind === 'poker') {
             let err = null;
             // Name und Farbe vom Konto: wer als Gast kam und sich erst am Tisch anmeldet, heisst sonst "Guest"
-            if (data.sit) err = t.game.sit({ id: c.id, name: u.name, color: u.color || m.color }, c.account, Number(data.buyIn), Number(data.seat));
+            if (data.sit) err = t.game.sit({ id: c.id, name: u.name, color: u.color || m.color }, c.account, Number(data.seat));
             else if (data.stand) m.net += t.game.standUp(c.id);
             else if (data.move) err = t.game.act(c.id, data);
             else return;
@@ -644,8 +703,9 @@ module.exports = function createTables(h) {
         handle,
         lobby,
         tableOf,
+        create,
         // Herunterfahren: Poker-Stacks zurueck aufs Konto
-        shutdown: () => pk.game.refundAll(),
+        shutdown: () => pokerTables().forEach(t => t.game.refundAll()),
         // Nur fuer Tests
         _tables: () => tables
     };
