@@ -211,8 +211,10 @@ module.exports = function createAccounts(dataDir) {
         },
 
         // Bestenlisten: nur echte Konten
-        top() {
-            const all = Object.values(db.users);
+        // hidden(key): Coins, die noch nicht in der Liste stehen sollen
+        // (Gewinn, dessen Animation im Browser noch laeuft)
+        top(hidden) {
+            const all = Object.entries(db.users).map(([key, u]) => hidden && hidden(key) ? { ...u, coins: u.coins - hidden(key) } : u);
             const pick = (sortKey, n) => all
                 .map(u => ({ name: u.name, value: sortKey(u) }))
                 .filter(e => e.value > 0)

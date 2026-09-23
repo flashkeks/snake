@@ -350,8 +350,33 @@ function sendAccount(c) {
 
 let lastTop = '';
 
+// Gewinne aus Budget Starlight bleiben aus der Bestenliste (und die Gold-Zeile
+// aus dem Feed), bis der Browser die Animation fertig hat ('spin2Done') –
+// sonst sieht man direkt nach dem Bonus-Kauf, was rauskommt.
+// Rueckfall: Timer nach geschaetzter Animationsdauer, oder Verbindungsende.
+const pendingWins = new Map();  // Konto -> { amount, feed, timer }
+
+function hideWin(key, amount, feedLine, ms) {
+    revealWin(key);
+    const timer = setTimeout(() => revealWin(key), ms);
+    pendingWins.set(key, { amount, feed: feedLine, timer });
+}
+
+function revealWin(key) {
+    const w = pendingWins.get(key);
+    if (!w) return;
+    clearTimeout(w.timer);
+    pendingWins.delete(key);
+    if (w.feed) feed(...w.feed);
+    pushTop(false);
+}
+
+function topNow() {
+    return accounts.top(key => pendingWins.has(key) ? pendingWins.get(key).amount : 0);
+}
+
 function pushTop(force) {
-    const top = JSON.stringify(accounts.top());
+    const top = JSON.stringify(topNow());
     if (!force && top === lastTop) return;
     lastTop = top;
     broadcast({ type: 'highscores', top: JSON.parse(top) });
@@ -905,9 +930,17 @@ async function handle(c, data) {
                     scatterWin: Math.round(sp.scatterWin * bet * 100) / 100
                 }))
             });
-            if (r.win >= bet * 100) feed(`🌟 ${u.name} won ${r.win} coins (${Math.round(r.win / bet)}x) on Budget Starlight`, 'gold', c.id);
+            // Grob so lang wie die Animation im Browser, grosszuegig
+            const steps = r.spins.reduce((n, sp) => n + sp.steps.length, 0);
+            const ms = Math.min(15 * 60e3, 20e3 + r.spins.length * 6e3 + steps * 3e3);
+            const line = r.win >= bet * 100 ? [`🌟 ${u.name} won ${r.win} coins (${Math.round(r.win / bet)}x) on Budget Starlight`, 'gold', c.id] : null;
+            hideWin(c.account, r.win, line, ms);
             return;
         }
+
+        case 'spin2Done':
+            if (c.account) revealWin(c.account);
+            return;
 
         // --- Automat ---
 
@@ -954,7 +987,7 @@ wss.on('connection', (ws, req) => {
         slots: { symbols: slots.SYMBOLS, bets: slots.BETS, twoCherry: slots.TWO_CHERRY },
         slots2: { pays: slots2.PAYS, scatterPays: slots2.SCATTER_PAYS, buyCost: slots2.BUY_COST, freeSpins: slots2.FREE_SPINS, retrigger: slots2.RETRIGGER, maxWin: slots2.MAX_WIN }
     });
-    send(c, { type: 'highscores', top: accounts.top() });
+    send(c, { type: 'highscores', top: topNow() });
     send(c, { type: 'chatlog', list: chatLog });
 
     ws.on('message', msg => {
@@ -969,6 +1002,7 @@ wss.on('connection', (ws, req) => {
     });
 
     ws.on('close', () => {
+        if (c.account) revealWin(c.account);
         clients.delete(id);
         const p = players.get(id);
         if (p) {

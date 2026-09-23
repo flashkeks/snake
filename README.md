@@ -221,7 +221,12 @@ laufen, bevor er deployt — der Bonus hat einen langen Schwanz, unter
 Der Server wuerfelt den ganzen Spin samt Freispielen auf einmal und schickt
 alle Zwischenraster, je Spin dazu `tw` (Tumble-Gewinn ohne Multi), `orbSum`,
 `multBefore`/`mult` und `scatterWin`; der Browser spielt nur ab. Waehrend der
-Animation wird SPIN zu ⏩ Skip (5× so schnell, nur fuer den laufenden Spin — der naechste Freispiel und alle Ansagen laufen wieder normal). Die Maschine passt ihre
+Animation wird SPIN zu ⏩ Skip (5× so schnell, nur fuer den laufenden Spin — der naechste Freispiel und alle Ansagen laufen wieder normal).
+Der Gewinn wird sofort gutgeschrieben, erscheint aber erst in der
+Bestenliste (und als Gold-Zeile im Feed), wenn der Browser `spin2Done`
+schickt, also nach der Animation. Sonst sieht man direkt nach dem Bonus-Kauf
+in der Bestenliste, was rauskommt. Rueckfall: Timer nach geschaetzter
+Animationsdauer oder Verbindungsende. Die Maschine passt ihre
 Zellgroesse an die Fensterhoehe an (`s2Fit`), damit nichts gescrollt werden
 muss. Sound komplett per Web Audio synthetisiert (Kompressor + Hall), 🔊
 schaltet ihn ab (merkt sich der Browser). Einsatz wie bei Slots frei, ein Spin je 800 ms. Ab 100× gibt
@@ -295,7 +300,7 @@ Nur lokal, nie auf `edge` setzen:
 
 Client → Server: `register`, `login`, `resume {token}`, `logout`,
 `changePassword`, `deleteAccount`, `join {name?, color}`, `leave`,
-`direction`, `cashout {on}`, `chat`, `spin {bet}`, `spin2 {bet, buy}`, `eventAction`
+`direction`, `cashout {on}`, `chat`, `spin {bet}`, `spin2 {bet, buy}`, `spin2Done`, `eventAction`
 (`choice` beim Quiz, `bet`/`clear` beim Roulette, `bet`/`clear`/`move` beim
 Blackjack).
 

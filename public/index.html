@@ -4214,6 +4214,8 @@ async function s2Run(d) {
         me.coins = d.balance;
         $('me-coins').textContent = d.balance;
     }
+    // Jetzt darf der Gewinn in die Bestenliste
+    wsSend({ type: 'spin2Done' });
     s2Done();
 }
 
