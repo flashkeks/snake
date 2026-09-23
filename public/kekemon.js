@@ -664,6 +664,7 @@ function kbPlay() {
     else if (e.k === 'atk') {
         const me = actv(e.s), foe = actv(1 - e.s);
         foe.hp = e.hp;
+        if (e.en !== undefined) me.energy = e.en;
         if (e.myHp !== undefined) me.hp = e.myHp;
         if (e.boost) me.boost = e.boost;
         if (e.eff === 'burn' && e.hp > 0) foe.burn = 3;
@@ -693,8 +694,8 @@ function kbDrawGyms() {
     const T = kmCat.types;
     const rules = `<details class="kb-rules"><summary>📖 How battles work</summary><ul>
         <li>3 vs 3. Your first card fights, the other two wait on the bench. The faster card starts.</li>
-        <li>Each turn your active card gets <b>+1 energy</b>. Energy stays on that card and is not used up.</li>
-        <li>One action per turn: <b>attack</b> (needs the energy shown), <b>charge</b> (+1 extra energy) or <b>switch</b>.</li>
+        <li>Each turn your active card gets <b>+1 energy</b>. Energy stays on that card when you switch.</li>
+        <li>One action per turn: <b>attack</b> (costs the energy shown), <b>charge</b> (+1 extra energy) or <b>switch</b>. Save up for the big attack or hit small every turn.</li>
         <li>Weakness: ×1.5 damage. Defense lowers damage (not for pierce). Burn 15 for 3 turns, stun skips a turn (not twice in a row), heal 30, drain half the damage, boost +20 damage.</li>
         <li>Pokéball +3 %, Masterball +8 %, Shiny +10 % HP and damage.</li>
         <li>First win against a gym: coins + a free pack. After that ${Math.round(0.15 * 100)} % of the coins, 3 times per gym and day.</li>

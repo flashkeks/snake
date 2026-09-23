@@ -5,9 +5,9 @@
 //   - Zu Beginn des eigenen Zuges bekommt die aktive Karte +1 Energie. Energie
 //     bleibt an der Karte (wer auswechselt, faengt mit der neuen bei ihrer
 //     eigenen Energie an).
-//   - Pro Zug genau eine Aktion: angreifen (Energie >= Kosten, wird NICHT
-//     verbraucht – wie bei Pokemon bleibt sie liegen), aufladen (+1 Energie
-//     extra), auswechseln, aufgeben.
+//   - Pro Zug genau eine Aktion: angreifen (kostet die Energie der Attacke –
+//     seit 5.7, Max: vorher blieb sie liegen und die grosse Attacke ging jede
+//     Runde), aufladen (+1 Energie extra), auswechseln, aufgeben.
 //   - Schaden = Attacke (+20 je Boost) × 1,5 bei Schwaeche − 40 % der
 //     Verteidigung (ausser Pierce), mindestens 10.
 //   - Effekte: burn 15 Schaden zu Beginn der naechsten 3 Zuege des Ziels,
@@ -141,8 +141,9 @@ function attack(b, s, i, ev) {
     const atk = me.attacks[i];
     if (!atk || me.energy < atk.cost) return false;
     const { dmg, weak } = damage(me, foe, atk);
+    me.energy -= atk.cost;
     foe.hp = Math.max(0, foe.hp - dmg);
-    const e = { k: 'atk', s, i, name: atk.name, dmg, weak, eff: atk.effect, hp: foe.hp };
+    const e = { k: 'atk', s, i, name: atk.name, dmg, weak, eff: atk.effect, hp: foe.hp, en: me.energy };
     if (atk.effect === 'burn' && foe.hp > 0) foe.burn = BURN_TURNS;
     if (atk.effect === 'stun' && foe.hp > 0 && !foe.stunImmune) foe.stun = true;
     else if (atk.effect === 'stun' && foe.hp > 0) e.resist = true;
@@ -193,12 +194,18 @@ function aiChoose(b, s) {
         const to = bestSwitch(b, s, b.sides[s].active);
         if (to !== b.sides[s].active && to >= 0 && b.sides[s].cards[to].weak !== foe.type) return { a: 'switch', to };
     }
-    const big = me.attacks[1];
-    const bestNow = opts.sort((x, y) => y.dmg - x.dmg)[0];
-    // Aufladen, wenn die grosse Attacke naechsten Zug geht und die kleine schwach ist
-    // (lohnt nur, wenn die grosse dadurch eine Runde frueher kommt: jetzt +1, naechster Zug +1)
-    if (b.smart >= 1 && me.energy + 2 >= big.cost && me.energy + 1 < big.cost && bestNow && bestNow.dmg < damage(me, foe, big).dmg * 0.4 && me.hp > me.maxHp * 0.4) return { a: 'charge' };
-    if (bestNow) return { a: 'atk', i: bestNow.i };
+    const big = me.attacks[1], small = me.attacks[0];
+    const bigDmg = damage(me, foe, big).dmg, smallDmg = damage(me, foe, small).dmg;
+    // Grosse Attacke geht: nehmen
+    if (me.energy >= big.cost) return { a: 'atk', i: 1 };
+    // Energie wird verbraucht (5.7): sparen lohnt, wenn die grosse pro Energie
+    // mehr bringt als die kleine. Stufe 0 haut einfach drauf.
+    const worth = bigDmg / big.cost > smallDmg / small.cost * 1.1;
+    if (b.smart >= 1 && worth && me.hp > me.maxHp * 0.3) {
+        // Aufladen, wenn die grosse dadurch naechsten Zug geht; sonst sparen (auch Aufladen)
+        return { a: 'charge' };
+    }
+    if (me.energy >= small.cost) return { a: 'atk', i: 0 };
     return { a: 'charge' };
 }
 
