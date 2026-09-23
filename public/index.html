@@ -454,7 +454,10 @@ button:disabled {
 /* ---------- Mini events ---------- */
 
 #event .card {
-    width: min(720px, 100%);
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: 14px;
     border-color: #ff5bd6;
     box-shadow: 0 0 60px rgba(255, 91, 214, .35);
 }
@@ -499,8 +502,23 @@ button:disabled {
 
 #event .ev-body {
     display: grid;
-    grid-template-columns: 1fr 200px;
-    gap: 14px;
+    grid-template-columns: minmax(0, 1fr) 150px;
+    gap: 12px;
+}
+
+#ev-main {
+    min-width: 0;
+}
+
+/* Roulette braucht die ganze Breite: Event-Rangliste rutscht darunter */
+#event .ev-body.wide {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+#event .ev-body.wide .ev-board tbody {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
 }
 
 #event .ev-board td {
@@ -690,6 +708,336 @@ button:disabled {
 @media (max-width: 700px) {
     #event .ev-body { grid-template-columns: 1fr; }
     .rl-grid { grid-template-columns: repeat(7, 1fr); }
+}
+
+/* ---------- Event v2: coins, roulette board, wheel, blackjack table, podium, offer ---------- */
+
+#event .ev-coins {
+    font-weight: 900;
+    color: #ffd23f;
+    font-size: 18px;
+    white-space: nowrap;
+}
+
+.rl-board {
+    display: grid;
+    grid-template-columns: 28px repeat(12, minmax(0, 1fr)) 32px;
+    grid-template-rows: repeat(3, 36px) 30px 30px;
+    gap: 3px;
+    margin-top: 8px;
+    user-select: none;
+}
+
+.rl-cell {
+    position: relative;
+    padding: 0;
+    font-size: 13px;
+    letter-spacing: -.5px;
+    font-weight: 800;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.25);
+    border-radius: 4px;
+    overflow: visible;
+}
+
+.rl-cell.c-out {
+    background: #0e4a2c;
+    font-size: 12px;
+}
+
+.rl-cell:not(:disabled):hover {
+    outline: 2px solid #ffd23f;
+    z-index: 2;
+}
+
+.rl-cell.hit {
+    outline: 3px solid #ffd23f;
+    box-shadow: 0 0 18px #ffd23f;
+    z-index: 3;
+    animation: pop .5s ease-out;
+}
+
+.rl-cell.dim {
+    opacity: .35;
+}
+
+.chip {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 3px dashed rgba(255,255,255,.85);
+    box-shadow: 0 2px 4px rgba(0,0,0,.7);
+    font-size: 8px;
+    font-weight: 900;
+    line-height: 16px;
+    text-align: center;
+    color: #000;
+    pointer-events: none;
+    animation: chipIn .25s ease-out;
+    z-index: 4;
+}
+
+.chip.lost {
+    opacity: .25;
+}
+
+.chip.won {
+    box-shadow: 0 0 12px #ffd23f, 0 0 4px #fff;
+}
+
+@keyframes chipIn {
+    from { transform: translateY(-30px) scale(1.6); opacity: 0; }
+}
+
+.wheel-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+#wheel {
+    width: 230px;
+    height: 230px;
+}
+
+.wheel-result {
+    font-size: 54px;
+    font-weight: 900;
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    border: 4px solid #ffd23f;
+    animation: pop .5s ease-out;
+}
+
+/* Blackjack table */
+
+.bj {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 14px;
+    background: radial-gradient(ellipse at center, #1c6b3c 0%, #0c3d22 75%);
+    border: 6px solid #5a3a1a;
+    box-shadow: inset 0 0 30px rgba(0,0,0,.6);
+}
+
+.bj-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.bj-label {
+    font-size: 13px;
+    font-weight: 800;
+    opacity: .9;
+}
+
+.cards {
+    display: flex;
+    justify-content: center;
+    min-height: 54px;
+}
+
+.cards .card-p + .card-p {
+    margin-left: 4px;
+}
+
+.bj-others {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    min-height: 20px;
+}
+
+.bj-other {
+    padding: 4px 8px;
+    border-radius: 8px;
+    background: rgba(0,0,0,.25);
+    text-align: center;
+    font-size: 11px;
+}
+
+.bj-other .card-p {
+    width: 24px;
+    height: 34px;
+    font-size: 10px;
+}
+
+.bj-other .cards {
+    min-height: 34px;
+}
+
+.bj-other .cards .card-p + .card-p {
+    margin-left: 2px;
+}
+
+.bj-me {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.bj-hand2 {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    border: 2px solid transparent;
+}
+
+.bj-hand2.active {
+    border-color: #ffd23f;
+    box-shadow: 0 0 16px rgba(255, 210, 63, .5);
+}
+
+.bj-me .card-p {
+    width: 52px;
+    height: 74px;
+    font-size: 19px;
+}
+
+.bj-me .cards .card-p + .card-p {
+    margin-left: 6px;
+}
+
+.card-p.deal {
+    animation: deal .45s cubic-bezier(.2,.8,.3,1.1);
+}
+
+.card-p.flip {
+    animation: flipIn .5s ease-out;
+}
+
+@keyframes deal {
+    from { transform: translate(160px, -140px) rotate(-30deg) scale(.6); opacity: 0; }
+}
+
+@keyframes flipIn {
+    from { transform: rotateY(90deg); }
+}
+
+.bj-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 6px;
+}
+
+.bj-buttons button {
+    min-width: 80px;
+}
+
+/* Podium */
+
+.podium {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 10px;
+    padding-top: 10px;
+}
+
+.podium .place {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: 130px;
+    animation: pop .5s ease-out both;
+}
+
+.podium .block {
+    width: 100%;
+    border-radius: 8px 8px 0 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 6px;
+    font-size: 28px;
+    background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.05));
+}
+
+.podium .p1 .block { height: 110px; background: linear-gradient(180deg, #ffd23f88, #ffd23f22); }
+.podium .p2 .block { height: 80px; }
+.podium .p3 .block { height: 60px; }
+.podium .p1 { animation-delay: .6s; }
+.podium .p2 { animation-delay: .3s; }
+
+.podium .name {
+    font-weight: 900;
+    max-width: 130px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.podium .gain {
+    font-size: 13px;
+    color: #ffd23f;
+    font-weight: 800;
+    text-align: center;
+}
+
+/* Double or nothing after an event */
+
+#offer .card {
+    border-color: #ffd23f;
+    box-shadow: 0 0 60px rgba(255, 210, 63, .4);
+    text-align: center;
+}
+
+.coin3d {
+    width: 120px;
+    height: 120px;
+    margin: 10px auto;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 2.6s cubic-bezier(.2,.7,.2,1);
+}
+
+.coin3d .face {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    font-weight: 900;
+    backface-visibility: hidden;
+    border: 6px solid #b8860b;
+    box-shadow: inset 0 0 20px rgba(0,0,0,.4);
+}
+
+.coin3d .front {
+    background: radial-gradient(circle at 35% 30%, #fff3b0, #ffd23f 45%, #b8860b);
+    color: #3a2400;
+}
+
+.coin3d .back {
+    background: radial-gradient(circle at 35% 30%, #888, #444 50%, #111);
+    transform: rotateY(180deg);
+    color: #fff;
+}
+
+#offer .offer-big {
+    font-size: 26px;
+    font-weight: 900;
 }
 
 /* ---------- Spiel-HUD ---------- */
@@ -1262,6 +1610,7 @@ button:disabled {
                 <div class="card">
                     <div class="ev-head">
                         <span class="ev-title" id="ev-title"></span>
+                        <span class="ev-coins" id="ev-coins"></span>
                         <span class="ev-timer" id="ev-timer"></span>
                     </div>
                     <div class="ev-bar"><div id="ev-bar"></div></div>
@@ -1273,6 +1622,24 @@ button:disabled {
                         </div>
                     </div>
                     <div class="msg" id="ev-msg"></div>
+                </div>
+            </div>
+
+            <!-- Double or nothing after an event -->
+            <div id="offer" class="overlay hidden">
+                <div class="card">
+                    <h2>🪙 Double or nothing?</h2>
+                    <div>You won <b class="offer-big" id="offer-what"></b></div>
+                    <div class="coin3d" id="coin3d">
+                        <div class="face front">×2</div>
+                        <div class="face back">💀</div>
+                    </div>
+                    <div class="row" id="offer-buttons">
+                        <button type="button" class="gold" id="offer-yes">Double it!</button>
+                        <button type="button" class="ghost" id="offer-no">Keep it</button>
+                    </div>
+                    <div class="msg" id="offer-msg" style="font-size:22px;font-weight:900"></div>
+                    <div class="hint">50 / 50. Until you decide you stay frozen as a ghost. <span id="offer-timer"></span></div>
                 </div>
             </div>
 
@@ -1433,6 +1800,9 @@ ws.onmessage = event => {
         case 'eventEnd': onEventEnd(); break;
         case 'eventError': showMsg('ev-msg', data.error, 'err'); break;
         case 'resume': onResume(data.in); break;
+        case 'offer': onOffer(data); break;
+        case 'offerResult': onOfferResult(data); break;
+        case 'offerDone': onOfferDone(); break;
     }
 };
 
@@ -1453,7 +1823,7 @@ function showMsg(id, text, kind) {
 // ---------- Screens ----------
 
 function showScreen(name) {
-    ['menu', 'slots', 'konto', 'event'].forEach(s => $(s).classList.toggle('hidden', s !== name));
+    ['menu', 'slots', 'konto', 'event', 'offer'].forEach(s => $(s).classList.toggle('hidden', s !== name));
 }
 
 function backToMenu(resultHtml) {
@@ -2139,6 +2509,8 @@ let evChip = 50;
 let evAnswer = null;      // our flag answer this round
 let evRound = 0;
 let evSpun = false;
+let seenCards = new Set();   // cards already shown, only new ones get the deal animation
+let wheelFinal = null;       // final wheel state, so results can show the wheel standing still
 
 function evMember() {
     return ev && ev.members.includes(myId);
@@ -2151,8 +2523,13 @@ function onEvent(d) {
         evRound = d.data.round;
     }
     if (!ev || ev.phase !== d.phase) {
-        if (d.phase === 'intro') fanfare(true);
+        if (d.phase === 'intro') {
+            fanfare(true);
+            seenCards = new Set();
+            wheelFinal = null;
+        }
         if (d.phase === 'reveal' && evAnswer !== null) fanfare(evAnswer === d.data.correct);
+        if (d.phase === 'awards') fanfare('gold');
     }
     if (d.phase !== 'spinning') evSpun = false;
     ev = d;
@@ -2160,28 +2537,39 @@ function onEvent(d) {
 
     // Only people who were on the field see the event; the menu stays usable
     if (!evMember() && !joined) return;
+    if ($('offer') && !$('offer').classList.contains('hidden')) return;
     showScreen('event');
     renderEvent();
     if (firstSpin) {
         evSpun = true;
-        spinRoulette(d.data.result);
+        spinWheel(d.data.result);
     }
 }
 
 function onEventEnd() {
     ev = null;
-    if (joined) showScreen(null);
-    else if (!$('event').classList.contains('hidden')) showScreen('menu');
+    if (!$('event').classList.contains('hidden')) showScreen(joined ? null : 'menu');
 }
 
+let offerOpen = false;
+
 function onResume(ms) {
-    if (!joined) return;
+    if (!joined || offerOpen) return;
+    countdown(Math.round(ms / 1000));
+}
+
+function countdown(n) {
     const el = $('countdown');
-    let n = Math.round(ms / 1000);
     el.textContent = n;
-    el.classList.add('show');
+    // Das Angebot kommt Millisekunden nach dem Countdown; dann hat es Vorrang
+    setTimeout(() => { if (!offerOpen) el.classList.add('show'); }, 60);
     beep(600, 0.1, 0.06);
     const t = setInterval(() => {
+        if (offerOpen) {
+            clearInterval(t);
+            el.classList.remove('show');
+            return;
+        }
         n--;
         if (n <= 0) {
             clearInterval(t);
@@ -2195,8 +2583,9 @@ function onResume(ms) {
     }, 1000);
 }
 
-// Countdown bar
+// Countdown bar and own coins
 setInterval(() => {
+    if ($('ev-coins')) $('ev-coins').textContent = me ? `🪙 ${me.coins}` : '';
     if (!ev || ev.left === null) {
         $('ev-timer').textContent = '';
         $('ev-bar').style.width = '0';
@@ -2204,13 +2593,13 @@ setInterval(() => {
     }
     const left = Math.max(0, ev.left - (performance.now() - evReceived));
     $('ev-timer').textContent = Math.ceil(left / 1000) + 's';
-    const total = { intro: 4000, question: 9000, reveal: 2500, betting: ev.kind === 'roulette' ? 20000 : 15000, playing: 25000, spinning: 6500, results: 8000 }[ev.phase] || 10000;
+    const total = { intro: 4000, question: 9000, reveal: 2500, betting: ev.kind === 'roulette' ? 20000 : 15000, playing: 30000, spinning: 6500, results: 8000, awards: 5000 }[ev.phase] || 10000;
     $('ev-bar').style.width = (100 * left / total) + '%';
 }, 100);
 
 const PHASE_NAME = {
     intro: 'Get ready', question: 'Question', reveal: 'Answer', betting: 'Place your bets',
-    spinning: 'Spinning', playing: 'Your move', dealer: 'Dealer plays', results: 'Results'
+    spinning: 'No more bets', playing: 'Your move', dealer: 'Dealer plays', results: 'Results', awards: 'Winners'
 };
 
 function renderEvent() {
@@ -2225,21 +2614,33 @@ function renderEvent() {
 
     const main = $('ev-main');
     const member = evMember();
+    document.querySelector('#event .ev-body').classList.toggle('wide', d.kind === 'roulette' && d.phase !== 'intro' && d.phase !== 'awards');
 
     if (d.phase === 'intro') {
         const text = {
             flags: `${d.data.total} flags. Pick the right country, faster answers score more.<br>Coins for everyone with an account, length for everyone.`,
-            roulette: 'One round of roulette with everyone on the field.<br>Bet your coins on colors, halves or single numbers.',
-            blackjack: 'Everyone plays against the dealer at the same time.<br>Bet, then hit, stand or double.'
+            roulette: 'One round of roulette with everyone on the field.<br>Put your chips on the board.',
+            blackjack: 'Everyone plays against the dealer at the same time.<br>Hit, stand, double or split.'
         }[d.kind];
         main.innerHTML = `<div class="big-note">${text}</div>`;
         if (!member) main.innerHTML += '<div class="hint">You are watching. Only players on the field when the box was opened can play.</div>';
         return;
     }
 
+    if (d.phase === 'awards') return renderPodium(main, d);
     if (d.kind === 'flags') return renderFlags(main, d, member);
     if (d.kind === 'roulette') return renderRoulette(main, d, member);
     if (d.kind === 'blackjack') return renderBlackjack(main, d, member);
+}
+
+// --- Podium: what the top 3 got ---
+
+function renderPodium(main, d) {
+    const p = d.podium || [];
+    const gain = r => [r.coins > 0 ? `+${r.coins} coins` : null, r.length > 0 ? `+${r.length} length` : null].filter(Boolean).join('<br>') || '–';
+    const place = (r, i) => r ? `<div class="place p${i + 1}"><div class="name" style="color:${esc(r.color)}">${esc(r.name)}${r.id === myId ? ' (you)' : ''}</div>` +
+        `<div class="gain">${gain(r)}</div><div class="block">${['🥇', '🥈', '🥉'][i]}</div></div>` : '';
+    main.innerHTML = '<div class="podium">' + place(p[1], 1) + place(p[0], 0) + place(p[2], 2) + '</div>';
 }
 
 // --- Flag Quiz ---
@@ -2274,111 +2675,312 @@ function renderFlags(main, d, member) {
 
 const RL_RED = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
 const rlColor = n => n === 0 ? 'green' : RL_RED.has(n) ? 'red' : 'black';
-const RL_LABEL = { red: '🔴 Red', black: '⚫ Black', even: 'Even', odd: 'Odd', low: '1–18', high: '19–36' };
+const WHEEL = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
+const COLOR_HEX = { red: '#b3202a', black: '#1c1c1c', green: '#0f7a45' };
+
+function rlWins(type, n, r) {
+    switch (type) {
+        case 'red': return r !== 0 && RL_RED.has(r);
+        case 'black': return r !== 0 && !RL_RED.has(r);
+        case 'even': return r !== 0 && r % 2 === 0;
+        case 'odd': return r % 2 === 1;
+        case 'low': return r >= 1 && r <= 18;
+        case 'high': return r >= 19;
+        case 'number': return n === r;
+        case 'dozen': return r !== 0 && Math.ceil(r / 12) === n;
+        case 'column': return r !== 0 && ((r - 1) % 3) + 1 === n;
+    }
+    return false;
+}
 
 function chipsHtml(bets) {
     return '<div class="chips">' + bets.map(b =>
         `<button type="button" data-ev="chip" data-v="${b}" class="${b === evChip ? 'on' : ''}">${b}</button>`).join('') + '</div>';
 }
 
+// The board in the real layout: 0 on the left, three rows of twelve,
+// "2 to 1" columns on the right, dozens and outside bets below
+function boardCells() {
+    const cells = [{ t: 'number', n: 0, label: '0', cls: 'c-green', style: 'grid-row:1/4;grid-column:1' }];
+    for (let col = 0; col < 12; col++) {
+        for (let row = 0; row < 3; row++) {
+            const n = 3 * (col + 1) - row;
+            cells.push({ t: 'number', n, label: String(n), cls: 'c-' + rlColor(n), style: `grid-row:${row + 1};grid-column:${col + 2}` });
+        }
+    }
+    for (let row = 0; row < 3; row++) cells.push({ t: 'column', n: 3 - row, label: '2:1', cls: 'c-out', style: `grid-row:${row + 1};grid-column:14` });
+    ['1st 12', '2nd 12', '3rd 12'].forEach((label, i) => cells.push({ t: 'dozen', n: i + 1, label, cls: 'c-out', style: `grid-row:4;grid-column:${2 + i * 4}/span 4` }));
+    [['low', '1–18'], ['even', 'EVEN'], ['red', '◆'], ['black', '◆'], ['odd', 'ODD'], ['high', '19–36']].forEach(([t, label], i) =>
+        cells.push({ t, n: null, label, cls: t === 'red' ? 'c-red' : t === 'black' ? 'c-black' : 'c-out', style: `grid-row:5;grid-column:${2 + i * 2}/span 2` }));
+    return cells;
+}
+
 function renderRoulette(main, d, member) {
     const bets = d.data.bets;
+    const result = d.phase === 'results' ? d.data.result : null;
+    const can = member && me && d.phase === 'betting';
     const mine = bets.filter(b => b.id === myId);
-    const list = '<div class="bets-list">' + (bets.length ? bets.map(b =>
-        `<div><span class="dot" style="background:${esc(b.color)}"></span>${esc(b.name)}: ${b.amount} on ${b.type === 'number' ? '#' + b.n : RL_LABEL[b.type]}${b.win !== undefined ? (b.win > 0 ? ` → <b style="color:#7bffb5">+${b.win}</b>` : ' ✗') : ''}</div>`).join('') : '<div>No bets yet</div>') + '</div>';
 
+    const cells = boardCells().map(c => {
+        const here = bets.filter(b => b.type === c.t && (b.n === null ? c.n === null : b.n === c.n));
+        const chips = here.slice(-6).map((b, i) => {
+            const state = result === null ? '' : rlWins(b.type, b.n, result) ? 'won' : 'lost';
+            return `<span class="chip ${state}" style="background:${esc(b.color)};left:${4 + i * 5}px;top:${2 + i * 3}px" title="${esc(b.name)}: ${b.amount}">${b.amount >= 1000 ? '1k' : b.amount}</span>`;
+        }).join('');
+        let st = '';
+        if (result !== null) st = rlWins(c.t, c.n, result) ? 'hit' : 'dim';
+        return `<button type="button" class="rl-cell ${c.cls} ${st}" style="${c.style}" data-ev="rl" data-t="${c.t}" ${c.n !== null ? `data-n="${c.n}"` : ''} ${can ? '' : 'disabled'}>${c.label}${chips}</button>`;
+    }).join('');
+
+    let top = '';
     if (d.phase === 'betting') {
-        const can = member && me;
-        main.innerHTML =
-            (can ? chipsHtml(d.bets) : `<div class="hint">${member ? 'Log in to bet coins' : 'You are watching'}</div>`) +
-            '<div class="rl-outside">' + ['red', 'black', 'even', 'odd', 'low', 'high'].map(t =>
-                `<button type="button" class="${t === 'red' ? 'c-red' : t === 'black' ? 'c-black' : 'c-dark'}" data-ev="rl" data-t="${t}" ${can ? '' : 'disabled'}>${RL_LABEL[t]}</button>`).join('') + '</div>' +
-            '<div class="rl-grid">' + Array.from({ length: 37 }, (_, n) =>
-                `<button type="button" class="c-${rlColor(n)}" data-ev="rl" data-t="number" data-n="${n}" ${can ? '' : 'disabled'}>${n}</button>`).join('') + '</div>' +
-            (mine.length ? `<div class="row" style="margin-top:6px"><button type="button" class="ghost" data-ev="rlclear">Clear my bets (${mine.reduce((s, b) => s + b.amount, 0)})</button></div>` : '') +
-            list;
-        return;
+        top = can ? chipsHtml(d.bets) : `<div class="hint">${member ? 'Log in to bet coins' : 'You are watching'}</div>`;
+    }
+    if (d.phase === 'spinning' || d.phase === 'results') {
+        top = '<div class="wheel-wrap"><canvas id="wheel" width="560" height="560"></canvas>' +
+            (result !== null ? `<div class="wheel-result" style="background:${COLOR_HEX[rlColor(result)]}">${result}</div>` : '') + '</div>';
     }
 
-    if (d.phase === 'spinning') {
-        if (!$('ev-reel')) main.innerHTML = '<div class="reel" id="ev-reel"><div class="strip" id="ev-strip"></div></div>' + list;
-        return;
+    const myTotal = mine.reduce((s, b) => s + b.amount, 0);
+    const net = d.board.find(r => r.id === myId);
+    let bottom = '';
+    if (d.phase === 'betting' && mine.length) {
+        bottom = `<div class="row" style="margin-top:6px"><span class="hint" style="align-self:center">Your chips on the table: ${myTotal}</span>` +
+            `<button type="button" class="ghost" data-ev="rlclear">Take back</button></div>`;
     }
+    if (d.phase === 'results' && mine.length && net) {
+        bottom = `<div class="result ${net.value >= 0 ? 'cash' : 'dead'}">${net.value >= 0 ? '+' : ''}${net.value} coins</div>`;
+    }
+
+    // Keep the spinning wheel alive while chips update
+    if (d.phase === 'spinning' && $('wheel')) return;
+
+    main.innerHTML = top + `<div class="rl-board">${cells}</div>` + bottom;
 
     if (d.phase === 'results') {
-        const n = d.data.result;
-        const net = d.board.find(r => r.id === myId);
-        main.innerHTML = `<div class="big-note"><span class="card-p ${rlColor(n) === 'red' ? 'red' : ''}" style="width:70px;height:70px;font-size:32px;background:${rlColor(n) === 'red' ? '#b3202a' : rlColor(n) === 'green' ? '#0f7a45' : '#1c1c1c'};color:#fff">${n}</span></div>` +
-            (net && mine.length ? `<div class="result ${net.value >= 0 ? 'cash' : 'dead'}">${net.value >= 0 ? '+' : ''}${net.value} coins</div>` : '') + list;
+        drawWheel(wheelFinal || { wheel: 0, ball: -Math.PI / 2, ballR: 0.62 });
         if (net && net.value > 0) fanfare(net.value >= 500 ? 'gold' : true);
     }
 }
 
-function spinRoulette(result) {
-    const reel = $('ev-reel');
-    if (!reel) return;
-    const tiles = [];
-    const WIN = 44;
-    for (let i = 0; i < 52; i++) {
-        const n = i === WIN ? result : Math.floor(Math.random() * 37);
-        tiles.push({ label: String(n), color: n === 0 ? '#0f7a45' : RL_RED.has(n) ? '#b3202a' : '#1c1c1c' });
+function drawWheel(st) {
+    const cv = $('wheel');
+    if (!cv) return;
+    const c = cv.getContext('2d');
+    const W = cv.width, R = W / 2;
+    const seg = Math.PI * 2 / WHEEL.length;
+    c.clearRect(0, 0, W, W);
+    c.save();
+    c.translate(R, R);
+
+    // Wooden rim
+    c.fillStyle = '#5a3a1a';
+    c.beginPath();
+    c.arc(0, 0, R - 2, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = '#2b1a0b';
+    c.beginPath();
+    c.arc(0, 0, R * 0.9, 0, Math.PI * 2);
+    c.fill();
+
+    // Pockets
+    c.save();
+    c.rotate(st.wheel);
+    WHEEL.forEach((n, i) => {
+        const a0 = i * seg - seg / 2, a1 = a0 + seg;
+        c.fillStyle = COLOR_HEX[rlColor(n)];
+        c.beginPath();
+        c.moveTo(0, 0);
+        c.arc(0, 0, R * 0.82, a0, a1);
+        c.closePath();
+        c.fill();
+        c.strokeStyle = '#d4af37';
+        c.lineWidth = 1.5;
+        c.stroke();
+        c.save();
+        c.rotate(i * seg);
+        c.fillStyle = '#fff';
+        c.font = `bold ${Math.round(R * 0.075)}px system-ui`;
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.translate(R * 0.73, 0);
+        c.rotate(Math.PI / 2);
+        c.fillText(String(n), 0, 0);
+        c.restore();
+    });
+    // Cone in the middle
+    const g = c.createRadialGradient(0, 0, 0, 0, 0, R * 0.5);
+    g.addColorStop(0, '#f5d76e');
+    g.addColorStop(1, '#6b4a1b');
+    c.fillStyle = g;
+    c.beginPath();
+    c.arc(0, 0, R * 0.5, 0, Math.PI * 2);
+    c.fill();
+    for (let k = 0; k < 4; k++) {
+        c.rotate(Math.PI / 2);
+        c.fillStyle = '#d4af37';
+        c.fillRect(-4, -R * 0.45, 8, R * 0.9);
     }
-    const mark = spinStrip(reel, $('ev-strip'), tiles, WIN, 64, 6, 5500, 0.05);
-    // Tiles use white text on dark colors
-    $('ev-strip').querySelectorAll('.tile').forEach(t => { t.style.color = '#fff'; });
-    setTimeout(mark, 5550);
+    c.restore();
+
+    // Ball
+    const br = R * st.ballR;
+    c.fillStyle = '#fff';
+    c.shadowColor = 'rgba(0,0,0,.6)';
+    c.shadowBlur = 6;
+    c.beginPath();
+    c.arc(Math.cos(st.ball) * br, Math.sin(st.ball) * br, R * 0.045, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+
+    // Pointer at the top
+    c.fillStyle = '#ffd23f';
+    c.beginPath();
+    c.moveTo(R - 10, 4);
+    c.lineTo(R + 10, 4);
+    c.lineTo(R, 22);
+    c.fill();
+}
+
+// Wheel spins one way, the ball the other; both slow down and the ball
+// drops into the result pocket right under the pointer.
+function spinWheel(result) {
+    const seg = Math.PI * 2 / WHEEL.length;
+    const idx = WHEEL.indexOf(result);
+    const top = -Math.PI / 2;
+    const w0 = Math.random() * Math.PI * 2;
+    // Final wheel angle puts the result pocket at the top, after about 3 turns
+    let wEnd = top - idx * seg;
+    while (wEnd < w0 + Math.PI * 6) wEnd += Math.PI * 2;
+    const b0 = Math.random() * Math.PI * 2;
+    let bEnd = top;
+    while (bEnd > b0 - Math.PI * 10) bEnd -= Math.PI * 2;
+
+    const dur = 5800;
+    const t0 = performance.now();
+    const ease = t => 1 - Math.pow(1 - t, 3);
+    let lastPocket = -1;
+
+    (function step() {
+        const t = Math.min(1, (performance.now() - t0) / dur);
+        const e = ease(t);
+        const wheel = w0 + (wEnd - w0) * e;
+        const ball = b0 + (bEnd - b0) * ease(Math.min(1, t * 1.05));
+        // Ball rides the outer track, then drops in with a couple of bounces
+        let ballR = 0.86;
+        if (t > 0.6) {
+            const k = (t - 0.6) / 0.4;
+            ballR = 0.86 - 0.24 * Math.min(1, k * 1.4) + Math.abs(Math.sin(k * 14)) * 0.04 * (1 - k);
+        }
+        const st = { wheel, ball, ballR };
+        drawWheel(st);
+        wheelFinal = st;
+
+        // Clicks when the ball passes a pocket
+        const rel = ((ball - wheel) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+        const pocket = Math.floor(rel / seg);
+        if (pocket !== lastPocket && t < 0.97) {
+            if (lastPocket !== -1) beep(1200, 0.015, 0.03 * (1 - t));
+            lastPocket = pocket;
+        }
+        if (t < 1 && $('wheel')) requestAnimationFrame(step);
+        else beep(400, 0.12, 0.08);
+    })();
 }
 
 // --- Blackjack ---
 
-function cardHtml(c) {
-    if (c === '??') return '<span class="card-p back"></span>';
+function cardHtml(c, key) {
+    let cls = '';
+    if (key) {
+        if (!seenCards.has(key + c)) {
+            // Hidden card turned over: flip, otherwise dealt: fly in
+            cls = seenCards.has(key + '??') ? 'flip' : 'deal';
+            seenCards.add(key + c);
+        }
+    }
+    if (c === '??') return `<span class="card-p back ${cls}"></span>`;
     const red = c.endsWith('♥') || c.endsWith('♦');
-    return `<span class="card-p ${red ? 'red' : ''}">${esc(c)}</span>`;
+    return `<span class="card-p ${red ? 'red' : ''} ${cls}">${esc(c)}</span>`;
+}
+
+function cardVal(c) {
+    const r = c.slice(0, -1);
+    return r === 'A' ? 11 : 'JQK'.includes(r) || r === '10' ? 10 : Number(r);
+}
+
+function resultTag(hd) {
+    if (!hd.result) return '';
+    return `<span class="bj-res ${hd.result}">${hd.result.toUpperCase()} ${hd.net > 0 ? '+' + hd.net : hd.net < 0 ? hd.net : ''}</span>`;
 }
 
 function renderBlackjack(main, d, member) {
-    const hands = d.data.hands;
-    const mine = hands[myId];
+    const seats = d.data.hands;
+    const mine = seats[myId];
     const names = Object.fromEntries(d.board.map(r => [r.id, r]));
 
     if (d.phase === 'betting') {
         const can = member && me;
-        main.innerHTML =
-            (can ? `<div class="hint">Choose your bet:</div>` + chipsHtml(d.bets).replace(/data-ev="chip"/g, 'data-ev="bjbet"') +
-                (mine ? `<div class="msg ok">Your bet: ${mine.bet} <button type="button" class="ghost" data-ev="bjclear" style="font-size:12px;padding:3px 8px">clear</button></div>` : '')
-                : `<div class="hint">${member ? 'Log in to bet coins' : 'You are watching'}</div>`) +
-            '<div class="bets-list">' + Object.entries(hands).map(([id, h]) =>
-                `<div>${esc(names[id] ? names[id].name : '?')}: ${h.bet}</div>`).join('') + '</div>';
+        main.innerHTML = '<div class="bj">' +
+            '<div class="bj-row"><span class="bj-label">🎩 Dealer</span><div class="cards"></div></div>' +
+            '<div class="bj-others">' + Object.entries(seats).filter(([id]) => id !== myId).map(([id, s]) =>
+                `<div class="bj-other"><b style="color:${esc(names[id] ? names[id].color : '#fff')}">${esc(names[id] ? names[id].name : '?')}</b><br>bet ${s.bet}</div>`).join('') + '</div>' +
+            '<div class="bj-row">' + (can
+                ? `<span class="bj-label">Your bet${mine ? ': ' + mine.bet : ''}</span>` + chipsHtml(d.bets).replace(/data-ev="chip"/g, 'data-ev="bjbet"') +
+                  (mine ? '<button type="button" class="ghost" data-ev="bjclear" style="font-size:12px;padding:3px 10px">Take back</button>' : '')
+                : `<span class="hint">${member ? 'Log in to bet coins' : 'You are watching'}</span>`) + '</div></div>';
         return;
     }
 
     const dealer = d.data.dealer;
-    let html = '<div class="bj-table">' +
-        `<div class="bj-hand"><span class="who">🎩 Dealer${dealer.total !== null ? ' · ' + dealer.total : ''}</span>${dealer.cards.map(cardHtml).join('')}</div>`;
+    let html = '<div class="bj">';
 
-    for (const [id, h] of Object.entries(hands)) {
+    // Dealer on top
+    html += `<div class="bj-row"><span class="bj-label">🎩 Dealer${dealer.total !== null ? ' · ' + dealer.total : ''}</span>` +
+        `<div class="cards">${dealer.cards.map((c, i) => cardHtml(c, 'dealer:' + i + ':')).join('')}</div></div>`;
+
+    // Everybody else small in the middle
+    html += '<div class="bj-others">' + Object.entries(seats).filter(([id]) => id !== myId).map(([id, s]) => {
         const n = names[id];
-        const res = h.result ? `<span class="bj-res ${h.result}">${h.result.toUpperCase()} ${h.net > 0 ? '+' + h.net : h.net < 0 ? h.net : ''}</span>` : '';
-        html += `<div class="bj-hand"><span class="who" style="color:${esc(n ? n.color : '#fff')}">${id === myId ? 'You' : esc(n ? n.name : '?')} · ${h.total}${h.doubled ? ' ×2' : ''}</span>` +
-            h.cards.map(cardHtml).join('') + ` <span style="opacity:.6;font-size:12px">bet ${h.bet}</span> ${res}</div>`;
-    }
-    html += '</div>';
+        return `<div class="bj-other"><b style="color:${esc(n ? n.color : '#fff')}">${esc(n ? n.name : '?')}</b>` +
+            s.hands.map((hd, hi) => `<div class="cards">${hd.cards.map((c, ci) => cardHtml(c, `${id}:${hi}:${ci}:`)).join('')}</div>` +
+                `<div>${hd.total}${hd.doubled ? ' ×2' : ''} ${resultTag(hd)}</div>`).join('') + '</div>';
+    }).join('') + '</div>';
 
-    if (d.phase === 'playing' && mine && !mine.done) {
-        html += '<div class="row" style="margin-top:10px">' +
-            '<button type="button" data-ev="bj" data-m="hit">Hit</button>' +
-            '<button type="button" class="ghost" data-ev="bj" data-m="stand">Stand</button>' +
-            (mine.cards.length === 2 && me && me.coins >= mine.bet ? '<button type="button" class="gold" data-ev="bj" data-m="double">Double</button>' : '') +
-            '</div>';
-    } else if (d.phase === 'playing' && mine) {
-        html += '<div class="hint">Waiting for the others…</div>';
-    } else if (!Object.keys(hands).length) {
+    // Own hand(s) big at the bottom
+    if (mine) {
+        html += '<div class="bj-me">' + mine.hands.map((hd, hi) =>
+            `<div class="bj-hand2 ${d.phase === 'playing' && !mine.done && hi === mine.active && mine.hands.length > 1 ? 'active' : ''}">` +
+            `<div class="cards">${hd.cards.map((c, ci) => cardHtml(c, `${myId}:${hi}:${ci}:`)).join('')}</div>` +
+            `<span class="bj-label">You · ${hd.total}${hd.doubled ? ' · doubled' : ''} · bet ${hd.bet}</span>${resultTag(hd)}</div>`).join('') + '</div>';
+
+        if (d.phase === 'playing' && !mine.done) {
+            const hd = mine.hands[mine.active];
+            const coins = me ? me.coins : 0;
+            const canDouble = hd.cards.length === 2 && coins >= hd.bet;
+            const canSplit = mine.hands.length === 1 && hd.cards.length === 2 && cardVal(hd.cards[0]) === cardVal(hd.cards[1]) && coins >= hd.bet;
+            html += '<div class="bj-buttons">' +
+                '<button type="button" data-ev="bj" data-m="hit">Hit</button>' +
+                '<button type="button" class="ghost" data-ev="bj" data-m="stand">Stand</button>' +
+                (canDouble ? '<button type="button" class="gold" data-ev="bj" data-m="double">Double</button>' : '') +
+                (canSplit ? '<button type="button" class="gold" data-ev="bj" data-m="split">Split</button>' : '') +
+                '</div>';
+        } else if (d.phase === 'playing') {
+            html += '<div class="hint" style="text-align:center">Waiting for the others…</div>';
+        }
+        if (d.phase === 'results') {
+            html += `<div class="result ${mine.net >= 0 ? 'cash' : 'dead'}">${mine.net >= 0 ? '+' : ''}${mine.net} coins</div>`;
+            if (mine.net > 0) fanfare(mine.hands.some(h => h.result === 'blackjack') ? 'gold' : true);
+        }
+    } else if (!Object.keys(seats).length) {
         html += '<div class="big-note">Nobody placed a bet</div>';
+    } else {
+        html += '<div class="hint" style="text-align:center">You are not in this hand</div>';
     }
 
-    if (d.phase === 'results' && mine && (mine.result === 'win' || mine.result === 'blackjack')) fanfare(mine.result === 'blackjack' ? 'gold' : true);
+    html += '</div>';
     main.innerHTML = html;
+    if (d.phase === 'dealer') beep(700, 0.05, 0.04);
 }
 
 // One click handler for all event buttons
@@ -2396,7 +2998,7 @@ $('event').addEventListener('click', e => {
         renderEvent();
     } else if (t === 'rl') {
         const bet = { type: b.dataset.t, amount: evChip };
-        if (b.dataset.t === 'number') bet.n = Number(b.dataset.n);
+        if (b.dataset.n !== undefined) bet.n = Number(b.dataset.n);
         wsSend({ type: 'eventAction', bet });
         beep(500, 0.05, 0.05);
     } else if (t === 'rlclear') {
@@ -2410,6 +3012,73 @@ $('event').addEventListener('click', e => {
         wsSend({ type: 'eventAction', move: b.dataset.m });
     }
 });
+
+// ---------- Double or nothing after an event ----------
+
+let offerTimer = null;
+
+function onOffer(d) {
+    offerOpen = true;
+    const what = [d.coins > 0 ? `${d.coins} coins` : null, d.length > 0 ? `${d.length} length` : null].filter(Boolean).join(' + ');
+    $('offer-what').textContent = what;
+    $('offer-msg').textContent = '';
+    $('offer-buttons').style.display = '';
+    const coin = $('coin3d');
+    coin.style.transition = 'none';
+    coin.style.transform = 'rotateY(0deg)';
+    showScreen('offer');
+    fanfare(true);
+
+    let left = Math.round(d.ms / 1000);
+    $('offer-timer').textContent = left + 's';
+    clearInterval(offerTimer);
+    offerTimer = setInterval(() => {
+        left--;
+        $('offer-timer').textContent = Math.max(0, left) + 's';
+        if (left <= 0) clearInterval(offerTimer);
+    }, 1000);
+}
+
+function offerAnswer(accept) {
+    unlockAudio();
+    clearInterval(offerTimer);
+    $('offer-buttons').style.display = 'none';
+    $('offer-timer').textContent = '';
+    wsSend({ type: 'offerAnswer', accept });
+    if (accept) $('offer-msg').textContent = 'Flipping…';
+}
+
+$('offer-yes').onclick = () => offerAnswer(true);
+$('offer-no').onclick = () => offerAnswer(false);
+
+function onOfferResult(d) {
+    const coin = $('coin3d');
+    coin.getBoundingClientRect();
+    coin.style.transition = 'transform 2.6s cubic-bezier(.2,.7,.2,1)';
+    // Many turns; gold face up on a win, skull face up on a loss
+    coin.style.transform = `rotateY(${1800 + (d.win ? 0 : 180)}deg)`;
+    const ticker = setInterval(() => beep(800, 0.02, 0.03), 120);
+    setTimeout(() => {
+        clearInterval(ticker);
+        const what = [d.coins > 0 ? `${d.coins} coins` : null, d.length > 0 ? `${d.length} length` : null].filter(Boolean).join(' + ');
+        $('offer-msg').innerHTML = d.win
+            ? `<span style="color:#ffd23f">DOUBLED! +${what}</span>`
+            : `<span style="color:#ff6b6b">Lost ${what}</span>`;
+        fanfare(d.win ? 'gold' : false);
+    }, 2650);
+}
+
+function onOfferDone() {
+    // Short pause so you can read the result, then back into the game
+    const wait = $('offer-msg').textContent && $('offer-msg').textContent !== 'Flipping…' ? 900 : 0;
+    setTimeout(() => {
+        offerOpen = false;
+        if (joined) {
+            showScreen(null);
+            countdown(1);
+        }
+    }, wait);
+}
 
 // ---------- Seitenleisten ----------
 

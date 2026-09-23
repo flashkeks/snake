@@ -50,7 +50,9 @@ Bis 22.09.2026 lief das Spiel im Calibre-Container von Michaffs unter
 - **Arena waechst und schrumpft mit der Spielerzahl:** Kantenlaenge
   `36 + 16 × Spieler`, mindestens 50, hoechstens 200 (1 Spieler 52, 2 → 68,
   3 → 84, 5 → 116). Waechst alle 0,5 s um 2, schrumpft alle 2,5 s um 1.
-  Wer beim Schrumpfen mit dem Kopf draussen ist, wird zerquetscht. Items
+  **Die Zone toetet nie:** eine Kante rueckt nur nach innen, wenn auf ihrer
+  aeussersten Reihe kein Schlangenstueck liegt, sonst wartet sie (bis
+  23.09.2026 wurde zerquetscht, wer draussen war). Items
   wachsen mit: Fruechte 0,6 %, Boxen 0,2 % der Felder, Muenzen 1 je 1500.
 - Die Kamera zeigt 40 × 40 um den eigenen Kopf, unten rechts eine Minimap
   (Schlangen, Muenzen, legendaere Fruechte, Event-Kisten, Sichtfenster).
@@ -62,8 +64,9 @@ Bis 22.09.2026 lief das Spiel im Calibre-Container von Michaffs unter
 - **Tod:** Kopf in fremden oder eigenen Koerper oder in die Wand. Danach geht
   es zurueck ins Menue, der Score ist weg.
 - **Kill:** Der Killer waechst um die halbe Laenge des Opfers (aufgerundet).
-- **Kopf an Kopf:** Der Server wuerfelt den Gewinner aus. Alle sehen die
-  Walze, die Beteiligten frieren 4,5 s ein und sind in der Zeit massiv.
+- **Kopf an Kopf:** Der Server wuerfelt den Gewinner aus. Die Walze sehen nur
+  die Beteiligten, alle anderen eine Feed-Zeile und zwei blinkende Schlangen.
+  Die Beteiligten frieren 4,5 s ein und sind in der Zeit massiv.
 - **Spawn:** mit Abstand zur Wand und zu anderen Koepfen, 2 s Geist-Schutz.
 - **Tempo:** Server-Tick 60 ms. Normal ein Schritt je 2 Ticks, Turbo je Tick,
   Schnecke je 3.
@@ -181,13 +184,20 @@ auf dem Feld sind:
   Laufende Cashouts brechen ab.
 - Jeder Teilnehmer sieht das Event mit eigener Event-Rangliste. Wer im Menue
   ist, spielt nicht mit.
-- Danach 3 s Countdown, dann geht es weiter.
+- Oben im Event steht der eigene Kontostand.
+- Danach 5 s **Podium** mit den Top 3 und was sie bekommen haben.
+- Dann **Double or Nothing** fuer jeden, der etwas gewonnen hat (Coins aus
+  dem Quiz oder Reingewinn aus Roulette/Blackjack, dazu Laenge): 50/50 per
+  Muenzwurf, 15 s Bedenkzeit, ohne Antwort wird behalten. Wer noch ueberlegt
+  oder wirft, bleibt eingefroren und ist fuer die anderen ein durchsichtiger
+  Geist. Wer ablehnt oder fertig geworfen hat, spielt sofort weiter.
+- Alle anderen: 3 s Countdown, dann geht es weiter.
 
 | Event | Art | Ablauf |
 |---|---|---|
 | 🏳️ Flag Quiz | flat Coins | 6 Flaggen (Bilder von flagcdn.com), je 9 s, 4 Antworten. Richtig = 100 + bis 100 Tempobonus. Danach Coins = Punkte / 10 (+50 fuer Platz 1) fuer Konten, Laenge = Punkte / 40 fuer alle |
-| 🎡 Roulette | Coins setzen | 20 s setzen (Rot, Schwarz, Gerade, Ungerade, 1–18, 19–36 zahlen ×2, Einzelzahl 0–36 zahlt ×36), bis 12 Einsaetze, dann Walze, europaeisches Rad |
-| 🃏 Blackjack | Coins setzen | 15 s Einsatz, dann spielen alle gleichzeitig gegen den Dealer (Hit, Stand, Double), 25 s Zeit. 6 Decks, Dealer zieht bis 17, Blackjack zahlt 3:2 |
+| 🎡 Roulette | Coins setzen | 20 s setzen auf einem echten Board (0 links, 3 × 12, "2:1"-Spalten, Dutzende, Aussenwetten). Rot/Schwarz/Gerade/Ungerade/1–18/19–36 ×2, Dutzend und Spalte ×3, Einzelzahl ×36. Bis 12 Einsaetze, alle Chips liegen in Schlangenfarbe auf dem Board. Dann ein rundes europaeisches Rad mit Kugel (Canvas), die Kugel faellt in die Tasche des Ergebnisses |
+| 🃏 Blackjack | Coins setzen | 15 s Einsatz, dann spielen alle gleichzeitig gegen den Dealer, 30 s Zeit. Hit, Stand, **Double** (nur mit 2 Karten), **Split** (einmal, zwei Karten gleichen Werts; geteilte Asse bekommen je eine Karte, 21 nach Split ist kein Blackjack). 6 Decks, Dealer zieht bis 17, Blackjack zahlt 3:2. Tisch: Dealer oben, die anderen klein in der Mitte, die eigene Hand gross unten, Karten fliegen ein, die verdeckte Dealerkarte dreht sich um |
 
 Gaeste koennen beim Flag Quiz mitspielen (bekommen nur Laenge), bei Roulette
 und Blackjack nur zuschauen.
@@ -212,6 +222,8 @@ Nur lokal, nie auf `edge` setzen:
 - `SNAKE_TEST=1` schaltet die Nachricht `testEvent {kind}` frei, die sofort
   ein Event startet.
 - `SNAKE_EVENT_SPEED=5` laesst alle Event-Phasen fuenfmal schneller laufen.
+- `testEvent {kind, result}` mit `result` erzwingt beim Roulette die Zahl
+  (fuer Screenshots des Angebots).
 
 ## Protokoll (WebSocket)
 

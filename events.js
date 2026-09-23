@@ -86,11 +86,15 @@ function rouletteWin(bet, n) {
         case 'low': return n >= 1 && n <= 18 ? 2 : 0;
         case 'high': return n >= 19 ? 2 : 0;
         case 'number': return bet.n === n ? 36 : 0;
+        // Dutzend 1 = 1-12, 2 = 13-24, 3 = 25-36
+        case 'dozen': return n !== 0 && Math.ceil(n / 12) === bet.n ? 3 : 0;
+        // Spalte 1 = 1, 4, ... 34; Spalte 3 = 3, 6, ... 36 (die "2 to 1"-Felder am Board)
+        case 'column': return n !== 0 && ((n - 1) % 3) + 1 === bet.n ? 3 : 0;
     }
     return 0;
 }
 
-const ROULETTE_TYPES = new Set(['red', 'black', 'even', 'odd', 'low', 'high', 'number']);
+const ROULETTE_TYPES = new Set(['red', 'black', 'even', 'odd', 'low', 'high', 'number', 'dozen', 'column']);
 
 module.exports = function createEvents(h) {
     // h: { accounts, broadcast, feed, send, grow, onEnd }
@@ -124,7 +128,8 @@ module.exports = function createEvents(h) {
             left: ev.phaseEnds ? Math.max(0, ev.phaseEnds - Date.now()) : null,
             members: [...ev.members.keys()],
             board: board(),
-            bets: BETS
+            bets: BETS,
+            podium: ev.phase === 'awards' ? ev.podium : null
         };
         h.broadcast({ ...base, data: publicData() });
     }
@@ -152,7 +157,7 @@ module.exports = function createEvents(h) {
         }
         if (ev.kind === 'blackjack') {
             const hands = {};
-            for (const [id, hd] of ev.hands) hands[id] = hd;
+            for (const [id, seat] of ev.hands) hands[id] = seat;
             return {
                 hands,
                 dealer: ev.dealer.hidden
@@ -194,6 +199,20 @@ module.exports = function createEvents(h) {
         h.feed(`🎪 EVENT: ${KINDS[kind].title}!`, 'gold', null, true);
         push();
         return true;
+    }
+
+    // Gewinne je Mitglied: Coins (bei Roulette/Blackjack der Reingewinn) und Laenge.
+    // Daraus werden Podium und das Double-or-Nothing-Angebot.
+    function awards() {
+        if (!ev.rewards) {
+            ev.rewards = {};
+            for (const m of ev.members.values()) {
+                const net = ev.score.get(m.id) || 0;
+                ev.rewards[m.id] = { coins: m.account ? Math.max(0, net) : 0, length: 0 };
+            }
+        }
+        ev.podium = board().slice(0, 3).map(r => ({ ...r, ...(ev.rewards[r.id] || { coins: 0, length: 0 }) }));
+        phase('awards', 5000);
     }
 
     function end() {
@@ -266,37 +285,56 @@ module.exports = function createEvents(h) {
         return ev.shoe.pop();
     }
 
+    function cardValue(c) {
+        const r = c.slice(0, -1);
+        return r === 'A' ? 11 : 'JQK'.includes(r) || r === '10' ? 10 : Number(r);
+    }
+
+    function newHand(bet, cards, split) {
+        const hd = { bet, cards, split: !!split, doubled: false, done: false, result: null, net: 0, total: handValue(cards).total };
+        if (!split && isBlackjack(cards)) hd.done = true;
+        if (hd.total >= 21) hd.done = true;
+        return hd;
+    }
+
+    // Naechste offene Hand eines Spielers; fertig, wenn keine mehr offen ist
+    function bjAdvance(seat) {
+        while (seat.active < seat.hands.length && seat.hands[seat.active].done) seat.active++;
+        seat.done = seat.active >= seat.hands.length;
+    }
+
     function bjDeal() {
         if (!ev.hands.size) {
+            ev.score.clear();
             phase('results', 5000);
             return;
         }
-        for (const hd of ev.hands.values()) {
-            hd.cards = [draw(), draw()];
-            hd.done = isBlackjack(hd.cards);
-            hd.total = handValue(hd.cards).total;
+        for (const seat of ev.hands.values()) {
+            seat.hands = [newHand(seat.bet, [draw(), draw()])];
+            seat.active = 0;
+            bjAdvance(seat);
         }
         ev.dealer.cards = [draw(), draw()];
         ev.dealer.hidden = true;
-        phase('playing', 25000);
+        phase('playing', 30000);
         bjMaybeDealer();
     }
 
     function bjMaybeDealer() {
-        if ([...ev.hands.values()].every(hd => hd.done)) {
+        if ([...ev.hands.values()].every(seat => seat.done)) {
             phase('dealer', null);
             ev.dealer.hidden = false;
-            ev.nextStep = Date.now() + 900 / SPEED;
+            ev.nextStep = Date.now() + 1000 / SPEED;
         }
     }
 
     function bjDealerStep() {
         const v = handValue(ev.dealer.cards);
-        const anyAlive = [...ev.hands.values()].some(hd => hd.total <= 21 && !isBlackjack(hd.cards));
-        // Dealer draws to 17, stands on soft 17. No need to draw if everyone busted.
+        const anyAlive = [...ev.hands.values()].some(seat => seat.hands.some(hd => hd.total <= 21 && !(isBlackjack(hd.cards) && !hd.split)));
+        // Dealer zieht bis 17, bleibt bei Soft 17 stehen. Sind alle raus, zieht er nicht.
         if (anyAlive && v.total < 17) {
             ev.dealer.cards.push(draw());
-            ev.nextStep = Date.now() + 900 / SPEED;
+            ev.nextStep = Date.now() + 1000 / SPEED;
             return;
         }
         bjResults();
@@ -305,19 +343,25 @@ module.exports = function createEvents(h) {
     function bjResults() {
         const d = handValue(ev.dealer.cards).total;
         const dealerBj = isBlackjack(ev.dealer.cards);
-        for (const [id, hd] of ev.hands) {
+        for (const [id, seat] of ev.hands) {
             const m = ev.members.get(id);
-            const p = hd.total;
-            let pay = 0;
-            if (p > 21) hd.result = 'bust';
-            else if (isBlackjack(hd.cards) && !dealerBj) { hd.result = 'blackjack'; pay = Math.floor(hd.bet * 2.5); }
-            else if (dealerBj && !isBlackjack(hd.cards)) hd.result = 'lose';
-            else if (d > 21 || p > d) { hd.result = 'win'; pay = hd.bet * 2; }
-            else if (p === d) { hd.result = 'push'; pay = hd.bet; }
-            else hd.result = 'lose';
-            if (pay > 0 && m && m.account) h.accounts.addCoins(m.account, pay);
-            hd.net = pay - hd.bet;
-            ev.score.set(id, hd.net);
+            let net = 0;
+            for (const hd of seat.hands) {
+                const p = hd.total;
+                const bj = isBlackjack(hd.cards) && !hd.split;
+                let pay = 0;
+                if (p > 21) hd.result = 'bust';
+                else if (bj && !dealerBj) { hd.result = 'blackjack'; pay = Math.floor(hd.bet * 2.5); }
+                else if (dealerBj && !bj) hd.result = 'lose';
+                else if (d > 21 || p > d) { hd.result = 'win'; pay = hd.bet * 2; }
+                else if (p === d) { hd.result = 'push'; pay = hd.bet; }
+                else hd.result = 'lose';
+                if (pay > 0 && m && m.account) h.accounts.addCoins(m.account, pay);
+                hd.net = pay - hd.bet;
+                net += hd.net;
+            }
+            seat.net = net;
+            ev.score.set(id, net);
             if (m && m.account) h.send(m.player, { type: 'account', user: h.accounts.publicUser(h.accounts.get(m.account)) });
         }
         phase('results', 8000);
@@ -339,7 +383,11 @@ module.exports = function createEvents(h) {
 
         if (!ev.phaseEnds || now < ev.phaseEnds) return;
 
-        if (ev.phase === 'results') return end();
+        if (ev.phase === 'results') {
+            awards();
+            return push();
+        }
+        if (ev.phase === 'awards') return end();
 
         if (ev.kind === 'flags') {
             if (ev.phase === 'intro' || ev.phase === 'reveal') {
@@ -353,7 +401,8 @@ module.exports = function createEvents(h) {
         if (ev.kind === 'roulette') {
             if (ev.phase === 'intro') phase('betting', 20000);
             else if (ev.phase === 'betting') {
-                ev.result = Math.floor(Math.random() * 37);
+                // forceResult setzt nur der Test-Hook (SNAKE_TEST=1)
+                ev.result = ev.forceResult !== undefined ? ev.forceResult : Math.floor(Math.random() * 37);
                 phase('spinning', 6500);
             } else if (ev.phase === 'spinning') rouletteResults();
         }
@@ -363,7 +412,10 @@ module.exports = function createEvents(h) {
             else if (ev.phase === 'betting') bjDeal();
             else if (ev.phase === 'playing') {
                 // Time is up: everyone still playing stands
-                for (const hd of ev.hands.values()) hd.done = true;
+                for (const seat of ev.hands.values()) {
+                    for (const hd of seat.hands) hd.done = true;
+                    bjAdvance(seat);
+                }
                 bjMaybeDealer();
             }
         }
@@ -416,10 +468,11 @@ module.exports = function createEvents(h) {
             if (!ROULETTE_TYPES.has(bet.type) || !BETS.includes(amount)) return;
             const n = Number(bet.n);
             if (bet.type === 'number' && !(Number.isInteger(n) && n >= 0 && n <= 36)) return;
+            if ((bet.type === 'dozen' || bet.type === 'column') && !(n >= 1 && n <= 3)) return;
             if (ev.bets.filter(b => b.id === c.id).length >= 12) return h.send(c, { type: 'eventError', error: 'Max 12 bets' });
             if (u.coins < amount) return h.send(c, { type: 'eventError', error: 'Not enough coins' });
             h.accounts.addCoins(c.account, -amount);
-            ev.bets.push({ id: c.id, name: m.name, color: m.color, type: bet.type, n: bet.type === 'number' ? n : null, amount });
+            ev.bets.push({ id: c.id, name: m.name, color: m.color, type: bet.type, n: ['number', 'dozen', 'column'].includes(bet.type) ? n : null, amount });
             refreshAccount(c);
             return push();
         }
@@ -438,15 +491,18 @@ module.exports = function createEvents(h) {
                 if (u.coins + (old ? old.bet : 0) < amount) return h.send(c, { type: 'eventError', error: 'Not enough coins' });
                 if (old) h.accounts.addCoins(c.account, old.bet);
                 h.accounts.addCoins(c.account, -amount);
-                ev.hands.set(c.id, { bet: amount, cards: [], done: false, total: 0, result: null });
+                ev.hands.set(c.id, { bet: amount, hands: [], active: 0, done: false, net: 0 });
                 refreshAccount(c);
                 return push();
             }
             if (ev.phase === 'playing') {
-                const hd = ev.hands.get(c.id);
-                if (!hd || hd.done) return;
+                const seat = ev.hands.get(c.id);
+                if (!seat || seat.done) return;
+                const hd = seat.hands[seat.active];
                 if (data.move === 'hit') {
                     hd.cards.push(draw());
+                } else if (data.move === 'stand') {
+                    hd.done = true;
                 } else if (data.move === 'double') {
                     if (hd.cards.length !== 2 || u.coins < hd.bet) return;
                     h.accounts.addCoins(c.account, -hd.bet);
@@ -454,12 +510,25 @@ module.exports = function createEvents(h) {
                     hd.doubled = true;
                     hd.cards.push(draw());
                     hd.done = true;
-                    refreshAccount(c);
-                } else if (data.move === 'stand') {
-                    hd.done = true;
+                } else if (data.move === 'split') {
+                    // Einmal teilen, zwei Karten gleichen Werts, gleicher Einsatz nochmal
+                    if (seat.hands.length !== 1 || hd.cards.length !== 2 || cardValue(hd.cards[0]) !== cardValue(hd.cards[1]) || u.coins < hd.bet) return;
+                    h.accounts.addCoins(c.account, -hd.bet);
+                    const aces = hd.cards[0].startsWith('A');
+                    const a = newHand(hd.bet, [hd.cards[0], draw()], true);
+                    const b = newHand(hd.bet, [hd.cards[1], draw()], true);
+                    // Geteilte Asse bekommen nur je eine Karte
+                    if (aces) a.done = b.done = true;
+                    seat.hands = [a, b];
+                    seat.active = 0;
                 } else return;
-                hd.total = handValue(hd.cards).total;
-                if (hd.total >= 21) hd.done = true;
+                const cur = seat.hands[seat.active];
+                if (cur) {
+                    cur.total = handValue(cur.cards).total;
+                    if (cur.total >= 21) cur.done = true;
+                }
+                bjAdvance(seat);
+                refreshAccount(c);
                 bjMaybeDealer();
                 return push();
             }
@@ -469,9 +538,10 @@ module.exports = function createEvents(h) {
     // A participant left the game: an open blackjack hand stands automatically
     function leave(id) {
         if (!ev) return;
-        const hd = ev.hands && ev.hands.get(id);
-        if (hd && ev.phase === 'playing') {
-            hd.done = true;
+        const seat = ev.hands && ev.hands.get(id);
+        if (seat && ev.phase === 'playing') {
+            for (const hd of seat.hands) hd.done = true;
+            bjAdvance(seat);
             bjMaybeDealer();
         }
     }
@@ -482,6 +552,8 @@ module.exports = function createEvents(h) {
         handle,
         leave,
         active: () => !!ev,
+        // Nur fuer Tests: interner Zustand (z. B. um einen Kartenstapel vorzugeben)
+        _state: () => ev,
         push,
         isMember: id => !!(ev && ev.members.has(id))
     };

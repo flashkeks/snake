@@ -300,15 +300,16 @@ function still(p) {
     return !!p.frozen || active(p, 'ice');
 }
 
-// Fuer andere nicht da: Geist, oder gerade am Muenzwurf
+// Fuer andere nicht da: Geist, am Muenzwurf oder beim Double-or-Nothing nach einem Event
 function intangible(p) {
-    return active(p, 'ghost') || (p.frozen && p.frozen.kind === 'gamble');
+    return active(p, 'ghost') || (p.frozen && (p.frozen.kind === 'gamble' || p.frozen.kind === 'offer'));
 }
 
 // Eingefroren laufen die Effekt-Timer nicht weiter. Beim Auftauen wird
 // alles, was beim Einfrieren noch lief, um die Standzeit verlaengert.
 function resumeFx(p, started) {
     const shift = Date.now() - started;
+    if (shift <= 0) return;
     for (const k of Object.keys(p.fx)) {
         if (p.fx[k] > started) p.fx[k] += shift;
     }
@@ -425,12 +426,16 @@ function startDuel(ids) {
     ids.forEach(id => freeze(players.get(id), f));
     freezes.push(f);
 
-    broadcast({
+    // Die Walze sehen nur die Beteiligten. Alle anderen sehen zwei blinkende
+    // Schlangen und das Ergebnis im Feed.
+    const msg = {
         type: 'duel',
         fighters: ids.map(id => ({ id, color: players.get(id).color, name: players.get(id).name })),
         winner,
         ms: DUEL_MS
-    });
+    };
+    ids.forEach(id => send(players.get(id), msg));
+    feed(`⚔️ Head to head: ${ids.map(id => players.get(id).name).join(' vs ')}`, 'info');
 }
 
 function startGamble(id) {
@@ -824,12 +829,21 @@ async function handle(c, data) {
 
         // Nur fuer lokale Tests (SNAKE_TEST=1): Event sofort starten
         case 'testEvent':
-            if (process.env.SNAKE_TEST === '1' && !events.active()) startEvent(data.kind);
+            if (process.env.SNAKE_TEST === '1' && !events.active()) {
+                startEvent(data.kind);
+                if (data.result !== undefined && events.active()) events._state().forceResult = data.result;
+            }
             return;
 
         case 'eventAction':
             if (events.active()) events.handle(c, data);
             return;
+
+        case 'offerAnswer': {
+            const p = players.get(c.id);
+            if (p) answerOffer(p, !!data.accept);
+            return;
+        }
 
         // --- Automat ---
 
@@ -922,17 +936,26 @@ function stepArena(now) {
         arena.hi = Math.min(WORLD, arena.hi + 1);
         lastArenaStep = now;
     } else if (size > target + 4 && now - lastArenaStep >= 2500) {
-        if (shrinkSide++ % 2 === 0) arena.hi--; else arena.lo++;
+        // Die Zone toetet nie: eine Kante rueckt nur nach innen, wenn auf der
+        // aeussersten Reihe gerade kein Schlangenstueck liegt. Sonst wartet sie.
+        const sides = shrinkSide++ % 2 === 0 ? ['hi', 'lo'] : ['lo', 'hi'];
+        const occupied = side => {
+            const line = side === 'hi' ? arena.hi - 1 : arena.lo;
+            for (const p of players.values()) {
+                if (p.body.some(s => s.x === line || s.y === line)) return true;
+            }
+            return false;
+        };
+        const side = sides.find(sd => !occupied(sd));
+        if (!side) return;
+        if (side === 'hi') arena.hi--; else arena.lo++;
         lastArenaStep = now;
 
-        // Was jetzt draussen liegt, verschwindet. Wer mit dem Kopf draussen ist, wird zerquetscht.
+        // Items, die jetzt draussen liegen, verschwinden
         for (let i = items.length - 1; i >= 0; i--) {
             const it = items[i];
             const size = it.type === 'event' ? 3 : 1;
             if (it.x < arena.lo || it.y < arena.lo || it.x + size > arena.hi || it.y + size > arena.hi) items.splice(i, 1);
-        }
-        for (const [id, p] of [...players]) {
-            if (!inArena(p.x, p.y)) kill(id, null, 'got crushed by the shrinking zone');
         }
     }
 }
@@ -1014,12 +1037,65 @@ const events = createEvents({
     send,
     grow,
     feed,
-    onEnd() {
+    onEnd(done) {
         // 3 s Countdown, dann geht es weiter
-        if (paused) paused.resumeAt = Date.now() + 3000;
+        const now = Date.now();
+        if (paused) paused.resumeAt = now + 3000;
         broadcast({ type: 'resume', in: 3000 });
+
+        // Wer etwas gewonnen hat, bekommt ein persoenliches Double or Nothing.
+        // Bis er sich entscheidet, bleibt er eingefroren und ist ein Geist.
+        for (const m of done.members.values()) {
+            const r = (done.rewards || {})[m.id];
+            const p = players.get(m.id);
+            if (!p || !r || (r.coins <= 0 && r.length <= 0)) continue;
+            const f = { kind: 'offer', coins: r.coins, length: r.length, started: now + 3000, ends: Infinity };
+            freeze(p, f);
+            send(p, { type: 'offer', coins: r.coins, length: r.length, ms: OFFER_MS });
+            setTimeout(() => {
+                // Keine Antwort: behalten
+                if (p.frozen === f && !f.answered) endOffer(p, f);
+            }, OFFER_MS + 3000);
+        }
     }
 });
+
+const OFFER_MS = 15000;
+
+function endOffer(p, f) {
+    if (p.frozen !== f) return;
+    p.frozen = null;
+    resumeFx(p, f.started);
+    p.fx.ghost = Math.max(p.fx.ghost || 0, Date.now() + DURATION.afterGamble);
+    send(p, { type: 'offerDone' });
+}
+
+function answerOffer(p, accept) {
+    const f = p.frozen;
+    if (!f || f.kind !== 'offer' || f.answered) return;
+    f.answered = true;
+    if (!accept) return endOffer(p, f);
+
+    const win = Math.random() < 0.5;
+    send(p, { type: 'offerResult', win, coins: f.coins, length: f.length });
+
+    // Erst nach der Muenz-Animation wirken lassen
+    setTimeout(() => {
+        if (players.get(p.id) !== p) return;
+        const sign = win ? 1 : -1;
+        if (f.coins > 0 && p.account) {
+            accounts.addCoins(p.account, sign * f.coins);
+            sendAccount(p);
+        }
+        if (f.length > 0) {
+            if (win) grow(p, f.length);
+            else setLen(p, p.len - f.length);
+        }
+        const what = [f.coins > 0 ? `${f.coins} coins` : null, f.length > 0 ? `${f.length} length` : null].filter(Boolean).join(' + ');
+        feed(win ? `🪙 ${p.name} doubled ${what}!` : `🪙 ${p.name} lost ${what} on double or nothing`, win ? 'good' : 'bad', p.id);
+        endOffer(p, f);
+    }, 2800);
+}
 
 function startEvent(kind) {
     const now = Date.now();
@@ -1272,7 +1348,8 @@ function broadcastState(now) {
             name: p.name,
             guest: p.guest,
             frozen: !!p.frozen || !!paused,
-            gambling: !!(p.frozen && p.frozen.kind === 'gamble'),
+            gambling: !!(p.frozen && (p.frozen.kind === 'gamble' || p.frozen.kind === 'offer')),
+            deciding: !!(p.frozen && p.frozen.kind === 'offer'),
             cashout: p.cashout ? Math.min(1, (now - p.cashout) / CASHOUT_MS) : 0,
             fx: fxLeft(p)
         }))
