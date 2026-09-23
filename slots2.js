@@ -1,0 +1,215 @@
+// "Sweet Kek" – Tumble-Slot im Stil von Starlight Princess / Gates of Olympus.
+//
+// 6 Walzen x 5 Reihen. Gezahlt wird ueberall: 8 oder mehr gleiche Symbole
+// irgendwo auf dem Raster. Gewinnsymbole platzen, der Rest faellt nach unten,
+// oben kommt Neues nach (Tumble), bis nichts mehr gewinnt.
+//
+// Multiplikator-Kugeln (🔮 ×2 bis ×500) bleiben liegen. Endet eine Tumble-Folge
+// mit Gewinn, werden alle Kugeln auf dem Raster addiert und mit dem Gewinn
+// multipliziert. In den Freispielen sammeln sie sich zu einem Gesamt-
+// multiplikator, der fuer den Rest des Bonus gilt.
+//
+// 4+ Scatter (⭐) irgendwo loesen 15 Freispiele aus, 3+ im Bonus geben +5.
+// Der Server wuerfelt alles, der Browser spielt die Schritte nur ab.
+// Rueckzahlung nachrechnen: node slots2.js
+
+const COLS = 6;
+const ROWS = 5;
+const MAX_WIN = 5000;       // hoechstens das 5000-fache des Einsatzes je Spin (inkl. Bonus)
+const FREE_SPINS = 15;
+const RETRIGGER = 5;
+
+// Auszahlung (× Einsatz) fuer 8–9, 10–11, 12+ gleiche Symbole
+const PAYS = {
+    '👑': [6.6, 16.5, 33.0],
+    '💎': [1.65, 6.6, 16.5],
+    '🌙': [1.32, 3.3, 9.9],
+    '🍪': [0.99, 1.32, 7.92],
+    '🧁': [0.66, 0.99, 6.6],
+    '🍩': [0.53, 0.79, 5.28],
+    '🍭': [0.33, 0.66, 3.3],
+    '🍬': [0.26, 0.59, 2.64]
+};
+const SCATTER = 'S';
+const SCATTER_PAYS = { 4: 3, 5: 5, 6: 100 };
+
+// Symbol-Gewichte. Abgestimmt per Simulation (23.09.2026, 150.000 Spins):
+// Rueckzahlung 95,0 % (Basis 63 %, Freispiele 32 %), Treffer bei 22 % der Spins,
+// Freispiele etwa jeder 280. Spin. Im Bonus kommen viel mehr Kugeln.
+const WEIGHTS = {
+    '👑': 8, '💎': 9, '🌙': 9, '🍪': 10, '🧁': 10, '🍩': 11, '🍭': 11, '🍬': 12
+};
+const SCATTER_W = { base: 1.6, free: 1.3 };
+const ORB_W = { base: 0.45, free: 6 };
+
+// Kugelwerte und wie oft sie kommen
+const ORBS = [
+    [2, 300], [3, 200], [4, 150], [5, 120], [6, 80], [8, 60], [10, 50], [12, 30],
+    [15, 25], [20, 18], [25, 12], [50, 6], [100, 3], [250, 1], [500, 0.4]
+];
+
+// Bonus kaufen: so viel mal der Einsatz. Ein Bonus bringt im Mittel ~90x,
+// bei 94x Preis sind das ~95 % wie im Basisspiel.
+const BUY_COST = 94;
+
+function pick(list) {
+    let r = Math.random() * list.reduce((s, [, w]) => s + w, 0);
+    for (const [v, w] of list) {
+        r -= w;
+        if (r < 0) return v;
+    }
+    return list[list.length - 1][0];
+}
+
+function makeRoller(mode) {
+    const table = [
+        ...Object.entries(WEIGHTS),
+        [SCATTER, SCATTER_W[mode]],
+        ['ORB', ORB_W[mode]]
+    ];
+    return () => {
+        const s = pick(table);
+        return s === 'ORB' ? 'x' + pick(ORBS) : s;
+    };
+}
+
+// Raster als Spalten: grid[c][r], r = 0 oben
+function fill(roll) {
+    return Array.from({ length: COLS }, () => Array.from({ length: ROWS }, roll));
+}
+
+function copy(grid) {
+    return grid.map(col => col.slice());
+}
+
+const isOrb = s => typeof s === 'string' && s[0] === 'x';
+
+function payFor(sym, n) {
+    const p = PAYS[sym];
+    if (!p || n < 8) return 0;
+    return n >= 12 ? p[2] : n >= 10 ? p[1] : p[0];
+}
+
+function countScatters(grid) {
+    let n = 0;
+    for (const col of grid) for (const s of col) if (s === SCATTER) n++;
+    return n;
+}
+
+// Eine komplette Tumble-Folge. Liefert die Zwischenschritte fuer die Animation.
+function tumble(roll) {
+    let grid = fill(roll);
+    const steps = [{ grid: copy(grid), wins: [] }];
+    let win = 0;
+
+    for (let guard = 0; guard < 50; guard++) {
+        const counts = {};
+        for (const col of grid) for (const s of col) if (PAYS[s]) counts[s] = (counts[s] || 0) + 1;
+        const wins = Object.entries(counts).filter(([, n]) => n >= 8).map(([sym, n]) => ({ sym, n, pay: payFor(sym, n) }));
+        if (!wins.length) break;
+
+        const hit = new Set(wins.map(w => w.sym));
+        const cells = [];
+        grid.forEach((col, c) => col.forEach((s, r) => { if (hit.has(s)) cells.push([c, r]); }));
+        win += wins.reduce((s, w) => s + w.pay, 0);
+        steps[steps.length - 1].wins = wins;
+        steps[steps.length - 1].pop = cells;
+
+        // Platzen lassen, nachrutschen, oben auffuellen
+        grid = grid.map(col => {
+            const keep = col.filter(s => !hit.has(s));
+            const fresh = Array.from({ length: ROWS - keep.length }, roll);
+            return fresh.concat(keep);
+        });
+        steps.push({ grid: copy(grid), wins: [] });
+    }
+
+    const orbs = [];
+    for (const col of grid) for (const s of col) if (isOrb(s)) orbs.push(Number(s.slice(1)));
+    return { steps, win, orbs, scatters: countScatters(grid), grid };
+}
+
+// Ein ganzer Spin mit Einsatz 1. Freispiele laufen direkt mit.
+function play(opts) {
+    opts = opts || {};
+    const baseRoll = makeRoller('base');
+    const freeRoll = makeRoller('free');
+    const spins = [];
+    let total = 0;
+    let freeLeft = 0;
+
+    if (!opts.buy) {
+        const t = tumble(baseRoll);
+        let win = t.win;
+        let mult = 0;
+        if (win > 0 && t.orbs.length) {
+            mult = t.orbs.reduce((a, b) => a + b, 0);
+            win *= mult;
+        }
+        const scatterWin = SCATTER_PAYS[Math.min(6, t.scatters)] || 0;
+        win += scatterWin;
+        spins.push({ steps: t.steps, win, mult, scatters: t.scatters, free: false });
+        total += win;
+        if (t.scatters >= 4) freeLeft = FREE_SPINS;
+    } else {
+        // Gekaufter Bonus: startet mit einem Raster voller Scatter-Ansage
+        freeLeft = FREE_SPINS;
+    }
+
+    let totalMult = 0;
+    let played = 0;
+    while (freeLeft > 0 && played < 100) {
+        freeLeft--;
+        played++;
+        const t = tumble(freeRoll);
+        let win = t.win;
+        if (win > 0 && t.orbs.length) {
+            totalMult += t.orbs.reduce((a, b) => a + b, 0);
+        }
+        if (win > 0 && totalMult > 0) win *= totalMult;
+        const retrig = t.scatters >= 3;
+        if (retrig) freeLeft += RETRIGGER;
+        spins.push({ steps: t.steps, win, mult: totalMult, scatters: t.scatters, free: true, retrig, freeLeft });
+        total += win;
+    }
+
+    const capped = total > MAX_WIN;
+    return { spins, total: Math.min(total, MAX_WIN), capped, bonus: spins.some(s => s.free) };
+}
+
+// Einsatz anwenden (auf ganze Coins, abgerundet)
+function spin(bet, buy) {
+    const r = play({ buy });
+    return {
+        ...r,
+        cost: buy ? bet * BUY_COST : bet,
+        win: Math.floor(r.total * bet)
+    };
+}
+
+module.exports = {
+    COLS, ROWS, PAYS, SCATTER_PAYS, FREE_SPINS, RETRIGGER, BUY_COST, MAX_WIN,
+    WEIGHTS, SCATTER_W, ORB_W,
+    spin, play
+};
+
+// Simulation: node slots2.js [spins]
+if (require.main === module) {
+    const n = Number(process.argv[2]) || 200000;
+    let paid = 0, bonus = 0, bonusWin = 0, hit = 0, max = 0;
+    for (let i = 0; i < n; i++) {
+        const r = play();
+        paid += r.total;
+        if (r.total > 0) hit++;
+        if (r.bonus) {
+            bonus++;
+            bonusWin += r.total;
+        }
+        max = Math.max(max, r.total);
+    }
+    let buyPaid = 0;
+    const nb = Math.max(2000, Math.round(n / 50));
+    for (let i = 0; i < nb; i++) buyPaid += play({ buy: true }).total;
+    console.log(`Basis: RTP ${(100 * paid / n).toFixed(2)} %, Trefferquote ${(100 * hit / n).toFixed(1)} %, Bonus 1 zu ${Math.round(n / Math.max(1, bonus))}, groesster Gewinn ${max.toFixed(1)}x`);
+    console.log(`Bonus-Kauf: Ø ${(buyPaid / nb).toFixed(1)}x Einsatz, RTP bei ${BUY_COST}x: ${(100 * buyPaid / nb / BUY_COST).toFixed(2)} %`);
+}

@@ -11,7 +11,10 @@
 
 const FLAGS = require('./flags');
 
+// Vorschlaege fuer die Chips; gesetzt werden darf jeder ganze Betrag ab 1
 const BETS = [10, 25, 50, 100, 250, 500, 1000];
+const MAX_BET = 1000000;
+const validBet = n => Number.isInteger(n) && n >= 1 && n <= MAX_BET;
 
 const KINDS = {
     flags: { title: '🏳️ Flag Quiz', type: 'reward' },
@@ -465,7 +468,7 @@ module.exports = function createEvents(h) {
             }
             const bet = data.bet || {};
             const amount = Number(bet.amount);
-            if (!ROULETTE_TYPES.has(bet.type) || !BETS.includes(amount)) return;
+            if (!ROULETTE_TYPES.has(bet.type) || !validBet(amount)) return;
             const n = Number(bet.n);
             if (bet.type === 'number' && !(Number.isInteger(n) && n >= 0 && n <= 36)) return;
             if ((bet.type === 'dozen' || bet.type === 'column') && !(n >= 1 && n <= 3)) return;
@@ -487,7 +490,7 @@ module.exports = function createEvents(h) {
                     refreshAccount(c);
                     return push();
                 }
-                if (!BETS.includes(amount)) return;
+                if (!validBet(amount)) return;
                 if (u.coins + (old ? old.bet : 0) < amount) return h.send(c, { type: 'eventError', error: 'Not enough coins' });
                 if (old) h.accounts.addCoins(c.account, old.bet);
                 h.accounts.addCoins(c.account, -amount);

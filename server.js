@@ -5,6 +5,13 @@ const WebSocket = require('ws');
 
 const createAccounts = require('./accounts');
 const slots = require('./slots');
+const slots2 = require('./slots2');
+
+// Freier Einsatz: ganze Coins, mindestens 1, Obergrenze nur als Sicherung
+const MAX_BET = 1000000;
+function validBet(n) {
+    return Number.isInteger(n) && n >= 1 && n <= MAX_BET;
+}
 const createEvents = require('./events');
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -137,6 +144,8 @@ const DURATION = {
     jackpot: 8000,
     // Kurzer Schutz nach dem Muenzwurf, falls jemand gerade durch einen durchfaehrt
     afterGamble: 1500,
+    // Schutz nach einem Mini-Event (und nach dem Double or Nothing danach)
+    afterEvent: 3000,
     // Spawnschutz
     spawn: 2000
 };
@@ -845,6 +854,44 @@ async function handle(c, data) {
             return;
         }
 
+        // --- Zweiter Automat: Sweet Kek (Tumble, Kugeln, Freispiele) ---
+
+        case 'spin2': {
+            if (!c.account) return send(c, { type: 'spin2Error', error: 'Accounts only' });
+            const now = Date.now();
+            if (now - (c.lastSpin2 || 0) < 800) return;
+            const bet = Number(data.bet);
+            if (!validBet(bet)) return send(c, { type: 'spin2Error', error: 'Invalid bet' });
+            const buy = !!data.buy;
+            const cost = buy ? bet * slots2.BUY_COST : bet;
+            const u = accounts.get(c.account);
+            if (!u || u.coins < cost) return send(c, { type: 'spin2Error', error: 'Not enough coins' });
+            c.lastSpin2 = now;
+
+            accounts.addCoins(c.account, -cost);
+            const r = slots2.spin(bet, buy);
+            const balance = accounts.addCoins(c.account, r.win);
+            accounts.stat(c.account, s => {
+                s.spins++;
+                s.biggestWin = Math.max(s.biggestWin, r.win);
+            });
+
+            send(c, {
+                type: 'spin2',
+                bet,
+                buy,
+                cost,
+                win: r.win,
+                capped: r.capped,
+                bonus: r.bonus,
+                balance,
+                // Gewinne je Spin schon in Coins, fuer die Anzeige waehrend der Animation
+                spins: r.spins.map(sp => ({ ...sp, win: Math.round(sp.win * bet * 100) / 100 }))
+            });
+            if (r.win >= bet * 100) feed(`🍬 ${u.name} won ${r.win} coins (${Math.round(r.win / bet)}x) on Sweet Kek`, 'gold', c.id);
+            return;
+        }
+
         // --- Automat ---
 
         case 'spin': {
@@ -852,7 +899,7 @@ async function handle(c, data) {
             const now = Date.now();
             if (now - (c.lastSpin || 0) < 1200) return;
             const bet = Number(data.bet);
-            if (!slots.BETS.includes(bet)) return send(c, { type: 'spinError', error: 'Invalid bet' });
+            if (!validBet(bet)) return send(c, { type: 'spinError', error: 'Invalid bet' });
             const u = accounts.get(c.account);
             if (!u || u.coins < bet) return send(c, { type: 'spinError', error: 'Not enough coins' });
             c.lastSpin = now;
@@ -887,7 +934,8 @@ wss.on('connection', (ws, req) => {
         cashoutMs: CASHOUT_MS,
         durations: DURATION,
         palette: PALETTE,
-        slots: { symbols: slots.SYMBOLS, bets: slots.BETS, twoCherry: slots.TWO_CHERRY }
+        slots: { symbols: slots.SYMBOLS, bets: slots.BETS, twoCherry: slots.TWO_CHERRY },
+        slots2: { pays: slots2.PAYS, scatterPays: slots2.SCATTER_PAYS, buyCost: slots2.BUY_COST, freeSpins: slots2.FREE_SPINS, retrigger: slots2.RETRIGGER, maxWin: slots2.MAX_WIN }
     });
     send(c, { type: 'highscores', top: accounts.top() });
     send(c, { type: 'chatlog', list: chatLog });
@@ -1066,7 +1114,7 @@ function endOffer(p, f) {
     if (p.frozen !== f) return;
     p.frozen = null;
     resumeFx(p, f.started);
-    p.fx.ghost = Math.max(p.fx.ghost || 0, Date.now() + DURATION.afterGamble);
+    p.fx.ghost = Math.max(p.fx.ghost || 0, Date.now() + DURATION.afterEvent);
     send(p, { type: 'offerDone' });
 }
 
@@ -1120,6 +1168,10 @@ function unpause(now) {
     }
     paused = null;
     nextEventAt = now + rand(90000, 180000);
+    // Nach dem Event kurz unverwundbar, damit niemand beim Weiterfahren sofort stirbt
+    for (const p of players.values()) {
+        if (!p.frozen) p.fx.ghost = Math.max(p.fx.ghost || 0, now + DURATION.afterEvent);
+    }
 }
 
 // ---------- Spiel-Tick ----------

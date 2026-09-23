@@ -14,7 +14,8 @@ Live: **`snake.flashkeks.com`** auf `edge` (Netcup).
 |---|---|
 | `server.js` | HTTP + WebSocket, Spiel-Tick, Items, Duelle, Cashout |
 | `accounts.js` | Konten, Sessions, Coins, Statistik (JSON-Datei im Datenordner) |
-| `slots.js` | Slot-Automat; `node slots.js` rechnet die Rueckzahlungsquote aus |
+| `slots.js` | Slot-Automat „Kek Slots“; `node slots.js` rechnet die Rueckzahlungsquote aus |
+| `slots2.js` | Tumble-Slot „Sweet Kek“; `node slots2.js 150000` simuliert Rueckzahlung, Bonus-Quote, Bonus-Kauf |
 | `events.js` | Mini-Events (Flag Quiz, Roulette, Blackjack): Ablauf, Einsaetze, Auszahlung |
 | `flags.js` | Laender fuer das Flag Quiz (ISO-Code + englischer Name) |
 | `public/index.html` | der ganze Browser-Teil in einer Datei |
@@ -108,8 +109,9 @@ Bis 22.09.2026 lief das Spiel im Calibre-Container von Michaffs unter
 
 ## Slot-Automat
 
-Hauptmenue → „Zum Automaten", nur mit Konto. Drei Walzen, eine Linie, der
-Server wuerfelt. Einsaetze 10–1000.
+Hauptmenue → „🎰 Kek Slots", nur mit Konto. Drei Walzen, eine Linie, der
+Server wuerfelt. Einsatz frei von 1 Coin bis zum Kontostand (Chips 1–1000
+oder eigener Betrag; Server-Grenze 1.000.000, nur ganze Zahlen).
 
 | Symbol | Gewicht | drei gleiche |
 |---|---|---|
@@ -173,6 +175,45 @@ wirklich draufsitzt.
 **Schild** faengt einen Koerpertreffer ab, und seit 23.09.2026 auch den 💀
 aus Muenze oder Box.
 
+## Sweet Kek (Tumble-Slot)
+
+Hauptmenue → „🍬 Sweet Kek", nur mit Konto. Nach dem Vorbild von Starlight
+Princess / Gates of Olympus:
+
+- **6 × 5 Raster, gezahlt wird ueberall:** 8 oder mehr gleiche Symbole
+  irgendwo zaehlen. Gewinnsymbole platzen, der Rest faellt nach, oben kommt
+  Neues (Tumble), bis nichts mehr gewinnt.
+- **🔮 Multiplikator-Kugeln** ×2 bis ×500 bleiben liegen. Endet die
+  Tumble-Folge mit Gewinn, werden alle Kugeln addiert und mit dem Gewinn
+  multipliziert.
+- **⭐ Scatter:** 4+ irgendwo = 15 Freispiele (dazu ×3/×5/×100 fuer 4/5/6).
+  Im Bonus gibt es viel mehr Kugeln, und sie sammeln sich zu einem
+  Gesamtmultiplikator fuer den Rest des Bonus. 3+ Scatter im Bonus = +5.
+- **Bonus kaufen** fuer 94 × Einsatz.
+- Hoechstens 5000 × Einsatz je Spin (Bonus eingerechnet).
+
+| Symbol | 8–9 | 10–11 | 12+ |
+|---|---|---|---|
+| 👑 | 6,6 | 16,5 | 33 |
+| 💎 | 1,65 | 6,6 | 16,5 |
+| 🌙 | 1,32 | 3,3 | 9,9 |
+| 🍪 | 0,99 | 1,32 | 7,92 |
+| 🧁 | 0,66 | 0,99 | 6,6 |
+| 🍩 | 0,53 | 0,79 | 5,28 |
+| 🍭 | 0,33 | 0,66 | 3,3 |
+| 🍬 | 0,26 | 0,59 | 2,64 |
+
+Abgestimmt per Simulation (150.000 Spins, 23.09.2026): **95,0 %**
+Rueckzahlung (Basis 63 %, Freispiele 32 %), Treffer bei 22 % der Spins,
+Freispiele etwa jeder 280. Spin, gekaufter Bonus im Mittel ~90 × Einsatz.
+Wer an Gewichten, Kugeln oder Tabelle dreht, laesst `node slots2.js 150000`
+laufen, bevor er deployt.
+
+Der Server wuerfelt den ganzen Spin samt Freispielen auf einmal und schickt
+alle Zwischenraster; der Browser spielt sie nur ab (⏩ Skip spielt 6× so
+schnell). Einsatz wie beim Kek Slots frei, ein Spin je 800 ms. Ab 100× gibt
+es eine Gold-Zeile im Feed.
+
 ## Mini-Events
 
 Alle 90–180 s (das erste nach 45–75 s) taucht eine **3 × 3 grosse 🎪
@@ -192,6 +233,11 @@ auf dem Feld sind:
   oder wirft, bleibt eingefroren und ist fuer die anderen ein durchsichtiger
   Geist. Wer ablehnt oder fertig geworfen hat, spielt sofort weiter.
 - Alle anderen: 3 s Countdown, dann geht es weiter.
+- **Danach 3 s Geist-Schutz** fuer alle (nach dem Countdown bzw. nach dem
+  eigenen Double or Nothing): keine Kollision mit anderen Schlangen. Die Wand
+  bleibt toedlich.
+- Einsaetze bei Roulette und Blackjack frei: Chips 1, 5, 10–1000 oder eigener
+  Betrag im Feld (Blackjack: „Bet" setzt, ein Chip-Klick setzt sofort).
 
 | Event | Art | Ablauf |
 |---|---|---|
@@ -229,7 +275,7 @@ Nur lokal, nie auf `edge` setzen:
 
 Client → Server: `register`, `login`, `resume {token}`, `logout`,
 `changePassword`, `deleteAccount`, `join {name?, color}`, `leave`,
-`direction`, `cashout {on}`, `chat`, `spin {bet}`, `eventAction`
+`direction`, `cashout {on}`, `chat`, `spin {bet}`, `spin2 {bet, buy}`, `eventAction`
 (`choice` beim Quiz, `bet`/`clear` beim Roulette, `bet`/`clear`/`move` beim
 Blackjack).
 
@@ -237,6 +283,6 @@ Server → Client: `welcome`, `auth`, `authError`, `authExpired`, `account`,
 `joined`, `joinError`, `left`, `died`, `cashedout`, `cashoutCancel`, `state`
 (alle 60 ms, mit `arena` und `paused`), `duel`, `gamble`, `box`, `jackpot`,
 `feed` (mit `who` und `big` fuer den Sound), `chat`, `chatlog`, `highscores`,
-`spin`, `spinError`, `event`, `eventEnd`, `eventError`, `resume`.
+`spin`, `spinError`, `spin2`, `spin2Error`, `event`, `eventEnd`, `eventError`, `resume`.
 
 Die Oberflaeche ist seit 23.09.2026 englisch, diese Doku bleibt deutsch.
