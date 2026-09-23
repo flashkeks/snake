@@ -579,52 +579,70 @@ Tabs:
 | Tab | Inhalt |
 |---|---|
 | 🪂 Play | Loadout-Ueberblick, **Deploy**, Ergebnis des letzten Raids |
-| 🎒 Equipment | Loadout (2 Waffen, Helm, Weste, Hose, Schuhe, Medkits, drei Granatensorten), aktive Set-Boni, Lager (max. 80, Verbrauchsgut gestapelt), Filter, Detailansicht, **Salvage mit Mehrfachauswahl** („Select to salvage“, „+ Commons“, „+ Uncommons“, Summe in Scrap vorab) |
-| 🎁 Cases | Standard (1000 Coins), Elite (10.000 Coins), Scrap-Case (60 Scrap); CS-Band mit 34 Feldern, Treffer auf Feld 29 |
-| 🛒 Shop | Waffen, alle 16 Ruestungsteile nach Set, Medkits und Granaten (×1 oder ×5) fuer Coins; Verbrauchsgut und „Waffe mit Zufallseffekt“ (600) fuer Scrap |
+| 🎒 Equipment | Loadout (2 Waffen, Helm, Weste, Hose, Schuhe, zwei Verbrauchsgut-Slots Q/G), aktive Set-Boni, Lager (max. 100, Verbrauchsgut gestapelt), Tabs je Slot (Waffen, Helme, Westen, Hosen, Schuhe, Verbrauchsgut), Detailansicht mit Score, **Salvage mit Mehrfachauswahl** |
+| 🎁 Cases | Standard, Mage, Demolition, Elite, Sovereign, Scrap – mit Chancen je Stufe; CS-Band mit 34 Feldern, Treffer auf Feld 29 |
+| 🛒 Shop | Grundwaffen, Bandage, Medkit, Frag, Smoke (×1 oder ×5) fuer Coins; dasselbe Verbrauchsgut und „Waffe mit Zufallseffekt“ (600) fuer Scrap. Keine Ruestung |
 
-### Items (`arena-items.js`)
+### Items (`arena-items.js`, Runde 3)
 
-- **Namen = Basis** („Sniper“, „Combat helmet“). Effekte stehen nicht mehr
-  im Namen (Max: „Rapid Sniper ist doof“). Alte Items werden beim ersten
-  Hub-Aufruf umbenannt, alte Ruestung light/medium/heavy wird zur Weste des
-  Scout-/Soldier-/Juggernaut-Sets (`migrate`, `u.arena.v2`).
-- **Waffen:** Pistol, SMG, Shotgun, Rifle, Sniper (Shop), dazu nur aus Cases
-  und Kisten Golden Deagle, Minigun, Launcher (explodiert immer).
-- **Grade I–V** (★): +0/6/12/20/32 % Schaden bzw. HP. Der Grade traegt den
-  Grossteil der Seltenheit. Shop-Ware ist immer Grade I.
-- **Ruestung:** vier Slots × vier Sets. Die Set-Werte verteilen sich auf die
-  Teile (Helm 25 %, Weste 40 %, Hose 20 %, Schuhe 15 %):
+- **Stufen werden je Quelle gewuerfelt** (Common, Uncommon, Rare, Epic,
+  Legendary, Mythic, ✦ Ultra rare). Jede Stufe gibt +0/5/10/16/24/34/50 %
+  Schaden bzw. HP. Die Chancen stehen im Hub an jedem Case:
 
-| Set | HP gesamt | Tempo | 2 Teile | 4 Teile | Preis alle 4 |
-|---|---|---|---|---|---|
-| Scout | 30 | +8 % | +6 % Tempo | +12 % Tempo, 10 % Dodge | 900 |
-| Soldier | 60 | ±0 | +8 % Schaden | +15 % Schaden, +10 % Feuerrate | 1800 |
-| Juggernaut | 110 | −13 % | +20 HP | +50 HP, 15 % weniger Schaden | 3500 |
-| Medic | 45 | +2 % | +2 HP/s | +4 HP/s, Medkits doppelt so schnell und +25 HP | 1600 |
+| Case | Preis | Rare | Epic | Legendary | Mythic | Ultra |
+|---|---|---|---|---|---|---|
+| Standard | 1.000 | 12 % | 1 in 34 | 1 in 5.000 | – | – |
+| Mage / Demolition | 3.000 | 20 % | 1 in 14 | 1 in 1.000 | 1 in 200.000 | – |
+| Elite | 10.000 | 40 % | 20 % | 1 in 400 | 1 in 20.000 | 1 in 200.000 |
+| Sovereign | 100.000 | 35 % | 63 % | 1 in 60 | 1 in 1.000 | 1 in 10.000 |
+| Scrap | 60 Scrap | 1 in 18 | 1 in 204 | 1 in 10.000 | – | – |
+| Kiste im Raid | – | 1 in 11 | 1 in 53 | 1 in 1.000 | 1 in 100.000 | – |
 
-- **Granaten** (Taste G wirft auf den Mauszeiger, max. 560 weit, T wechselt
-  die Sorte; im Raid je Sorte bis 4): 💣 Frag (1,3 s Zuender, 85 Schaden im
-  Radius 140, faellt nach aussen ab, **Waende schirmen ab**), 💨 Smoke (9 s
-  Wolke, versteckt), 🔥 Molotov (5 s Feuerflaeche, 22 Schaden/s).
-- **Medkit:** heilt 50 HP ueber 2 s (Q). Im Loadout bis 3, im Raid bis 6.
-- **Effekte (Mods) sind ein seltener Zusatz**, mit Stufen (jede exponentiell
-  seltener): Waffen – Sharp, Rapid, Velocity, Critical, Multishot I–IV,
-  Piercing, Ricochet, Incendiary, Frost, Vampire, Explosive, Homing, Tesla,
-  Executioner; Ruestung – Plating, Swift, Regeneration, Thorns, Dodge.
-  Anteil mit mindestens einem Effekt: Kiste ~1 %, Standard-Case ~4 %,
-  Elite-Case ~15 %, Scrap-„modded“ 100 %.
-- **„1 in X“ ist ehrlich kalibriert:** Wahrscheinlichkeit, aus einem
-  Standard-Case etwas mindestens so Seltenes zu ziehen (mindestens dieser
-  Grade, mindestens diese Mods, bei Case-only-Waffen deren Anteil),
-  umgerechnet ueber eine Monte-Carlo-Tabelle (`CALIBRATION`, 3 Mio
-  Ziehungen, `node arena-items.js calibrate`) in „nur jede X-te Ziehung ist
-  so selten“. Stufen: Common, Uncommon ab 3, Rare ab 20, Epic ab 200,
-  Legendary ab 5.000, Mythic ab 100.000, ✦ One in a million ab 1.000.000.
-  Standard-Case nach Runde 2: ~46 % Common, ~49 % Uncommon, ~4,9 % Rare,
-  ~0,5 % Epic, ~0,02 % Legendary. Nachrechnen: `node arena-items.js 300000`.
-- **Salvage** gibt Scrap nach Stufe, Basis und Effekten (`salvageValue`,
-  der Hub zeigt den Wert als `sv` je Item).
+- **Basen ab einer Stufe:** Zu einer gewuerfelten Stufe kommen nur Basen bis
+  zu dieser Stufe in Frage, je hoeher die eigene Stufe der Basis, desto
+  wahrscheinlicher (Gewicht 4^Stufe) – oben setzen sich die Specials durch.
+  Mage- und Demolition-Case ziehen zu 75 % aus ihrem Thema.
+
+| Ab | Waffen | Ruestung (Set) | Verbrauchsgut |
+|---|---|---|---|
+| Common | Pistol, SMG, Shotgun, Rifle, Sniper, 🪄 Apprentice wand | Scout, Soldier | Bandage, Medkit, Frag, Smoke |
+| Uncommon | Revolver | Medic | Stim, Molotov, Flashbang |
+| Rare | Golden Deagle, Crossbow, Fire staff, Frost staff | Juggernaut, Archmage | Trauma kit, Fireball scroll |
+| Epic | Minigun, Launcher, **Flamethrower**, Storm staff | – | Cluster bomb, Frost nova, Blink scroll |
+| Legendary | **Railgun**, Arcane orb | **Phantom** (4 Teile: unsichtbar nach 1,5 s Stillstand) | Phoenix elixir |
+| Mythic | **Fat Boy** (Nuke-Werfer), Staff of the Archmage | **Titan** (+150 HP, 25 % Dornen) | **Tactical nuke** |
+| Ultra | **Singularity** | – | **Black hole** |
+
+  Staebe und manche Specials haben eingebaute Effekte (`innate`, z. B.
+  Crossbow durchschlaegt 2, Arcane orb sucht Ziele).
+- **Effekte (Mods)** sind ein Zusatz, **fuer jede Stufe und jede Quelle gleich
+  selten**: ~10 % einer, ~1 % zwei, 0,05 % drei (`EFFECT_N`). Sie aendern die
+  Stufe nicht, aber „1 in X“ und den Score.
+- **„1 in X“** = Stufen-Wert (Common 1, Uncommon 3, Rare 10, Epic 50,
+  Legendary 2.500, Mythic 100.000, Ultra 1.000.000) × Effekt-Faktor
+  (1 / P(mindestens so viele Effekte) × 1,5 je Effekt-Stufe ueber I). Beispiel:
+  Uncommon mit zwei Effekten ≈ 1 in 300.
+- **Item-Score (⚡):** so viele Coins gibt man im Mittel aus, bis ein Case
+  etwas mindestens dieser Stufe bringt (guenstigster Case), × Effekt-Faktor.
+  Shop-Ware: ihr Preis. Grob: Common 1k, Rare 6,7k, Epic 33k, Legendary 3M,
+  Mythic 91M, Ultra 1B.
+- **Ruestung:** vier Slots × sieben Sets (Werte je Set auf die Teile verteilt,
+  Helm 25 %, Weste 40 %, Hose 20 %, Schuhe 15 %); Boni ab 2 und 4 Teilen:
+  Scout Tempo/Dodge, Soldier Schaden/Feuerrate, Medic Regeneration und
+  doppelte Heilung, Juggernaut HP/weniger Schaden, Archmage Feuerrate und
+  zielsuchende Kugeln, Phantom Dodge und Unsichtbarkeit, Titan HP und Dornen.
+  **Ruestung gibt es nicht mehr im Shop**, nur aus Cases und Kisten.
+- **Verbrauchsgut** liegt in **zwei Slots (Q und G)**, je Slot ein Stapel einer
+  Sorte (Stapelgroesse je Sorte). Wuerfe und Blink zielen auf den Mauszeiger.
+  Flashbang blendet alle mit Sicht, Nuke (3 s Zuender, 420 Radius, Waende
+  schuetzen nicht), Black hole (zieht 1,6 s alle heran, dann 220 Schaden).
+- **Migration:** Items aus Runde 1/2 werden beim ersten Hub-Aufruf
+  umgestellt (Grade faellt weg, Medkits/Granaten werden Verbrauchsgut und
+  wandern in die Slots, Seltenheit und Score neu). Achievements „Loot goblin“,
+  neu „Mythical“ und „One in a million“ haengen an der Stufe (`stats.bestTier`).
+- **Salvage** nach Stufe und Effekten (`salvageValue`).
+- Nachrechnen: `node arena-items.js 400000` (Stufen je Quelle, Effekt-Anteil,
+  haeufigste Specials).
 
 ### Raid (`shooter.js`)
 
@@ -662,8 +680,8 @@ Tabs:
   Regeneration; Sets wie oben.
 
 **Steuerung:** WASD/Pfeile laufen, Maus zielt, Klick/Leertaste schiesst,
-1/2 oder Mausrad Waffe, Q Medkit, G Granate, T Granatensorte, F (oder E)
-Kiste/Beutel, Tab/I Inventar. Touch: zwei Sticks, dazu Knoepfe
+1/2 oder Mausrad Waffe, Q und G Verbrauchsgut (auf den Mauszeiger), F (oder E)
+Kiste/Beutel, Tab/I Inventar. Schuesse klingen seit Runde 3 dumpfer (Tiefpass, schnelle Waffen leiser). Touch: zwei Sticks, dazu Knoepfe
 🔄 💉 ✋ 💣 🎒. Minimap mit Waenden, Gebaeuden, Bueschen, Zonen und
 Sichtfenster.
 
@@ -673,7 +691,7 @@ Einheiten) an den Server-Stand von vor einer Laufzeit angeglichen, andere
 Spieler nur, was in Sichtweite (`VIEW` 1400) und nicht versteckt ist.
 
 **Speicher:** `u.arena = { inv, loadout: { primary, secondary, helmet,
-vest, pants, boots, meds, nades: { frag, smoke, molotov } }, scrap, v2 }`.
+vest, pants, boots, util: [{ base, n } | null, …] }, scrap, v: 3 }`.
 Statistik: `raids`, `arenaExtracts`, `shooterKills`, `shooterDeaths`,
 `casesOpened`, `bestOdds`, `earned.shooter`. Die Bestenliste „Arena kills“
 zaehlt ueber `periods.arenaKills`.
@@ -897,12 +915,12 @@ Client → Server: `register`, `login`, `resume {token}`, `logout`,
 beim Blackjack, `sit {seat?}`/`stand`/`move` (`fold`, `check`,
 `call`, `raise {to}`, `allin`) beim Poker), `pokerCreate {buyIn, seats, name}`, `daily`, `dailyDone`, `crossStart {bet, diff}`, `crossStep`,
 `crossCash`, `plinko {bet, risk}`, `board {cat, game, period}`, `me`, `shJoin`,
-`shInput {mx, my, a, f, s}`, `shSlot {slot}`, `shMed`, `shInteract`, `shNade {x, y}`, `shNadeSel {base}`, `shInv {op: equip|unequip|drop, uid, slot}`, `shPing {t}`, `shLeave`, `arHub`, `arBuy {id, n}`, `arCase {id}`, `arSalvage {uids}`, `arEquip {slot, uid|null, n, base}`, `shopRot`, `shopBuy {id}`, `shopEquip {cat, id|null}`, `setTitle {id|null}`, `tickets`, `ticketNew {subject, text}`, `ticketReply {id, text}`,
+`shInput {mx, my, a, f, s}`, `shSlot {slot}`, `shMed`, `shInteract`, `shUse {slot: 0|1, x, y}`, `shInv {op: equip|unequip|drop, uid, slot}`, `shPing {t}`, `shLeave`, `arHub`, `arBuy {id, n}`, `arCase {id}`, `arSalvage {uids}`, `arEquip {slot, uid|null, n, base}`, `shopRot`, `shopBuy {id}`, `shopEquip {cat, id|null}`, `setTitle {id|null}`, `tickets`, `ticketNew {subject, text}`, `ticketReply {id, text}`,
 `ticketRead {id}`.
 
 Server → Client: `welcome`, `mg` (Schritt im Map-Event), `sh`, `shJoined`
 (mit Map und Waffen), `shLeft` (Bilanz, Rueckgabe), `shKill`, `shHit`, `shHurt`,
-`shLoot`, `shInv`, `shBoom`, `shZap`, `shPong`, `shRooms`, `shError`, `arHub`, `arError`, `shopOk`, `shopRot`, `shopError`, `deathfx`, `achievement`, `auth`, `authError`, `authExpired`, `account`,
+`shLoot`, `shInv`, `shBoom`, `shFx`, `shFlash`, `shZap`, `shPong`, `shRooms`, `shError`, `arHub`, `arError`, `shopOk`, `shopRot`, `shopError`, `deathfx`, `achievement`, `auth`, `authError`, `authExpired`, `account`,
 `joined`, `joinError`, `left`, `died` (`cause`, `by`, `byId`, `at`), `swapfx`, `cashedout`, `cashoutCancel`, `state`
 (alle 60 ms, mit `arena` und `paused`), `duel`, `gamble`, `box`, `jackpot`,
 `feed` (mit `who` und `big` fuer den Sound), `chat`, `chatlog`, `highscores`, `board`,

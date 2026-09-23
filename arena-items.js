@@ -1,58 +1,102 @@
-// Arena-Items (Extraction, Umbau 23.09.2026, Runde 2 am selben Tag):
-// Waffen, Ruestungsteile (Helm, Weste, Hose, Schuhe) in vier Sets, Medkits,
-// Granaten; dazu Qualitaet (Grade I-V), sehr seltene Special-Effekte (Mods),
-// die Erzeugung aus Cases und Kisten, die echte Seltenheit ("1 in X") und der
-// Wert beim Salvagen.
+// Arena-Items (Extraction, 23.09.2026; Runde 3 am selben Tag).
 //
-// Runde 2 (Feedback Max): Items heissen nur noch nach ihrer Basis ("Sniper",
-// nicht "Rapid Sniper"). Die Seltenheit kommt vor allem aus dem Grade (+0 bis
-// +32 % auf die Werte); Effekte sind ein seltener Zusatz – im Standard-Case
-// hat nur etwa jedes 25. Item ueberhaupt einen, zwei sind eine Sensation.
+// Runde 3 (Feedback Max): Die Seltenheitsstufe wird je Quelle direkt
+// gewuerfelt (Common ... Ultra) – z. B. Elite-Case Legendary 1 in 400,
+// Sovereign-Case (100k) Legendary 1 in 60, Mythic 1 in 1.000, Ultra 1 in
+// 10.000. Jede Stufe gibt einen Werte-Aufschlag, und ab Epic gibt es
+// besondere Basen, die es darunter nicht gibt (Flammenwerfer, Railgun,
+// Nuke-Werfer, Singularity, Staebe, Phantom- und Titan-Set, Nuke-Granate …).
+// Special-Effekte (Mods) sind unabhaengig von der Stufe gleich selten
+// (~10 % einer, ~1 % zwei); sie erhoehen "1 in X" und den Item-Score, nicht
+// die Stufe. Verbrauchsgut (Heilung, Granaten, Zauber) liegt in zwei Slots.
 //
-// "1 in X" ist kalibriert: nur jede X-te Ziehung aus dem Standard-Case ist
-// mindestens so selten (siehe CALIBRATION, `node arena-items.js calibrate`).
+// "1 in X" = Stufen-Seltenheit (TIER_ODDS) × Effekt-Seltenheit.
+// Item-Score = so viele Coins muesste man im Mittel ausgeben, um etwas
+// mindestens so Seltenes zu ziehen (guenstigster Case) × Effekt-Seltenheit.
 
-// ---------- Basen ----------
+const TIERS = [
+    { id: 'common', name: 'Common' },
+    { id: 'uncommon', name: 'Uncommon' },
+    { id: 'rare', name: 'Rare' },
+    { id: 'epic', name: 'Epic' },
+    { id: 'legendary', name: 'Legendary' },
+    { id: 'mythic', name: 'Mythic' },
+    { id: 'ultra', name: '✦ Ultra rare' }
+];
+const TIER_IDX = Object.fromEntries(TIERS.map((t, i) => [t.id, i]));
+// Anzeige "1 in X" je Stufe (ohne Effekte)
+const TIER_ODDS = [1, 3, 10, 50, 2500, 100000, 1000000];
+// Aufschlag auf Schaden bzw. HP je Stufe
+const TIER_BONUS = [0, 0.05, 0.1, 0.16, 0.24, 0.34, 0.5];
 
-// ms = Schussabstand, dmg je Kugel, speed, life (s), spread (rad), pellets
+// ---------- Waffen ----------
+// ms = Schussabstand, dmg je Kugel, speed, life (s), spread (rad), pellets,
+// tier = ab welcher Stufe es sie gibt, tag = Themen-Case, innate = eingebaute Effekte
 const WEAPONS = {
-    pistol: { name: 'Pistol', icon: '🔫', ms: 260, dmg: 20, speed: 950, life: 0.9, spread: 0.03, pellets: 1, price: 0 },
-    smg: { name: 'SMG', icon: '🔫', ms: 90, dmg: 10, speed: 1000, life: 0.7, spread: 0.09, pellets: 1, price: 600 },
-    shotgun: { name: 'Shotgun', icon: '💥', ms: 650, dmg: 14, speed: 900, life: 0.45, spread: 0.3, pellets: 6, price: 900 },
-    rifle: { name: 'Rifle', icon: '🪖', ms: 150, dmg: 22, speed: 1250, life: 1.0, spread: 0.02, pellets: 1, price: 1400 },
-    sniper: { name: 'Sniper', icon: '🎯', ms: 1100, dmg: 90, speed: 2200, life: 1.3, spread: 0, pellets: 1, price: 2500 },
-    // nur aus Cases und Kisten
-    deagle: { name: 'Golden Deagle', icon: '✨', ms: 380, dmg: 55, speed: 1500, life: 1.0, spread: 0.01, pellets: 1, price: 0, special: true },
-    minigun: { name: 'Minigun', icon: '⚙️', ms: 55, dmg: 9, speed: 1100, life: 0.8, spread: 0.14, pellets: 1, price: 0, special: true },
-    launcher: { name: 'Launcher', icon: '🚀', ms: 1000, dmg: 45, speed: 700, life: 1.4, spread: 0, pellets: 1, price: 0, special: true, explode: 1 }
+    pistol: { name: 'Pistol', icon: '🔫', tier: 0, ms: 260, dmg: 20, speed: 950, life: 0.9, spread: 0.03, pellets: 1, price: 0 },
+    smg: { name: 'SMG', icon: '🔫', tier: 0, ms: 90, dmg: 10, speed: 1000, life: 0.7, spread: 0.09, pellets: 1, price: 600 },
+    shotgun: { name: 'Shotgun', icon: '💥', tier: 0, ms: 650, dmg: 14, speed: 900, life: 0.45, spread: 0.3, pellets: 6, price: 900 },
+    rifle: { name: 'Rifle', icon: '🪖', tier: 0, ms: 150, dmg: 22, speed: 1250, life: 1.0, spread: 0.02, pellets: 1, price: 1400 },
+    sniper: { name: 'Sniper', icon: '🎯', tier: 0, ms: 1100, dmg: 90, speed: 2200, life: 1.3, spread: 0, pellets: 1, price: 2500 },
+    wand: { name: 'Apprentice wand', icon: '🪄', tier: 0, tag: 'mage', ms: 330, dmg: 18, speed: 800, life: 1.0, spread: 0.02, pellets: 1, innate: { homing: 1 } },
+    revolver: { name: 'Revolver', icon: '🤠', tier: 1, ms: 420, dmg: 42, speed: 1300, life: 1.0, spread: 0.01, pellets: 1 },
+    deagle: { name: 'Golden Deagle', icon: '✨', tier: 2, ms: 380, dmg: 55, speed: 1500, life: 1.0, spread: 0.01, pellets: 1 },
+    crossbow: { name: 'Crossbow', icon: '🏹', tier: 2, ms: 800, dmg: 70, speed: 1100, life: 1.2, spread: 0, pellets: 1, innate: { pierce: 2 } },
+    firestaff: { name: 'Fire staff', icon: '☄️', tier: 2, tag: 'mage', ms: 450, dmg: 28, speed: 850, life: 1.0, spread: 0.02, pellets: 1, innate: { burn: 2 } },
+    froststaff: { name: 'Frost staff', icon: '🧊', tier: 2, tag: 'mage', ms: 450, dmg: 26, speed: 850, life: 1.0, spread: 0.02, pellets: 1, innate: { frost: 2 } },
+    minigun: { name: 'Minigun', icon: '⚙️', tier: 3, ms: 55, dmg: 9, speed: 1100, life: 0.8, spread: 0.14, pellets: 1 },
+    launcher: { name: 'Launcher', icon: '🚀', tier: 3, tag: 'demo', ms: 1000, dmg: 45, speed: 700, life: 1.4, spread: 0, pellets: 1, explode: 1 },
+    flamethrower: { name: 'Flamethrower', icon: '🔥', tier: 3, tag: 'demo', ms: 60, dmg: 5, speed: 520, life: 0.42, spread: 0.35, pellets: 1, flame: true, innate: { burn: 2 } },
+    stormstaff: { name: 'Storm staff', icon: '🌩️', tier: 3, tag: 'mage', ms: 500, dmg: 34, speed: 1000, life: 1.0, spread: 0.02, pellets: 1, innate: { tesla: 1 } },
+    railgun: { name: 'Railgun', icon: '⚡', tier: 4, ms: 1400, dmg: 140, speed: 3200, life: 1.2, spread: 0, pellets: 1, innate: { pierce: 5 } },
+    arcaneorb: { name: 'Arcane orb', icon: '🔮', tier: 4, tag: 'mage', ms: 300, dmg: 36, speed: 900, life: 1.4, spread: 0.02, pellets: 1, innate: { homing: 2, pierce: 1 } },
+    nukelauncher: { name: 'Fat Boy', icon: '☢️', tier: 5, tag: 'demo', ms: 2500, dmg: 120, speed: 600, life: 1.6, spread: 0, pellets: 1, explode: 2.5 },
+    archstaff: { name: 'Staff of the Archmage', icon: '🧙', tier: 5, tag: 'mage', ms: 380, dmg: 40, speed: 950, life: 1.3, spread: 0.02, pellets: 1, innate: { multishot: 2, homing: 2, tesla: 1 } },
+    singularity: { name: 'Singularity', icon: '🌀', tier: 6, tag: 'demo', ms: 1600, dmg: 90, speed: 450, life: 2.0, spread: 0, pellets: 1, explode: 2, innate: { homing: 2, tesla: 1 } }
 };
+// Im Shop fuer Coins (nur Grundwaffen, immer Common)
+const WEAPON_PRICES = { smg: 600, shotgun: 900, rifle: 1400, sniper: 2500 };
 
-// Ruestung: vier Slots, vier Sets. hp und speed je Set verteilen sich nach
-// SLOT_SHARE auf die Teile; der Set-Bonus greift ab 2 und ab 4 Teilen.
+// ---------- Ruestung: vier Slots, Sets mit Bonus ab 2 und 4 Teilen ----------
 const SLOTS = ['helmet', 'vest', 'pants', 'boots'];
 const SLOT_NAMES = { helmet: 'Helmet', vest: 'Vest', pants: 'Pants', boots: 'Boots' };
 const SLOT_SHARE = { helmet: 0.25, vest: 0.4, pants: 0.2, boots: 0.15 };
 
 const SETS = {
     scout: {
-        name: 'Scout', color: '#7dffb0', hp: 30, speed: 0.08, price: 900,
+        name: 'Scout', color: '#7dffb0', tier: 0, hp: 30, speed: 0.08,
         pieces: { helmet: ['Scout cap', '🧢'], vest: ['Scout vest', '🦺'], pants: ['Scout pants', '👖'], boots: ['Scout sneakers', '👟'] },
         bonus: ['2: +6% move speed', '4: +12% move speed, 10% dodge']
     },
     soldier: {
-        name: 'Soldier', color: '#3da5ff', hp: 60, speed: 0, price: 1800,
+        name: 'Soldier', color: '#3da5ff', tier: 0, hp: 60, speed: 0,
         pieces: { helmet: ['Combat helmet', '🪖'], vest: ['Plate carrier', '🛡️'], pants: ['Cargo pants', '👖'], boots: ['Combat boots', '🥾'] },
         bonus: ['2: +8% damage', '4: +15% damage, +10% fire rate']
     },
+    medic: {
+        name: 'Medic', color: '#ff5b8a', tier: 1, hp: 45, speed: 0.02,
+        pieces: { helmet: ['Medic cap', '⛑️'], vest: ['Medic vest', '🦺'], pants: ['Medic pants', '👖'], boots: ['Medic shoes', '👟'] },
+        bonus: ['2: +2 HP/s regeneration', '4: +4 HP/s, healing items twice as strong']
+    },
     jugg: {
-        name: 'Juggernaut', color: '#ffd23f', hp: 110, speed: -0.13, price: 3500,
+        name: 'Juggernaut', color: '#ffd23f', tier: 2, hp: 110, speed: -0.13,
         pieces: { helmet: ['Jugg helmet', '⛑️'], vest: ['Jugg armor', '🦾'], pants: ['Jugg greaves', '🦿'], boots: ['Jugg boots', '🥾'] },
         bonus: ['2: +20 HP', '4: +50 HP, 15% less damage taken']
     },
-    medic: {
-        name: 'Medic', color: '#ff5b8a', hp: 45, speed: 0.02, price: 1600,
-        pieces: { helmet: ['Medic cap', '⛑️'], vest: ['Medic vest', '🦺'], pants: ['Medic pants', '👖'], boots: ['Medic shoes', '👟'] },
-        bonus: ['2: +2 HP/s regeneration', '4: +4 HP/s, medkits heal twice as fast and 25 HP more']
+    mage: {
+        name: 'Archmage', color: '#b884ff', tier: 2, tag: 'mage', hp: 40, speed: 0.04,
+        pieces: { helmet: ['Wizard hat', '🎩'], vest: ['Arcane robe', '🥻'], pants: ['Mystic leggings', '👖'], boots: ['Enchanted boots', '🥾'] },
+        bonus: ['2: +10% fire rate', '4: +10% damage, every bullet curves towards enemies']
+    },
+    phantom: {
+        name: 'Phantom', color: '#8fe9ff', tier: 4, hp: 70, speed: 0.1,
+        pieces: { helmet: ['Phantom mask', '🎭'], vest: ['Phantom cloak', '🧥'], pants: ['Phantom pants', '👖'], boots: ['Phantom boots', '👢'] },
+        bonus: ['2: 15% dodge', '4: invisible after standing still for 1.5 s']
+    },
+    titan: {
+        name: 'Titan', color: '#ff5b5b', tier: 5, hp: 220, speed: -0.05,
+        pieces: { helmet: ['Titan crown', '👑'], vest: ['Titan plate', '🛡️'], pants: ['Titan greaves', '🦿'], boots: ['Titan boots', '🥾'] },
+        bonus: ['2: +60 HP', '4: +150 HP, reflects 25% of damage']
     }
 };
 
@@ -61,27 +105,41 @@ const ARMORS = {};
 for (const [sid, s] of Object.entries(SETS)) {
     for (const slot of SLOTS) {
         ARMORS[`${sid}_${slot}`] = {
-            name: s.pieces[slot][0], icon: s.pieces[slot][1], set: sid, slot,
-            hp: Math.round(s.hp * SLOT_SHARE[slot]), speed: s.speed * SLOT_SHARE[slot],
-            price: Math.round(s.price * SLOT_SHARE[slot] / 50) * 50
+            name: s.pieces[slot][0], icon: s.pieces[slot][1], set: sid, slot, tier: s.tier, tag: s.tag,
+            hp: Math.round(s.hp * SLOT_SHARE[slot]), speed: s.speed * SLOT_SHARE[slot]
         };
     }
 }
 
-// Granaten: Taste G wirft die gewaehlte, T wechselt
-const THROWS = {
-    frag: { name: 'Frag grenade', icon: '💣', r: 140, dmg: 85, fuse: 1300, price: 250, desc: 'Explodes after 1.3 s' },
-    smoke: { name: 'Smoke grenade', icon: '💨', r: 180, dur: 9000, price: 150, desc: 'Cloud for 9 s – nobody outside sees you inside' },
-    molotov: { name: 'Molotov', icon: '🔥', r: 115, dur: 5000, dps: 22, price: 300, desc: 'Fire zone for 5 s, 22 damage per second' }
+// ---------- Verbrauchsgut: zwei Slots im Loadout (Q und G) ----------
+// use: heal (sofort/ueber Zeit), throw (auf den Mauszeiger), self (um sich herum)
+const UTILS = {
+    bandage: { name: 'Bandage', icon: '🩹', tier: 0, use: 'heal', stack: 5, heal: 25, ms: 0, desc: 'Heals 25 HP instantly' },
+    medkit: { name: 'Medkit', icon: '💉', tier: 0, use: 'heal', stack: 3, heal: 50, ms: 2000, desc: 'Heals 50 HP over 2 s' },
+    frag: { name: 'Frag grenade', icon: '💣', tier: 0, tag: 'demo', use: 'throw', stack: 4, r: 140, dmg: 85, fuse: 1300, desc: 'Explodes after 1.3 s, walls block it' },
+    smoke: { name: 'Smoke grenade', icon: '💨', tier: 0, use: 'throw', stack: 3, r: 180, dur: 9000, desc: 'Cloud for 9 s – nobody outside sees you inside' },
+    stim: { name: 'Stim', icon: '💊', tier: 1, use: 'heal', stack: 3, heal: 25, ms: 0, speed: 0.3, speedMs: 5000, desc: '+25 HP and 30% speed for 5 s' },
+    molotov: { name: 'Molotov', icon: '🍾', tier: 1, tag: 'demo', use: 'throw', stack: 3, r: 115, dur: 5000, dps: 22, desc: 'Fire zone for 5 s, 22 damage per second' },
+    flash: { name: 'Flashbang', icon: '🔆', tier: 1, use: 'throw', stack: 3, r: 240, fuse: 900, blind: 2600, desc: 'Blinds everyone who sees it for up to 2.6 s' },
+    trauma: { name: 'Trauma kit', icon: '🧰', tier: 2, use: 'heal', stack: 2, heal: 100, ms: 3000, desc: 'Heals 100 HP over 3 s' },
+    fireball: { name: 'Fireball scroll', icon: '📜', tier: 2, tag: 'mage', use: 'throw', stack: 2, r: 150, dur: 4000, dps: 30, dmg: 40, desc: 'Impact for 40, then fire for 4 s' },
+    cluster: { name: 'Cluster bomb', icon: '🧨', tier: 3, tag: 'demo', use: 'throw', stack: 2, r: 110, dmg: 60, fuse: 1200, bits: 5, desc: 'Explodes and scatters 5 more bombs' },
+    frostnova: { name: 'Frost nova', icon: '❄️', tier: 3, tag: 'mage', use: 'self', stack: 2, r: 260, dmg: 30, slow: 0.7, slowMs: 3000, desc: 'Freezes everyone around you (−70% speed, 3 s)' },
+    blink: { name: 'Blink scroll', icon: '✴️', tier: 3, tag: 'mage', use: 'self', stack: 2, range: 420, desc: 'Teleports you towards the cursor (420)' },
+    phoenix: { name: 'Phoenix elixir', icon: '🐦‍🔥', tier: 4, use: 'heal', stack: 1, full: true, protect: 3000, desc: 'Full heal and 3 s invulnerable' },
+    nuke: { name: 'Tactical nuke', icon: '☢️', tier: 5, tag: 'demo', use: 'throw', stack: 1, r: 420, dmg: 320, fuse: 3000, nuke: true, desc: '3 s fuse, 320 damage in a huge radius, walls do not help' },
+    blackhole: { name: 'Black hole', icon: '🕳️', tier: 6, tag: 'demo', use: 'throw', stack: 1, r: 300, dmg: 220, pull: 1600, desc: 'Pulls everyone in for 1.6 s, then collapses (220)' }
 };
-const THROW_RANGE = 560;
-const NADES_MAX = 4;             // je Sorte im Raid
+// Im Shop (nur Grundware)
+const UTIL_PRICES = { bandage: 80, medkit: 150, frag: 250, smoke: 150 };
+const UTIL_SCRAP = { bandage: 5, medkit: 8, frag: 12, smoke: 8 };
 
-// Qualitaet: Aufschlag auf Schaden bzw. HP
-const GRADES = [0, 0.06, 0.12, 0.2, 0.32];
+const THROW_RANGE = 560;
 
 // ---------- Mods (Special-Effekte) ----------
-// w = Gewicht bei der Auswahl, max = hoechste Stufe, decay = Faktor je Stufe
+// Wie viele Effekte ein Item bekommt, ist fuer alle Quellen und Stufen gleich
+const EFFECT_N = [0.9, 0.09, 0.0095, 0.0005];
+
 const WEAPON_MODS = {
     sharp: { name: 'Sharp', icon: '🗡️', w: 30, max: 5, decay: 0.3, desc: l => `+${l * 12}% damage` },
     rapid: { name: 'Rapid', icon: '⚡', w: 30, max: 5, decay: 0.3, desc: l => `+${l * 10}% fire rate` },
@@ -108,70 +166,48 @@ const ARMOR_MODS = {
 };
 
 // ---------- Quellen ----------
-// n = Verteilung der Mod-Anzahl (Effekte sind sehr selten), g = Verteilung
-// des Grades, kinds = Anteil der Arten, special = Anteil der Case-only-Waffen
+// t = Wahrscheinlichkeit je Stufe (Common..Ultra), kinds = Anteil der Arten,
+// tag = Themen-Case: so viel Anteil geht an Basen mit diesem Tag
 const SOURCES = {
-    crate: { n: [0.985, 0.0135, 0.0014, 0.0001], g: [0.62, 0.26, 0.09, 0.025, 0.005], kinds: { weapon: 0.3, armor: 0.3, med: 0.22, throw: 0.18 }, special: 0.03 },
-    scrapcase: { n: [0.97, 0.027, 0.0028, 0.0002], g: [0.5, 0.3, 0.14, 0.05, 0.01], kinds: { weapon: 0.5, armor: 0.5 }, special: 0.05 },
-    standard: { n: [0.96, 0.035, 0.0045, 0.0005], g: [0.5, 0.3, 0.14, 0.05, 0.01], kinds: { weapon: 0.55, armor: 0.45 }, special: 0.08 },
-    elite: { n: [0.85, 0.13, 0.018, 0.0018, 0.0002], g: [0, 0.45, 0.33, 0.17, 0.05], kinds: { weapon: 0.55, armor: 0.45 }, special: 0.2 },
+    crate: { t: [0.62, 0.27, 0.09, 0.0189, 0.001, 0.00001, 0], kinds: { weapon: 0.3, armor: 0.3, util: 0.4 } },
+    scrapcase: { t: [0.7, 0.24, 0.055, 0.0049, 0.0001, 0, 0], kinds: { weapon: 0.45, armor: 0.35, util: 0.2 } },
+    standard: { t: [0.55, 0.3, 0.12, 0.0298, 0.0002, 0, 0], kinds: { weapon: 0.45, armor: 0.35, util: 0.2 } },
+    mage: { t: [0.4, 0.33, 0.2, 0.069, 0.001, 0.000005, 0], kinds: { weapon: 0.45, armor: 0.3, util: 0.25 }, tag: 'mage', tagShare: 0.75 },
+    demo: { t: [0.4, 0.33, 0.2, 0.069, 0.001, 0.000005, 0], kinds: { weapon: 0.45, armor: 0.2, util: 0.35 }, tag: 'demo', tagShare: 0.75 },
+    elite: { t: [0, 0.4, 0.4, 0.19745, 0.0025, 0.00005, 0.000005], kinds: { weapon: 0.45, armor: 0.4, util: 0.15 } },
+    sovereign: { t: [0, 0, 0.35, 0.6322333, 1 / 60, 0.001, 0.0001], kinds: { weapon: 0.45, armor: 0.4, util: 0.15 } },
     // Scrap-Shop: Waffe mit garantiert einem Effekt
-    modded: { n: [0, 0.95, 0.045, 0.005], g: [0.6, 0.3, 0.1, 0, 0], kinds: { weapon: 1 }, special: 0.05 }
+    modded: { t: [0.6, 0.3, 0.1, 0, 0, 0, 0], kinds: { weapon: 1 }, effects: [0, 0.9, 0.095, 0.005] }
 };
 
 const CASES = {
-    standard: { name: 'Standard case', icon: '📦', price: 1000, currency: 'coins', source: 'standard' },
-    elite: { name: 'Elite case', icon: '💎', price: 10000, currency: 'coins', source: 'elite' },
-    scrap: { name: 'Scrap case', icon: '🧰', price: 60, currency: 'scrap', source: 'scrapcase' }
+    standard: { name: 'Standard case', icon: '📦', price: 1000, currency: 'coins', source: 'standard', desc: 'Everything, mostly common' },
+    mage: { name: 'Mage case', icon: '🔮', price: 3000, currency: 'coins', source: 'mage', desc: 'Mostly staffs, robes and spell scrolls' },
+    demo: { name: 'Demolition case', icon: '🧨', price: 3000, currency: 'coins', source: 'demo', desc: 'Launchers, flamethrowers and explosives' },
+    elite: { name: 'Elite case', icon: '💎', price: 10000, currency: 'coins', source: 'elite', desc: 'Uncommon or better' },
+    sovereign: { name: 'Sovereign case', icon: '👑', price: 100000, currency: 'coins', source: 'sovereign', desc: 'Rare or better – the only real shot at Mythic and Ultra' },
+    scrap: { name: 'Scrap case', icon: '🧰', price: 60, currency: 'scrap', source: 'scrapcase', desc: 'Cheap, paid with scrap' }
 };
 
-// Shop: feste Items ohne Mods, Grade I (Coins) und Scrap-Angebote
+// Shop: Grundwaffen und Grund-Verbrauchsgut (keine Ruestung – die gibt es nur
+// aus Cases und Kisten), dazu Scrap-Angebote
 const SHOP = [
-    ...Object.entries(WEAPONS).filter(([, w]) => w.price > 0).map(([k, w]) => ({ id: 'w_' + k, kind: 'weapon', base: k, price: w.price, currency: 'coins' })),
-    ...Object.entries(ARMORS).map(([k, a]) => ({ id: 'a_' + k, kind: 'armor', base: k, price: a.price, currency: 'coins' })),
-    { id: 'med', kind: 'med', base: 'medkit', price: 150, currency: 'coins' },
-    ...Object.entries(THROWS).map(([k, t]) => ({ id: 't_' + k, kind: 'throw', base: k, price: t.price, currency: 'coins' })),
-    { id: 's_med', kind: 'med', base: 'medkit', price: 8, currency: 'scrap' },
-    { id: 's_frag', kind: 'throw', base: 'frag', price: 12, currency: 'scrap' },
-    { id: 's_smoke', kind: 'throw', base: 'smoke', price: 8, currency: 'scrap' },
-    { id: 's_molotov', kind: 'throw', base: 'molotov', price: 15, currency: 'scrap' },
+    ...Object.entries(WEAPON_PRICES).map(([k, p]) => ({ id: 'w_' + k, kind: 'weapon', base: k, price: p, currency: 'coins' })),
+    ...Object.entries(UTIL_PRICES).map(([k, p]) => ({ id: 'u_' + k, kind: 'util', base: k, price: p, currency: 'coins' })),
+    ...Object.entries(UTIL_SCRAP).map(([k, p]) => ({ id: 's_' + k, kind: 'util', base: k, price: p, currency: 'scrap' })),
     { id: 's_modded', kind: 'gen', source: 'modded', price: 600, currency: 'scrap' }
 ];
 
-// Stufe nach "1 in X"
-const TIERS = [
-    { id: 'common', name: 'Common', min: 0 },
-    { id: 'uncommon', name: 'Uncommon', min: 3 },
-    { id: 'rare', name: 'Rare', min: 20 },
-    { id: 'epic', name: 'Epic', min: 200 },
-    { id: 'legendary', name: 'Legendary', min: 5000 },
-    { id: 'mythic', name: 'Mythic', min: 100000 },
-    { id: 'ultra', name: '✦ One in a million', min: 1000000 }
-];
-
-const INV_MAX = 80;
-const MEDKIT_HEAL = 50;
+const INV_MAX = 100;
 
 function pickWeighted(entries) {
     const total = entries.reduce((s, [, w]) => s + w, 0);
     let r = Math.random() * total;
     for (const [k, w] of entries) {
         r -= w;
-        if (r < 0) return [k, w / total];
+        if (r < 0) return k;
     }
-    const last = entries[entries.length - 1];
-    return [last[0], last[1] / total];
-}
-
-// Stufe 1..max mit P(L) ~ decay^(L-1)
-function rollLevel(m) {
-    return pickWeighted(Array.from({ length: m.max }, (_, i) => [i + 1, Math.pow(m.decay, i)]));
-}
-
-function tierOf(odds) {
-    let t = TIERS[0];
-    for (const x of TIERS) if (odds >= x.min) t = x;
-    return t.id;
+    return entries[entries.length - 1][0];
 }
 
 let seq = 0;
@@ -179,154 +215,133 @@ function uid() {
     return Date.now().toString(36) + (++seq).toString(36) + Math.random().toString(36).slice(2, 6);
 }
 
-// P(Stufe >= L) fuer einen Mod
-function atLeast(m, L) {
-    let tot = 0, hit = 0;
-    for (let i = 1; i <= m.max; i++) {
-        const w = Math.pow(m.decay, i - 1);
-        tot += w;
-        if (i >= L) hit += w;
-    }
-    return hit / tot;
+function defsOf(kind) {
+    return kind === 'weapon' ? WEAPONS : kind === 'armor' ? ARMORS : UTILS;
 }
 
-// Seltenheit als "1 in X": Wahrscheinlichkeit, aus dem Standard-Case etwas
-// mit MINDESTENS diesem Grade und MINDESTENS diesen Mods zu ziehen, bei
-// Case-only-Waffen zusaetzlich deren Anteil.
-function rarityOdds(sourceId, item) {
-    const src = SOURCES[sourceId];
-    let p = 1;
-    if (item.kind === 'weapon' && WEAPONS[item.base].special) {
-        const nSpecial = Object.values(WEAPONS).filter(w => w.special).length;
-        p *= src.special / nSpecial;
+// Basis zu einer gewuerfelten Stufe: nur Basen bis zu dieser Stufe; je hoeher
+// die eigene Stufe der Basis, desto wahrscheinlicher (Specials setzen sich
+// oben durch). Themen-Case: tagShare aus den Basen mit Tag, wenn es welche gibt.
+function pickBase(kind, tier, src) {
+    const all = Object.entries(defsOf(kind)).filter(([, b]) => b.tier <= tier);
+    let pool = all;
+    if (src.tag) {
+        const tagged = all.filter(([, b]) => b.tag === src.tag);
+        if (tagged.length && Math.random() < src.tagShare) pool = tagged;
     }
-    p *= src.g.slice(item.grade || 0).reduce((a, b) => a + b, 0);
-    const k = item.mods.length;
-    if (k) {
-        p *= src.n.slice(k).reduce((a, b) => a + b, 0);
-        const defs = item.kind === 'weapon' ? WEAPON_MODS : ARMOR_MODS;
-        const W = Object.values(defs).reduce((a, m) => a + m.w, 0);
-        for (let i = 2; i <= k; i++) p *= i;
-        for (const m of item.mods) p *= Math.min(1, defs[m.id].w / W * (1 + k * 0.15)) * atLeast(defs[m.id], m.lvl);
-    }
-    return Math.max(1, Math.round(1 / Math.max(1e-12, Math.min(1, p))));
+    return pickWeighted(pool.map(([k, b]) => [k, Math.pow(4, b.tier)]));
+}
+
+// Stufe 1..max mit P(L) ~ decay^(L-1)
+function rollLevel(m) {
+    return pickWeighted(Array.from({ length: m.max }, (_, i) => [i + 1, Math.pow(m.decay, i)]));
 }
 
 // Ein neues Item aus einer Quelle
 function generate(sourceId) {
     const src = SOURCES[sourceId];
-    const [kind] = pickWeighted(Object.entries(src.kinds));
-    if (kind === 'med') return plain('med', 'medkit');
-    if (kind === 'throw') {
-        const [base] = pickWeighted([['frag', 0.45], ['smoke', 0.3], ['molotov', 0.25]]);
-        return plain('throw', base);
-    }
-    let base;
-    if (kind === 'weapon') {
-        const normal = Object.keys(WEAPONS).filter(k => !WEAPONS[k].special);
-        const special = Object.keys(WEAPONS).filter(k => WEAPONS[k].special);
-        base = Math.random() < src.special
-            ? special[Math.floor(Math.random() * special.length)]
-            : normal[Math.floor(Math.random() * normal.length)];
-    } else {
-        const ks = Object.keys(ARMORS);
-        base = ks[Math.floor(Math.random() * ks.length)];
-    }
-    const [grade] = pickWeighted(src.g.map((w, i) => [i, w]).filter(([, w]) => w > 0));
-    const [n] = pickWeighted(src.n.map((w, i) => [i, w]).filter(([, w]) => w > 0));
-    const pool = { ...(kind === 'weapon' ? WEAPON_MODS : ARMOR_MODS) };
+    const kind = pickWeighted(Object.entries(src.kinds));
+    const tier = pickWeighted(src.t.map((w, i) => [i, w]).filter(([, w]) => w > 0));
+    const base = pickBase(kind, tier, src);
     const mods = [];
-    for (let i = 0; i < n && Object.keys(pool).length; i++) {
-        const [id] = pickWeighted(Object.entries(pool).map(([k, m]) => [k, m.w]));
-        const [lvl] = rollLevel(pool[id]);
-        mods.push({ id, lvl });
-        delete pool[id];
-    }
-    mods.sort((a, b) => b.lvl - a.lvl);
-    return finish({ kind, base, grade, mods });
-}
-
-// Vom Admin gebaut: beliebige Basis, Grade und Mods; Seltenheit wie gewuerfelt
-function craft(kind, base, grade, mods) {
-    return finish({ kind, base, grade: grade || 0, mods: (mods || []).slice().sort((a, b) => b.lvl - a.lvl) });
-}
-
-// Feste Items (Shop, Starter): Grade I, keine Mods
-function plain(kind, base) {
-    return finish({ kind, base, grade: 0, mods: [] });
-}
-
-// Kalibrierung "1 in X" (node arena-items.js calibrate): Punktzahl =
-// log10(rarityOdds) gegen den Standard-Case; Tabelle [Punktzahl, log10(1/Anteil
-// aller Standard-Ziehungen mit mindestens dieser Punktzahl)].
-const CALIBRATION = [[0,0],[0.301,0.5],[0.699,0.75],[1.23,1],[1.875,1.25],[2.272,1.5],[2.796,1.75],[3.382,2],[3.867,2.25],[4.355,2.5],[4.781,2.75],[5.238,3],[5.663,3.25],[6.062,3.5],[6.507,3.75],[6.861,4],[7.289,4.25],[7.636,4.5],[8,4.75],[8.311,5],[8.607,5.25],[8.768,5.5],[9.082,5.75]];
-
-function calibrated(score) {
-    const t = CALIBRATION;
-    if (score <= t[0][0]) return 1;
-    for (let i = 1; i < t.length; i++) {
-        if (score <= t[i][0]) {
-            const [s0, l0] = t[i - 1], [s1, l1] = t[i];
-            return Math.pow(10, l0 + (l1 - l0) * (score - s0) / (s1 - s0 || 1));
+    if (kind !== 'util') {
+        const n = pickWeighted((src.effects || EFFECT_N).map((w, i) => [i, w]).filter(([, w]) => w > 0));
+        const pool = { ...(kind === 'weapon' ? WEAPON_MODS : ARMOR_MODS) };
+        for (let i = 0; i < n; i++) {
+            const id = pickWeighted(Object.entries(pool).map(([k, m]) => [k, m.w]));
+            mods.push({ id, lvl: rollLevel(pool[id]) });
+            delete pool[id];
         }
+        mods.sort((a, b) => b.lvl - a.lvl);
     }
-    const [s0, l0] = t[t.length - 2], [s1, l1] = t[t.length - 1];
-    return Math.pow(10, l1 + (l1 - l0) / (s1 - s0 || 1) * (score - s1));
+    return finish({ kind, base, tier: TIERS[tier].id, mods });
 }
 
-function rawScore(item) {
-    if (item.kind !== 'weapon' && item.kind !== 'armor') return 0;
-    return Math.log10(rarityOdds('standard', item));
+// Feste Items (Shop, Starter): Common, keine Mods
+function plain(kind, base) {
+    return finish({ kind, base, tier: 'common', mods: [] }, true);
 }
 
-function finish(item) {
-    const odds = Math.max(1, Math.round(calibrated(rawScore(item))));
-    const out = { uid: uid(), ...item, odds, tier: tierOf(odds), name: nameOf(item), v: 2 };
+// Vom Admin gebaut: beliebige Basis, Stufe und Mods
+function craft(kind, base, tier, mods) {
+    return finish({ kind, base, tier: TIERS[tier] ? TIERS[tier].id : TIER_IDX[tier] !== undefined ? tier : 'common', mods: (mods || []).slice().sort((a, b) => b.lvl - a.lvl) });
+}
+
+// Effekt-Seltenheit: 1 / P(mindestens so viele Effekte) × 1,5 je Stufe ueber I
+function effectFactor(mods) {
+    if (!mods || !mods.length) return 1;
+    const k = Math.min(mods.length, EFFECT_N.length - 1);
+    const p = EFFECT_N.slice(k).reduce((a, b) => a + b, 0);
+    return mods.reduce((f, m) => f * Math.pow(1.5, m.lvl - 1), 1 / p);
+}
+
+// Coins, die man im Mittel ausgibt, bis etwas mindestens dieser Stufe kommt
+const TIER_COST = TIERS.map((_, t) => {
+    let best = Infinity;
+    for (const c of Object.values(CASES)) {
+        if (c.currency !== 'coins') continue;
+        const p = SOURCES[c.source].t.slice(t).reduce((a, b) => a + b, 0);
+        if (p > 0) best = Math.min(best, c.price / p);
+    }
+    return best;
+});
+
+function finish(item, isPlain) {
+    const t = TIER_IDX[item.tier] || 0;
+    const f = effectFactor(item.mods);
+    const odds = Math.max(1, Math.round(TIER_ODDS[t] * f));
+    const bought = isPlain && (WEAPON_PRICES[item.base] || UTIL_PRICES[item.base]);
+    const score = Math.round(bought || TIER_COST[t] * f * (item.kind === 'util' ? 0.3 : 1));
+    const out = { uid: uid(), ...item, odds, score, name: defsOf(item.kind)[item.base].name, v: 3 };
     if (item.kind === 'armor') out.slot = ARMORS[item.base].slot;
     return out;
 }
 
-function nameOf(item) {
-    if (item.kind === 'med') return 'Medkit';
-    if (item.kind === 'throw') return THROWS[item.base].name;
-    return item.kind === 'weapon' ? WEAPONS[item.base].name : ARMORS[item.base].name;
-}
-
-// Scrap beim Salvagen: nach Seltenheit, Mods und Basis
+// Scrap beim Salvagen: nach Stufe und Effekten
 function salvageValue(item) {
     if (item.starter) return 0;
-    if (item.kind === 'med' || item.kind === 'throw') return 3;
-    const t = TIERS.findIndex(x => x.id === item.tier);
-    const baseVal = item.kind === 'weapon' ? (WEAPONS[item.base].special ? 25 : 8) : Math.max(3, Math.round(ARMORS[item.base].price / 100));
-    return Math.round(baseVal + 6 * Math.pow(3, t) + item.mods.reduce((s, m) => s + m.lvl * 15, 0));
+    if (item.kind === 'util') return 3 + 4 * (TIER_IDX[item.tier] || 0);
+    const t = TIER_IDX[item.tier] || 0;
+    return Math.round(8 + 6 * Math.pow(3, t) + (item.mods || []).reduce((s, m) => s + m.lvl * 15, 0));
 }
 
-// Alte Items (Runde 1) auf den neuen Stand bringen: Namen ohne Effekt,
-// Ruestung light/medium/heavy -> Weste des passenden Sets. true = geaendert
+// Alte Items auf Runde 3 bringen: Verbrauchsgut wird 'util', Grade entfaellt
+// (die Stufe traegt jetzt die Werte), Seltenheit und Score neu. true = geaendert
 const OLD_ARMOR = { light: 'scout_vest', medium: 'soldier_vest', heavy: 'jugg_vest' };
 function migrate(item) {
-    if (!item || item.v === 2) return false;
+    if (!item || item.v === 3) return false;
+    if (item.kind === 'med') { item.kind = 'util'; item.base = 'medkit'; }
+    if (item.kind === 'throw') item.kind = 'util';
     if (item.kind === 'armor' && OLD_ARMOR[item.base]) item.base = OLD_ARMOR[item.base];
+    if (!defsOf(item.kind)[item.base]) return false;
     if (item.kind === 'armor') item.slot = ARMORS[item.base].slot;
-    if (item.grade === undefined) item.grade = 0;
-    item.name = nameOf(item);
-    item.v = 2;
+    if (TIER_IDX[item.tier] === undefined) item.tier = 'common';
+    if (item.kind === 'util') item.tier = TIERS[UTILS[item.base].tier].id;
+    delete item.grade;
+    item.mods = item.mods || [];
+    const f = finish(item);
+    item.odds = f.odds;
+    item.score = f.score;
+    item.name = f.name;
+    item.v = 3;
     return true;
 }
 
 // ---------- Werte im Spiel ----------
 
-function modLvl(item, id) {
-    const m = item && item.mods.find(x => x.id === id);
+function lvlOf(item, id) {
+    const m = item && item.mods && item.mods.find(x => x.id === id);
     return m ? m.lvl : 0;
 }
 
 function weaponStats(item) {
     const b = WEAPONS[item.base] || WEAPONS.pistol;
-    const L = id => modLvl(item, id);
+    const inn = b.innate || {};
+    const L = id => lvlOf(item, id) + (inn[id] || 0);
+    const bonus = TIER_BONUS[TIER_IDX[item.tier] || 0];
     return {
         ms: b.ms / (1 + L('rapid') * 0.1),
-        dmg: b.dmg * (1 + GRADES[item.grade || 0]) * (1 + L('sharp') * 0.12),
+        dmg: b.dmg * (1 + bonus) * (1 + L('sharp') * 0.12),
         speed: b.speed * (1 + L('velocity') * 0.25),
         life: b.life * (1 + L('velocity') * 0.15),
         spread: b.spread,
@@ -340,21 +355,21 @@ function weaponStats(item) {
         explode: (b.explode || 0) + L('explosive') * 0.35,
         homing: L('homing'),
         tesla: L('tesla'),
-        execute: L('execute') * 0.15
+        execute: L('execute') * 0.15,
+        flame: !!b.flame
     };
 }
 
-// Summe aller Ruestungsteile samt Set-Bonus
-// gear = { helmet, vest, pants, boots } (Items oder null)
+// Summe aller Ruestungsteile samt Set-Bonus; gear = { helmet, vest, pants, boots }
 function armorStats(gear) {
-    const s = { hp: 0, speed: 1, regen: 0, thorns: 0, dodge: 0, dmg: 1, rate: 1, taken: 1, medRate: 1, medExtra: 0, sets: {} };
+    const s = { hp: 0, speed: 1, regen: 0, thorns: 0, dodge: 0, dmg: 1, rate: 1, taken: 1, healMul: 1, homing: 0, phantom: false, sets: {} };
     for (const slot of SLOTS) {
         const it = gear && gear[slot];
         if (!it) continue;
         const a = ARMORS[it.base];
         if (!a) continue;
-        const L = id => modLvl(it, id);
-        s.hp += a.hp * (1 + GRADES[it.grade || 0]) + L('plating') * 8;
+        const L = id => lvlOf(it, id);
+        s.hp += a.hp * (1 + TIER_BONUS[TIER_IDX[it.tier] || 0]) + L('plating') * 8;
         s.speed += a.speed + L('swift') * 0.03;
         s.regen += L('regen');
         s.thorns += L('thorns') * 0.05;
@@ -365,57 +380,49 @@ function armorStats(gear) {
     if (n('scout') >= 4) { s.speed += 0.12; s.dodge += 0.1; } else if (n('scout') >= 2) s.speed += 0.06;
     if (n('soldier') >= 4) { s.dmg *= 1.15; s.rate *= 1.1; } else if (n('soldier') >= 2) s.dmg *= 1.08;
     if (n('jugg') >= 4) { s.hp += 50; s.taken = 0.85; } else if (n('jugg') >= 2) s.hp += 20;
-    if (n('medic') >= 4) { s.regen += 4; s.medRate = 2; s.medExtra = 25; } else if (n('medic') >= 2) s.regen += 2;
+    if (n('medic') >= 4) { s.regen += 4; s.healMul = 2; } else if (n('medic') >= 2) s.regen += 2;
+    if (n('mage') >= 4) { s.rate *= 1.1; s.dmg *= 1.1; s.homing = 1; } else if (n('mage') >= 2) s.rate *= 1.1;
+    if (n('phantom') >= 2) s.dodge += 0.15;
+    if (n('phantom') >= 4) s.phantom = true;
+    if (n('titan') >= 4) { s.hp += 150; s.thorns += 0.25; } else if (n('titan') >= 2) s.hp += 60;
     s.hp = Math.round(s.hp);
     return s;
 }
 
-// Fuer den Browser: Namen, Icons, Texte
+// Fuer den Browser: Namen, Icons, Texte, Case-Chancen
 function catalog() {
     const mods = (defs) => Object.fromEntries(Object.entries(defs).map(([k, m]) => [k, {
         name: m.name, icon: m.icon, max: m.max, desc: Array.from({ length: m.max }, (_, i) => m.desc(i + 1))
     }]));
+    const cases = Object.fromEntries(Object.entries(CASES).map(([k, c]) => [k, { ...c, tiers: SOURCES[c.source].t }]));
     return {
-        weapons: WEAPONS, armors: ARMORS, sets: SETS, slots: SLOTS, slotNames: SLOT_NAMES, throws: THROWS, grades: GRADES,
+        weapons: WEAPONS, armors: ARMORS, sets: SETS, slots: SLOTS, slotNames: SLOT_NAMES, utils: UTILS, tierBonus: TIER_BONUS,
         weaponMods: mods(WEAPON_MODS), armorMods: mods(ARMOR_MODS),
-        cases: CASES, shop: SHOP, tiers: TIERS, invMax: INV_MAX, medkitHeal: MEDKIT_HEAL, nadesMax: NADES_MAX
+        cases, shop: SHOP, tiers: TIERS, invMax: INV_MAX
     };
 }
 
 module.exports = {
-    WEAPONS, ARMORS, SETS, SLOTS, THROWS, THROW_RANGE, NADES_MAX, GRADES, WEAPON_MODS, ARMOR_MODS, SOURCES, CASES, SHOP, TIERS,
-    INV_MAX, MEDKIT_HEAL, generate, plain, craft, salvageValue, weaponStats, armorStats, catalog, tierOf, migrate
+    TIERS, TIER_IDX, TIER_ODDS, TIER_BONUS, WEAPONS, ARMORS, SETS, SLOTS, UTILS, THROW_RANGE, WEAPON_MODS, ARMOR_MODS,
+    SOURCES, CASES, SHOP, INV_MAX, generate, plain, craft, salvageValue, weaponStats, armorStats, catalog, migrate, effectFactor
 };
 
-// Kalibrieren: node arena-items.js calibrate [N] – druckt die Tabelle
-if (require.main === module && process.argv[2] === 'calibrate') {
-    const N = Number(process.argv[3]) || 4000000;
-    const scores = new Float64Array(N);
-    for (let i = 0; i < N; i++) scores[i] = rawScore(generate('standard'));
-    scores.sort();
-    const rows = [[0, 0]];
-    for (let k = 0.25; k <= Math.log10(N) - 0.5; k += 0.25) {
-        const idx = Math.floor(N - N / Math.pow(10, k));
-        rows.push([Math.round(scores[idx] * 1000) / 1000, k]);
-    }
-    const out = rows.filter((r, i) => i === 0 || r[0] > rows[i - 1][0]);
-    console.log(JSON.stringify(out));
-    process.exit(0);
-}
-
-// Nachrechnen: node arena-items.js [N] – Verteilung der Stufen je Quelle
+// Nachrechnen: node arena-items.js [N] – Verteilung je Quelle
 if (require.main === module) {
     const N = Number(process.argv[2]) || 200000;
-    for (const src of ['crate', 'standard', 'elite', 'modded']) {
-        const count = {};
-        let best = null, withMods = 0;
+    console.log('Score je Stufe (Coins):', TIER_COST.map(Math.round).join(' / '));
+    for (const src of Object.keys(SOURCES)) {
+        const count = {}, bases = {};
+        let withMods = 0, two = 0;
         for (let i = 0; i < N; i++) {
             const it = generate(src);
             count[it.tier] = (count[it.tier] || 0) + 1;
+            if (TIER_IDX[it.tier] >= 3) bases[it.name] = (bases[it.name] || 0) + 1;
             if (it.mods.length) withMods++;
-            if (!best || it.odds > best.odds) best = it;
+            if (it.mods.length >= 2) two++;
         }
-        console.log(src.padEnd(9), TIERS.map(t => `${t.id} ${((count[t.id] || 0) / N * 100).toFixed(3)}%`).join(' · '), `| mit Effekt ${(withMods / N * 100).toFixed(2)}%`);
-        console.log('   seltenstes:', best.name, 'Grade', best.grade + 1, JSON.stringify(best.mods), '1 in', best.odds.toLocaleString('en-US'));
+        console.log(src.padEnd(10), TIERS.map(t => `${t.id} ${count[t.id] ? '1 in ' + Math.round(N / count[t.id]) : '-'}`).join(' · '),
+            `| Effekt ${(withMods / N * 100).toFixed(1)}%, zwei ${(two / N * 100).toFixed(2)}%`);
+        console.log('   ab Epic:', Object.entries(bases).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${k} ${v}`).join(', '));
     }
 }

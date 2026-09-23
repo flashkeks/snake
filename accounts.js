@@ -490,7 +490,7 @@ module.exports = function createAccounts(dataDir) {
             return { min: r.min, bonus: r.bonus };
         },
 
-        // Arena-Lager: give {kind, base, grade, mods, count} | delete {uid} | scrap {set} | clear
+        // Arena-Lager: give {kind, base, tier, mods, count} | delete {uid} | scrap {set} | clear
         adminArena(key, op, d) {
             const u = db.users[key];
             if (!u) return 'no such user';
@@ -499,20 +499,23 @@ module.exports = function createAccounts(dataDir) {
             const I = arenaItems;
             if (op === 'give') {
                 const kind = String(d.kind), base = String(d.base);
-                const ok = kind === 'weapon' ? I.WEAPONS[base] : kind === 'armor' ? I.ARMORS[base] : kind === 'throw' ? I.THROWS[base] : kind === 'med';
-                if (!ok) return 'unknown base';
+                const defs = kind === 'weapon' ? I.WEAPONS : kind === 'armor' ? I.ARMORS : kind === 'util' ? I.UTILS : null;
+                if (!defs || !defs[base]) return 'unknown base';
                 const count = Math.max(1, Math.min(50, Math.floor(Number(d.count)) || 1));
                 if (a.inv.length + count > I.INV_MAX) return `stash full (${a.inv.length}/${I.INV_MAX})`;
-                const defs = kind === 'weapon' ? I.WEAPON_MODS : I.ARMOR_MODS;
-                const mods = kind === 'weapon' || kind === 'armor' ? (Array.isArray(d.mods) ? d.mods : [])
-                    .filter(m => defs[m.id]).slice(0, 6)
-                    .map(m => ({ id: m.id, lvl: Math.max(1, Math.min(defs[m.id].max, Math.floor(Number(m.lvl)) || 1)) }))
+                const mdefs = kind === 'weapon' ? I.WEAPON_MODS : I.ARMOR_MODS;
+                const mods = kind !== 'util' ? (Array.isArray(d.mods) ? d.mods : [])
+                    .filter(m => mdefs[m.id]).slice(0, 6)
+                    .map(m => ({ id: m.id, lvl: Math.max(1, Math.min(mdefs[m.id].max, Math.floor(Number(m.lvl)) || 1)) }))
                     .filter((m, i, arr) => arr.findIndex(x => x.id === m.id) === i) : [];
-                const grade = kind === 'weapon' || kind === 'armor' ? Math.max(0, Math.min(4, Math.floor(Number(d.grade)) || 0)) : 0;
+                const tier = kind === 'util' ? defs[base].tier : Math.max(0, Math.min(6, Math.floor(Number(d.tier)) || 0));
                 const made = [];
-                for (let i = 0; i < count; i++) made.push(I.craft(kind === 'med' ? 'med' : kind, kind === 'med' ? 'medkit' : base, grade, mods));
+                for (let i = 0; i < count; i++) made.push(I.craft(kind, base, tier, mods));
                 a.inv.push(...made);
-                for (const it of made) this.stat(key, s => { s.bestOdds = Math.max(s.bestOdds || 0, it.odds || 0); });
+                for (const it of made) this.stat(key, s => {
+                    s.bestOdds = Math.max(s.bestOdds || 0, it.odds || 0);
+                    s.bestTier = Math.max(s.bestTier || 0, I.TIER_IDX[it.tier] || 0);
+                });
             } else if (op === 'delete') {
                 const uids = new Set((Array.isArray(d.uids) ? d.uids : [d.uid]).map(String));
                 a.inv = a.inv.filter(it => !uids.has(it.uid));
@@ -526,6 +529,7 @@ module.exports = function createAccounts(dataDir) {
             // Loadout zeigt nie auf Geloeschtes
             const l = a.loadout || {};
             for (const s of ['primary', 'secondary', 'armor', 'helmet', 'vest', 'pants', 'boots']) if (l[s] && !a.inv.some(x => x.uid === l[s])) l[s] = null;
+            if (Array.isArray(l.util)) l.util = l.util.map(u => u && a.inv.some(x => x.kind === 'util' && x.base === u.base) ? u : null);
             touch();
             return null;
         },

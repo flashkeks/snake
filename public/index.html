@@ -2386,6 +2386,58 @@ body.touch .sh-touchbtn {
 
 /* ---------- Arena: Hub ---------- */
 
+#hub-tabs {
+    overflow: visible;
+    flex-wrap: wrap;
+}
+
+#hub-tabs button {
+    flex: 1 1 0;
+    min-width: 110px;
+}
+
+.loadout.eight {
+    grid-template-columns: repeat(8, 1fr);
+}
+
+.loadout.two {
+    grid-template-columns: repeat(2, 1fr);
+    margin-top: 8px;
+}
+
+.lo-slot.util select {
+    width: 100%;
+    font-size: 12px;
+    padding: 3px;
+    margin-top: 3px;
+}
+
+.lo-slot.util .cons {
+    padding: 2px;
+    background: none;
+}
+
+.it-score {
+    font-size: 11px;
+    font-weight: 800;
+    color: #ffd23f;
+}
+
+.chances {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    font-size: 11px;
+}
+
+.case-sovereign {
+    border-color: #ffd23f;
+    box-shadow: 0 0 18px rgba(255,210,63,.25);
+}
+
+.case-mage { border-color: #b884ff; }
+.case-demo { border-color: #ff7a3d; }
+
 #arenahub .card {
     width: min(1100px, 100%);
     border-color: #ff5bd6;
@@ -2771,8 +2823,14 @@ span.tier-common, span.tier-uncommon, span.tier-rare, span.tier-epic, span.tier-
     margin: 0 auto 10px;
 }
 
+@media (max-width: 1000px) {
+    .loadout.eight {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
 @media (max-width: 800px) {
-    .loadout, .loadout.six {
+    .loadout, .loadout.six, .loadout.eight {
         grid-template-columns: repeat(2, 1fr);
     }
     .set-row {
@@ -4477,9 +4535,9 @@ body.touch input, body.touch textarea {
                         <div class="cs-title" style="color:#ff5bd6;text-shadow:0 0 16px rgba(255,91,214,.5)">🔫 Raid</div>
                         <span id="sh-stats"></span>
                         <button type="button" class="ghost sh-touchbtn" id="sh-swap" title="Switch weapon (1/2, wheel)">🔄</button>
-                        <button type="button" class="ghost sh-touchbtn" id="sh-med" title="Medkit (Q)">💉</button>
+                        <button type="button" class="ghost sh-touchbtn" id="sh-med" title="Consumable Q">Q</button>
                         <button type="button" class="ghost sh-touchbtn" id="sh-use" title="Open crate / take bag (F)">✋</button>
-                        <button type="button" class="ghost sh-touchbtn" id="sh-nade" title="Throw grenade (G)">💣</button>
+                        <button type="button" class="ghost sh-touchbtn" id="sh-nade" title="Consumable G">G</button>
                         <button type="button" class="ghost" id="sh-bag" title="Inventory (Tab / I)">🎒</button>
                         <button type="button" class="s2-icon" id="sh-leave" title="Leave (you lose everything)">✕</button>
                     </div>
@@ -4487,7 +4545,7 @@ body.touch input, body.touch textarea {
                         <canvas id="sh-canvas"></canvas>
                         <div class="sh-inv" id="sh-inv" hidden></div>
                     </div>
-                    <div class="hint" style="text-align:center">WASD move · mouse aim · click shoot · 1/2 or wheel switch · Q medkit · G grenade, T switch · F loot · Tab inventory · 🌿 hide in bushes, buildings, smoke · 🚁 6 s in an extraction zone</div>
+                    <div class="hint" style="text-align:center">WASD move · mouse aim · click shoot · 1/2 or wheel switch · Q / G consumables (aim with the mouse) · F loot · Tab inventory · 🌿 hide in bushes, buildings, smoke · 🚁 6 s in an extraction zone</div>
                 </div>
             </div>
 
@@ -4959,7 +5017,8 @@ ws.onmessage = event => {
         case 'shHurt': onShHurt(data); break;
         case 'shLoot': onShLoot(data); break;
         case 'shInv': onShInv(data); break;
-        case 'shBoom': case 'shZap': onShFx(data); break;
+        case 'shBoom': case 'shZap': case 'shFx': onShFx(data); break;
+        case 'shFlash': onShFlash(data); break;
         case 'shPong': shRtt = shRtt * .7 + (performance.now() - data.t) * .3; break;
         case 'arHub': onArHub(data); break;
         case 'arError': showMsg('hub-msg', data.error, 'err'); break;
@@ -7740,12 +7799,15 @@ let shPingTimer = null;
 let shToast = null;         // { text, t }
 let shInvState = null;      // Rucksack und Ausruestung (shInv)
 let shInvOpen = false;
+let shBlindUntil = 0;       // Flashbang
+let shBlindMs = 1;
 const shTouch = { move: null, aim: null };
 const SH_INTERP = 50;
 const TIER_COLOR = { common: '#cfd8e3', uncommon: '#7dffb0', rare: '#3da5ff', epic: '#b884ff', legendary: '#ffd23f', mythic: '#ff5b5b', ultra: '#ffffff' };
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];
 const GEAR_SLOTS = ['primary', 'secondary', 'helmet', 'vest', 'pants', 'boots'];
 const SLOT_LABEL = { primary: '1 · Primary', secondary: '2 · Secondary', helmet: 'Helmet', vest: 'Vest', pants: 'Pants', boots: 'Boots' };
+const UTIL_KEYS = ['Q', 'G'];
 let hubMulti = null;        // Set mit uids im Auswahlmodus, sonst null
 
 function tierName(t) {
@@ -7753,18 +7815,23 @@ function tierName(t) {
     return x ? x.name : t;
 }
 
+function tierIdx(t) {
+    return Math.max(0, arenaCat.tiers.findIndex(x => x.id === t));
+}
+
 // Item-Felder aus Lager (volle Items) und Raid (brief) einheitlich lesen
 function itKind(it) { return it.kind || it.k; }
 function itBase(it) { return it.base || it.b; }
-function itGrade(it) { return (it.grade !== undefined ? it.grade : it.g) || 0; }
 function itMods(it) { return it.mods || (it.m || []).map(([id, lvl]) => ({ id, lvl })); }
+
+function itemDef(it) {
+    const k = itKind(it), b = itBase(it);
+    return (k === 'weapon' ? arenaCat.weapons : k === 'armor' ? arenaCat.armors : arenaCat.utils)[b] || {};
+}
 
 function itemIcon(it) {
     if (!arenaCat || !it) return '❔';
-    const k = itKind(it), b = itBase(it);
-    if (k === 'med') return '💉';
-    if (k === 'throw') return (arenaCat.throws[b] || {}).icon || '💣';
-    return (arenaCat.weapons[b] || arenaCat.armors[b] || {}).icon || '❔';
+    return itemDef(it).icon || '❔';
 }
 
 function modDefs(it) {
@@ -7775,12 +7842,11 @@ function oddsText(o) {
     return o > 1 ? `1 in ${o.toLocaleString('en-US')}` : '';
 }
 
-// Grade als Sterne (Waffen und Ruestung)
-function gradeStars(it) {
-    const k = itKind(it);
-    if (k !== 'weapon' && k !== 'armor') return '';
-    const g = itGrade(it);
-    return `<span class="stars" title="Grade ${ROMAN[g + 1]}: +${Math.round(arenaCat.grades[g] * 100)}% ${k === 'weapon' ? 'damage' : 'HP'}">${'★'.repeat(g + 1)}${'☆'.repeat(4 - g)}</span>`;
+// Item-Score kurz: 1.2k, 3.4M, 1B
+function scoreText(n) {
+    if (!n) return '';
+    const f = (v, s) => (v >= 100 ? Math.round(v) : Math.round(v * 10) / 10) + s;
+    return n >= 1e9 ? f(n / 1e9, 'B') : n >= 1e6 ? f(n / 1e6, 'M') : n >= 1e3 ? f(n / 1e3, 'k') : String(n);
 }
 
 function setOf(it) {
@@ -7792,46 +7858,52 @@ function setOf(it) {
 function itemCard(it, opts = {}) {
     const mods = itMods(it).map(m => {
         const d = modDefs(it)[m.id];
-        return `<span class="mod" title="${esc(d.desc[m.lvl - 1])}">${d.icon}${d.max > 1 ? ' ' + ROMAN[m.lvl] : ''}</span>`;
+        return d ? `<span class="mod" title="${esc(d.desc[m.lvl - 1])}">${d.icon}${d.max > 1 ? ' ' + ROMAN[m.lvl] : ''}</span>` : '';
     }).join('');
     const set = setOf(it);
-    const odds = it.odds || it.o;
+    const odds = it.odds || it.o, score = it.score || it.sc;
     return `<div class="it tier-${it.tier || it.t} ${opts.sel ? 'sel' : ''} ${opts.pick ? 'picked' : ''}" data-uid="${esc(it.uid)}">` +
         (opts.pick !== undefined ? `<span class="pick">${opts.pick ? '☑' : '☐'}</span>` : '') +
         `<span class="it-ico">${itemIcon(it)}</span><b>${esc(it.name || it.n)}${opts.n > 1 ? ` ×${opts.n}` : ''}</b>` +
         (set ? `<small class="it-set" style="color:${arenaCat.sets[set].color}">${arenaCat.sets[set].name} set</small>` : '') +
-        gradeStars(it) +
         `<small class="it-tier">${tierName(it.tier || it.t)}${odds > 1 ? ' · ' + oddsText(odds) : ''}</small>` +
+        (score ? `<small class="it-score" title="Item score: coins you would spend on average to unbox something this rare">⚡ ${scoreText(score)}</small>` : '') +
         (mods ? `<div class="mods">${mods}</div>` : '') +
         (opts.eq ? `<span class="eq-tag">${opts.eq}</span>` : '') + '</div>';
 }
 
+const INNATE_TEXT = { homing: l => `bullets curve towards enemies${l > 1 ? ' (strongly)' : ''}`, pierce: l => `pierces ${l} target${l > 1 ? 's' : ''}`,
+    burn: l => `sets targets on fire (${l * 6} dmg/s)`, frost: l => `slows targets by ${l * 25}%`, tesla: () => 'hits arc to 2 nearby enemies',
+    multishot: l => `+${l} extra bullets` };
+
 // Werte und Effekte eines Items im Detail
 function itemDetail(it) {
-    const k = itKind(it), b = itBase(it), g = itGrade(it);
+    const k = itKind(it), b = itBase(it), def = itemDef(it);
+    const bonus = arenaCat.tierBonus[tierIdx(it.tier || it.t)] || 0;
     const mods = itMods(it);
-    const L = id => (mods.find(m => m.id === id) || {}).lvl || 0;
+    const inn = def.innate || {};
+    const L = id => ((mods.find(m => m.id === id) || {}).lvl || 0) + (inn[id] || 0);
     let stats = '';
     if (k === 'weapon') {
-        const w = arenaCat.weapons[b];
-        const dmg = w.dmg * (1 + arenaCat.grades[g]) * (1 + L('sharp') * 0.12), rate = 1000 / (w.ms / (1 + L('rapid') * 0.1)), pel = w.pellets + L('multishot');
+        const dmg = def.dmg * (1 + bonus) * (1 + L('sharp') * 0.12), rate = 1000 / (def.ms / (1 + L('rapid') * 0.1)), pel = def.pellets + L('multishot');
         stats = `<div class="it-stats"><span>💥 ${Math.round(dmg)}${pel > 1 ? ' × ' + pel : ''}</span><span>⚡ ${rate.toFixed(1)}/s</span>` +
-            `<span>📏 ${Math.round(w.speed * w.life * (1 + L('velocity') * 0.25) * (1 + L('velocity') * 0.15))}</span></div>`;
+            `<span>📏 ${Math.round(def.speed * def.life * (1 + L('velocity') * 0.25) * (1 + L('velocity') * 0.15))}</span>` +
+            (def.explode ? '<span>💣 explodes</span>' : '') + '</div>' +
+            (Object.keys(inn).length ? `<div class="set-box"><b>Built in</b>${Object.entries(inn).map(([id, l]) => `<small>${(arenaCat.weaponMods[id] || {}).icon || ''} ${esc(INNATE_TEXT[id] ? INNATE_TEXT[id](l) : id)}</small>`).join('')}</div>` : '');
     } else if (k === 'armor') {
-        const a = arenaCat.armors[b], s = arenaCat.sets[a.set];
-        stats = `<div class="it-stats"><span>❤️ +${Math.round(a.hp * (1 + arenaCat.grades[g]) + L('plating') * 8)} HP</span>` +
-            (a.speed ? `<span>👟 ${a.speed > 0 ? '+' : ''}${Math.round(a.speed * 100)}% speed</span>` : '') + '</div>' +
+        const s = arenaCat.sets[def.set];
+        stats = `<div class="it-stats"><span>❤️ +${Math.round(def.hp * (1 + bonus) + L('plating') * 8)} HP</span>` +
+            (def.speed ? `<span>👟 ${def.speed > 0 ? '+' : ''}${Math.round(def.speed * 100)}% speed</span>` : '') + '</div>' +
             `<div class="set-box" style="border-color:${s.color}"><b style="color:${s.color}">${s.name} set</b>${s.bonus.map(x => `<small>${esc(x)} pieces</small>`).join('')}</div>`;
-    } else if (k === 'med') {
-        stats = `<div class="it-stats"><span>💉 heals ${arenaCat.medkitHeal} HP over 2 s (Q)</span></div>`;
     } else {
-        stats = `<div class="it-stats"><span>${esc(arenaCat.throws[b].desc)} (G)</span></div>`;
+        stats = `<div class="it-stats"><span>${esc(def.desc)}</span></div><div class="hint">Stack up to ${def.stack} in a slot (Q / G)</div>`;
     }
+    if (bonus && k !== 'util') stats += `<div class="hint">${tierName(it.tier || it.t)}: +${Math.round(bonus * 100)}% ${k === 'weapon' ? 'damage' : 'HP'}</div>`;
     const ml = mods.map(m => {
         const d = modDefs(it)[m.id];
-        return `<li>${d.icon} <b>${d.name}${d.max > 1 ? ' ' + ROMAN[m.lvl] : ''}</b> – ${esc(d.desc[m.lvl - 1])}</li>`;
+        return d ? `<li>${d.icon} <b>${d.name}${d.max > 1 ? ' ' + ROMAN[m.lvl] : ''}</b> – ${esc(d.desc[m.lvl - 1])}</li>` : '';
     }).join('');
-    return stats + (ml ? `<ul class="it-mods">${ml}</ul>` : (k === 'weapon' || k === 'armor') ? '<div class="hint">No special effect – those are very rare.</div>' : '');
+    return stats + (ml ? `<ul class="it-mods">${ml}</ul>` : '');
 }
 
 // Aktive Set-Boni aus einer Menge Ruestungsteile (Items oder briefs)
@@ -7883,31 +7955,38 @@ function hubLoadout() {
         const empty = s === 'primary' ? '🔫 Starter pistol<br><small>free, never lost</small>' : 'empty';
         return `<div class="lo-slot"><small>${SLOT_LABEL[s]}</small>${it ? itemCard(it) : `<div class="it empty">${empty}</div>`}</div>`;
     };
-    const cnt = (kind, base) => inv.filter(x => x.kind === kind && (!base || x.base === base)).length;
-    const stepper = (label, icon, n, have, max, attr) =>
-        `<div class="cons"><span>${icon} ${label}</span><button type="button" class="ghost" ${attr}="-1">−</button><b>${n}</b>` +
-        `<button type="button" class="ghost" ${attr}="1">+</button><small>${have} in stash · max ${max}</small></div>`;
+    // Verbrauchsgut im Lager je Sorte
+    const have = {};
+    for (const x of inv) if (x.kind === 'util') have[x.base] = (have[x.base] || 0) + 1;
+    const utilSlot = i => {
+        const u = (l.util || [])[i];
+        const def = u && arenaCat.utils[u.base];
+        const other = (l.util || [])[1 - i];
+        const opts = Object.keys(have).map(b => `<option value="${b}" ${u && u.base === b ? 'selected' : ''}>${arenaCat.utils[b].icon} ${esc(arenaCat.utils[b].name)} (${have[b]})</option>`).join('');
+        const free = u ? have[u.base] - (other && other.base === u.base ? other.n : 0) : 0;
+        return `<div class="lo-slot util"><small>${UTIL_KEYS[i]} · Consumable</small><div class="it ${u ? 'tier-' + arenaCat.tiers[def.tier].id : 'empty'}">` +
+            (u ? `<span class="it-ico">${def.icon}</span><b>${esc(def.name)}</b><div class="cons"><button type="button" class="ghost" data-util="${i}" data-d="-1">−</button><b>${u.n}</b>` +
+                `<button type="button" class="ghost" data-util="${i}" data-d="1" ${u.n >= Math.min(def.stack, free) ? 'disabled' : ''}>+</button><small>max ${def.stack}</small></div>` : '<span class="it-ico">➕</span>') +
+            `<select data-utilpick="${i}"><option value="">${u ? '– remove –' : 'choose…'}</option>${opts}</select></div></div>`;
+    };
     const bonus = setBonusText(['helmet', 'vest', 'pants', 'boots'].map(s => l[s] && byUid(l[s])));
-    return `<div class="loadout">${GEAR_SLOTS.map(slotCard).join('')}</div>` +
-        (bonus ? `<div class="set-active">🧩 ${bonus}</div>` : '') +
-        `<div class="cons-row">` +
-        stepper('Medkits (Q)', '💉', l.meds, cnt('med'), 3, 'data-meds') +
-        Object.entries(arenaCat.throws).map(([b, t]) => stepper(t.name + ' (G)', t.icon, l.nades[b] || 0, cnt('throw', b), arenaCat.nadesMax, `data-nade-${b}`)).join('') +
-        `</div>`;
+    return `<div class="loadout eight">${GEAR_SLOTS.map(slotCard).join('')}${utilSlot(0)}${utilSlot(1)}</div>` +
+        (bonus ? `<div class="set-active">🧩 ${bonus}</div>` : '');
 }
 
 // Verbrauchsgut im Lager zu Stapeln zusammenfassen
 function hubStacks(list) {
     const out = [], stacks = {};
     for (const it of list) {
-        if (it.kind === 'med' || it.kind === 'throw') {
-            const k = it.kind + ':' + it.base;
-            if (!stacks[k]) out.push(stacks[k] = { it, uids: [] });
-            stacks[k].uids.push(it.uid);
+        if (it.kind === 'util') {
+            if (!stacks[it.base]) out.push(stacks[it.base] = { it, uids: [] });
+            stacks[it.base].uids.push(it.uid);
         } else out.push({ it, uids: [it.uid] });
     }
     return out;
 }
+
+const HUB_FILTERS = [['all', 'All'], ['weapon', '🔫 Weapons'], ['helmet', '🪖 Helmets'], ['vest', '🦺 Vests'], ['pants', '👖 Pants'], ['boots', '🥾 Boots'], ['util', '💣 Consumables']];
 
 function hubDraw() {
     if (!arenaCat) return;
@@ -7927,12 +8006,10 @@ function hubDraw() {
             `If you die or leave, the killer gets it all. Hide in buildings, bushes and smoke – nobody outside sees you until you shoot.</div></div>` +
             (hubLast ? `<div class="raid-result ${hubLast.result}">${hubLast.html}</div>` : '');
     } else if (hubTab === 'equip') {
-        const filters = [['all', 'All'], ['weapon', 'Weapons'], ['armor', 'Armor'], ['cons', 'Consumables']];
-        const order = arenaCat.tiers.map(t => t.id);
-        const list = inv.filter(x => hubFilter === 'all' || (hubFilter === 'cons' ? x.kind === 'med' || x.kind === 'throw' : x.kind === hubFilter))
-            .sort((a, b) => order.indexOf(b.tier) - order.indexOf(a.tier) || b.odds - a.odds || (a.kind > b.kind ? 1 : -1));
+        const list = inv.filter(x => hubFilter === 'all' || x.kind === hubFilter || (x.kind === 'armor' && x.slot === hubFilter))
+            .sort((a, b) => tierIdx(b.tier) - tierIdx(a.tier) || (b.score || 0) - (a.score || 0) || (a.kind > b.kind ? 1 : -1));
         const sel = hubSel && inv.find(x => x.uid === hubSel);
-        let bar = `<div class="cr-diffs">${filters.map(([k, n]) => `<button type="button" data-filter="${k}" class="${hubFilter === k ? 'on' : ''}">${n}</button>`).join('')}</div>` +
+        let bar = `<div class="cr-diffs">${HUB_FILTERS.map(([k, n]) => `<button type="button" data-filter="${k}" class="${hubFilter === k ? 'on' : ''}">${n}</button>`).join('')}</div>` +
             `<span class="hint">${inv.length} / ${arenaCat.invMax}</span>`;
         if (!hubMulti) bar += `<button type="button" class="ghost" id="hub-multi">☑ Select to salvage</button>`;
         else {
@@ -7948,36 +8025,27 @@ function hubDraw() {
             pick: hubMulti ? uids.every(u => hubMulti.has(u)) : undefined
         })).join('');
         html = hubLoadout() + `<div class="inv-bar">${bar}</div>` +
-            `<div class="inv-main"><div class="inv-grid">${cards || '<div class="hint">Your stash is empty. Buy something in the shop or open a case.</div>'}</div>` +
-            `<div class="inv-detail">${sel ? itemCard(sel) + itemDetail(sel) + hubActions(sel) : '<div class="hint">Click an item to see its stats. Use “Select to salvage” to scrap many at once.</div>'}</div></div>`;
+            `<div class="inv-main"><div class="inv-grid">${cards || '<div class="hint">Nothing here. Buy something in the shop or open a case.</div>'}</div>` +
+            `<div class="inv-detail">${sel ? itemCard(sel) + itemDetail(sel) + hubActions(sel) : '<div class="hint">Click an item to see its stats.</div>'}</div></div>`;
     } else if (hubTab === 'cases') {
+        const chances = t => arenaCat.tiers.map((x, i) => t[i] > 0 ? `<span class="tier-${x.id} it-tier">${x.name} ${t[i] >= 0.1 ? Math.round(t[i] * 100) + '%' : '1 in ' + Math.round(1 / t[i]).toLocaleString('en-US')}</span>` : '').join('');
         html = `<div class="cases">${Object.entries(arenaCat.cases).map(([k, c]) =>
-            `<div class="case-card"><span class="it-ico">${c.icon}</span><b>${esc(c.name)}</b>` +
-            `<small>${{ standard: 'Weapons and armor, grade I–V, rarely an effect', elite: 'Grade II or better, 5× more effects, rare bases like Minigun, Launcher, Golden Deagle', scrap: 'Cheap case, paid with scrap' }[k] || ''}</small>` +
+            `<div class="case-card case-${k}"><span class="it-ico">${c.icon}</span><b>${esc(c.name)}</b><small>${esc(c.desc)}</small>` +
+            `<div class="chances">${chances(c.tiers)}</div>` +
             `<button type="button" class="gold" data-case="${k}">${c.currency === 'scrap' ? '⚙️' : '🪙'} ${c.price.toLocaleString('en-US')}</button></div>`).join('')}</div>` +
             `<div class="case-view" id="hub-caseview" hidden><div class="sh-pointer"></div><div class="sh-strip" id="hub-strip"></div></div>` +
-            `<div id="hub-caseres"></div>` +
-            `<div class="hint">Rarity is honest: “1 in X” means only every X-th standard case pull is at least that rare. It comes from the grade (★) and the very rare special effects.</div>`;
+            `<div id="hub-caseres"></div>`;
     } else if (hubTab === 'shop') {
-        const price = o => `${o.currency === 'scrap' ? '⚙️' : '🪙'} ${o.price.toLocaleString('en-US')}`;
         const btn = (o, n = 1) => `<button type="button" class="${o.currency === 'scrap' ? 'ghost' : 'gold'}" data-buy="${o.id}" data-n="${n}">${n > 1 ? n + '× ' : ''}${o.currency === 'scrap' ? '⚙️' : '🪙'} ${(o.price * n).toLocaleString('en-US')}</button>`;
-        const simple = o => {
-            const def = o.kind === 'gen' ? { name: 'Weapon with a random effect', icon: '🎲' } : o.kind === 'med' ? { name: 'Medkit', icon: '💉' }
-                : o.kind === 'throw' ? arenaCat.throws[o.base] : arenaCat.weapons[o.base];
-            const multi = o.kind === 'med' || o.kind === 'throw';
-            return `<div class="case-card"><span class="it-ico">${def.icon}</span><b>${esc(def.name)}</b>${btn(o)}${multi ? btn(o, 5) : ''}</div>`;
+        const card = o => {
+            const def = o.kind === 'gen' ? { name: 'Weapon with a random effect', icon: '🎲' } : o.kind === 'util' ? arenaCat.utils[o.base] : arenaCat.weapons[o.base];
+            return `<div class="case-card"><span class="it-ico">${def.icon}</span><b>${esc(def.name)}</b>${def.desc ? `<small>${esc(def.desc)}</small>` : ''}${btn(o)}${o.kind === 'util' ? btn(o, 5) : ''}</div>`;
         };
         const coins = arenaCat.shop.filter(o => o.currency === 'coins');
-        const sets = Object.entries(arenaCat.sets).map(([sid, s]) => {
-            const pieces = arenaCat.slots.map(slot => coins.find(o => o.base === `${sid}_${slot}`)).filter(Boolean);
-            return `<div class="set-row" style="border-color:${s.color}"><div><b style="color:${s.color}">${s.name} set</b>${s.bonus.map(x => `<small>${esc(x)} pieces</small>`).join('')}</div>` +
-                pieces.map(o => { const a = arenaCat.armors[o.base]; return `<div class="set-piece"><span class="it-ico">${a.icon}</span><small>${esc(a.name)}<br>❤️ +${a.hp}</small><button type="button" class="gold" data-buy="${o.id}">${price(o)}</button></div>`; }).join('') + '</div>';
-        }).join('');
-        html = `<h3>Weapons</h3><div class="cases">${coins.filter(o => o.kind === 'weapon').map(simple).join('')}</div>` +
-            `<h3>Armor sets</h3><div class="sets">${sets}</div>` +
-            `<h3>Consumables</h3><div class="cases">${coins.filter(o => o.kind === 'med' || o.kind === 'throw').map(simple).join('')}</div>` +
-            `<h3>For scrap</h3><div class="cases">${arenaCat.shop.filter(o => o.currency === 'scrap').map(simple).join('')}</div>` +
-            `<div class="hint">Shop items are grade I without effects – better grades and effects come from cases and crates in the raid.</div>`;
+        html = `<h3>Weapons</h3><div class="cases">${coins.filter(o => o.kind === 'weapon').map(card).join('')}</div>` +
+            `<h3>Consumables</h3><div class="cases">${coins.filter(o => o.kind === 'util').map(card).join('')}</div>` +
+            `<h3>For scrap</h3><div class="cases">${arenaCat.shop.filter(o => o.currency === 'scrap').map(card).join('')}</div>` +
+            `<div class="hint">Armor, rarer weapons and special consumables only come from cases and crates.</div>`;
     }
     $('hub-body').innerHTML = html;
 }
@@ -7990,6 +8058,11 @@ function hubActions(it) {
         b += `<button type="button" class="ghost" data-equip="secondary" data-uid="${it.uid}">Equip as secondary (2)</button>`;
     } else if (it.kind === 'armor') {
         b += `<button type="button" data-equip="${it.slot}" data-uid="${it.uid}">Equip ${arenaCat.slotNames[it.slot].toLowerCase()}</button>`;
+    } else {
+        const n = hub.inv.filter(x => x.kind === 'util' && x.base === it.base).length;
+        const def = arenaCat.utils[it.base];
+        b += `<button type="button" data-utilset="0" data-base="${it.base}">Put ${Math.min(n, def.stack)} in slot Q</button>`;
+        b += `<button type="button" class="ghost" data-utilset="1" data-base="${it.base}">Put ${Math.min(n, def.stack)} in slot G</button>`;
     }
     if (eq) b += `<button type="button" class="ghost" data-unequip="${GEAR_SLOTS.find(s => hub.loadout[s] === it.uid)}">Take off</button>`;
     b += `<button type="button" class="danger" data-salvage="${it.uid}">♻️ Salvage (+${it.sv || 0} ⚙️)</button>`;
@@ -8014,8 +8087,7 @@ function hubCaseAnim(item, reel) {
     setTimeout(() => {
         hubCaseBusy = false;
         $('hub-caseres').innerHTML = itemCard(item) + itemDetail(item);
-        const order = arenaCat.tiers.map(t => t.id);
-        sfx.fanfare(order.indexOf(item.tier) >= 3 ? 'big' : 'end');
+        sfx.fanfare(tierIdx(item.tier) >= 3 ? 'big' : 'end');
         $('hub-scrap').textContent = hub.scrap.toLocaleString('en-US');
         $('hub-coins').textContent = me ? me.coins.toLocaleString('en-US') : '–';
     }, 4100);
@@ -8028,6 +8100,18 @@ $('hub-tabs').addEventListener('click', e => {
     hubDraw();
 });
 
+function hubSetUtil(i, base, n) {
+    wsSend({ type: 'arEquip', slot: 'util' + i, base: base || null, n });
+}
+
+$('hub-body').addEventListener('change', e => {
+    const s = e.target.closest('[data-utilpick]');
+    if (!s) return;
+    const i = Number(s.dataset.utilpick);
+    if (!s.value) return hubSetUtil(i, null, 0);
+    hubSetUtil(i, s.value, arenaCat.utils[s.value].stack);
+});
+
 $('hub-body').addEventListener('click', e => {
     const t = e.target.closest('button, .it[data-uid]');
     if (!t || hubCaseBusy || t.disabled) return;
@@ -8037,8 +8121,7 @@ $('hub-body').addEventListener('click', e => {
     if (t.id === 'hub-multi-off') { hubMulti = null; return hubDraw(); }
     if (t.id === 'hub-salvage-picked') {
         const uids = [...hubMulti];
-        const order = arenaCat.tiers.map(x => x.id);
-        const rare = hub.inv.filter(x => hubMulti.has(x.uid) && order.indexOf(x.tier) >= 2).length;
+        const rare = hub.inv.filter(x => hubMulti.has(x.uid) && tierIdx(x.tier) >= 2 && x.kind !== 'util').length;
         const eq = hub.inv.filter(x => hubMulti.has(x.uid) && hubEquippedAs(x.uid)).length;
         if ((rare || eq) && !confirm(`Salvage ${uids.length} items?${rare ? ` ${rare} of them are Rare or better.` : ''}${eq ? ` ${eq} are in your loadout.` : ''}`)) return;
         hubMulti = new Set();
@@ -8046,21 +8129,21 @@ $('hub-body').addEventListener('click', e => {
     }
     if (ds.pickall) {
         if (ds.pickall === 'none') hubMulti.clear();
-        else for (const x of hub.inv) if (x.tier === ds.pickall && (x.kind === 'weapon' || x.kind === 'armor') && !hubEquippedAs(x.uid)) hubMulti.add(x.uid);
+        else for (const x of hub.inv) if (x.tier === ds.pickall && x.kind !== 'util' && !hubEquippedAs(x.uid)) hubMulti.add(x.uid);
         return hubDraw();
     }
     if (ds.filter) { hubFilter = ds.filter; return hubDraw(); }
-    if (ds.meds) return wsSend({ type: 'arEquip', slot: 'meds', n: hub.loadout.meds + Number(ds.meds) });
-    for (const b of Object.keys(arenaCat.throws)) {
-        const v = t.getAttribute('data-nade-' + b);
-        if (v) return wsSend({ type: 'arEquip', slot: 'nade', base: b, n: (hub.loadout.nades[b] || 0) + Number(v) });
+    if (ds.util !== undefined) {
+        const u = hub.loadout.util[Number(ds.util)];
+        if (u) hubSetUtil(Number(ds.util), u.base, u.n + Number(ds.d));
+        return;
     }
+    if (ds.utilset !== undefined) return hubSetUtil(Number(ds.utilset), ds.base, arenaCat.utils[ds.base].stack);
     if (ds.equip) return wsSend({ type: 'arEquip', slot: ds.equip, uid: ds.uid });
     if (ds.unequip) return wsSend({ type: 'arEquip', slot: ds.unequip, uid: null });
     if (ds.salvage) {
         const it = hub.inv.find(x => x.uid === ds.salvage);
-        const order = arenaCat.tiers.map(x => x.id);
-        if (it && order.indexOf(it.tier) >= 2 && !confirm(`Salvage ${it.name} (${tierName(it.tier)})?`)) return;
+        if (it && tierIdx(it.tier) >= 2 && it.kind !== 'util' && !confirm(`Salvage ${it.name} (${tierName(it.tier)})?`)) return;
         hubSel = null;
         return wsSend({ type: 'arSalvage', uids: [ds.salvage] });
     }
@@ -8070,7 +8153,7 @@ $('hub-body').addEventListener('click', e => {
         if (hubMulti) {
             // Stapel (Verbrauchsgut) als Ganzes waehlen
             const it = hub.inv.find(x => x.uid === ds.uid);
-            const group = it && (it.kind === 'med' || it.kind === 'throw') ? hub.inv.filter(x => x.kind === it.kind && x.base === it.base).map(x => x.uid) : [ds.uid];
+            const group = it && it.kind === 'util' ? hub.inv.filter(x => x.kind === 'util' && x.base === it.base).map(x => x.uid) : [ds.uid];
             const on = group.every(u => hubMulti.has(u));
             for (const u of group) on ? hubMulti.delete(u) : hubMulti.add(u);
             return hubDraw();
@@ -8090,7 +8173,8 @@ function onShRooms(rooms) {
 // ---------- Raid ----------
 
 function onShJoined(d) {
-    sh = { id: d.id, map: d.map, packMax: d.packMax, medsMax: d.medsMax, nadesMax: d.nadesMax };
+    sh = { id: d.id, map: d.map, packMax: d.packMax };
+    shBlindUntil = 0;
     shInvOpen = false;
     $('sh-inv').hidden = true;
     shSnaps = [];
@@ -8132,12 +8216,17 @@ function shInvDraw() {
         const k = it.k;
         const act = k === 'weapon'
             ? `<button type="button" data-inv-equip="${it.uid}" data-slot="primary">1</button><button type="button" data-inv-equip="${it.uid}" data-slot="secondary">2</button>`
-            : k === 'armor' ? `<button type="button" data-inv-equip="${it.uid}">Wear</button>` : '';
+            : k === 'armor' ? `<button type="button" data-inv-equip="${it.uid}">Wear</button>`
+            : `<button type="button" data-inv-equip="${it.uid}" data-slot="0">Q</button><button type="button" data-inv-equip="${it.uid}" data-slot="1">G</button>`;
         return `<div class="inv-item">${itemCard(it)}<div class="inv-act">${act}<button type="button" class="ghost" data-inv-drop="${it.uid}" title="Drop">⬇</button></div></div>`;
     }).join('');
     $('sh-inv').innerHTML = `<div class="s2-head"><b>🎒 Inventory</b><span class="hint">Tab / I to close</span><button type="button" class="s2-icon" data-inv-close="1">✕</button></div>` +
         `<div class="loadout six">${GEAR_SLOTS.map(slot).join('')}</div>` + (bonus ? `<div class="set-active">🧩 ${bonus}</div>` : '') +
-        `<div class="set-active">💉 ${d.meds} · ${Object.entries(arenaCat.throws).map(([b, t]) => `${t.icon} ${d.nades[b] || 0}`).join(' · ')}</div>` +
+        `<div class="loadout two">${[0, 1].map(i => {
+            const u = d.util[i], def = u && arenaCat.utils[u.base];
+            return `<div class="lo-slot"><small>${UTIL_KEYS[i]} · Consumable</small>${u ? `<div class="it tier-${arenaCat.tiers[def.tier].id}"><span class="it-ico">${def.icon}</span><b>${esc(def.name)} ×${u.n}</b><small>${esc(def.desc)}</small></div>` +
+                `<button type="button" class="ghost" data-inv-unequip="util${i}">Take off</button>` : '<div class="it empty">empty</div>'}</div>`;
+        }).join('')}</div>` +
         `<h4>Backpack ${d.pack.length} / ${d.packMax}</h4><div class="inv-grid">${pack || '<div class="hint">Empty – open 📦 crates (F) or loot 💰 bags.</div>'}</div>`;
 }
 
@@ -8201,8 +8290,18 @@ function onShLoot(d) {
 function onShFx(d) {
     shFx.push({ ...d, t: performance.now() });
     if (shFx.length > 30) shFx.shift();
-    if (d.type === 'shBoom') sNoise({ dur: .4, vol: .25, type: 'lowpass', f: 1200, f2: 100, rev: .2, a: .002 });
+    if (d.type === 'shBoom') sNoise({ dur: d.nuke ? 1.6 : .4, vol: d.nuke ? .4 : .22, type: 'lowpass', f: d.nuke ? 600 : 900, f2: 60, rev: .3, a: .002 });
+    if (d.nuke) shHurtAt = performance.now();
+    if (d.type === 'shFx' && d.kind === 'heal') sTone(660, { dur: .15, type: 'sine', vol: .05, slide: 990, rev: .1 });
+    if (d.type === 'shFx' && d.kind === 'nova') sNoise({ dur: .5, vol: .12, type: 'lowpass', f: 700, f2: 200, rev: .3, a: .01 });
+    if (d.type === 'shFx' && d.kind === 'blink') sTone(300, { dur: .2, type: 'sine', vol: .06, slide: 1200, rev: .2 });
     if (d.type === 'shZap') sTone(1800, { dur: .12, type: 'sawtooth', vol: .05, slide: 400, rev: .1 });
+}
+
+function onShFlash(d) {
+    shBlindMs = d.ms;
+    shBlindUntil = performance.now() + d.ms;
+    sTone(3200, { dur: .9, type: 'sine', vol: .04, rev: .3 });
 }
 
 function shMeServer() {
@@ -8418,6 +8517,13 @@ function shFrame() {
         const t = owner === sh.id ? age + shRtt / 2000 : Math.max(0, age - SH_INTERP / 1000);
         const bx = x + vx * t, by = y + vy * t;
         const sp = Math.hypot(vx, vy) || 1;
+        if (fx & 32) {
+            c.fillStyle = `rgba(255,${120 + Math.random() * 90},30,.75)`;
+            c.beginPath();
+            c.arc(bx, by, 7 + Math.random() * 5, 0, Math.PI * 2);
+            c.fill();
+            continue;
+        }
         c.strokeStyle = fx & 8 ? '#c78bff' : fx & 1 ? '#ff9b3d' : fx & 2 ? '#ff5b5b' : fx & 4 ? '#8fe9ff' : fx & 16 ? '#7dffb0' : owner === sh.id ? 'rgba(255,246,194,.95)' : 'rgba(255,170,170,.95)';
         c.lineWidth = fx ? 5 : 4;
         c.beginPath();
@@ -8435,13 +8541,39 @@ function shFrame() {
     }
 
     // Granaten im Flug
-    for (const [, x, y, base, landed] of latest.nades || []) {
-        drawEmojiC(c, arenaCat.throws[base].icon, x, y - (landed ? 0 : 10), landed ? 22 : 26);
-        if (base === 'frag' && landed) {
-            c.strokeStyle = `rgba(255,80,80,${.5 + .5 * Math.sin(now / 60)})`;
-            c.lineWidth = 2;
+    for (const [, x, y, base, landed, fuse] of latest.nades || []) {
+        const def = arenaCat.utils[base];
+        drawEmojiC(c, def.icon, x, y - (landed ? 0 : 10), landed ? (def.nuke ? 34 : 22) : 26);
+        if (landed && def.r && fuse) {
+            // Warnkreis mit Zuender
+            c.strokeStyle = `rgba(255,${def.nuke ? 40 : 80},${def.nuke ? 40 : 80},${.5 + .5 * Math.sin(now / (def.nuke ? 90 : 60))})`;
+            c.lineWidth = def.nuke ? 6 : 2;
             c.beginPath();
-            c.arc(x, y, arenaCat.throws.frag.r, 0, Math.PI * 2);
+            c.arc(x, y, def.r, 0, Math.PI * 2);
+            c.stroke();
+            if (def.nuke) {
+                c.fillStyle = '#ff4d4d';
+                c.font = 'bold 22px system-ui';
+                c.textAlign = 'center';
+                c.fillText(`☢ ${(fuse / 1000).toFixed(1)}`, x, y - 30);
+            }
+        }
+    }
+    for (const [, x, y, r, left] of latest.holes || []) {
+        const k = 1 - left / 1600;
+        const g = c.createRadialGradient(x, y, 4, x, y, r);
+        g.addColorStop(0, 'rgba(0,0,0,.95)');
+        g.addColorStop(.35, `rgba(80,20,140,${.5 + k * .3})`);
+        g.addColorStop(1, 'rgba(80,20,140,0)');
+        c.fillStyle = g;
+        c.beginPath();
+        c.arc(x, y, r, 0, Math.PI * 2);
+        c.fill();
+        c.strokeStyle = 'rgba(184,132,255,.7)';
+        c.lineWidth = 2;
+        for (let i = 0; i < 3; i++) {
+            c.beginPath();
+            c.arc(x, y, r * ((now / 600 + i / 3) % 1), 0, Math.PI * 2);
             c.stroke();
         }
     }
@@ -8471,15 +8603,22 @@ function shFrame() {
         const inside = meX > x + T && meX < x + w - T && meY > y + T && meY < y + bh - T;
         if (inside) continue;
         c.fillStyle = '#2a2f3a';
-        c.fillRect(x, y, w, bh);
+        c.fillRect(x + T, y + T, w - 2 * T, bh - 2 * T);
         c.strokeStyle = 'rgba(255,255,255,.06)';
         c.lineWidth = 2;
         c.beginPath();
-        for (let yy = y + 18; yy < y + bh; yy += 18) { c.moveTo(x, yy); c.lineTo(x + w, yy); }
+        for (let yy = y + T + 18; yy < y + bh - T; yy += 18) { c.moveTo(x + T, yy); c.lineTo(x + w - T, yy); }
         c.stroke();
-        c.strokeStyle = '#51627c';
-        c.lineWidth = 4;
-        c.strokeRect(x, y, w, bh);
+    }
+    // Tueren: helle Schwelle mit Pfeil, damit man den Eingang sieht
+    for (const [x, y, w, dh] of m.doors) {
+        if (!vis(x, y, 100)) continue;
+        c.fillStyle = 'rgba(255,210,63,.55)';
+        c.fillRect(x, y, w, dh);
+        c.strokeStyle = '#ffd23f';
+        c.lineWidth = 2;
+        c.strokeRect(x, y, w, dh);
+        drawEmojiC(c, '🚪', x + w / 2, y + dh / 2, 22);
     }
     // Rauch
     for (const [, x, y, r, left] of latest.smokes || []) {
@@ -8494,9 +8633,9 @@ function shFrame() {
     }
 
     // Explosionen, Blitze
-    shFx = shFx.filter(f => now - f.t < 500);
+    shFx = shFx.filter(f => now - f.t < (f.nuke ? 1400 : 500));
     for (const f of shFx) {
-        const k = (now - f.t) / 500;
+        const k = (now - f.t) / (f.nuke ? 1400 : 500);
         if (f.type === 'shBoom') {
             c.fillStyle = `rgba(255,150,40,${.5 * (1 - k)})`;
             c.beginPath();
@@ -8505,6 +8644,26 @@ function shFrame() {
             c.strokeStyle = `rgba(255,220,120,${1 - k})`;
             c.lineWidth = 4;
             c.stroke();
+        } else if (f.type === 'shFx') {
+            if (f.kind === 'heal') {
+                c.fillStyle = `rgba(0,255,136,${1 - k})`;
+                c.font = 'bold 22px system-ui';
+                c.textAlign = 'center';
+                c.fillText('✚', f.x, f.y - 30 - k * 30);
+            } else if (f.kind === 'nova' || f.kind === 'flash') {
+                c.strokeStyle = f.kind === 'nova' ? `rgba(143,233,255,${1 - k})` : `rgba(255,255,255,${1 - k})`;
+                c.lineWidth = 8 * (1 - k) + 2;
+                c.beginPath();
+                c.arc(f.x, f.y, f.r * (0.3 + k * 0.7), 0, Math.PI * 2);
+                c.stroke();
+            } else if (f.kind === 'blink') {
+                for (const [bx, by] of [f.from, [f.x, f.y]]) {
+                    c.fillStyle = `rgba(184,132,255,${.6 * (1 - k)})`;
+                    c.beginPath();
+                    c.arc(bx, by, 30 * (1 - k) + 10, 0, Math.PI * 2);
+                    c.fill();
+                }
+            }
         } else if (f.type === 'shZap') {
             c.strokeStyle = `rgba(200,140,255,${1 - k})`;
             c.lineWidth = 3;
@@ -8612,9 +8771,8 @@ function shFrame() {
     }
     c.fillStyle = '#fff';
     c.font = 'bold 13px system-ui';
-    const nd = my.nades || {};
-    const nadeTxt = Object.entries(arenaCat.throws).map(([b, t]) => b === my.nade ? `[${t.icon}${nd[b] || 0}]` : `${t.icon}${nd[b] || 0}`).join(' ');
-    c.fillText(`Q 💉 ${my.meds}   G ${nadeTxt}   🎒 ${my.pack}/${sh.packMax} (Tab)`, x0 + 6, H - 29);
+    const ut = (my.util || []).map((u, i) => `${UTIL_KEYS[i]} ${u ? arenaCat.utils[u.base].icon + '×' + u.n : '–'}`).join('   ');
+    c.fillText(`${ut}   🎒 ${my.pack}/${sh.packMax} (Tab)`, x0 + 6, H - 29);
 
     // Hinweise: Loot in Reichweite, Extraction
     c.textAlign = 'center';
@@ -8647,6 +8805,15 @@ function shFrame() {
         c.fillStyle = '#ffd23f';
         c.fillText(shToast.text, W / 2, 124, W - 60);
         c.globalAlpha = 1;
+    }
+    const nk = shFx.find(f => f.nuke);
+    if (nk) {
+        c.fillStyle = `rgba(255,250,220,${Math.max(0, .8 - (now - nk.t) / 1400)})`;
+        c.fillRect(0, 0, W, H);
+    }
+    if (now < shBlindUntil) {
+        c.fillStyle = `rgba(255,255,255,${Math.min(1, (shBlindUntil - now) / shBlindMs * 1.4)})`;
+        c.fillRect(0, 0, W, H);
     }
     if (my.hid) {
         c.fillStyle = '#7dffb0';
@@ -8793,7 +8960,11 @@ function shLocalFire(now) {
     shLastLocalShot = now;
     shFlashAt = now;
     const b = (s.me.gear[s.me.slot] || s.me.gear.primary || {}).b;
-    sNoise({ dur: .06, vol: b === 'sniper' || b === 'launcher' ? .22 : .1, type: 'highpass', f: b === 'shotgun' ? 800 : 2000, rev: .05, a: .001 });
+    // dumpf: Tiefpass statt Hochpass, schnelle Waffen leiser (Max: SMG tat in den Ohren weh)
+    const fast = s.me.ms < 120;
+    const heavy = ['sniper', 'launcher', 'railgun', 'nukelauncher', 'singularity', 'crossbow'].includes(b);
+    if (b === 'flamethrower') sNoise({ dur: .08, vol: .04, type: 'lowpass', f: 500, rev: .05, a: .01 });
+    else sNoise({ dur: fast ? .05 : .08, vol: heavy ? .16 : fast ? .045 : .08, type: 'lowpass', f: heavy ? 700 : b === 'shotgun' ? 900 : 1300, f2: 200, rev: .05, a: .002 });
 }
 
 function shSendInput() {
@@ -8836,18 +9007,18 @@ document.addEventListener('keydown', e => {
     if (e.repeat) return;
     if (k === '1') wsSend({ type: 'shSlot', slot: 'primary' });
     if (k === '2') wsSend({ type: 'shSlot', slot: 'secondary' });
-    if (k === 'q') wsSend({ type: 'shMed' });
+    if (k === 'q') shUse(0);
     if (k === 'f' || k === 'e') wsSend({ type: 'shInteract' });
-    if (k === 'g') shThrow();
-    if (k === 't') shNadeCycle();
+    if (k === 'g') shUse(1);
     if (e.key === 'Tab' || k === 'i') {
         e.preventDefault();
         shInvToggle();
     }
 });
 
-// Granate auf den Mauszeiger werfen (Touch: 300 in Blickrichtung)
-function shThrow() {
+// Verbrauchsgut aus Slot i (0 = Q, 1 = G) – Wuerfe und Blink gehen auf den
+// Mauszeiger (Touch: 300 in Blickrichtung)
+function shUse(i) {
     if (!shPred) return;
     let x = shPred.x + Math.cos(shIn.a) * 300, y = shPred.y + Math.sin(shIn.a) * 300;
     if (shMouse && !shTouch.aim) {
@@ -8856,23 +9027,9 @@ function shThrow() {
         x = shCam.x + shMouse.x * dpr / shCam.s;
         y = shCam.y + shMouse.y * dpr / shCam.s;
     }
-    wsSend({ type: 'shNade', x: Math.round(x), y: Math.round(y) });
+    wsSend({ type: 'shUse', slot: i, x: Math.round(x), y: Math.round(y) });
 }
 
-function shNadeCycle() {
-    const s = shSnaps[shSnaps.length - 1];
-    if (!s) return;
-    const order = Object.keys(arenaCat.throws);
-    const nd = s.me.nades || {};
-    let i = order.indexOf(s.me.nade);
-    for (let k = 1; k <= order.length; k++) {
-        const b = order[(i + k) % order.length];
-        if (nd[b] > 0 || k === order.length) {
-            wsSend({ type: 'shNadeSel', base: b });
-            break;
-        }
-    }
-}
 document.addEventListener('keyup', e => {
     if (!sh) return;
     shKeys.delete(e.key.toLowerCase());
@@ -8939,9 +9096,9 @@ $('hub-back').onclick = () => { if (!hubCaseBusy) showScreen('menu'); };
 $('sh-leave').onclick = () => {
     if (confirm('Leave the raid? You lose everything you carry – like dying.')) wsSend({ type: 'shLeave' });
 };
-$('sh-med').onclick = () => wsSend({ type: 'shMed' });
+$('sh-med').onclick = () => shUse(0);
 $('sh-use').onclick = () => wsSend({ type: 'shInteract' });
-$('sh-nade').onclick = () => shThrow();
+$('sh-nade').onclick = () => shUse(1);
 $('sh-bag').onclick = () => shInvToggle();
 $('sh-swap').onclick = () => {
     const s = shSnaps[shSnaps.length - 1];

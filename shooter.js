@@ -13,11 +13,14 @@
 // (ohne Killer alles als Beutel). Die Starter-Pistole ist gratis, immer da
 // und geht nie verloren.
 //
-// Runde 2 (Feedback Max): vier Ruestungsslots mit Sets, Granaten (Frag,
-// Smoke, Molotov), langsame Regeneration fuer alle, Raid-Inventar
-// (ausruesten, ablegen, fallen lassen) und Verstecken: wer in einem Gebaeude,
-// Busch oder Rauch steckt, ist fuer alle draussen unsichtbar – ausser ganz nah
-// dran oder kurz nach einem eigenen Schuss (Muendungsfeuer).
+// Runde 2 (Feedback Max): vier Ruestungsslots mit Sets, Granaten, langsame
+// Regeneration fuer alle, Raid-Inventar (ausruesten, ablegen, fallen lassen)
+// und Verstecken: wer in einem Gebaeude, Busch oder Rauch steckt, ist fuer
+// alle draussen unsichtbar – ausser ganz nah dran oder kurz nach einem
+// eigenen Schuss (Muendungsfeuer).
+// Runde 3: zwei Slots fuer Verbrauchsgut (Q und G: Heilung, Granaten,
+// Zauber – Flashbang, Cluster, Nuke, Schwarzes Loch, Frost Nova, Blink …),
+// Phantom-Set (unsichtbar im Stillstand), Tueren in der Karte.
 //
 // Der Server rechnet alles (Bewegung, Kugeln mit allen Effekten, Treffer);
 // der Browser rechnet die eigene Bewegung voraus und zeichnet. Jeder bekommt
@@ -35,8 +38,7 @@ const TICK_MS = 33;
 const SEND_MS = 33;
 const VIEW = 1400;              // so weit sieht man andere, Kugeln, Kisten
 const PACK_MAX = 20;            // Rucksack im Raid
-const MEDS_MAX = 3;              // Medkits im Loadout
-const MEDS_RAID = 6;             // Medkits, die man im Raid tragen kann
+const PHANTOM_MS = 1500;         // so lange stillstehen, dann unsichtbar (4 Phantom-Teile)
 const REGEN_BASE = 1;            // HP/s fuer alle ...
 const REGEN_DELAY = 6000;        // ... nach so langer Zeit ohne Schaden
 const REVEAL_MS = 400;           // so lange verraet ein Schuss das Versteck
@@ -71,6 +73,7 @@ function buildMap() {
     const overlaps = (a, b, m) => a[0] < b[0] + b[2] + m && a[0] + a[2] + m > b[0] && a[1] < b[1] + b[3] + m && a[1] + a[3] + m > b[1];
     const nearExtract = r => extracts.some(e => e.x > r[0] - 200 && e.x < r[0] + r[2] + 200 && e.y > r[1] - 200 && e.y < r[1] + r[3] + 200);
     const T = WALL_T;
+    const doorRects = [];
     // Gebaeude: Rechteck mit Tueren
     const buildings = [];
     for (let k = 0; k < 400 && buildings.length < 16; k++) {
@@ -95,8 +98,10 @@ function buildMap() {
                 const at = 50 + rand() * (s.len - gap - 100);
                 if (s.horiz) {
                     walls.push([s.x, s.y, at, T], [s.x + at + gap, s.y, s.len - at - gap, T]);
+                    doorRects.push([s.x + at, s.y, gap, T]);
                 } else {
                     walls.push([s.x, s.y, T, at], [s.x, s.y + at + gap, T, s.len - at - gap]);
+                    doorRects.push([s.x, s.y + at, T, gap]);
                 }
             } else {
                 walls.push(s.horiz ? [s.x, s.y, s.len, T] : [s.x, s.y, T, s.len]);
@@ -139,7 +144,7 @@ function buildMap() {
     }
     return {
         walls: walls.map(w => w.map(Math.round)), crates: crates.map(c => ({ x: Math.round(c.x), y: Math.round(c.y) })), extracts,
-        buildings: buildings.map(b => b.map(Math.round)), bushes
+        buildings: buildings.map(b => b.map(Math.round)), bushes, doors: doorRects.map(d => d.map(Math.round))
     };
 }
 
@@ -178,8 +183,8 @@ function blocked(x, y, r) {
 // Kurzform fuer den Browser
 function brief(it) {
     return it ? {
-        uid: it.uid, n: it.name, b: it.base, k: it.kind, t: it.tier, s: !!it.starter, g: it.grade || 0,
-        sl: it.slot || null, o: it.odds, m: it.mods && it.mods.length ? it.mods.map(m => [m.id, m.lvl]) : undefined
+        uid: it.uid, n: it.name, b: it.base, k: it.kind, t: it.tier, s: !!it.starter,
+        sl: it.slot || null, o: it.odds, sc: it.score, m: it.mods && it.mods.length ? it.mods.map(m => [m.id, m.lvl]) : undefined
     } : null;
 }
 
@@ -193,9 +198,10 @@ module.exports = function createArena(h) {
     const bullets = [];
     const crates = MAP.crates.map((c, i) => ({ id: i, x: c.x, y: c.y, readyAt: 0 }));
     const bags = [];
-    const nades = [];                // Granaten im Flug oder mit Zuender
+    const nades = [];                // Wurfsachen im Flug oder mit Zuender
     const smokes = [];               // Rauchwolken { id, x, y, r, until }
     const fires = [];                // Feuerflaechen { id, x, y, r, until, owner, dps }
+    const holes = [];                // Schwarze Loecher { id, x, y, r, until, owner, dmg }
     let seqId = 0;
     let lastTick = Date.now();
     let lastSend = 0;
@@ -204,32 +210,37 @@ module.exports = function createArena(h) {
     // ---------- Hub: Lager, Loadout, Kaufen, Cases, Salvage ----------
 
     const EMPTY_LOADOUT = () => ({
-        primary: null, secondary: null, helmet: null, vest: null, pants: null, boots: null,
-        meds: 0, nades: { frag: 0, smoke: 0, molotov: 0 }
+        primary: null, secondary: null, helmet: null, vest: null, pants: null, boots: null, util: [null, null]
     });
 
-    // Lager holen und alte Staende (Runde 1) nachziehen
+    // Lager holen und alte Staende nachziehen (Runde 1/2 -> 3)
     function st(c) {
         if (!c.account) return null;
         const a = h.accounts.arena(c.account);
-        if (!a.v2) {
-            for (const it of a.inv) I.migrate(it);
+        if (a.v !== 3) {
+            a.inv = a.inv.filter(it => { I.migrate(it); return it.v === 3; });
             const old = a.loadout || {};
             const l = EMPTY_LOADOUT();
-            for (const k of ['primary', 'secondary', 'meds']) if (old[k]) l[k] = old[k];
+            for (const k of ['primary', 'secondary', 'helmet', 'vest', 'pants', 'boots']) if (old[k]) l[k] = old[k];
             if (old.armor) {
                 const it = a.inv.find(x => x.uid === old.armor);
                 if (it) l[it.slot] = it.uid;
             }
+            // Medkits und Granaten von frueher in die zwei Slots
+            const cons = [];
+            if (old.meds) cons.push({ base: 'medkit', n: old.meds });
+            for (const [b, n] of Object.entries(old.nades || {})) if (n) cons.push({ base: b, n });
+            l.util = [cons[0] || null, cons[1] || null];
             a.loadout = l;
-            a.v2 = true;
+            fixLoadout(a);
+            a.v = 3;
             h.accounts.touch();
         }
         return a;
     }
 
-    function count(a, kind, base) {
-        return a.inv.filter(it => it.kind === kind && (!base || it.base === base)).length;
+    function count(a, base) {
+        return a.inv.filter(it => it.kind === 'util' && it.base === base).length;
     }
 
     function sendHub(c, extra) {
@@ -242,8 +253,12 @@ module.exports = function createArena(h) {
         });
     }
 
-    function noteOdds(key, item) {
-        h.accounts.stat(key, s => { s.bestOdds = Math.max(s.bestOdds || 0, item.odds || 0); });
+    function noteBest(key, item) {
+        h.accounts.stat(key, s => {
+            s.bestOdds = Math.max(s.bestOdds || 0, item.odds || 0);
+            s.bestTier = Math.max(s.bestTier || 0, I.TIER_IDX[item.tier] || 0);
+            s.bestScore2 = Math.max(s.bestScore2 || 0, item.score || 0);
+        });
     }
 
     function addItems(c, items) {
@@ -255,7 +270,7 @@ module.exports = function createArena(h) {
         // Lager voll: der Rest wird automatisch zu Scrap
         const scrap = over.reduce((s, it) => s + I.salvageValue(it), 0);
         a.scrap += scrap;
-        for (const it of kept) noteOdds(c.account, it);
+        for (const it of kept) noteBest(c.account, it);
         h.accounts.touch();
         return { kept, over, scrap };
     }
@@ -278,9 +293,16 @@ module.exports = function createArena(h) {
 
     // Loadout nach Salvage/Verkauf: nichts zeigen lassen, was fehlt
     function fixLoadout(a) {
-        for (const s of ['primary', 'secondary', ...I.SLOTS]) if (a.loadout[s] && !a.inv.some(x => x.uid === a.loadout[s])) a.loadout[s] = null;
-        a.loadout.meds = Math.min(a.loadout.meds, count(a, 'med'));
-        for (const b of Object.keys(I.THROWS)) a.loadout.nades[b] = Math.min(a.loadout.nades[b] || 0, count(a, 'throw', b));
+        const l = a.loadout;
+        for (const s of ['primary', 'secondary', ...I.SLOTS]) if (l[s] && !a.inv.some(x => x.uid === l[s])) l[s] = null;
+        if (!Array.isArray(l.util)) l.util = [null, null];
+        const used = {};
+        l.util = l.util.map(u => {
+            if (!u || !I.UTILS[u.base]) return null;
+            const n = Math.min(u.n, I.UTILS[u.base].stack, count(a, u.base) - (used[u.base] || 0));
+            used[u.base] = (used[u.base] || 0) + Math.max(0, n);
+            return n > 0 ? { base: u.base, n } : null;
+        });
     }
 
     function hubAction(c, d) {
@@ -311,11 +333,11 @@ module.exports = function createArena(h) {
             // Band fuer die Animation: Zufallsware aus demselben Case
             const reel = Array.from({ length: 34 }, () => brief(I.generate(cs.source)));
             reel[29] = brief(item);
-            if (item.odds >= 100000) h.feed(`${cs.icon} ${h.accounts.get(c.account).name} unboxed ${item.name} (1 in ${item.odds.toLocaleString('en-US')})`, 'gold');
+            if (I.TIER_IDX[item.tier] >= 4) h.feed(`${cs.icon} ${h.accounts.get(c.account).name} unboxed a ${I.TIERS[I.TIER_IDX[item.tier]].name} ${item.name}!`, 'gold');
             return sendHub(c, { caseItem: { ...item, sv: I.salvageValue(item) }, reel });
         }
         if (d.type === 'arSalvage') {
-            const uids = new Set((Array.isArray(d.uids) ? d.uids : []).slice(0, 200).map(String));
+            const uids = new Set((Array.isArray(d.uids) ? d.uids : []).slice(0, 300).map(String));
             const out = a.inv.filter(it => uids.has(it.uid));
             if (!out.length) return;
             const scrap = out.reduce((s, it) => s + I.salvageValue(it), 0);
@@ -327,12 +349,17 @@ module.exports = function createArena(h) {
         }
         if (d.type === 'arEquip') {
             const slot = String(d.slot);
-            if (slot === 'meds') {
-                a.loadout.meds = Math.max(0, Math.min(MEDS_MAX, count(a, 'med'), Math.floor(Number(d.n)) || 0));
-            } else if (slot === 'nade') {
-                const b = String(d.base);
-                if (!I.THROWS[b]) return;
-                a.loadout.nades[b] = Math.max(0, Math.min(I.NADES_MAX, count(a, 'throw', b), Math.floor(Number(d.n)) || 0));
+            if (slot === 'util0' || slot === 'util1') {
+                const i = slot === 'util0' ? 0 : 1;
+                const b = d.base === null ? null : String(d.base);
+                if (b === null) a.loadout.util[i] = null;
+                else {
+                    if (!I.UTILS[b]) return;
+                    const other = a.loadout.util[1 - i];
+                    const free = count(a, b) - (other && other.base === b ? other.n : 0);
+                    const n = Math.max(0, Math.min(I.UTILS[b].stack, free, Math.floor(Number(d.n)) || 0));
+                    a.loadout.util[i] = n ? { base: b, n } : null;
+                }
             } else if (['primary', 'secondary', ...I.SLOTS].includes(slot)) {
                 if (d.uid === null) a.loadout[slot] = null;
                 else {
@@ -375,8 +402,9 @@ module.exports = function createArena(h) {
         p.dmgMul = s.dmg;
         p.rateMul = s.rate;
         p.taken = s.taken;
-        p.medRate = s.medRate;
-        p.medExtra = s.medExtra;
+        p.healMul = s.healMul;
+        p.homing = s.homing;
+        p.phantom = s.phantom;
         p.sets = s.sets;
     }
 
@@ -392,28 +420,31 @@ module.exports = function createArena(h) {
             const i = uid ? a.inv.findIndex(x => x.uid === uid) : -1;
             return i >= 0 ? a.inv.splice(i, 1)[0] : null;
         };
-        const takeKind = (kind, base) => {
-            const i = a.inv.findIndex(x => x.kind === kind && (!base || x.base === base));
+        const takeUtil = base => {
+            const i = a.inv.findIndex(x => x.kind === 'util' && x.base === base);
             return i >= 0 ? a.inv.splice(i, 1)[0] : null;
         };
         // Loadout verlaesst das Lager
         const gear = { primary: take(a.loadout.primary) || starterPistol(), secondary: take(a.loadout.secondary) };
         for (const s of I.SLOTS) gear[s] = take(a.loadout[s]);
-        let meds = 0;
-        for (let i = 0; i < a.loadout.meds && takeKind('med'); i++) meds++;
-        const nd = { frag: 0, smoke: 0, molotov: 0 };
-        for (const b of Object.keys(nd)) for (let i = 0; i < (a.loadout.nades[b] || 0) && takeKind('throw', b); i++) nd[b]++;
+        const util = a.loadout.util.map(u => {
+            if (!u) return null;
+            let n = 0;
+            for (let i = 0; i < u.n && takeUtil(u.base); i++) n++;
+            return n ? { base: u.base, n } : null;
+        });
         a.loadout = EMPTY_LOADOUT();
         h.accounts.touch();
         const s = freeSpot(true);
+        const now = Date.now();
         const p = {
             id: c.id, c, name, account: c.account, color: color || '#ff5bd6',
-            x: s.x, y: s.y, a: 0, mx: 0, my: 0, fire: false, lastShot: 0, seq: 0,
-            gear, slot: 'primary', meds, nades: nd, nadeSel: Object.keys(nd).find(b => nd[b]) || 'frag', lastNade: 0,
+            x: s.x, y: s.y, a: 0, mx: 0, my: 0, fire: false, lastShot: 0, seq: 0, lastMove: now,
+            gear, slot: 'primary', util, lastUse: 0,
             pack: [], kills: 0, zone: null, smoke: null,
-            hp: 0, maxHp: 0, speedMul: 1, regen: 0, thorns: 0, dodge: 0, dmgMul: 1, rateMul: 1, taken: 1, medRate: 1, medExtra: 0,
-            burn: null, slowUntil: 0, slow: 0, lastHurt: 0, healUntil: 0, healRate: 0,
-            extractAt: null, joinedAt: Date.now(), protect: Date.now() + 3000 / SPEED
+            hp: 0, maxHp: 0, speedMul: 1, regen: 0, thorns: 0, dodge: 0, dmgMul: 1, rateMul: 1, taken: 1, healMul: 1, homing: 0, phantom: false,
+            burn: null, slowUntil: 0, slow: 0, lastHurt: 0, healUntil: 0, healRate: 0, stimUntil: 0, stim: 0,
+            extractAt: null, joinedAt: now, protect: now + 3000 / SPEED
         };
         gearStats(p);
         players.set(c.id, p);
@@ -428,10 +459,10 @@ module.exports = function createArena(h) {
         h.send(c, {
             type: 'shJoined', id: c.id,
             map: {
-                w: W, h: H, walls: MAP.walls, buildings: MAP.buildings, bushes: MAP.bushes, wallT: WALL_T,
+                w: W, h: H, walls: MAP.walls, buildings: MAP.buildings, doors: MAP.doors, bushes: MAP.bushes, wallT: WALL_T,
                 extracts: MAP.extracts, extractR: EXTRACT_R, r: R, move: MOVE, view: VIEW, throwRange: I.THROW_RANGE
             },
-            packMax: PACK_MAX, medsMax: MEDS_RAID, nadesMax: I.NADES_MAX, feed: feedLog.slice(-6)
+            packMax: PACK_MAX, feed: feedLog.slice(-6)
         });
     }
 
@@ -439,27 +470,37 @@ module.exports = function createArena(h) {
     function sendInv(p) {
         const gear = {};
         for (const s of ['primary', 'secondary', ...I.SLOTS]) gear[s] = brief(p.gear[s]);
-        h.send(p.c, { type: 'shInv', gear, pack: p.pack.map(brief), meds: p.meds, nades: p.nades, packMax: PACK_MAX, sets: p.sets });
+        h.send(p.c, { type: 'shInv', gear, pack: p.pack.map(brief), util: p.util, packMax: PACK_MAX, sets: p.sets });
     }
 
-    // Verbrauchsgut stapelt sich, alles andere in den Rucksack. Rest = passte nicht
+    // Verbrauchsgut stapelt sich in die Slots, alles andere in den Rucksack.
+    // Rueckgabe: was nicht passte
     function pickUp(p, items) {
         const rest = [];
         for (const it of items) {
-            if (it.kind === 'med' && p.meds < MEDS_RAID) p.meds++;
-            else if (it.kind === 'throw' && (p.nades[it.base] || 0) < I.NADES_MAX) p.nades[it.base] = (p.nades[it.base] || 0) + 1;
-            else if (p.pack.length < PACK_MAX) p.pack.push(it);
+            if (it.kind === 'util') {
+                const def = I.UTILS[it.base];
+                const same = p.util.findIndex(u => u && u.base === it.base && u.n < def.stack);
+                if (same >= 0) { p.util[same].n++; continue; }
+                const empty = p.util.findIndex(u => !u);
+                if (empty >= 0) { p.util[empty] = { base: it.base, n: 1 }; continue; }
+            }
+            if (p.pack.length < PACK_MAX) p.pack.push(it);
             else rest.push(it);
         }
         return rest;
     }
 
+    function utilItems(p) {
+        const out = [];
+        for (const u of p.util) if (u) for (let i = 0; i < u.n; i++) out.push(I.plain('util', u.base));
+        return out;
+    }
+
     // Was jemand am Leib und im Rucksack hat (ohne Starter-Pistole)
     function lootOf(p) {
         const items = ['primary', 'secondary', ...I.SLOTS].map(s => p.gear[s]).filter(it => it && !it.starter);
-        for (let i = 0; i < p.meds; i++) items.push(I.plain('med', 'medkit'));
-        for (const [b, n] of Object.entries(p.nades)) for (let i = 0; i < n; i++) items.push(I.plain('throw', b));
-        return items.concat(p.pack);
+        return items.concat(utilItems(p), p.pack);
     }
 
     function dropBag(x, y, items) {
@@ -500,8 +541,7 @@ module.exports = function createArena(h) {
     function extract(p, silent) {
         if (!players.has(p.id)) return;
         players.delete(p.id);
-        const items = lootOf(p);
-        const r = addItems(p.c, items);
+        const r = addItems(p.c, lootOf(p));
         // Mitgebrachtes wieder ins Loadout, soweit noch da
         const a = st(p.c);
         a.loadout = EMPTY_LOADOUT();
@@ -509,14 +549,13 @@ module.exports = function createArena(h) {
             const it = p.gear[s];
             if (it && !it.starter && a.inv.some(x => x.uid === it.uid)) a.loadout[s] = it.uid;
         }
-        a.loadout.meds = Math.min(MEDS_MAX, p.meds);
-        for (const b of Object.keys(a.loadout.nades)) a.loadout.nades[b] = Math.min(I.NADES_MAX, p.nades[b] || 0);
+        a.loadout.util = p.util.map(u => u ? { ...u } : null);
         fixLoadout(a);
         h.accounts.stat(p.account, s => { s.arenaExtracts = (s.arenaExtracts || 0) + 1; });
         if (!silent) {
             h.send(p.c, { type: 'shLeft', result: 'extracted', items: p.pack.map(brief), scrap: r.scrap });
-            const best = p.pack.reduce((b, it) => !b || it.odds > b.odds ? it : b, null);
-            if (best && best.odds >= 5000) h.feed(`🚁 ${p.name} extracted with ${best.name} (1 in ${best.odds.toLocaleString('en-US')})`, 'gold');
+            const best = p.pack.reduce((b, it) => !b || (it.score || 0) > (b.score || 0) ? it : b, null);
+            if (best && I.TIER_IDX[best.tier] >= 4) h.feed(`🚁 ${p.name} extracted with a ${I.TIERS[I.TIER_IDX[best.tier]].name} ${best.name}`, 'gold');
         }
         h.changed();
     }
@@ -554,46 +593,60 @@ module.exports = function createArena(h) {
         if (d.type === 'shSlot') {
             const s = d.slot === 'secondary' ? 'secondary' : 'primary';
             if (p.gear[s]) p.slot = s;
-        } else if (d.type === 'shMed') {
-            if (p.meds > 0 && p.hp < p.maxHp && now > p.healUntil) {
-                p.meds--;
-                const ms = MED_MS / p.medRate;
-                p.healUntil = now + ms / SPEED;
-                p.healRate = (I.MEDKIT_HEAL + p.medExtra) / (ms / 1000);
-                sendInv(p);
-            }
+        } else if (d.type === 'shUse') {
+            useUtil(p, d.slot === 1 ? 1 : 0, Number(d.x), Number(d.y), now);
         } else if (d.type === 'shInteract') {
             interact(p);
-        } else if (d.type === 'shNadeSel') {
-            if (I.THROWS[d.base]) p.nadeSel = d.base;
-        } else if (d.type === 'shNade') {
-            throwNade(p, Number(d.x), Number(d.y), now);
         } else if (d.type === 'shInv') {
             invOp(p, d);
         }
     }
 
-    // Raid-Inventar: ausruesten, ablegen, fallen lassen
+    // Raid-Inventar: ausruesten, ablegen, fallen lassen, Verbrauchsgut in Slots
     function invOp(p, d) {
         const slots = ['primary', 'secondary', ...I.SLOTS];
         if (d.op === 'equip') {
             const i = p.pack.findIndex(x => x.uid === d.uid);
             if (i < 0) return;
             const it = p.pack[i];
-            const slot = it.kind === 'armor' ? it.slot : it.kind === 'weapon' ? (d.slot === 'secondary' ? 'secondary' : 'primary') : null;
-            if (!slot) return;
-            p.pack.splice(i, 1);
-            const old = p.gear[slot];
-            if (old && !old.starter) p.pack.push(old);
-            p.gear[slot] = it;
-            if (slot === 'primary' || slot === 'secondary') p.slot = slot;
+            if (it.kind === 'util') {
+                // ganzen Stapel aus dem Rucksack in einen Slot
+                const si = d.slot === 1 || d.slot === '1' ? 1 : 0;
+                const def = I.UTILS[it.base];
+                const old = p.util[si];
+                if (old && old.base !== it.base) for (let k = 0; k < old.n; k++) p.pack.push(I.plain('util', old.base));
+                let n = old && old.base === it.base ? old.n : 0;
+                for (let k = p.pack.length - 1; k >= 0 && n < def.stack; k--) {
+                    if (p.pack[k].kind === 'util' && p.pack[k].base === it.base) {
+                        p.pack.splice(k, 1);
+                        n++;
+                    }
+                }
+                p.util[si] = { base: it.base, n };
+            } else {
+                const slot = it.kind === 'armor' ? it.slot : (d.slot === 'secondary' ? 'secondary' : 'primary');
+                p.pack.splice(i, 1);
+                const old = p.gear[slot];
+                if (old && !old.starter) p.pack.push(old);
+                p.gear[slot] = it;
+                if (slot === 'primary' || slot === 'secondary') p.slot = slot;
+            }
         } else if (d.op === 'unequip') {
             const slot = String(d.slot);
-            if (!slots.includes(slot) || !p.gear[slot] || p.gear[slot].starter) return;
-            if (p.pack.length >= PACK_MAX) return h.send(p.c, { type: 'shLoot', items: [], full: true });
-            p.pack.push(p.gear[slot]);
-            p.gear[slot] = slot === 'primary' ? starterPistol() : null;
-            if (slot === 'secondary' && p.slot === 'secondary') p.slot = 'primary';
+            if (slot === 'util0' || slot === 'util1') {
+                const si = slot === 'util0' ? 0 : 1;
+                const u = p.util[si];
+                if (!u) return;
+                if (p.pack.length + u.n > PACK_MAX) return h.send(p.c, { type: 'shLoot', items: [], full: true });
+                for (let k = 0; k < u.n; k++) p.pack.push(I.plain('util', u.base));
+                p.util[si] = null;
+            } else {
+                if (!slots.includes(slot) || !p.gear[slot] || p.gear[slot].starter) return;
+                if (p.pack.length >= PACK_MAX) return h.send(p.c, { type: 'shLoot', items: [], full: true });
+                p.pack.push(p.gear[slot]);
+                p.gear[slot] = slot === 'primary' ? starterPistol() : null;
+                if (slot === 'secondary' && p.slot === 'secondary') p.slot = 'primary';
+            }
         } else if (d.op === 'drop') {
             const i = p.pack.findIndex(x => x.uid === d.uid);
             if (i < 0) return;
@@ -631,33 +684,92 @@ module.exports = function createArena(h) {
         sendInv(p);
     }
 
-    // ---------- Granaten ----------
+    // ---------- Verbrauchsgut ----------
 
-    function throwNade(p, tx, ty, now) {
-        const b = p.nadeSel;
-        if (!I.THROWS[b] || !(p.nades[b] > 0) || now - p.lastNade < 700 / SPEED) return;
-        if (!Number.isFinite(tx) || !Number.isFinite(ty)) return;
+    function useUtil(p, si, tx, ty, now) {
+        const u = p.util[si];
+        if (!u || now - p.lastUse < 600 / SPEED) return;
+        const def = I.UTILS[u.base];
+        if (def.use === 'heal') {
+            if (def.full) {
+                p.hp = p.maxHp;
+                p.protect = now + def.protect / SPEED;
+            } else {
+                if (p.hp >= p.maxHp && !def.speed) return;
+                const amount = def.heal * p.healMul;
+                if (def.ms) {
+                    p.healUntil = now + def.ms / SPEED;
+                    p.healRate = amount / (def.ms / 1000);
+                } else p.hp = Math.min(p.maxHp, p.hp + amount);
+                if (def.speed) {
+                    p.stimUntil = now + def.speedMs / SPEED;
+                    p.stim = def.speed;
+                }
+            }
+            fxAt(p.x, p.y, { type: 'shFx', kind: 'heal', x: Math.round(p.x), y: Math.round(p.y) });
+        } else if (def.use === 'throw') {
+            if (!Number.isFinite(tx) || !Number.isFinite(ty)) return;
+            throwNade(p, u.base, tx, ty, now);
+        } else if (u.base === 'frostnova') {
+            fxAt(p.x, p.y, { type: 'shFx', kind: 'nova', x: Math.round(p.x), y: Math.round(p.y), r: def.r });
+            for (const q of near(p.x, p.y, def.r)) {
+                if (q === p) continue;
+                q.slow = Math.max(now < q.slowUntil ? q.slow : 0, def.slow);
+                q.slowUntil = now + def.slowMs / SPEED;
+                damage(q, p, def.dmg, now, q.x, q.y, { how: 'frost', noDodge: true });
+            }
+        } else if (u.base === 'blink') {
+            if (!Number.isFinite(tx) || !Number.isFinite(ty)) return;
+            let dx = tx - p.x, dy = ty - p.y;
+            const d = Math.hypot(dx, dy) || 1;
+            let dist = Math.min(def.range, d);
+            dx /= d;
+            dy /= d;
+            while (dist > 20 && blocked(p.x + dx * dist, p.y + dy * dist, R)) dist -= 15;
+            if (dist <= 20) return;
+            const from = [Math.round(p.x), Math.round(p.y)];
+            p.x += dx * dist;
+            p.y += dy * dist;
+            p.lastMove = now;
+            fxAt(p.x, p.y, { type: 'shFx', kind: 'blink', x: Math.round(p.x), y: Math.round(p.y), from });
+        }
+        p.lastUse = now;
+        u.n--;
+        if (u.n <= 0) p.util[si] = null;
+        sendInv(p);
+    }
+
+    function throwNade(p, base, tx, ty, now) {
+        const def = I.UTILS[base];
         let dx = tx - p.x, dy = ty - p.y;
         const d = Math.hypot(dx, dy) || 1;
         const dist = Math.min(I.THROW_RANGE, d);
         dx /= d;
         dy /= d;
-        p.nades[b]--;
-        p.lastNade = now;
         const flight = Math.max(250, dist / 800 * 1000) / SPEED;
         nades.push({
-            id: ++seqId, owner: p.id, base: b, x: p.x + dx * (R + 8), y: p.y + dy * (R + 8),
+            id: ++seqId, owner: p.id, base, def, x: p.x + dx * (R + 8), y: p.y + dy * (R + 8),
             vx: dx * dist / (flight / 1000), vy: dy * dist / (flight / 1000),
-            landAt: now + flight, fuseAt: b === 'frag' ? now + I.THROWS.frag.fuse / SPEED : 0, landed: false
+            landAt: now + flight, fuseAt: def.fuse ? now + def.fuse / SPEED : 0, landed: false
         });
-        sendInv(p);
     }
 
-    // Freie Sicht zwischen zwei Punkten (fuer Granaten-Schaden)
+    // Freie Sicht zwischen zwei Punkten
     function clear(x1, y1, x2, y2) {
         const d = Math.hypot(x2 - x1, y2 - y1), n = Math.ceil(d / 20);
         for (let i = 1; i < n; i++) if (blocked(x1 + (x2 - x1) * i / n, y1 + (y2 - y1) * i / n, 2)) return false;
         return true;
+    }
+
+    // Explosion mit Abfall nach aussen; walls = Waende schirmen ab
+    function blast(g, x, y, r, dmg, now, walls, how) {
+        const owner = players.get(g.owner) || null;
+        fxAt(x, y, { type: 'shBoom', x: Math.round(x), y: Math.round(y), r, nuke: !!g.def.nuke });
+        for (const q of near(x, y, r + R)) {
+            if (walls && !clear(x, y, q.x, q.y)) continue;
+            const k = 1 - Math.hypot(q.x - x, q.y - y) / (r + R) * 0.6;
+            damage(q, q === owner ? null : owner, dmg * k, now, q.x, q.y, { how, noDodge: true });
+        }
     }
 
     function nadeTick(now, dt) {
@@ -671,29 +783,60 @@ module.exports = function createArena(h) {
                     g.y = ny;
                 }
             }
-            if (!g.landed && !(g.base === 'frag' && now >= g.fuseAt)) continue;
-            const def = I.THROWS[g.base];
-            if (g.base === 'frag') {
-                if (now < g.fuseAt) continue;
-                fxAt(g.x, g.y, { type: 'shBoom', x: Math.round(g.x), y: Math.round(g.y), r: def.r });
-                const owner = players.get(g.owner) || null;
-                for (const q of near(g.x, g.y, def.r + R)) {
+            const def = g.def;
+            // mit Zuender: erst wenn er abgelaufen ist (auch im Flug), sonst bei Landung
+            if (def.fuse ? now < g.fuseAt : !g.landed) continue;
+            if (g.base === 'frag' || g.base === 'cluster' || g.bit) {
+                blast(g, g.x, g.y, def.r, def.dmg, now, true, 'grenade');
+                if (g.base === 'cluster') {
+                    for (let k = 0; k < def.bits; k++) {
+                        const a = Math.random() * Math.PI * 2, rr = 60 + Math.random() * 90;
+                        nades.push({
+                            id: ++seqId, owner: g.owner, base: 'frag', bit: true, def: { r: 80, dmg: 45, fuse: 1 }, x: g.x, y: g.y,
+                            vx: Math.cos(a) * rr * 2.5, vy: Math.sin(a) * rr * 2.5, landAt: now + 400 / SPEED, fuseAt: now + (450 + k * 90) / SPEED, landed: false
+                        });
+                    }
+                }
+            } else if (g.base === 'nuke') {
+                blast(g, g.x, g.y, def.r, def.dmg, now, false, 'nuke');
+            } else if (g.base === 'flash') {
+                fxAt(g.x, g.y, { type: 'shFx', kind: 'flash', x: Math.round(g.x), y: Math.round(g.y), r: def.r });
+                for (const q of near(g.x, g.y, def.r)) {
                     if (!clear(g.x, g.y, q.x, q.y)) continue;
-                    const k = 1 - Math.hypot(q.x - g.x, q.y - g.y) / (def.r + R) * 0.6;
-                    damage(q, q === owner ? null : owner, def.dmg * k, now, q.x, q.y, { how: 'grenade', noDodge: true });
+                    h.send(q.c, { type: 'shFlash', ms: Math.round(def.blind * (1 - Math.hypot(q.x - g.x, q.y - g.y) / def.r * 0.5)) });
                 }
             } else if (g.base === 'smoke') {
                 smokes.push({ id: g.id, x: g.x, y: g.y, r: def.r, until: now + def.dur / SPEED });
-            } else {
+            } else if (g.base === 'molotov' || g.base === 'fireball') {
+                if (def.dmg) blast(g, g.x, g.y, def.r * 0.6, def.dmg, now, true, 'fire');
                 fires.push({ id: g.id, x: g.x, y: g.y, r: def.r, until: now + def.dur / SPEED, owner: g.owner, dps: def.dps });
+            } else if (g.base === 'blackhole') {
+                holes.push({ id: g.id, x: g.x, y: g.y, r: def.r, until: now + def.pull / SPEED, owner: g.owner, dmg: def.dmg, def });
             }
             nades.splice(i, 1);
         }
         for (let i = smokes.length - 1; i >= 0; i--) if (now > smokes[i].until) smokes.splice(i, 1);
         for (let i = fires.length - 1; i >= 0; i--) if (now > fires[i].until) fires.splice(i, 1);
+        // Schwarze Loecher ziehen an und fallen dann zusammen
+        for (let i = holes.length - 1; i >= 0; i--) {
+            const o = holes[i];
+            if (now > o.until) {
+                holes.splice(i, 1);
+                blast(o, o.x, o.y, o.r, o.dmg, now, false, 'blackhole');
+                continue;
+            }
+            for (const q of near(o.x, o.y, o.r * 1.4)) {
+                const d = Math.hypot(o.x - q.x, o.y - q.y);
+                if (d < 8) continue;
+                const pull = 240 * dt;
+                const nx = q.x + (o.x - q.x) / d * pull, ny = q.y + (o.y - q.y) / d * pull;
+                if (!blocked(nx, q.y, R)) q.x = nx;
+                if (!blocked(q.x, ny, R)) q.y = ny;
+            }
+        }
     }
 
-    // ---------- Sichtbarkeit: Gebaeude, Buesche, Rauch ----------
+    // ---------- Sichtbarkeit: Gebaeude, Buesche, Rauch, Phantom ----------
 
     function zoneOf(x, y) {
         for (let i = 0; i < MAP.buildings.length; i++) {
@@ -707,13 +850,18 @@ module.exports = function createArena(h) {
         return null;
     }
 
+    function stillHidden(t, now) {
+        return t.phantom && now - t.lastMove > PHANTOM_MS && now - t.lastShot > PHANTOM_MS;
+    }
+
     // Sieht v den Spieler t? Versteckt ist, wer in einem Gebaeude, Busch oder
-    // Rauch steckt, in dem v nicht auch steckt. Ganz nah dran oder kurz nach
-    // einem eigenen Schuss sieht man jeden.
+    // Rauch steckt, in dem v nicht auch steckt, oder mit 4 Phantom-Teilen
+    // stillsteht. Ganz nah dran oder kurz nach einem eigenen Schuss sieht man jeden.
     function canSee(v, t, now) {
         if (v === t) return true;
         if (Math.hypot(v.x - t.x, v.y - t.y) < SEE_NEAR) return true;
         if (now - t.lastShot < REVEAL_MS) return true;
+        if (stillHidden(t, now)) return false;
         if (t.smoke !== null && v.smoke !== t.smoke) return false;
         if (t.zone && v.zone !== t.zone) return false;
         return true;
@@ -726,6 +874,7 @@ module.exports = function createArena(h) {
         const w = { ...I.weaponStats(item) };
         w.dmg *= p.dmgMul;
         w.ms /= p.rateMul;
+        w.homing += p.homing;
         if (now - p.lastShot < w.ms / SPEED) return;
         p.lastShot = now;
         for (let k = 0; k < w.pellets; k++) {
@@ -736,7 +885,7 @@ module.exports = function createArena(h) {
                 x: p.x + Math.cos(a) * (R + 6), y: p.y + Math.sin(a) * (R + 6),
                 vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed,
                 dies: now + w.life * 1000 / SPEED, w, pierce: w.pierce, bounce: w.bounce, hits: new Set(),
-                fx: (w.explode ? 1 : 0) | (w.burn ? 2 : 0) | (w.frost ? 4 : 0) | (w.tesla ? 8 : 0) | (w.homing ? 16 : 0)
+                fx: (w.explode ? 1 : 0) | (w.burn ? 2 : 0) | (w.frost ? 4 : 0) | (w.tesla ? 8 : 0) | (w.homing ? 16 : 0) | (w.flame ? 32 : 0)
             });
         }
     }
@@ -816,11 +965,13 @@ module.exports = function createArena(h) {
             nades.length = 0;
             smokes.length = 0;
             fires.length = 0;
+            holes.length = 0;
             return;
         }
         nadeTick(now, dt);
 
         for (const p of [...players.values()]) {
+            if (!players.has(p.id)) continue;
             // Brennen, Feuerflaechen, Heilen, Regeneration
             if (p.burn) {
                 if (now > p.burn.until) p.burn = null;
@@ -835,11 +986,13 @@ module.exports = function createArena(h) {
             // Alle regenerieren langsam; Ruestung (Mod, Medic-Set) legt drauf
             if (now - p.lastHurt > REGEN_DELAY / SPEED) p.hp = Math.min(p.maxHp, p.hp + (REGEN_BASE + p.regen) * dt);
             else if (p.regen && now - p.lastHurt > 3000 / SPEED) p.hp = Math.min(p.maxHp, p.hp + p.regen * dt);
-            const sp = MOVE * p.speedMul * (now < p.slowUntil ? 1 - p.slow : 1);
+            const sp = MOVE * p.speedMul * (now < p.slowUntil ? 1 - p.slow : 1) * (now < p.stimUntil ? 1 + p.stim : 1);
+            const ox = p.x, oy = p.y;
             const nx = p.x + p.mx * sp * dt;
             if (!blocked(nx, p.y, R)) p.x = nx;
             const ny = p.y + p.my * sp * dt;
             if (!blocked(p.x, ny, R)) p.y = ny;
+            if (p.x !== ox || p.y !== oy) p.lastMove = now;
             p.zone = zoneOf(p.x, p.y);
             const sm = smokes.find(s => Math.hypot(s.x - p.x, s.y - p.y) < s.r);
             p.smoke = sm ? sm.id : null;
@@ -918,14 +1071,13 @@ module.exports = function createArena(h) {
             h.send(p.c, {
                 type: 'sh', t: now, ack: p.seq,
                 me: {
-                    hp: Math.max(0, Math.round(p.hp)), mh: p.maxHp, slot: p.slot, meds: p.meds, pack: p.pack.length,
-                    nades: p.nades, nade: p.nadeSel,
+                    hp: Math.max(0, Math.round(p.hp)), mh: p.maxHp, slot: p.slot, pack: p.pack.length, util: p.util,
                     gear: { primary: brief(p.gear.primary), secondary: brief(p.gear.secondary) },
                     ms: Math.round(I.weaponStats(w).ms / p.rateMul),
-                    spd: Math.round(p.speedMul * (now < p.slowUntil ? 1 - p.slow : 1) * 100) / 100,
+                    spd: Math.round(p.speedMul * (now < p.slowUntil ? 1 - p.slow : 1) * (now < p.stimUntil ? 1 + p.stim : 1) * 100) / 100,
                     ex: p.extractAt ? Math.max(0, p.extractAt - now) : null,
                     burn: !!p.burn, heal: now < p.healUntil, pr: now < p.protect,
-                    hid: !!(p.zone || p.smoke !== null) && now - p.lastShot >= REVEAL_MS
+                    hid: (!!(p.zone || p.smoke !== null) && now - p.lastShot >= REVEAL_MS) || stillHidden(p, now)
                 },
                 players: plist.filter(q => q === p || (inView(q.x, q.y) && canSee(p, q, now))).map(q => {
                     const qw = q.gear[q.slot] || q.gear.primary;
@@ -940,9 +1092,10 @@ module.exports = function createArena(h) {
                 bullets: bullets.filter(b => inView(b.x, b.y)).map(b => [b.id, Math.round(b.x), Math.round(b.y), Math.round(b.vx), Math.round(b.vy), b.owner, b.fx]),
                 crates: crates.filter(cr => inView(cr.x, cr.y)).map(cr => [cr.id, cr.x, cr.y, now >= cr.readyAt ? 1 : 0]),
                 bags: bags.filter(b => inView(b.x, b.y)).map(b => [b.id, Math.round(b.x), Math.round(b.y), b.items.length]),
-                nades: nades.filter(g => inView(g.x, g.y)).map(g => [g.id, Math.round(g.x), Math.round(g.y), g.base, g.landed ? 1 : 0]),
+                nades: nades.filter(g => inView(g.x, g.y)).map(g => [g.id, Math.round(g.x), Math.round(g.y), g.base, g.landed ? 1 : 0, g.fuseAt ? Math.max(0, Math.round(g.fuseAt - now)) : 0]),
                 smokes: smokes.filter(s => inView(s.x, s.y)).map(s => [s.id, Math.round(s.x), Math.round(s.y), s.r, Math.round(s.until - now)]),
-                fires: fires.filter(f => inView(f.x, f.y)).map(f => [f.id, Math.round(f.x), Math.round(f.y), f.r, Math.round(f.until - now)])
+                fires: fires.filter(f => inView(f.x, f.y)).map(f => [f.id, Math.round(f.x), Math.round(f.y), f.r, Math.round(f.until - now)]),
+                holes: holes.filter(o => inView(o.x, o.y)).map(o => [o.id, Math.round(o.x), Math.round(o.y), o.r, Math.round(o.until - now)])
             });
         }
     }

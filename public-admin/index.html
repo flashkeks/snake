@@ -396,29 +396,30 @@ function drawArena() {
     const A = cat.arena, a = det.arena;
     const bases = aKind === 'weapon' ? Object.entries(A.weapons).map(([k, w]) => [k, `${w.icon} ${w.name}${w.special ? ' (case only)' : ''}`])
         : aKind === 'armor' ? Object.entries(A.armors).map(([k, x]) => [k, `${x.icon} ${x.name} · ${A.sets[x.set].name} ${x.slot}`])
-        : aKind === 'throw' ? Object.entries(A.throws).map(([k, t]) => [k, `${t.icon} ${t.name}`]) : [['medkit', '💉 Medkit']];
+        : Object.entries(A.utils).map(([k, t]) => [k, `${t.icon} ${t.name} · ${A.tiers[t.tier].name}`]);
     const modDefs = aKind === 'armor' ? A.armorMods : A.weaponMods;
     const modRow = i => `<select data-am="${i}"><option value="">– no effect –</option>${Object.entries(modDefs).map(([k, m]) => `<option value="${k}">${m.icon} ${m.name} (max ${m.max})</option>`).join('')}</select>` +
         `<input type="number" min="1" max="5" value="1" style="width:55px" data-al="${i}">`;
     const gear = aKind === 'weapon' || aKind === 'armor';
+    if (!['weapon', 'armor', 'util'].includes(aKind)) aKind = 'weapon';
     const loadout = new Set(Object.values(a.loadout || {}).filter(v => typeof v === 'string'));
     const rows = a.inv.slice().sort((x, y) => (y.odds || 1) - (x.odds || 1)).map(it => {
-        const icon = it.kind === 'med' ? '💉' : it.kind === 'throw' ? (A.throws[it.base] || {}).icon : (A.weapons[it.base] || A.armors[it.base] || {}).icon;
+        const icon = ((it.kind === 'util' ? A.utils : it.kind === 'armor' ? A.armors : A.weapons)[it.base] || {}).icon;
         const mods = (it.mods || []).map(m => { const d = (it.kind === 'armor' ? A.armorMods : A.weaponMods)[m.id]; return d ? `${d.icon}${d.name} ${m.lvl}` : m.id; }).join(', ');
         return `<tr><td><input type="checkbox" data-auid="${esc(it.uid)}"></td><td>${icon || '❔'} <b>${esc(it.name)}</b>${loadout.has(it.uid) ? ' <span class="muted">(loadout)</span>' : ''}</td>` +
-            `<td>${it.kind === 'weapon' || it.kind === 'armor' ? '★'.repeat((it.grade || 0) + 1) : ''}</td><td class="t-${it.tier}">${it.tier}${it.odds > 1 ? ' · 1 in ' + fmt(it.odds) : ''}</td>` +
+            `<td class="t-${it.tier}">${it.tier}${it.odds > 1 ? ' · 1 in ' + fmt(it.odds) : ''}</td><td class="muted">⚡ ${fmt(it.score || 0)}</td>` +
             `<td>${esc(mods)}</td><td class="num">${it.sv || 0}⚙️</td><td><button type="button" class="danger" data-adel="${esc(it.uid)}">✕</button></td></tr>`;
     }).join('');
     $('dp-arena').innerHTML =
         `<div class="row"><b>Scrap</b> <input type="number" id="a-scrap" value="${a.scrap || 0}" style="width:120px"><button type="button" id="a-scrap-set">Set</button>` +
         `<span class="muted">Stash ${a.inv.length} / ${A.invMax}</span></div>` +
         `<div class="panel"><div class="row"><b>Create item</b>` +
-        `<select id="a-kind">${[['weapon', 'Weapon'], ['armor', 'Armor'], ['throw', 'Grenade'], ['med', 'Medkit']].map(([k, n]) => `<option value="${k}" ${k === aKind ? 'selected' : ''}>${n}</option>`).join('')}</select>` +
+        `<select id="a-kind">${[['weapon', 'Weapon'], ['armor', 'Armor'], ['util', 'Consumable']].map(([k, n]) => `<option value="${k}" ${k === aKind ? 'selected' : ''}>${n}</option>`).join('')}</select>` +
         `<select id="a-base">${bases.map(([k, n]) => `<option value="${k}">${esc(n)}</option>`).join('')}</select>` +
-        (gear ? `<select id="a-grade">${A.grades.map((g, i) => `<option value="${i}">Grade ${'★'.repeat(i + 1)} (+${Math.round(g * 100)}%)</option>`).join('')}</select>` : '') +
+        (gear ? `<select id="a-tier">${A.tiers.map((t, i) => `<option value="${i}">${t.name} (+${Math.round(A.tierBonus[i] * 100)}%)</option>`).join('')}</select>` : '') +
         `<input type="number" id="a-count" min="1" max="50" value="1" style="width:60px"> ×</div>` +
         (gear ? `<div class="row">Effects: ${modRow(0)} ${modRow(1)} ${modRow(2)}</div>` : '') +
-        `<div class="row"><button type="button" class="primary" id="a-give">Give</button><span class="muted">Rarity (1 in X) is calculated like a real drop.</span></div></div>` +
+        `<div class="row"><button type="button" class="primary" id="a-give">Give</button><span class="muted">Tier is set by you; 1 in X and score follow from tier and effects.</span></div></div>` +
         `<div class="row"><b>Stash</b><button type="button" class="danger" id="a-del-picked">Delete selected</button><button type="button" class="danger" id="a-clear">Clear stash</button></div>` +
         `<table class="stash"><tbody>${rows || '<tr><td class="muted">empty</td></tr>'}</tbody></table>`;
 }
@@ -430,7 +431,7 @@ $('dp-arena').onclick = e => {
     if (b.id === 'a-give') {
         const mods = [0, 1, 2].map(i => ({ id: $('dp-arena').querySelector(`[data-am="${i}"]`), lvl: $('dp-arena').querySelector(`[data-al="${i}"]`) }))
             .filter(x => x.id && x.id.value).map(x => ({ id: x.id.value, lvl: Number(x.lvl.value) }));
-        return post('arena', { op: 'give', kind: aKind, base: $('a-base').value, grade: $('a-grade') ? Number($('a-grade').value) : 0, mods, count: Number($('a-count').value) }, 'Item given');
+        return post('arena', { op: 'give', kind: aKind, base: $('a-base').value, tier: $('a-tier') ? Number($('a-tier').value) : 0, mods, count: Number($('a-count').value) }, 'Item given');
     }
     if (b.dataset.adel) return post('arena', { op: 'delete', uid: b.dataset.adel }, 'Deleted');
     if (b.id === 'a-del-picked') {

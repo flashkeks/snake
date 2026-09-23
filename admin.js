@@ -254,7 +254,7 @@ module.exports = function startAdmin(h) {
                 return json(res, 200, {
                     cosmetics: { cats: h.shop.CATS, items: h.shop.ITEMS.map(({ id, cat, name, icon, price, rarity }) => ({ id, cat, name, icon, price, rarity })) },
                     arena: {
-                        weapons: A.weapons, armors: A.armors, sets: A.sets, throws: A.throws, grades: A.grades, tiers: A.tiers,
+                        weapons: A.weapons, armors: A.armors, sets: A.sets, utils: A.utils, tierBonus: A.tierBonus, tiers: A.tiers,
                         weaponMods: A.weaponMods, armorMods: A.armorMods, invMax: A.invMax
                     },
                     luck: h.luck.GAMES
@@ -282,7 +282,7 @@ module.exports = function startAdmin(h) {
                 } else if (mm[2] === 'arena') {
                     err = h.accounts.adminArena(key, String(b.op), b);
                     if (!err) log(email, 'arena-' + b.op, u.name, b.op === 'give'
-                        ? { kind: String(b.kind), base: String(b.base), grade: Number(b.grade) || 0, mods: (b.mods || []).map(x => `${x.id}${x.lvl}`).join(' '), count: Number(b.count) || 1 }
+                        ? { kind: String(b.kind), base: String(b.base), tier: Number(b.tier) || 0, mods: (b.mods || []).map(x => `${x.id}${x.lvl}`).join(' '), count: Number(b.count) || 1 }
                         : b.op === 'scrap' ? { set: Number(b.set) } : b.op === 'delete' ? { items: (Array.isArray(b.uids) ? b.uids : [b.uid]).length } : undefined);
                 }
                 if (err) return json(res, 400, { error: err });

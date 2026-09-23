@@ -1090,12 +1090,10 @@ async function handle(c, data) {
             shooter.hubAction(c, data);
             return;
 
-        // Im Raid: Waffe wechseln, Medkit, Kiste/Beutel oeffnen
+        // Im Raid: Waffe wechseln, Verbrauchsgut (Q/G), Kiste/Beutel oeffnen, Inventar
         case 'shSlot':
-        case 'shMed':
+        case 'shUse':
         case 'shInteract':
-        case 'shNade':
-        case 'shNadeSel':
         case 'shInv':
             shooter.action(c, data);
             return;
