@@ -610,6 +610,40 @@ button:disabled {
     color: #2a1a00;
 }
 
+/* Einsatz-Leiste (Roulette, Blackjack) im Plinko-Stil */
+.chips button.gold {
+    background: linear-gradient(115deg, #a86f00, #ffd700, #fff3b0, #e4ae39);
+    background-size: 250% 100%;
+    color: #3a2400;
+    border: 0;
+    height: 36px;
+    padding: 0 14px;
+    font-size: 15px;
+}
+
+.chips .s2-bet button {
+    color: #fff;
+    border-color: rgba(255,255,255,.25);
+    font-size: 18px;
+    padding: 0;
+}
+
+.chips .s2-bet input {
+    width: 80px;
+}
+
+.chips {
+    align-items: center;
+    gap: 8px 14px;
+}
+
+.bj-side {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
 .rl-outside {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
@@ -2290,6 +2324,289 @@ button:disabled {
     }
 }
 
+.cs-tabs {
+    display: flex;
+    gap: 6px;
+    border-bottom: 1px solid rgba(255,210,63,.3);
+    padding-bottom: 8px;
+    overflow-x: auto;
+}
+
+.cs-tabs button {
+    flex: 1 0 auto;
+    font-size: 15px;
+    padding: 8px 12px;
+    background: rgba(255,255,255,.05);
+    color: #fff;
+    border: 1px solid rgba(255,210,63,.25);
+}
+
+.cs-tabs button.on {
+    background: #ffd23f;
+    color: #2a1a00;
+    border-color: #ffd23f;
+}
+
+.cs-grid[hidden] {
+    display: none !important;
+}
+
+.cs-grid[data-pane="daily"] .cs-tile {
+    grid-column: 1 / -1;
+    padding: 28px 10px;
+}
+
+.cs-grid[data-pane="daily"] .cs-tile .ico {
+    font-size: 70px;
+}
+
+/* ---------- Poker ---------- */
+
+.pk {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.pk-table {
+    position: relative;
+    height: 380px;
+    margin: 30px 70px 40px;
+}
+
+.pk-felt {
+    position: absolute;
+    inset: 0;
+    border-radius: 190px;
+    background: radial-gradient(ellipse at 50% 40%, #1f8a4c, #0d4a28 75%);
+    border: 12px solid #5a3a1a;
+    box-shadow: inset 0 0 40px rgba(0,0,0,.6), 0 8px 24px rgba(0,0,0,.6);
+}
+
+.pk-center {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+}
+
+.pk-board {
+    display: flex;
+    gap: 5px;
+}
+
+.pk-board .card-p {
+    width: 44px;
+    height: 62px;
+    font-size: 17px;
+}
+
+.card-p.pk-slot {
+    background: rgba(0,0,0,.2);
+    border: 1px dashed rgba(255,255,255,.25);
+    box-shadow: none;
+    animation: none;
+}
+
+.pk-pot {
+    font-weight: 900;
+    color: #ffd23f;
+    text-shadow: 0 1px 3px #000;
+}
+
+.pk-results {
+    font-size: 14px;
+    font-weight: 700;
+    background: rgba(0,0,0,.55);
+    border-radius: 8px;
+    padding: 4px 10px;
+}
+
+.pk-seat {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    min-width: 110px;
+    padding: 4px 8px 6px;
+    border-radius: 10px;
+    background: rgba(10,14,20,.92);
+    border: 2px solid rgba(255,255,255,.2);
+    text-align: center;
+    font-size: 13px;
+    z-index: 2;
+}
+
+.pk-seat.empty {
+    min-width: 80px;
+    opacity: .7;
+    font-size: 12px;
+}
+
+.pk-seat.empty button {
+    font-size: 12px;
+    padding: 4px 8px;
+}
+
+.pk-seat.turn {
+    border-color: #ffd23f;
+    box-shadow: 0 0 18px rgba(255,210,63,.7);
+}
+
+.pk-seat.me {
+    border-color: #00ff88;
+}
+
+.pk-seat.folded {
+    opacity: .45;
+}
+
+.pk-seat.won {
+    border-color: #ffd23f;
+    animation: dailyGlow .8s ease-in-out infinite alternate;
+}
+
+.pk-cards {
+    display: flex;
+    justify-content: center;
+    gap: 3px;
+    margin-top: -26px;
+    min-height: 22px;
+}
+
+.pk-cards .card-p {
+    width: 32px;
+    height: 46px;
+    font-size: 13px;
+}
+
+.pk-seat.me .pk-cards .card-p {
+    width: 42px;
+    height: 60px;
+    font-size: 17px;
+}
+
+.card-p.best {
+    outline: 3px solid #ffd23f;
+}
+
+.pk-name {
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.pk-stack {
+    color: #ffd23f;
+    font-weight: 700;
+}
+
+.pk-last {
+    font-size: 11px;
+    text-transform: uppercase;
+    opacity: .75;
+}
+
+.pk-dealer {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    color: #111;
+    font-size: 11px;
+    font-weight: 900;
+}
+
+.pk-bet {
+    position: absolute;
+    left: 50%;
+    bottom: -20px;
+    transform: translateX(-50%);
+    background: #ffd23f;
+    color: #2a1a00;
+    border-radius: 10px;
+    padding: 0 7px;
+    font-weight: 900;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.pk-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-height: 46px;
+}
+
+.pk-act, .pk-sit, .pk-wait, .pk-raise, .pk-quick {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.pk-act > button {
+    min-width: 90px;
+    height: 40px;
+    font-size: 16px;
+}
+
+.pk-raise input[type=range] {
+    width: 160px;
+    accent-color: #ffd23f;
+}
+
+.pk-raise input[type=number], .pk-sit input {
+    width: 100px;
+    height: 36px;
+    text-align: center;
+    font-weight: 800;
+    color: #ffd23f;
+    background: #0b120e;
+    border: 1px solid rgba(255,210,63,.4);
+    border-radius: 8px;
+}
+
+.pk-quick button {
+    font-size: 12px;
+    padding: 4px 10px;
+}
+
+.pk-sit small {
+    font-size: 11px;
+    font-weight: 800;
+    opacity: .7;
+}
+
+.pk-yourhand {
+    font-weight: 900;
+    color: #7dffb0;
+}
+
+@media (max-width: 700px) {
+    .pk-table {
+        height: 300px;
+        margin: 30px 34px 40px;
+    }
+    .pk-seat {
+        min-width: 76px;
+        font-size: 11px;
+        padding: 3px 4px 4px;
+    }
+    .pk-board .card-p {
+        width: 32px;
+        height: 46px;
+        font-size: 13px;
+    }
+}
+
+
 /* ---------- Daily Wheel ---------- */
 
 .dw-wrap {
@@ -3196,7 +3513,7 @@ body.touch input, body.touch textarea {
                         </div>
                         <div class="menu-sect gamba">
                             <h3>🎰 Gamba</h3>
-                            <div class="gamba-list">🎁 Daily Wheel<br>🎰 Slots · 🌟 Budget Starlight<br>🐔 Crossy Road · 🔻 Plinko<br>🃏 Blackjack · 🎡 Roulette</div>
+                            <div class="gamba-list">🎁 Daily Wheel<br>🎰 Slots · 🌟 Budget Starlight<br>🐔 Crossy Road · 🔻 Plinko<br>🃏 Blackjack · 🎡 Roulette · ♠️ Poker</div>
                             <div class="gamba-live" id="gamba-live"></div>
                             <button type="button" class="gold" id="casino-btn">Enter the casino →</button>
                         </div>
@@ -3250,14 +3567,24 @@ body.touch input, body.touch textarea {
                         <span class="coins">🪙 <span id="cs-coins">0</span></span>
                         <button type="button" class="s2-icon" id="casino-back" title="Back to menu">✕</button>
                     </div>
-                    <div class="cs-grid">
+                    <div class="cs-tabs" id="cs-tabs">
+                        <button type="button" data-tab="daily">🎁 Daily Bonus</button>
+                        <button type="button" data-tab="slots">🎰 Slots &amp; more</button>
+                        <button type="button" data-tab="tables">🃏 Table Games</button>
+                    </div>
+                    <div class="cs-grid" data-pane="daily">
                         <button type="button" class="cs-tile daily" id="daily-btn"><span class="ico">🎁</span><b>Daily Wheel</b><small id="daily-state">Free spin every day</small></button>
+                    </div>
+                    <div class="cs-grid" data-pane="slots" hidden>
                         <button type="button" class="cs-tile" id="slots-btn"><span class="ico">🎰</span><b>Slots</b><small>Classic three reels</small></button>
                         <button type="button" class="cs-tile" id="slots2-btn"><span class="ico">🌟</span><b>Budget Starlight</b><small>Tumbles · multipliers · free spins</small></button>
                         <button type="button" class="cs-tile" id="cross-btn"><span class="ico">🐔</span><b>Crossy Road</b><small>Cross lanes, cash out in time</small></button>
                         <button type="button" class="cs-tile" id="plinko-btn"><span class="ico">🔻</span><b>Plinko</b><small>Drop balls, up to ×1000</small></button>
+                    </div>
+                    <div class="cs-grid" data-pane="tables" hidden>
                         <button type="button" class="cs-tile" data-table="blackjack"><span class="ico">🃏</span><b>Blackjack</b><small class="cs-who" id="who-blackjack">Table is empty</small></button>
                         <button type="button" class="cs-tile" data-table="roulette"><span class="ico">🎡</span><b>Roulette</b><small class="cs-who" id="who-roulette">Table is empty</small></button>
+                        <button type="button" class="cs-tile" data-table="poker"><span class="ico">♠️</span><b>Poker</b><small class="cs-who" id="who-poker">Table is empty</small></button>
                     </div>
                     <div class="msg" id="casino-msg"></div>
                 </div>
@@ -4689,11 +5016,39 @@ setInterval(() => {
 const PHASE_NAME = {
     waiting: 'Waiting for players',
     intro: 'Get ready', question: 'Question', reveal: 'Answer', betting: 'Place your bets',
-    spinning: 'No more bets', playing: 'Your move', dealer: 'Dealer plays', results: 'Results', awards: 'Winners'
+    spinning: 'No more bets', playing: 'Your move', dealer: 'Dealer plays', results: 'Results', awards: 'Winners',
+    starting: 'Shuffling', preflop: 'Pre-flop', flop: 'Flop', turn: 'Turn', river: 'River', showdown: 'Showdown'
 };
 
-// Chip-Leiste fuer Roulette und Blackjack: einmal gebaut, beim Neuzeichnen nur
-// umgeschaltet, damit ein halb getippter freier Betrag nicht verloren geht
+// Einsatz-Leiste fuer Roulette und Blackjack, wie bei Plinko: − Betrag +.
+// Blackjack hat dazu die Sidebets Perfect Pairs und 21+3 (0 = keine).
+// Einmal gebaut, beim Neuzeichnen nur ein-/ausgeblendet, damit ein halb
+// getippter Betrag nicht verloren geht.
+const EV_STEPS = [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000];
+let bjPP = 0;
+let bjT3 = 0;
+const EV_FIELDS = {
+    'ev-bet': { get: () => evChip, set: v => { evChip = Math.max(1, v); }, min: 1 },
+    'ev-pp': { get: () => bjPP, set: v => { bjPP = Math.max(0, v); }, min: 0 },
+    'ev-t3': { get: () => bjT3, set: v => { bjT3 = Math.max(0, v); }, min: 0 }
+};
+
+function evStepper(id, label, title) {
+    return `<div class="s2-bet" title="${title || ''}"><small>${label}</small>` +
+        `<button type="button" class="ghost" data-ev="step" data-f="${id}" data-d="-1">−</button>` +
+        `<input id="${id}" type="number" min="${EV_FIELDS[id].min}" step="1" value="${EV_FIELDS[id].get()}">` +
+        `<button type="button" class="ghost" data-ev="step" data-f="${id}" data-d="1">+</button></div>`;
+}
+
+function evStep(id, dir) {
+    const f = EV_FIELDS[id];
+    const cur = f.get();
+    const steps = f.min === 0 ? [0, ...EV_STEPS] : EV_STEPS;
+    const v = dir > 0 ? (steps.find(s => s > cur) ?? cur) : (steps.filter(s => s < cur).pop() ?? f.min);
+    f.set(v);
+    $(id).value = f.get();
+}
+
 function updateChips(d) {
     const bar = $('ev-chips');
     const show = d.phase === 'betting' && (d.kind === 'roulette' || d.kind === 'blackjack') && evMember() && me;
@@ -4702,18 +5057,23 @@ function updateChips(d) {
     if (!bar.dataset.built || bar.dataset.kind !== d.kind) {
         bar.dataset.built = '1';
         bar.dataset.kind = d.kind;
-        bar.innerHTML = [1, 5].concat(d.bets).map(b => `<button type="button" data-ev="chip" data-v="${b}">${b}</button>`).join('') +
-            `<input class="chip-custom" id="ev-custom" type="number" min="1" step="1" placeholder="custom">` +
-            (d.kind === 'blackjack' ? '<button type="button" class="gold" data-ev="bjplace" style="color:#2a1a00">Bet</button>' : '');
-        $('ev-custom').oninput = e => {
-            const v = Math.floor(Number(e.target.value));
-            if (v >= 1) {
-                evChip = v;
-                bar.querySelectorAll('[data-ev=chip]').forEach(x => x.classList.remove('on'));
-            }
-        };
+        bar.innerHTML = d.kind === 'blackjack'
+            ? evStepper('ev-bet', 'BET') +
+              evStepper('ev-pp', 'PERFECT PAIRS', 'Your first two cards are a pair: mixed 6:1, same color 12:1, same suit 25:1') +
+              evStepper('ev-t3', '21+3', 'Your two cards + dealer up card: flush 5:1, straight 10:1, three of a kind 30:1, straight flush 40:1, suited trips 100:1') +
+              '<button type="button" class="gold" data-ev="bjplace" style="color:#2a1a00">Place bet</button>'
+            : evStepper('ev-bet', 'CHIP');
+        for (const id of Object.keys(EV_FIELDS)) {
+            const el = $(id);
+            if (!el) continue;
+            el.oninput = () => {
+                const v = Math.floor(Number(el.value));
+                if (v >= EV_FIELDS[id].min) EV_FIELDS[id].set(v);
+                if (d.kind === 'roulette') renderEvent();
+            };
+            el.onchange = () => { el.value = EV_FIELDS[id].get(); };
+        }
     }
-    bar.querySelectorAll('[data-ev=chip]').forEach(x => x.classList.toggle('on', Number(x.dataset.v) === evChip && !$('ev-custom').value));
 }
 
 function renderEvent() {
@@ -4729,7 +5089,7 @@ function renderEvent() {
 
     const main = $('ev-main');
     const member = evMember();
-    document.querySelector('#event .ev-body').classList.toggle('wide', (d.kind === 'roulette' || d.kind === 'geo') && d.phase !== 'intro' && d.phase !== 'awards');
+    document.querySelector('#event .ev-body').classList.toggle('wide', (d.kind === 'roulette' || d.kind === 'geo' || d.kind === 'poker') && d.phase !== 'intro' && d.phase !== 'awards');
     document.querySelector('#event .ev-body h3').textContent = d.table ? 'At the table (this session)' : 'Event board';
 
     if (d.phase === 'intro') {
@@ -4744,6 +5104,7 @@ function renderEvent() {
         return;
     }
 
+    if (d.kind === 'poker') return renderPoker(main, d, member);
     if (d.phase === 'waiting') {
         main.innerHTML = '<div class="big-note">Waiting…</div>';
         return;
@@ -4956,7 +5317,7 @@ function renderRoulette(main, d, member) {
 
     let top = '';
     if (d.phase === 'betting') {
-        top = can ? `<div class="hint" style="text-align:center">Chip: ${evChip} · click the board to bet</div>` : `<div class="hint">${member ? 'Log in to bet coins' : 'You are watching'}</div>`;
+        top = can ? `<div class="hint" style="text-align:center">Click the board to bet ${evChip}</div>` : `<div class="hint">${member ? 'Log in to bet coins' : 'You are watching'}</div>`;
     }
     if (d.phase === 'spinning' || d.phase === 'results') {
         top = '<div class="wheel-wrap"><canvas id="wheel" width="560" height="560"></canvas>' +
@@ -5154,7 +5515,7 @@ function renderBlackjack(main, d, member) {
             '<div class="bj-others">' + Object.entries(seats).filter(([id]) => id !== evMe()).map(([id, s]) =>
                 `<div class="bj-other"><b style="color:${esc(names[id] ? names[id].color : '#fff')}">${esc(names[id] ? names[id].name : '?')}</b><br>bet ${s.bet}</div>`).join('') + '</div>' +
             '<div class="bj-row">' + (can
-                ? `<span class="bj-label">${mine ? 'Your bet: ' + mine.bet : 'Pick a chip above (or type a custom amount and press Bet)'}</span>` +
+                ? `<span class="bj-label">${mine ? 'Your bet: ' + mine.bet + (mine.pp ? ' · Perfect Pairs ' + mine.pp : '') + (mine.t3 ? ' · 21+3 ' + mine.t3 : '') : 'Set your bet (and side bets) above, then Place bet'}</span>` +
                   (mine ? '<button type="button" class="ghost" data-ev="bjclear" style="font-size:12px;padding:3px 10px">Take back</button>' : '')
                 : `<span class="hint">${member ? 'Log in to bet coins' : 'You are watching'}</span>`) + '</div></div>';
         return;
@@ -5176,6 +5537,11 @@ function renderBlackjack(main, d, member) {
     }).join('') + '</div>';
 
     // Own hand(s) big at the bottom
+    if (mine && mine.side && mine.side.length) {
+        html += '<div class="bj-side">' + mine.side.map(sb => sb.win
+            ? `<span class="bj-res win">${esc(sb.bet)}: ${esc(sb.hit)} ${sb.odds}:1 +${sb.win - sb.stake}</span>`
+            : `<span class="bj-res lose">${esc(sb.bet)} −${sb.stake}</span>`).join(' ') + '</div>';
+    }
     if (mine) {
         html += '<div class="bj-me">' + mine.hands.map((hd, hi) =>
             `<div class="bj-hand2 ${d.phase === 'playing' && !mine.done && hi === mine.active && mine.hands.length > 1 ? 'active' : ''}">` +
@@ -5211,6 +5577,147 @@ function renderBlackjack(main, d, member) {
     if (d.phase === 'dealer') beep(700, 0.05, 0.04);
 }
 
+// ---------- Casino: Poker (Texas Hold'em, Spieler gegen Spieler) ----------
+// Der Tisch (#pk-table) wird bei jeder Nachricht neu gezeichnet, die
+// Bedienleiste (#pk-controls) nur, wenn sich die Lage aendert – sonst
+// verliert ein halb getippter Raise-Betrag den Fokus.
+
+let pkControlsKey = '';
+let pkRaise = 0;
+let pkBuyIn = 1000;
+let pkLastTurn = null;
+
+// Sitzplaetze am Oval, von unten Mitte im Uhrzeigersinn (in % der Tischflaeche)
+const PK_POS = [[50, 96], [8, 72], [8, 24], [50, 3], [92, 24], [92, 72]];
+
+function pkFmt(n) {
+    return Number(n).toLocaleString('en-US');
+}
+
+function renderPoker(main, d, member) {
+    const p = d.data;
+    if (!main.querySelector('.pk')) {
+        main.innerHTML = '<div class="pk"><div class="pk-table" id="pk-table"></div><div class="pk-controls" id="pk-controls"></div></div>';
+        pkControlsKey = '';
+    }
+    const my = p.you;
+    // Eigener Platz immer unten: Sitze so drehen, dass "me" auf Position 0 liegt (my = eigener Sitz, me = Konto)
+    const rot = my >= 0 ? my : 0;
+    const hand = p.hand;
+    let html = '<div class="pk-felt"></div>';
+
+    // Mitte: Board, Pot, Ergebnis
+    html += '<div class="pk-center">';
+    html += `<div class="pk-board">${p.board.map((c, i) => cardHtml(c, `pk:${hand}:b${i}:`)).join('')}${'<span class="card-p pk-slot"></span>'.repeat(5 - p.board.length)}</div>`;
+    html += `<div class="pk-pot">${p.pot ? 'Pot 🪙 ' + pkFmt(p.pot) : `Blinds ${p.blinds[0]}/${p.blinds[1]}`}</div>`;
+    if (p.results) {
+        html += '<div class="pk-results">' + p.results.filter(r => r.amount > 0).map(r =>
+            `<div><b>${esc(r.name)}</b> wins ${pkFmt(r.amount)}${r.hand ? ' · ' + esc(r.hand) : ''}</div>`).join('') + '</div>';
+    } else if (d.phase === 'waiting') {
+        html += '<div class="pk-results">Waiting for 2 players with chips…</div>';
+    } else if (d.phase === 'starting') {
+        html += '<div class="pk-results">Next hand starts…</div>';
+    }
+    html += '</div>';
+
+    // Sitze
+    const winners = new Set((p.results || []).filter(r => r.amount > 0).map(r => r.seat));
+    const bestCards = new Set((p.results || []).flatMap(r => r.amount > 0 && r.cards ? r.cards : []));
+    p.seats.forEach((s, i) => {
+        const pos = PK_POS[(i - rot + 6) % 6];
+        const style = `left:${pos[0]}%;top:${pos[1]}%`;
+        if (!s) {
+            const canSit = my < 0 && member && me;
+            html += `<div class="pk-seat empty" style="${style}">${canSit ? `<button type="button" data-ev="pksit" data-seat="${i}">Sit here</button>` : '<span>empty</span>'}</div>`;
+            return;
+        }
+        const cls = ['pk-seat', i === p.turn ? 'turn' : '', s.folded ? 'folded' : '', winners.has(i) ? 'won' : '', i === my ? 'me' : ''].join(' ');
+        const cards = s.cards.map((c, k) => cardHtml(c, `pk:${hand}:${i}:${k}:`).replace('card-p', `card-p${bestCards.has(c) ? ' best' : ''}`)).join('');
+        html += `<div class="${cls}" style="${style}">` +
+            `<div class="pk-cards">${cards}</div>` +
+            `<div class="pk-name"><span class="dot" style="background:${esc(s.color || '#fff')}"></span>${esc(s.name)}${i === p.dealer && s.inHand ? ' <span class="pk-dealer">D</span>' : ''}</div>` +
+            `<div class="pk-stack">🪙 ${pkFmt(s.stack)}${s.allIn ? ' · ALL-IN' : ''}</div>` +
+            (s.last ? `<div class="pk-last">${esc(s.last)}</div>` : '') +
+            (s.bet ? `<div class="pk-bet">${pkFmt(s.bet)}</div>` : '') +
+            '</div>';
+    });
+    $('pk-table').innerHTML = html;
+
+    // Bedienleiste
+    const seat = my >= 0 ? p.seats[my] : null;
+    const a = p.actions;
+    const key = [hand, d.phase, p.turn, p.currentBet, my, !!a, !!me, member, seat ? seat.stack : ''].join('|');
+    if (key !== pkControlsKey) {
+        pkControlsKey = key;
+        let c = '';
+        if (!member) {
+            c = '<div class="hint">You are watching</div>';
+        } else if (my < 0) {
+            if (!me) c = '<div class="hint">Log in to take a seat</div>';
+            else {
+                const [lo, hi] = p.buyIn;
+                pkBuyIn = Math.max(lo, Math.min(hi, pkBuyIn, me.coins));
+                c = `<div class="pk-sit"><small>BUY-IN ${pkFmt(lo)}–${pkFmt(hi)}</small>` +
+                    `<input type="number" id="pk-buyin" min="${lo}" max="${hi}" step="10" value="${pkBuyIn}">` +
+                    `<button type="button" class="gold" data-ev="pksit">Sit down</button></div>`;
+            }
+        } else if (a) {
+            pkRaise = a.minTo;
+            const betWord = p.currentBet > 0 ? 'Raise to' : 'Bet';
+            c = '<div class="pk-act">' +
+                '<button type="button" class="danger" data-ev="pk" data-m="fold">Fold</button>' +
+                (a.toCall > 0
+                    ? `<button type="button" data-ev="pk" data-m="call">Call ${pkFmt(a.toCall)}</button>`
+                    : '<button type="button" data-ev="pk" data-m="check">Check</button>') +
+                (a.canRaise ? `<div class="pk-raise">` +
+                    `<input type="range" id="pk-range" min="${a.minTo}" max="${a.maxTo}" step="1" value="${pkRaise}">` +
+                    `<input type="number" id="pk-to" min="${a.minTo}" max="${a.maxTo}" step="1" value="${pkRaise}">` +
+                    `<button type="button" class="gold" data-ev="pk" data-m="raise">${betWord}</button>` +
+                    `</div>` +
+                    `<div class="pk-quick"><button type="button" class="ghost" data-ev="pkq" data-q="min">Min</button>` +
+                    `<button type="button" class="ghost" data-ev="pkq" data-q="half">½ Pot</button>` +
+                    `<button type="button" class="ghost" data-ev="pkq" data-q="pot">Pot</button>` +
+                    `<button type="button" class="ghost" data-ev="pk" data-m="allin">All-in</button></div>`
+                    : '') +
+                '</div>';
+        } else {
+            const note = seat.inHand && !seat.folded && p.turn >= 0 ? 'Waiting for the others…' : d.phase === 'showdown' || d.phase === 'starting' ? '' : seat.inHand ? '' : 'You play from the next hand';
+            c = `<div class="pk-wait">${note ? `<span class="hint">${note}</span>` : ''}` +
+                '<button type="button" class="ghost" data-ev="pkstand">Stand up</button></div>';
+        }
+        $('pk-controls').innerHTML = c;
+        const range = $('pk-range'), to = $('pk-to');
+        if (range && to) {
+            range.oninput = () => { pkRaise = Number(range.value); to.value = pkRaise; };
+            to.oninput = () => { const v = Math.floor(Number(to.value)); if (v > 0) { pkRaise = v; range.value = v; } };
+        }
+        const bi = $('pk-buyin');
+        if (bi) bi.oninput = () => { const v = Math.floor(Number(bi.value)); if (v > 0) pkBuyIn = v; };
+    }
+    const yh = p.yourHand && seat && !seat.folded ? `<div class="pk-yourhand">${esc(p.yourHand)}</div>` : '';
+    const old = $('pk-controls').querySelector('.pk-yourhand');
+    if (old) old.remove();
+    if (yh) $('pk-controls').insertAdjacentHTML('afterbegin', yh);
+
+    // Du bist dran: kurzer Ton, einmal je Zug
+    const turnKey = a ? `${hand}:${d.phase}:${p.currentBet}` : null;
+    if (turnKey && turnKey !== pkLastTurn) beep(880, 0.08, 0.06);
+    pkLastTurn = turnKey;
+}
+
+function pkQuick(q) {
+    const p = ev && ev.data;
+    if (!p || !p.actions) return;
+    const a = p.actions;
+    const seat = p.seats[p.you];
+    // Pot-Raise: callen, dann den Pot (inkl. Call) drauf
+    const potAfterCall = p.pot + a.toCall;
+    const v = q === 'min' ? a.minTo : seat.bet + a.toCall + Math.floor(potAfterCall * (q === 'half' ? 0.5 : 1));
+    pkRaise = Math.max(a.minTo, Math.min(a.maxTo, v));
+    if ($('pk-range')) $('pk-range').value = pkRaise;
+    if ($('pk-to')) $('pk-to').value = pkRaise;
+}
+
 // One click handler for all event buttons
 $('event').addEventListener('click', e => {
     const b = e.target.closest('button[data-ev]');
@@ -5223,11 +5730,13 @@ $('event').addEventListener('click', e => {
         renderEvent();
     } else if (t === 'chip') {
         evChip = Number(b.dataset.v);
-        if ($('ev-custom')) $('ev-custom').value = '';
-        if (ev.kind === 'blackjack') evSend({ bet: evChip });
+        if ($('ev-bet')) $('ev-bet').value = evChip;
         renderEvent();
+    } else if (t === 'step') {
+        evStep(b.dataset.f, Number(b.dataset.d));
+        if (ev.kind === 'roulette') renderEvent();
     } else if (t === 'bjplace') {
-        evSend({ bet: evChip });
+        evSend({ bet: evChip, pp: bjPP, t3: bjT3 });
     } else if (t === 'rl') {
         const bet = { type: b.dataset.t, amount: evChip };
         if (b.dataset.n !== undefined) bet.n = Number(b.dataset.n);
@@ -5242,6 +5751,16 @@ $('event').addEventListener('click', e => {
         evSend({ clear: true });
     } else if (t === 'bj') {
         evSend({ move: b.dataset.m });
+    } else if (t === 'pk') {
+        const m = b.dataset.m;
+        evSend(m === 'raise' ? { move: 'raise', to: pkRaise } : { move: m });
+    } else if (t === 'pkq') {
+        pkQuick(b.dataset.q);
+    } else if (t === 'pksit') {
+        const seat = b.dataset.seat !== undefined ? Number(b.dataset.seat) : undefined;
+        evSend({ sit: true, buyIn: pkBuyIn, seat });
+    } else if (t === 'pkstand') {
+        evSend({ stand: true });
     }
 });
 
@@ -6017,13 +6536,15 @@ function buildCasino(d) {
 
 function onLobby(l) {
     lobbyNow = l;
-    for (const k of ['blackjack', 'roulette']) {
-        const names = l[k] || [];
+    for (const k of ['blackjack', 'roulette', 'poker']) {
+        // Poker: wer sitzt, nicht wer zuschaut
+        const names = (k === 'poker' ? l.pokerSeated : l[k]) || [];
         const el = $('who-' + k);
         el.textContent = names.length ? `${names.length} playing: ${names.slice(0, 3).join(', ')}${names.length > 3 ? '…' : ''}` : 'Table is empty';
         el.classList.toggle('busy', names.length > 0);
     }
-    const busy = ['blackjack', 'roulette'].filter(k => (l[k] || []).length).map(k => `${(l[k] || []).length} at ${k === 'blackjack' ? '🃏' : '🎡'}`);
+    const ico = { blackjack: '🃏', roulette: '🎡', poker: '♠️' };
+    const busy = ['blackjack', 'roulette', 'poker'].filter(k => (l[k] || []).length).map(k => `${(l[k] || []).length} at ${ico[k]}`);
     $('gamba-live').textContent = busy.length ? '● Live: ' + busy.join(' · ') : '';
 }
 
@@ -6052,6 +6573,19 @@ $('casino-btn').onclick = () => {
     showScreen('casino');
 };
 $('casino-back').onclick = () => showScreen('menu');
+
+// Lobby-Tabs; der zuletzt offene Tab bleibt (nur in diesem Browser)
+function csTab(name) {
+    document.querySelectorAll('#cs-tabs [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
+    document.querySelectorAll('#casino [data-pane]').forEach(p => { p.hidden = p.dataset.pane !== name; });
+    try { localStorage.setItem('csTab', name); } catch (e) {}
+}
+document.querySelectorAll('#cs-tabs [data-tab]').forEach(b => b.onclick = () => csTab(b.dataset.tab));
+(function () {
+    let t = null;
+    try { t = localStorage.getItem('csTab'); } catch (e) {}
+    csTab(['daily', 'slots', 'tables'].includes(t) ? t : 'daily');
+})();
 document.querySelectorAll('[data-table]').forEach(b => b.onclick = () => {
     unlockAudio();
     wsSend({ type: 'tableJoin', kind: b.dataset.table });

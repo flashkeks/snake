@@ -1,4 +1,6 @@
-// Casino-Tische: Blackjack und Roulette laufen dauerhaft im Casino-Bereich.
+// Casino-Tische: Blackjack, Roulette und Poker laufen dauerhaft im Casino-Bereich.
+// Poker (Spieler gegen Spieler) hat seine Spiellogik in poker.js; hier nur
+// Beitritt, Zuschauen und Versenden.
 //
 // Jeder Tisch dreht Runden, solange jemand daran sitzt: Einsaetze, Spiel,
 // Ergebnis, naechste Runde. Wer dazukommt, spielt ab der naechsten
@@ -13,9 +15,12 @@ const BETS = [10, 25, 50, 100, 250, 500, 1000];
 const MAX_BET = 1000000;
 const validBet = n => Number.isInteger(n) && n >= 1 && n <= MAX_BET;
 
+const createPoker = require('./poker');
+
 const KINDS = {
     blackjack: { title: '🃏 Blackjack' },
-    roulette: { title: '🎡 Roulette' }
+    roulette: { title: '🎡 Roulette' },
+    poker: { title: '♠️ Poker' }
 };
 
 // Zeitraffer nur fuer lokale Tests (SNAKE_EVENT_SPEED=10 macht alles zehnmal schneller)
@@ -73,6 +78,43 @@ function isBlackjack(cards) {
     return cards.length === 2 && handValue(cards).total === 21;
 }
 
+// ---------- Blackjack-Sidebets ----------
+// Beide werden direkt nach dem Austeilen abgerechnet, unabhaengig davon, wie
+// die Hand ausgeht. Quoten X:1, also Auszahlung Einsatz × (X + 1).
+
+const RANK_ORDER = { A: 1, J: 11, Q: 12, K: 13 };
+const rankNum = c => RANK_ORDER[c.slice(0, -1)] || Number(c.slice(0, -1));
+const isRedCard = c => c.endsWith('♥') || c.endsWith('♦');
+
+// Perfect Pairs auf die ersten zwei eigenen Karten
+const PP_PAYS = { perfect: 25, colored: 12, mixed: 6 };
+function perfectPairs(a, b) {
+    if (a.slice(0, -1) !== b.slice(0, -1)) return null;
+    if (a.slice(-1) === b.slice(-1)) return 'perfect';
+    return isRedCard(a) === isRedCard(b) ? 'colored' : 'mixed';
+}
+
+// 21+3: eigene zwei Karten + offene Dealer-Karte als Poker-Dreier
+const T3_PAYS = { suitedTrips: 100, straightFlush: 40, trips: 30, straight: 10, flush: 5 };
+function twentyOnePlus3(cards) {
+    const flush = cards.every(c => c.slice(-1) === cards[0].slice(-1));
+    const trips = cards.every(c => c.slice(0, -1) === cards[0].slice(0, -1));
+    const r = cards.map(rankNum).sort((x, y) => x - y);
+    // A zaehlt unten (A-2-3) und oben (Q-K-A)
+    const straight = (r[1] === r[0] + 1 && r[2] === r[1] + 1) || (r[0] === 1 && r[1] === 12 && r[2] === 13);
+    if (trips && flush) return 'suitedTrips';
+    if (straight && flush) return 'straightFlush';
+    if (trips) return 'trips';
+    if (straight) return 'straight';
+    if (flush) return 'flush';
+    return null;
+}
+
+const SIDE_NAMES = {
+    perfect: 'Perfect pair', colored: 'Colored pair', mixed: 'Mixed pair',
+    suitedTrips: 'Suited trips', straightFlush: 'Straight flush', trips: 'Three of a kind', straight: 'Straight', flush: 'Flush'
+};
+
 function rouletteColor(n) {
     return n === 0 ? 'green' : RED.has(n) ? 'red' : 'black';
 }
@@ -114,6 +156,14 @@ module.exports = function createTables(h) {
             nextStep: 0
         };
     }
+    const pk = tables.poker;
+    pk.game = createPoker({
+        accounts: h.accounts,
+        feed: h.feed,
+        refresh: account => {
+            for (const m of pk.members.values()) if (m.account === account) refreshAccount(m);
+        }
+    });
 
     function phase(t, name, ms) {
         t.phase = name;
@@ -126,8 +176,10 @@ module.exports = function createTables(h) {
     }
 
     function board(t) {
+        // Poker: Bilanz inkl. dem, was gerade am Tisch liegt
+        const live = id => t.kind === 'poker' ? t.game.stackOf(id) : 0;
         return [...t.members.values()]
-            .map(m => ({ id: m.id, name: m.name, color: m.color, guest: !m.account, value: m.net }))
+            .map(m => ({ id: m.id, name: m.name, color: m.color, guest: !m.account, value: m.net + live(m.id) }))
             .sort((a, b) => b.value - a.value);
     }
 
@@ -151,6 +203,7 @@ module.exports = function createTables(h) {
     }
 
     function push(t) {
+        if (t.kind === 'poker') return pushPoker(t);
         const base = {
             type: 'table',
             kind: t.kind,
@@ -167,6 +220,25 @@ module.exports = function createTables(h) {
         for (const m of t.members.values()) h.send(m.c, { ...base, you: m.id });
     }
 
+    // Poker: jeder bekommt seine eigene Sicht (eigene Karten offen)
+    function pushPoker(t) {
+        const hd = t.game.header();
+        const base = {
+            type: 'table',
+            kind: 'poker',
+            title: KINDS.poker.title,
+            eventType: 'gamble',
+            phase: hd.phase,
+            round: t.game._g.hand,
+            left: hd.ends ? Math.max(0, hd.ends - Date.now()) : null,
+            total: hd.total,
+            members: [...t.members.keys()],
+            board: board(t),
+            bets: BETS
+        };
+        for (const m of t.members.values()) h.send(m.c, { ...base, you: m.id, data: t.game.view(m.id) });
+    }
+
     function refreshAccount(m) {
         if (m && m.account) h.send(m.c, { type: 'account', user: h.accounts.publicUser(h.accounts.get(m.account)) });
     }
@@ -175,6 +247,8 @@ module.exports = function createTables(h) {
     function lobby() {
         const out = {};
         for (const t of Object.values(tables)) out[t.kind] = [...t.members.values()].map(m => m.name);
+        // Poker: wer sitzt (nicht, wer zuschaut)
+        out.pokerSeated = tables.poker.game.players();
         return out;
     }
 
@@ -194,7 +268,7 @@ module.exports = function createTables(h) {
             account: c.account,
             net: 0
         });
-        if (t.phase === 'waiting') startBetting(t);
+        if (t.phase === 'waiting' && t.kind !== 'poker') startBetting(t);
         push(t);
         h.onChange();
     }
@@ -204,6 +278,15 @@ module.exports = function createTables(h) {
     function leave(c) {
         const t = tableOf(c);
         if (!t) return;
+        if (t.kind === 'poker') {
+            const m = t.members.get(c.id);
+            m.net += t.game.standUp(c.id);
+            t.members.delete(c.id);
+            h.send(c, { type: 'tableLeft' });
+            push(t);
+            h.onChange();
+            return;
+        }
         const seat = t.hands.get(c.id);
         if (t.kind === 'blackjack' && seat && t.phase === 'playing') {
             for (const hd of seat.hands) hd.done = true;
@@ -218,7 +301,7 @@ module.exports = function createTables(h) {
                 if (refund && m.account) h.accounts.addCoins(m.account, refund);
                 t.bets = t.bets.filter(b => b.id !== c.id);
             } else if (seat) {
-                if (m.account) h.accounts.addCoins(m.account, seat.bet);
+                if (m.account) h.accounts.addCoins(m.account, seat.bet + seat.pp + seat.t3);
                 t.hands.delete(c.id);
             }
             refreshAccount(m);
@@ -299,8 +382,25 @@ module.exports = function createTables(h) {
         }
         t.dealer.cards = [draw(t), draw(t)];
         t.dealer.hidden = true;
+        for (const seat of t.hands.values()) bjSideBets(t, seat);
         phase(t, 'playing', MS.bjPlaying);
         bjMaybeDealer(t);
+    }
+
+    function bjSideBets(t, seat) {
+        const [a, b] = seat.hands[0].cards;
+        seat.side = [];
+        seat.sideNet = 0;
+        const settle = (key, stake, hit, pays) => {
+            if (!stake) return;
+            const win = hit ? stake * (pays[hit] + 1) : 0;
+            if (win && seat.account) h.accounts.addCoins(seat.account, win);
+            seat.sideNet += win - stake;
+            seat.side.push({ bet: key, stake, hit: hit ? SIDE_NAMES[hit] : null, odds: hit ? pays[hit] : 0, win });
+            if (win >= 1000) h.feed(`🃏 ${seat.name} hits ${SIDE_NAMES[hit]} (${pays[hit]}:1) for ${win} coins`, 'gold');
+        };
+        settle('Perfect Pairs', seat.pp, perfectPairs(a, b), PP_PAYS);
+        settle('21+3', seat.t3, twentyOnePlus3([a, b, t.dealer.cards[0]]), T3_PAYS);
     }
 
     function bjMaybeDealer(t) {
@@ -343,6 +443,8 @@ module.exports = function createTables(h) {
                 hd.net = pay - hd.bet;
                 net += hd.net;
             }
+            // Sidebets sind schon beim Austeilen bezahlt, zaehlen aber zur Bilanz der Runde
+            net += seat.sideNet || 0;
             seat.net = net;
             const m = t.members.get(id);
             if (m) {
@@ -410,7 +512,18 @@ module.exports = function createTables(h) {
     }
 
     function tick() {
-        for (const t of Object.values(tables)) tickTable(t);
+        for (const t of Object.values(tables)) {
+            if (t.kind !== 'poker') tickTable(t);
+        }
+        const pkPhase = pk.game._g.phase;
+        if (pk.game.tick()) {
+            push(pk);
+            if (pk.game._g.phase !== pkPhase) h.onChange();
+        } else if (pk.members.size && Date.now() - (pk.lastPush || 0) > 1000) {
+            // Restzeit einmal je Sekunde nachschieben
+            push(pk);
+        }
+        if (pk.members.size) pk.lastPush = Date.now();
     }
 
     // ---------- Aktionen ----------
@@ -422,6 +535,19 @@ module.exports = function createTables(h) {
         if (!c.account) return h.send(c, { type: 'tableError', error: 'Log in to bet coins' });
         const u = h.accounts.get(c.account);
         if (!u) return;
+
+        if (t.kind === 'poker') {
+            let err = null;
+            // Name und Farbe vom Konto: wer als Gast kam und sich erst am Tisch anmeldet, heisst sonst "Guest"
+            if (data.sit) err = t.game.sit({ id: c.id, name: u.name, color: u.color || m.color }, c.account, Number(data.buyIn), Number(data.seat));
+            else if (data.stand) m.net += t.game.standUp(c.id);
+            else if (data.move) err = t.game.act(c.id, data);
+            else return;
+            if (err) h.send(c, { type: 'tableError', error: err });
+            push(t);
+            h.onChange();
+            return;
+        }
 
         if (t.kind === 'roulette') {
             if (t.phase !== 'betting') return;
@@ -452,18 +578,23 @@ module.exports = function createTables(h) {
         // Blackjack
         if (t.phase === 'betting') {
             const amount = Number(data.bet);
+            // Sidebets optional, 0 = keine
+            const pp = Number(data.pp) || 0;
+            const t3 = Number(data.t3) || 0;
             const old = t.hands.get(c.id);
+            const oldCost = old ? old.bet + old.pp + old.t3 : 0;
             if (data.clear) {
-                if (old) h.accounts.addCoins(c.account, old.bet);
+                if (old) h.accounts.addCoins(c.account, oldCost);
                 t.hands.delete(c.id);
                 refreshAccount(m);
                 return push(t);
             }
-            if (!validBet(amount)) return;
-            if (u.coins + (old ? old.bet : 0) < amount) return h.send(c, { type: 'tableError', error: 'Not enough coins' });
-            if (old) h.accounts.addCoins(c.account, old.bet);
-            h.accounts.addCoins(c.account, -amount);
-            t.hands.set(c.id, { name: m.name, account: c.account, bet: amount, hands: [], active: 0, done: false, net: 0 });
+            if (!validBet(amount) || !(pp === 0 || validBet(pp)) || !(t3 === 0 || validBet(t3))) return;
+            const cost = amount + pp + t3;
+            if (u.coins + oldCost < cost) return h.send(c, { type: 'tableError', error: 'Not enough coins' });
+            if (old) h.accounts.addCoins(c.account, oldCost);
+            h.accounts.addCoins(c.account, -cost);
+            t.hands.set(c.id, { name: m.name, account: c.account, bet: amount, pp, t3, side: null, sideNet: 0, hands: [], active: 0, done: false, net: 0 });
             refreshAccount(m);
             return push(t);
         }
@@ -513,12 +644,18 @@ module.exports = function createTables(h) {
         handle,
         lobby,
         tableOf,
+        // Herunterfahren: Poker-Stacks zurueck aufs Konto
+        shutdown: () => pk.game.refundAll(),
         // Nur fuer Tests
         _tables: () => tables
     };
 };
 
 module.exports.KINDS = KINDS;
+module.exports.perfectPairs = perfectPairs;
+module.exports.twentyOnePlus3 = twentyOnePlus3;
+module.exports.PP_PAYS = PP_PAYS;
+module.exports.T3_PAYS = T3_PAYS;
 module.exports.handValue = handValue;
 module.exports.rouletteWin = rouletteWin;
 module.exports.newShoe = newShoe;

@@ -6,8 +6,8 @@
   CS:GO-Case-Opening-Stil, Mystery-Boxen, Double or Nothing, Cashout und
   Quiz-Events (Flaggen, Trivia, Weltkarte, Schaetzen).
 - **🎰 Gamba (Casino):** Daily Wheel, Slots, Budget Starlight, Crossy Road, Plinko
-  und dauerhafte Tische fuer Blackjack und Roulette, an denen man sieht, wer
-  gerade mitspielt.
+  und dauerhafte Tische fuer Blackjack, Roulette und Poker (Spieler gegen
+  Spieler), an denen man sieht, wer gerade mitspielt.
 
 Konten, Coins und Bestenliste gelten fuer beides. Ein Node-Prozess
 (`server.js`, nur `ws` als Abhaengigkeit) liefert die Seite aus und spricht
@@ -25,7 +25,8 @@ Live: **`snake.flashkeks.com`** auf `edge` (Netcup).
 | `slots.js` | Slot-Automat „Slots“ (frueher „Kek Slots“); `node slots.js` rechnet die Rueckzahlungsquote aus |
 | `slots2.js` | Tumble-Slot „Budget Starlight“ (frueher „Sweet Kek“, intern weiter `s2`/`spin2`); `node slots2.js N` simuliert grob Rueckzahlung, Bonus-Quote, Bonus-Kauf (zum Abstimmen siehe unten) |
 | `events.js` | Quiz-Events im Snake (Flag Quiz, Trivia, Where is it?, Guess the number): Ablauf, Punkte, Belohnung |
-| `tables.js` | Casino-Tische Blackjack und Roulette: Runden, Einsaetze, Auszahlung |
+| `tables.js` | Casino-Tische Blackjack (mit Sidebets) und Roulette: Runden, Einsaetze, Auszahlung; haengt auch Poker als dritten Tisch ein |
+| `poker.js` | Poker (Texas Hold'em No-Limit, Spieler gegen Spieler): Sitze, Blinds, Setzrunden, Side-Pots, Handbewertung, Showdown |
 | `casino.js` | Daily Wheel und Crossy Road (Werte, Wahrscheinlichkeiten); `node casino.js` rechnet nach |
 | `plinko.js` | Plinko: 16 Reihen, feste Faecher-Multis je Stufe, Drop; `node plinko.js [N]` zeigt die Tabellen samt RTP (mit N zusaetzlich eine Simulation) |
 | `flags.js` | Laender fuer das Flag Quiz (ISO-Code + englischer Name) |
@@ -272,13 +273,17 @@ es eine Gold-Zeile im Feed.
 
 ## Casino (Gamba)
 
-Hauptmenue → „Enter the casino“. Lobby mit sieben Kacheln; die Tisch-Kacheln
-zeigen live, wer gerade dort sitzt (Nachricht `lobby`). Alles ausser den
+Hauptmenue → „Enter the casino“. Die Lobby hat drei Tabs (seit 23.09.2026,
+Wunsch Max): **🎁 Daily Bonus** (Daily Wheel), **🎰 Slots & more** (Slots,
+Budget Starlight, Crossy Road, Plinko) und **🃏 Table Games** (Blackjack,
+Roulette, Poker). Der zuletzt offene Tab bleibt im Browser gemerkt
+(`localStorage`, nur Komfort). Die Tisch-Kacheln zeigen live, wer gerade
+dort sitzt (Nachricht `lobby`; bei Poker nur, wer einen Platz hat). Alles ausser den
 Tischen nur mit Konto; an den Tischen duerfen Gaeste zuschauen. Wer im
 Casino ist, ist nicht auf dem Snake-Feld (und umgekehrt: `join` wirft einen
 vom Tisch, `tableJoin` geht nur ohne Schlange).
 
-### Blackjack und Roulette (Dauertische, `tables.js`)
+### Blackjack, Roulette und Poker (Dauertische, `tables.js`, `poker.js`)
 
 Jeder Tisch dreht Runden, solange jemand daran sitzt; ohne Einsaetze wird
 nicht ausgeteilt bzw. gedreht, dann laeuft einfach die naechste
@@ -286,7 +291,10 @@ Einsatzphase. Alle am Tisch sehen alle Einsaetze und Haende, rechts steht die
 Bilanz jedes Spielers seit er sitzt. ✕ oben rechts = Tisch verlassen. Wer in
 der Einsatzphase geht, bekommt den Einsatz zurueck; spaeter gesetzte Chips
 laufen weiter und werden ausgezahlt, eine offene Blackjack-Hand bleibt
-stehen. Einsaetze frei: Chips 1, 5, 10–1000 oder eigener Betrag.
+stehen. Einsaetze frei, eingestellt wie bei Plinko: **− Betrag +** (Stufen
+1, 2, 5, 10, 25 … 100.000) oder direkt tippen. Beim Roulette gilt der Betrag
+fuer jeden Klick aufs Board, beim Blackjack setzt „Place bet“ Einsatz und
+Sidebets auf einmal.
 
 | Tisch | Ablauf |
 |---|---|
@@ -295,6 +303,58 @@ stehen. Einsaetze frei: Chips 1, 5, 10–1000 oder eigener Betrag.
 
 Bis 23.09.2026 waren Blackjack und Roulette Events im Snake; die Logik ist
 unveraendert umgezogen.
+
+**Blackjack-Sidebets** (seit 23.09.2026, optional, 0 = keine). Beide werden
+direkt nach dem Austeilen abgerechnet, egal wie die Hand ausgeht, und zaehlen
+zur Bilanz der Runde. Quoten wie im Casino ueblich (X:1, also Einsatz ×
+(X + 1) zurueck):
+
+| Sidebet | Treffer | Quote |
+|---|---|---|
+| Perfect Pairs (eigene zwei Karten) | Mixed pair (andere Farbe) | 6:1 |
+| | Colored pair (gleiche Farbe, andere Suit) | 12:1 |
+| | Perfect pair (gleiche Suit) | 25:1 |
+| 21+3 (eigene zwei + offene Dealer-Karte) | Flush | 5:1 |
+| | Straight (A zaehlt unten und oben) | 10:1 |
+| | Three of a kind | 30:1 |
+| | Straight flush | 40:1 |
+| | Suited trips | 100:1 |
+
+Rueckzahlung per Simulation mit 6 Decks: Perfect Pairs ~94 %, 21+3 ~95 %,
+also schlechter als die Haupthand – wie im echten Casino.
+
+### ♠️ Poker (`poker.js`, Issue #1)
+
+Texas Hold'em No-Limit, **Spieler gegen Spieler**, ein Dauertisch mit 6
+Plaetzen. Zuschauen darf jeder am Tisch, spielen nur mit Konto.
+
+| Regel | Wert |
+|---|---|
+| Blinds | 5/10, Heads-up ist der Dealer Small Blind |
+| Buy-in | 100–10.000 Coins vom Konto; der Stack liegt am Tisch |
+| Rake | keiner, alles geht an die Spieler |
+| Start | ab 2 Spielern mit Chips, 3 s Pause, danach Hand auf Hand |
+| Zugzeit | 20 s, dann Check, wenn moeglich, sonst Fold |
+| Raise | Mindest-Raise = letzte Erhoehung (mind. Big Blind); jede Erhoehung oeffnet die Runde wieder, auch ein kurzes All-in (Vereinfachung) |
+| All-in | Side-Pots je Stufe, Split mit Rest-Coin an den ersten links vom Dealer; kann keiner mehr setzen, kommen die Karten von allein (1,2 s je Street) |
+| Showdown | Karten der Verbliebenen offen, beste 5 aus 7 gelb markiert, 7 s stehen lassen; bei Fold-Sieg nichts zeigen, 3,5 s |
+
+- **Aufstehen**, Tisch verlassen, abmelden, Konto loeschen oder Verbindung
+  weg: eine laufende Hand ist gefoldet (was im Pot liegt, bleibt dort), der
+  Rest vom Stack geht sofort aufs Konto. Pleite (Stack 0) = nach der Hand
+  vom Platz, neu einkaufen geht jederzeit.
+- **Ein Konto, ein Platz** (zwei Tabs koennen nicht gegeneinander spielen).
+- **Server-Neustart** (`deploy.sh`, SIGTERM): `tables.shutdown()` bucht alle
+  Stacks plus die Einsaetze der laufenden Hand zurueck aufs Konto, die Hand
+  gilt als nicht gespielt. Ein harter Absturz (kein SIGTERM) verliert, was
+  am Tisch liegt.
+- Der Server mischt (ein Deck je Hand) und schickt jedem seine eigene Sicht:
+  eigene Karten offen, fremde als `??` bis zum Showdown.
+- Rechts „At the table“: Bilanz inkl. dem, was gerade am Tisch liegt.
+- `node` mit einer Zufalls-Simulation geprueft (Coins bleiben ueber
+  Hunderte Haende mit Side-Pots, Splits und Aufstehen erhalten); die
+  Handbewertung (`best`, `eval5`) hat eigene Faelle fuer Rad-Straight
+  A-2-3-4-5, Kicker und Split.
 
 ### 🎁 Daily Wheel
 
@@ -525,8 +585,9 @@ Client → Server: `register`, `login`, `resume {token}`, `logout`,
 `direction`, `cashout {on}`, `chat`, `spin {bet}`, `spin2 {bet, buy}`, `spin2Done`,
 `eventAction` (`choice` bei Flaggen/Trivia, `lat`/`lon` bei Where is it?,
 `value` bei Guess the number), `tableJoin {kind}`, `tableLeave`,
-`tableAction` (`bet`/`clear` beim Roulette, `bet`/`clear`/`move` beim
-Blackjack), `daily`, `dailyDone`, `crossStart {bet, diff}`, `crossStep`,
+`tableAction` (`bet`/`clear` beim Roulette, `bet`/`pp`/`t3`/`clear`/`move`
+beim Blackjack, `sit {buyIn, seat?}`/`stand`/`move` (`fold`, `check`,
+`call`, `raise {to}`, `allin`) beim Poker), `daily`, `dailyDone`, `crossStart {bet, diff}`, `crossStep`,
 `crossCash`, `plinko {bet, risk}`, `tickets`, `ticketNew {subject, text}`, `ticketReply {id, text}`,
 `ticketRead {id}`.
 

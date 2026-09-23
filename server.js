@@ -797,6 +797,7 @@ async function handle(c, data) {
             if (!allow('pw:' + c.ip, 10, 300e3)) return send(c, { type: 'authError', error: 'Too many attempts, wait 5 minutes' });
             const r = await accounts.deleteAccount(c.account, data.password);
             if (r.error) return send(c, { type: 'authError', error: r.error });
+            tables.leave(c);
             c.account = null;
             send(c, { type: 'auth', token: null, user: null, note: 'Account deleted' });
             pushTop(true);
@@ -1727,6 +1728,7 @@ function broadcastState(now) {
 setInterval(gameTick, TICK);
 
 function shutdown() {
+    tables.shutdown();
     accounts.save(true);
     tickets.save(true);
     process.exit(0);
