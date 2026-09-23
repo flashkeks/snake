@@ -468,13 +468,14 @@ setInterval(() => {
 
 // ---------- Kekemon (5.0) ----------
 
-// Verkaufswert einer Karte je Seltenheit (Doppelte -> Coins)
-const KM_SELL = { common: 40, uncommon: 100, rare: 300, epic: 900, legendary: 3000, secret: 12000 };
-
+// Sammlung: u.cards = { Schluessel: Anzahl }, Schluessel = Karten-Id oder
+// Id~Variante ('p' Pokeball, 'm' Masterball, 's' Shiny, z. B. 'a123~ms').
 function kmState(c, extra) {
     const u = accounts.get(c.account);
-    send(c, { type: 'kmState', v: cardHash, have: u.cards || {}, packs: (u.stats && u.stats.packs) || 0, sell: KM_SELL, ...extra });
+    send(c, { type: 'kmState', v: cardHash, have: u.cards || {}, packs: (u.stats && u.stats.packs) || 0, ...extra });
 }
+
+const KM_VNAME = { p: 'Pokeball', m: 'Masterball', s: 'Shiny' };
 
 function kmHandle(c, d) {
     if (!c.account) return send(c, { type: 'kmError', error: 'Log in to collect cards' });
@@ -482,41 +483,57 @@ function kmHandle(c, d) {
     u.cards = u.cards || {};
     if (d.type === 'kmState') return kmState(c);
     if (d.type === 'kmBuy') {
+        if (!Object.prototype.hasOwnProperty.call(cards.PACKS, d.pack)) return send(c, { type: 'kmError', error: 'Unknown pack' });
         const p = cards.PACKS[d.pack];
-        if (!p || !Object.prototype.hasOwnProperty.call(cards.PACKS, d.pack)) return send(c, { type: 'kmError', error: 'Unknown pack' });
         if (!cardDb.cards.length) return send(c, { type: 'kmError', error: 'No cards loaded' });
         if (u.coins < p.price) return send(c, { type: 'kmError', error: 'Not enough coins' });
         const got = cards.openPack(cardDb, d.pack);
+        // Nur fuer lokale Tests: Varianten erzwingen
+        if (process.env.SNAKE_TEST === '1' && Array.isArray(d.testV)) got.forEach((g, i) => { if (typeof d.testV[i] === 'string') g.v = d.testV[i]; });
         accounts.addCoins(c.account, -p.price);
         accounts.earn(c.account, 'cards', -p.price);
-        const fresh = got.map(id => !u.cards[id]);
-        for (const id of got) u.cards[id] = (u.cards[id] || 0) + 1;
+        // Neu = diese Karte (egal welche Variante) noch gar nicht im Album
+        const ownsBase = id => Object.keys(u.cards).some(k => cards.parseKey(k).id === id && u.cards[k] > 0);
+        const fresh = [];
+        for (const g of got) {
+            fresh.push(!ownsBase(g.id));
+            const k = cards.keyOf(g.id, g.v);
+            u.cards[k] = (u.cards[k] || 0) + 1;
+        }
         accounts.stat(c.account, st => { st.packs = (st.packs || 0) + 1; });
         accounts.touch();
-        // Grosse Zuege in den Feed
-        const best = got.map(id => cardDb.byId[id]).sort((a, b) => cards.RIDX[b.rarity] - cards.RIDX[a.rarity])[0];
-        if (cards.RIDX[best.rarity] >= cards.RIDX.legendary) {
-            const r = cards.RARITIES[cards.RIDX[best.rarity]];
-            feed(`🃏 ${u.name} pulled ${r.name} ${best.name}!`, 'good', c.id, best.rarity === 'secret');
+        // Grosse Zuege in den Feed: ab Legendary, jeder Masterball, jedes Shiny
+        for (const g of got) {
+            const card = cardDb.byId[g.id];
+            const r = cards.RIDX[card.rarity];
+            if (r < cards.RIDX.legendary && !/[ms]/.test(g.v)) continue;
+            const tags = [...g.v].map(ch => KM_VNAME[ch]).join(' ');
+            const mega = card.rarity === 'secret' && g.v.includes('m') && g.v.includes('s');
+            feed(`🃏 ${u.name} pulled ${mega ? '🌈 SUPER MEGA ' : ''}${tags ? tags + ' ' : ''}${cards.RARITIES[r].name} ${card.name}!`, 'gold', c.id, mega || card.rarity === 'secret');
         }
         sendAccount(c);
         return kmState(c, { opened: { pack: d.pack, cards: got, fresh } });
     }
     if (d.type === 'kmSell' || d.type === 'kmSellDupes') {
-        // Nie die letzte Karte: verkauft wird nur, was doppelt ist
-        const list = d.type === 'kmSell' ? [[String(d.id), Math.max(1, Math.floor(Number(d.n) || 1))]]
-            : Object.keys(u.cards).filter(id => cardDb.byId[id] && (d.upTo == null || cards.RIDX[cardDb.byId[id].rarity] <= Number(d.upTo))).map(id => [id, u.cards[id] - 1]);
+        // Von jeder Karte bleibt immer mindestens ein Exemplar (egal welche Variante)
+        const total = id => Object.keys(u.cards).reduce((n, k) => n + (cards.parseKey(k).id === id ? u.cards[k] : 0), 0);
+        let list;
+        if (d.type === 'kmSell') list = [[String(d.key), Math.max(1, Math.floor(Number(d.n) || 1))]];
+        // Doppelte verkaufen: nur normale Exemplare, Ball/Shiny bleiben
+        else list = Object.keys(u.cards).filter(k => !k.includes('~')).map(k => [k, u.cards[k]]);
         let n = 0, coins = 0;
-        for (const [id, want] of list) {
+        for (const [key, want] of list) {
+            const { id, v } = cards.parseKey(key);
             const card = cardDb.byId[id];
-            if (!card || !(u.cards[id] > 1)) continue;
-            const k = Math.min(want, u.cards[id] - 1);
+            if (!card || !(u.cards[key] > 0)) continue;
+            const k = Math.min(want, u.cards[key], total(id) - 1);
             if (k <= 0) continue;
-            u.cards[id] -= k;
+            u.cards[key] -= k;
+            if (!u.cards[key]) delete u.cards[key];
             n += k;
-            coins += k * KM_SELL[card.rarity];
+            coins += k * cards.valueOf(card, v);
         }
-        if (!n) return send(c, { type: 'kmError', error: 'No duplicates to sell' });
+        if (!n) return send(c, { type: 'kmError', error: 'Nothing to sell – you always keep one of each card' });
         accounts.addCoins(c.account, coins);
         accounts.earn(c.account, 'cards', coins);
         accounts.touch();

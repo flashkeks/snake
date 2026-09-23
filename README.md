@@ -30,6 +30,7 @@ Live: **`snake.flashkeks.com`** auf `edge` (Netcup).
 | `luck.js` | Admin v2: erzwungene Mindestgewinne je Konto und Spiel |
 | `shop.js` | Shop (#9): Katalog, was andere von einem sehen |
 | `shooter.js` | Arena: Hub (Shop, Cases, Salvage, Loadout) und Raid (Map, Kisten, Beutel, Extraction, Kampf mit Effekten) |
+| `cards-moves.js` | Kekémon: Attacken je Figur (SIG) und je Serie (FRAN) |
 | `cards.js` | Kekémon (5.0): Karten aus Rohdaten rechnen (Typ, Seltenheit, Werte, Attacken — deterministisch aus der Id), Packs, Katalog fuer den Browser |
 | `tools/cards/build.js` | holt die Kartendaten (AniList, Superhero-API, TVMaze) nach `DATA_DIR/cards-raw.json`; `tools/cards/fixture.json` ist eine kleine Stichprobe fuer lokale Tests |
 | `public/kekemon.js`, `public/kekemon.css` | Kekémon im Browser: Karten-Look, Pack-Oeffnen, Album |
@@ -963,8 +964,8 @@ und hebt den Spawnschutz auf.
 ## 🃏 Kekémon (5.0)
 
 Sammelkarten im Pokemon-Stil, eigene Welt im Umschalter oben (🃏) und im
-Hauptmenue-Tab. Ausbau in drei Schritten: 5.0 Karten, Packs, Album — 5.1
-Kaempfe gegen KI-Arenen (3 gegen 3, Energie je Zug) — 5.2 PvP-Duelle und
+Hauptmenue-Tab. Ausbau: 5.0 Karten, Packs, Album — 5.1 Varianten, neue Chancen, Kartentrick —
+5.2 Kaempfe gegen KI-Arenen (3 gegen 3, Energie je Zug) — 5.3 PvP-Duelle und
 Kartentausch.
 
 **Daten.** `tools/cards/build.js` holt auf `edge` (als Deploy-User, Ziel
@@ -994,13 +995,47 @@ Karten, also bleiben Sammlungen gueltig):
 - *Attacken*: eine 1-Energie-Attacke und eine grosse (2–3 Energie) mit
   Effekt (burn, stun, pierce, heal, drain, boost). Kampfregeln folgen in 5.1.
 
-**Packs** (`PACKS`): Anime Booster und Heroes & Series Booster je 2000 Coins
-fuer 5 Karten, Kek Mega Booster 5000 fuer 8 aus allen Reihen mit Rare+ ×1,6.
-Zugchancen je Karte: Common 50, Uncommon 27, Rare 14, Epic 6,5, Legendary
-2,2, Secret 0,3; die letzte Karte ist immer mindestens Rare. Legendary und
-Secret landen im Feed. **Doppelte verkaufen** (nie die letzte):
-Common 40, Uncommon 100, Rare 300, Epic 900, Legendary 3000, Secret 12 000.
-Ein Pack bringt im Schnitt weniger zurueck, als es kostet.
+**Packs und Chancen** (5.1a, `PACKS`, `ODDS`, `VARIANTS`): Anime Booster und
+Heroes & Series Booster je 10 000 Coins fuer 5 Karten (1 garantierter Platz
+mind. Rare), Kek Mega Booster 50 000 fuer 8 (3 garantiert, bessere Chancen
+ueberall, Varianten doppelt so oft). Gewichte je Platz:
+
+| Platz | Common | Uncommon | Rare | Epic | Legendary | Secret |
+|---|---|---|---|---|---|---|
+| normal | 62 | 27 | 9 | 1,7 | 0,28 | 0,02 |
+| garantiert | – | – | 86 | 11,5 | 2,2 | 0,3 |
+| Mega normal | 62 | 27 | 27 | 5,1 | 0,84 | 0,06 |
+| Mega garantiert | – | – | 78 | 17 | 4,4 | 0,6 |
+
+Secret Rare damit etwa 1 in 263 Standard-Packs, 2 % im Mega-Pack.
+Varianten je Karte: Pokeball 2,5 %, Masterball 0,25 %, Shiny 0,1 % (Mega ×2).
+„SUPER MEGA" = Secret + Masterball + Shiny, etwa 1 in 105 Mio. Standard-Packs.
+Der Shop rechnet die Tabelle „Drop chances" im Browser aus denselben Zahlen.
+
+Verkaufswert (`SELL`): Common 250, Uncommon 600, Rare 1800, Epic 7000,
+Legendary 35 000, Secret 250 000; Pokeball ×3, Masterball ×20, Shiny ×25.
+Ein Standard-Pack bringt im Schnitt ~75 % zurueck, ein Mega ~60 %. Von jeder
+Karte bleibt immer ein Exemplar; „Sell duplicates" verkauft nur normale.
+
+Sammlung `u.cards`: Schluessel = Id oder `Id~Variante` (`p`, `m`, `s`,
+kombiniert z. B. `ms`). Legendary+, jeder Masterball und jedes Shiny landen im
+Feed.
+
+**Reset 5.1a** (Max): beim ersten Start mit dem neuen Code wurden alle
+Sammlungen geleert und die netto fuer Packs ausgegebenen Coins erstattet
+(`earned.cards`); Merker `db.meta.kmReset`, laeuft nie wieder.
+
+**Attacken** (`cards-moves.js`): eigene Attacken fuer die bekannten Figuren
+(`SIG_*`, Name exakt), sonst Pool der Serie (`FRAN_*`, Praefix von `from`),
+sonst der Pool des Kartentyps. Helden mit eigenen Attacken zaehlen fuer die
+Seltenheit +350 (die Superhero-API kennt nur Kampfwerte, sonst waere Batman
+Common). Doppelte Figuren (gleicher Name, gleiche Serie) und „Presenter"/
+„Narrator" fliegen beim Laden raus.
+
+**Pack oeffnen**: Pack antippen → Karten verdeckt aufgefaechert → Riffle →
+Stapel → Stapel dreht sich → Karte fuer Karte wischen (Maus/Finger, Tippen,
+→/Leertaste), schwaechste zuerst, beste zuletzt; ab Epic Lichtkranz, ab
+Legendary/Masterball/Shiny grosser Strahlenkranz und Wackeln → Uebersicht.
 
 **Technik.** Sammlung je Konto in `u.cards` (`{id: Anzahl}`). Der Katalog
 (~2000 Karten, ~0,5 MB, gzip) kommt per HTTP `/cards.json?v=HASH` (lange

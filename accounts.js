@@ -155,8 +155,29 @@ module.exports = function createAccounts(dataDir) {
     }
     if (repaired) console.log(`accounts: ${repaired} Leaderboard-Listen um den alten Bestwert ergaenzt`);
 
+    // Kekemon-Reset (5.1a, Max): neue Preise und Chancen, darum alle
+    // Sammlungen einmal leeren und die netto fuer Packs ausgegebenen Coins
+    // zurueck. Laeuft genau einmal (Merker db.meta.kmReset).
+    db.meta = db.meta || {};
+    let kmReset = 0;
+    if (!db.meta.kmReset) {
+        for (const u of Object.values(db.users)) {
+            const net = u.stats && u.stats.earned ? u.stats.earned.cards || 0 : 0;
+            if (!u.cards && !net) continue;
+            if (net < 0) u.coins += -net;
+            delete u.cards;
+            if (u.stats) {
+                u.stats.packs = 0;
+                if (u.stats.earned) u.stats.earned.cards = 0;
+            }
+            kmReset++;
+            console.log(`accounts: Kekemon-Reset ${u.name}: ${net < 0 ? -net : 0} Coins zurueck`);
+        }
+        db.meta.kmReset = new Date().toISOString();
+    }
+
     // Neue Datei gleich anlegen, damit das Backup von Anfang an etwas vorfindet
-    let dirty = !fs.existsSync(file) || repaired > 0;
+    let dirty = !fs.existsSync(file) || repaired > 0 || kmReset > 0;
 
     function save(sync) {
         if (!dirty) return;

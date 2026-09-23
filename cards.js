@@ -11,6 +11,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const M = require('./cards-moves');
 
 const TYPES = {
     fire: { name: 'Fire', icon: '🔥', color: '#ff6b3d', weak: 'water' },
@@ -106,7 +107,12 @@ const round10 = n => Math.max(10, Math.round(n / 10) * 10);
 // Eine Karte aus Rohdaten; rankFrac: 0 = beliebteste der Reihe, 1 = letzte
 function makeCard(raw, rankFrac, num) {
     const rnd = seeded(raw.id);
-    const type = typeOf(raw, rnd);
+    const sig = M.signature(raw);
+    const fran = M.franchise(raw);
+    let type = typeOf(raw, rnd);
+    if (sig && sig.type && TYPES[sig.type]) type = sig.type;
+    // Serie mit eigenem Typ: die Haelfte ihrer Figuren traegt ihn
+    else if (fran && fran.type && TYPES[fran.type] && rnd() < 0.5) type = fran.type;
     const pos = 1 - rankFrac;   // 1 = beliebteste
     const rarity = RARITIES.find(r => pos <= r.upTo) || RARITIES[RARITIES.length - 1];
     const ri = RIDX[rarity.id];
@@ -124,9 +130,15 @@ function makeCard(raw, rankFrac, num) {
         def = Math.round(3 + base * 22 + rnd() * 6);
         spd = Math.round(20 + rnd() * 70);
     }
-    const mv = MOVES[type];
-    const basic = mv.basic[Math.floor(rnd() * mv.basic.length)];
-    const [bigName, effect] = mv.big[Math.floor(rnd() * mv.big.length)];
+    // Attacken: eigene (SIG) > Serie (FRAN) > Kartentyp (MOVES)
+    const mv = fran || MOVES[type];
+    let basic = mv.basic[Math.floor(rnd() * mv.basic.length)];
+    let [bigName, effect] = mv.big[Math.floor(rnd() * mv.big.length)];
+    if (sig) {
+        basic = sig.basic;
+        bigName = sig.big;
+        effect = EFFECTS[sig.effect] !== undefined ? sig.effect : 'none';
+    }
     const bigCost = ri >= 4 ? 3 : 2 + (rnd() < 0.5 ? 1 : 0);
     const attacks = [
         { name: basic, cost: 1, dmg: round10(atk * 0.45), effect: 'none' },
@@ -141,7 +153,19 @@ function makeCard(raw, rankFrac, num) {
 
 function load(dataDir) {
     const file = [path.join(dataDir, 'cards-raw.json'), path.join(__dirname, 'tools', 'cards', 'fixture.json')].find(f => fs.existsSync(f));
-    const raw = file ? JSON.parse(fs.readFileSync(file, 'utf8')).cards : [];
+    // Doppelte (gleicher Name in gleicher Serie) und Nicht-Figuren raus
+    const seen = new Set();
+    const raw = (file ? JSON.parse(fs.readFileSync(file, 'utf8')).cards : []).filter(r => {
+        const k = r.set + '|' + r.name.toLowerCase() + '|' + String(r.from).toLowerCase();
+        if (seen.has(k) || /^(presenter|narrator|host)$/i.test(r.name)) return false;
+        seen.add(k);
+        return true;
+    }).map(r => ({
+        ...r,
+        // Helden haben keine Beliebtheit, nur Kampfwerte: bekannte Figuren
+        // (eigene Attacken) zaehlen deshalb deutlich hoeher
+        pop: r.pop + (r.set === 'hero' && M.signature(r) ? 350 : 0)
+    }));
     const cards = [];
     for (const set of Object.keys(SETS)) {
         const list = raw.filter(r => r.set === set).sort((a, b) => b.pop - a.pop);
@@ -157,31 +181,66 @@ function load(dataDir) {
 }
 
 // ---------- Packs ----------
+// 5.1a (Max): teurer, echte Seltenheit, Ball-Varianten und Shiny.
+// Pro Pack gibt es normale Plaetze und garantierte Plaetze (mind. Rare).
 const PACKS = {
-    anime: { name: 'Anime Booster', icon: '🌸', sets: ['anime'], price: 2000, size: 5 },
-    film: { name: 'Heroes & Series Booster', icon: '🎬', sets: ['hero', 'tv'], price: 2000, size: 5 },
-    mixed: { name: 'Kek Mega Booster', icon: '🃏', sets: ['anime', 'hero', 'tv'], price: 5000, size: 8, better: true }
+    anime: { name: 'Anime Booster', icon: '🌸', sets: ['anime'], price: 10000, size: 5, sure: 1 },
+    film: { name: 'Heroes & Series Booster', icon: '🎬', sets: ['hero', 'tv'], price: 10000, size: 5, sure: 1 },
+    mixed: { name: 'Kek Mega Booster', icon: '🃏', sets: ['anime', 'hero', 'tv'], price: 50000, size: 8, sure: 3, mega: true }
 };
-// Chance je Karte (letzte Karte eines Packs mindestens Rare)
-const PULL = [['common', 50], ['uncommon', 27], ['rare', 14], ['epic', 6.5], ['legendary', 2.2], ['secret', 0.3]];
+// Gewichte je Platz (Summe egal, wird normiert)
+const ODDS = {
+    normal: { common: 62, uncommon: 27, rare: 9, epic: 1.7, legendary: 0.28, secret: 0.02 },
+    sure: { rare: 86, epic: 11.5, legendary: 2.2, secret: 0.3 },
+    megaNormal: { common: 62, uncommon: 27, rare: 27, epic: 5.1, legendary: 0.84, secret: 0.06 },
+    megaSure: { rare: 78, epic: 17, legendary: 4.4, secret: 0.6 }
+};
+// Varianten je Karte: Ball (Pokeball selten, Masterball sehr selten) und Shiny (extrem selten).
+// Im Mega-Pack doppelt so oft.
+const VARIANTS = { poke: 0.025, master: 0.0025, shiny: 0.001 };
+// Verkaufswert: Grundwert je Seltenheit, mal Ball und Shiny
+const SELL = { common: 250, uncommon: 600, rare: 1800, epic: 7000, legendary: 35000, secret: 250000 };
+const SELL_MUL = { p: 3, m: 20, s: 25 };
 
-function rollRarity(minIdx, better) {
-    const list = PULL.filter(([r]) => RIDX[r] >= minIdx).map(([r, w]) => [r, better && RIDX[r] >= 2 ? w * 1.6 : w]);
+function pick(weights) {
+    const list = Object.entries(weights);
     let x = Math.random() * list.reduce((s, [, w]) => s + w, 0);
-    for (const [r, w] of list) if ((x -= w) < 0) return r;
+    for (const [k, w] of list) if ((x -= w) < 0) return k;
     return list[list.length - 1][0];
+}
+
+// Variante als Kuerzel: '' | 'p' | 'm' plus 's' fuer Shiny
+function rollVariant(mega) {
+    const f = mega ? 2 : 1;
+    const r = Math.random();
+    const ball = r < VARIANTS.master * f ? 'm' : r < (VARIANTS.master + VARIANTS.poke) * f ? 'p' : '';
+    return ball + (Math.random() < VARIANTS.shiny * f ? 's' : '');
+}
+
+// Schluessel in der Sammlung: Id, bei Varianten mit ~Kuerzel
+const keyOf = (id, v) => v ? id + '~' + v : id;
+function parseKey(k) {
+    const i = k.indexOf('~');
+    return i < 0 ? { id: k, v: '' } : { id: k.slice(0, i), v: k.slice(i + 1) };
+}
+
+function valueOf(card, v) {
+    let n = SELL[card.rarity];
+    for (const ch of v || '') n *= SELL_MUL[ch] || 1;
+    return n;
 }
 
 function openPack(db, packId) {
     const p = PACKS[packId];
     const out = [];
     for (let i = 0; i < p.size; i++) {
-        let rar = rollRarity(i === p.size - 1 ? 2 : 0, p.better);
+        const sure = i >= p.size - p.sure;
+        let rar = pick(p.mega ? (sure ? ODDS.megaSure : ODDS.megaNormal) : (sure ? ODDS.sure : ODDS.normal));
         const set = p.sets[Math.floor(Math.random() * p.sets.length)];
         // Stufe leer in dieser Reihe (kleine Testdaten): eine Stufe tiefer
         while (!db.byRarity[set + ':' + rar] && RIDX[rar] > 0) rar = RARITIES[RIDX[rar] - 1].id;
         const pool = db.byRarity[set + ':' + rar] || db.cards.filter(c => p.sets.includes(c.set)).map(c => c.id);
-        out.push(pool[Math.floor(Math.random() * pool.length)]);
+        out.push({ id: pool[Math.floor(Math.random() * pool.length)], v: rollVariant(p.mega) });
     }
     return out;
 }
@@ -190,9 +249,10 @@ function openPack(db, packId) {
 function catalog(db) {
     return {
         types: TYPES, rarities: RARITIES, sets: SETS, packs: PACKS, effects: EFFECTS,
+        odds: ODDS, variants: VARIANTS, sell: SELL, sellMul: SELL_MUL,
         cards: db.cards.map(c => [c.id, c.set, c.num, c.name, c.img, c.from, c.type, c.rarity, c.hp, c.atk, c.def, c.spd,
             c.attacks.map(a => [a.name, a.cost, a.dmg, a.effect])])
     };
 }
 
-module.exports = { TYPES, RARITIES, RIDX, SETS, PACKS, EFFECTS, load, openPack, catalog, makeCard };
+module.exports = { TYPES, RARITIES, RIDX, SETS, PACKS, EFFECTS, ODDS, VARIANTS, SELL, load, openPack, catalog, makeCard, keyOf, parseKey, valueOf };
