@@ -452,6 +452,7 @@ function finishCashout(id, p) {
     const score = scoreOf(p);
     recordScore(p);
     const balance = accounts.addCoins(p.account, score);
+    accounts.earn(p.account, 'snake', score);
     accounts.stat(p.account, s => {
         s.cashouts++;
         s.totalCashout += score;
@@ -975,6 +976,7 @@ async function handle(c, data) {
             const r = casino.spinWheel();
             const u = accounts.get(c.account);
             const balance = accounts.addCoins(c.account, r.value);
+            accounts.earn(c.account, 'daily', r.value);
             send(c, { type: 'daily', index: r.index, value: r.value, balance, user: accounts.publicUser(u) });
             // Erst nach dem Dreh (~7 s) in Bestenliste und Feed
             const line = r.value >= 10000 ? [`🎡 ${u.name} hit ${r.value} coins on the Daily Wheel!`, 'gold', c.id] : null;
@@ -1452,6 +1454,7 @@ function answerOffer(p, accept) {
         const sign = win ? 1 : -1;
         if (f.coins > 0 && p.account) {
             accounts.addCoins(p.account, sign * f.coins);
+            accounts.earn(p.account, 'don', sign * f.coins);
             sendAccount(p);
         }
         if (f.length > 0) {

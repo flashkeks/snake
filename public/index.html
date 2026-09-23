@@ -5199,7 +5199,8 @@ function renderEvent() {
             trivia: `${d.data.total} questions. Pick the right answer, faster answers score more.`,
             geo: `${d.data.total} places. Click on the world map where you think they are.<br>The closer, the more points.`,
             estimate: `${d.data.total} questions. Type a number – the closer, the more points.<br>Closest guess gets +50.`
-        }[d.kind] + '<br><span style="opacity:.7;font-size:15px">Coins for everyone with an account, length for everyone.</span>';
+        }[d.kind] + `<br><span style="opacity:.8;font-size:15px">🪙 1.5 coins per point + top 3 bonus (750 / 400 / 200)` +
+            `${d.data.factor > 1 ? ` · <b>×${d.data.factor}</b> for ${d.members.length} players` : ''}<br>Coins for accounts, length for everyone.</span>`;
         main.innerHTML = `<div class="big-note">${text}</div>`;
         if (!member) main.innerHTML += '<div class="hint">You are watching. Only players on the field when the box was opened can play.</div>';
         return;

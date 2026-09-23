@@ -129,6 +129,29 @@ Bis 22.09.2026 lief das Spiel im Calibre-Container von Michaffs unter
 - Rate-Limits je IP (`cf-connecting-ip`): 5 neue Konten pro Stunde, 10
   Logins bzw. Passwortversuche pro 5 Minuten.
 
+### Coin-Wirtschaft (Issue #11)
+
+Ab 23.09.2026 zaehlt jedes Konto in `stats.earned`, woher seine Coins
+kommen: `snake` (Cashouts), `events` (Quiz-Belohnungen), `daily` (Daily
+Wheel), `don` (Double or Nothing netto, kann negativ sein), `admin`
+(Gutschriften/Abzuege im Admin). Das Admin-Interface zeigt oben die Summe je
+Quelle ueber alle Konten. Das Casino rechnet je Spiel in `stats.games` (#5).
+
+Stand beim Einfuehren (3 Konten): 43 Cashouts mit zusammen 52.824 Coins,
+also **~1230 Coins je Snake-Runde** – die mit Abstand groesste Quelle. Die
+Richtwerte danach:
+
+| Quelle | Groessenordnung |
+|---|---|
+| Snake-Cashout | ~1200 je Runde, linear mit Laenge und Kills, unbegrenzt |
+| Quiz-Event | Solo-Sieg ~1–2 Cashouts, mit mehr Spielern bis ×3 |
+| Daily Wheel | ~1050 am Tag |
+| Casino | Senke: RTP 94–99,5 % je Spiel, Poker neutral (kein Rake) |
+
+Der unbegrenzte Score bleibt: Die laengste Runde bisher brachte 5010, das
+sprengt nichts. Nachsteuern mit den `earned`-Zahlen, wenn eine Quelle
+davonlaeuft.
+
 ## Slot-Automat
 
 Casino → „🎰 Slots", nur mit Konto. Drei Walzen, eine Linie, der
@@ -456,7 +479,12 @@ auf dem Feld sind:
   Laufende Cashouts brechen ab.
 - Jeder Teilnehmer sieht das Event mit eigener Event-Rangliste. Wer im Menue
   oder Casino ist, spielt nicht mit.
-- Am Ende Coins = Punkte / 10 (+50 fuer Platz 1) fuer Konten, Laenge =
+- Am Ende **Coins = (Punkte × 1,5 + Platz-Bonus) × Spielerfaktor** fuer
+  Konten (seit 23.09.2026, Issue #4). Platz-Bonus 750 / 400 / 200 fuer die
+  Top 3 (nur mit Punkten). Spielerfaktor 1 + 0,5 je weiterem Teilnehmer,
+  hoechstens ×3 (2 Spieler ×1,5, 3 ×2, ab 5 ×3). Beispiel: Sieger mit 749
+  Punkten bei 2 Spielern = (1123 + 750) × 1,5 = 2810. Bis dahin gab es
+  Punkte / 10 (+50 fuer Platz 1), also hoechstens ~150. Laenge =
   Punkte / 40 fuer alle, dann 5 s **Podium** mit den Top 3.
 - Dann **Double or Nothing** fuer jeden, der etwas gewonnen hat: 50/50 per
   Muenzwurf, 15 s Bedenkzeit, ohne Antwort wird behalten. Wer noch ueberlegt

@@ -215,8 +215,9 @@ async function loadOverview() {
     const tb = o.online.tables;
     $('stats').innerHTML =
         `<span>🟢 <b>${o.online.loggedIn}</b> logged in · <b>${o.online.playing}</b> on the field · <b>${o.online.connections}</b> tabs</span>` +
-        `<span>🃏 <b>${(tb.blackjack || []).length}</b> · 🎡 <b>${(tb.roulette || []).length}</b></span>` +
+        `<span>🃏 <b>${(tb.blackjack || []).length}</b> · 🎡 <b>${(tb.roulette || []).length}</b> · ♠️ <b>${(tb.poker || []).length}</b> tables</span>` +
         `<span>👥 <b>${o.accounts}</b> accounts · 🪙 <b>${fmt(o.coins)}</b></span>` +
+        `<span title="Where coins came from (counted since 23.09.2026)">💰 🐍 ${fmt(o.earned.snake || 0)} · 🧠 ${fmt(o.earned.events || 0)} · 🎁 ${fmt(o.earned.daily || 0)} · 🪙 DoN ${fmt(o.earned.don || 0)} · 🛠 ${fmt(o.earned.admin || 0)}</span>` +
         `<span>💬 <b>${o.ticketsOpen}</b> open</span>` +
         `<span class="muted">${esc(o.you)}</span>`;
     $('tk-badge').hidden = !o.ticketsUnread;

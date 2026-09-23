@@ -23,6 +23,12 @@ function sha256(s) {
     return crypto.createHash('sha256').update(s).digest('hex');
 }
 
+// Woher Coins kommen (#11): snake = Cashouts, events = Quiz-Belohnungen,
+// daily = Daily Wheel, don = Double or Nothing (netto, kann negativ sein),
+// admin = Gutschriften/Abzuege im Admin-Interface. Das Casino rechnet je
+// Spiel in stats.games (#5).
+const EARN_SOURCES = ['snake', 'events', 'daily', 'don', 'admin'];
+
 function newStats() {
     return {
         bestScore: 0,
@@ -31,7 +37,8 @@ function newStats() {
         bestCashout: 0,
         totalCashout: 0,
         spins: 0,
-        biggestWin: 0
+        biggestWin: 0,
+        earned: Object.fromEntries(EARN_SOURCES.map(k => [k, 0]))
     };
 }
 
@@ -220,9 +227,17 @@ module.exports = function createAccounts(dataDir) {
         stat(key, fn) {
             const u = db.users[key];
             if (!u) return;
-            u.stats = { ...newStats(), ...u.stats };
+            const base = newStats();
+            u.stats = { ...base, ...u.stats };
+            u.stats.earned = { ...base.earned, ...u.stats.earned };
             fn(u.stats);
             touch();
+        },
+
+        // Coins aus einer Quelle mitzaehlen (fuer das Balancing, #11)
+        earn(key, source, n) {
+            if (!n) return;
+            this.stat(key, s => { s.earned[source] = (s.earned[source] || 0) + n; });
         },
 
         // ---------- Admin (nur ueber das Admin-Interface) ----------

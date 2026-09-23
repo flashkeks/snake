@@ -29,6 +29,17 @@ const KINDS = {
 const SPEED = Number(process.env.SNAKE_EVENT_SPEED) || 1;
 const MAX_PTS = 200;
 
+// Belohnung (#4, 23.09.2026): Punkte × 1,5 als Coins, Platz-Boni fuer die
+// Top 3, alles mal einem Faktor fuer die Spielerzahl (1 + 0,5 je weiterem
+// Spieler, hoechstens ×3). Zum Vergleich: ein Snake-Cashout brachte bis
+// dahin im Schnitt ~1230 Coins. Laenge wie bisher: Punkte / 40.
+const COINS_PER_POINT = 1.5;
+const PLACE_BONUS = [750, 400, 200];
+
+function playerFactor(n) {
+    return Math.min(3, 1 + 0.5 * Math.max(0, n - 1));
+}
+
 function shuffle(a) {
     for (let i = a.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -106,7 +117,8 @@ module.exports = function createEvents(h) {
             round: ev.round,
             total: KINDS[ev.kind].rounds,
             answered: q ? [...q.answers.keys()] : [],
-            rewards: ev.rewards || null
+            rewards: ev.rewards || null,
+            factor: ev.factor || playerFactor(ev.members.size)
         };
         if (!q) return out;
         if (ev.kind === 'flags' || ev.kind === 'trivia') {
@@ -207,13 +219,18 @@ module.exports = function createEvents(h) {
     // Coins fuer Konten, Laenge fuer alle. Der Beste bekommt 50 extra.
     function results() {
         const rows = board();
+        const f = playerFactor(rows.length);
         ev.rewards = {};
+        ev.factor = f;
         rows.forEach((r, i) => {
             const m = ev.members.get(r.id);
-            let coins = Math.floor(r.value / 10) + (i === 0 && r.value > 0 ? 50 : 0);
+            const bonus = r.value > 0 ? PLACE_BONUS[i] || 0 : 0;
+            let coins = Math.floor((r.value * COINS_PER_POINT + bonus) * f);
             const length = Math.floor(r.value / 40);
-            if (m.account && coins > 0) h.accounts.addCoins(m.account, coins);
-            else coins = 0;
+            if (m.account && coins > 0) {
+                h.accounts.addCoins(m.account, coins);
+                h.accounts.earn(m.account, 'events', coins);
+            } else coins = 0;
             if (length > 0) h.grow(m.player, length);
             ev.rewards[r.id] = { coins, length };
             if (m.account) h.send(m.player, { type: 'account', user: h.accounts.publicUser(h.accounts.get(m.account)) });
@@ -303,3 +320,6 @@ module.exports.KINDS = KINDS;
 module.exports.distanceKm = distanceKm;
 module.exports.geoPoints = geoPoints;
 module.exports.estimatePoints = estimatePoints;
+
+module.exports.playerFactor = playerFactor;
+module.exports.PLACE_BONUS = PLACE_BONUS;

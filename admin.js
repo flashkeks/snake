@@ -183,6 +183,11 @@ module.exports = function startAdmin(h) {
                     online: h.online(),
                     accounts: users.length,
                     coins: users.reduce((s, u) => s + u.coins, 0),
+                    // Summe je Quelle ueber alle Konten (#11); gezaehlt ab 23.09.2026
+                    earned: users.reduce((sum, u) => {
+                        for (const [k, v] of Object.entries(u.stats.earned || {})) sum[k] = (sum[k] || 0) + v;
+                        return sum;
+                    }, {}),
                     ticketsOpen: h.tickets.openCount(),
                     ticketsUnread: h.tickets.unreadAdminCount()
                 });
@@ -208,6 +213,7 @@ module.exports = function startAdmin(h) {
                         if (!Number.isInteger(d) || Math.abs(d) > 1e12) return json(res, 400, { error: 'bad amount' });
                         after = h.accounts.addCoins(key, d);
                     }
+                    h.accounts.earn(key, 'admin', after - before);
                     log(email, 'coins', u.name, { before, after, note: String(b.note || '').slice(0, 200) });
                     h.pushAccount(key);
                     return json(res, 200, { coins: after });
