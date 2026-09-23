@@ -1,5 +1,13 @@
 [
   {
+    "version": "5.4",
+    "date": "24.09.2026",
+    "items": [
+      "Fix: pack opening stuck after the pack pops, and cards not clickable under Market → Sell. Cause: after an update your browser kept old game files for up to 4 hours. Every update now forces fresh files",
+      "Performance logging on the server to track down the reported lags"
+    ]
+  },
+  {
     "version": "5.3",
     "date": "24.09.2026",
     "items": [

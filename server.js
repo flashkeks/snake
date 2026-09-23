@@ -70,6 +70,37 @@ accounts.onUnlock = (key, a) => {
 // weiter. Erst setzen, wenn der neue Name im DNS und im Tunnel steht.
 const CANONICAL = process.env.SNAKE_CANONICAL_HOST || '';
 
+// Event-Loop-Verzoegerung messen: haengt der Server, merkt es jeder als Lag.
+// Jede Minute eine Zeile: p99/Max der Verzoegerung, Verbindungen, Top-Nachrichten.
+const loopLag = require('perf_hooks').monitorEventLoopDelay({ resolution: 20 });
+loopLag.enable();
+setInterval(() => {
+    const ms = x => (x / 1e6).toFixed(0);
+    const top = [...netStat.entries()].sort((a, b) => b[1][1] - a[1][1]).slice(0, 5)
+        .map(([t, [n, b]]) => `${t} ${n}x ${(b / 1024).toFixed(0)}KB`).join(', ');
+    const total = [...netStat.values()].reduce((s, [, b]) => s + b, 0);
+    console.log(`perf: loop p99 ${ms(loopLag.percentile(99))} ms, max ${ms(loopLag.max)} ms · ${clients.size} Verbindungen · raus ${(total / 1024 / 60).toFixed(1)} KB/s · ${top}`);
+    loopLag.reset();
+    netStat.clear();
+}, 60000).unref();
+
+// index.html einmal je Start bauen: jede eingebundene Datei bekommt ?v=Inhalts-Hash
+let indexCache = null;
+function indexHtml() {
+    if (indexCache) return indexCache;
+    const ver = f => {
+        try {
+            return crypto.createHash('md5').update(fs.readFileSync(path.join(PUBLIC, f))).digest('hex').slice(0, 10);
+        } catch {
+            return String(Date.now());
+        }
+    };
+    indexCache = fs.readFileSync(path.join(PUBLIC, 'index.html'), 'utf8')
+        .replace(/(src|href)="\/([\w.-]+\.(?:js|css))"/g, (m, attr, f) => `${attr}="/${f}?v=${ver(f)}"`)
+        .replace("fetch('patchnotes.json')", `fetch('patchnotes.json?v=${ver('patchnotes.json')}')`);
+    return indexCache;
+}
+
 const server = http.createServer((req, res) => {
     const host = String(req.headers.host || '').split(':')[0];
     if (CANONICAL && host && host !== CANONICAL && !/^(localhost|127\.0\.0\.1)$/.test(host)) {
@@ -85,6 +116,13 @@ const server = http.createServer((req, res) => {
             ...(gz ? { 'Content-Encoding': 'gzip' } : {})
         });
         return res.end(gz ? cardGz : cardJson);
+    }
+    // index.html mit Versions-Hash an CSS/JS (5.3b): Cloudflare setzt fuer
+    // .css/.js 4 h Browser-Cache – ohne ?v= liefen nach einem Deploy alter und
+    // neuer Code gemischt (Pack-Oeffnen blieb haengen, Markt-Karten tot)
+    if (url === '/' || url === '/index.html') {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+        return res.end(indexHtml());
     }
     let file = url === '/' ? '/index.html' : url;
     file = path.normalize(file).replace(/^(\.\.[\/\\])+/, '');
@@ -108,7 +146,8 @@ const server = http.createServer((req, res) => {
 
         res.writeHead(200, {
             'Content-Type': types[ext] || 'application/octet-stream',
-            'Cache-Control': 'no-cache'
+            // Mit ?v= (aus indexHtml) aendert sich die Adresse bei jedem Deploy
+            'Cache-Control': /[?&]v=/.test(req.url) ? 'public, max-age=31536000, immutable' : 'no-cache'
         });
         res.end(data);
     });
@@ -408,15 +447,29 @@ function resumeFx(p, started) {
     }
 }
 
+// Messung (5.3b, Lag-Meldungen): Nachrichten und Bytes je Typ, pro Minute im Journal
+const netStat = new Map();      // type -> [Anzahl, Bytes]
+function count(type, bytes, n = 1) {
+    const e = netStat.get(type) || [0, 0];
+    e[0] += n;
+    e[1] += bytes * n;
+    netStat.set(type, e);
+}
+
 function send(c, obj) {
-    if (c.ws.readyState === WebSocket.OPEN) c.ws.send(JSON.stringify(obj));
+    if (c.ws.readyState !== WebSocket.OPEN) return;
+    const msg = JSON.stringify(obj);
+    count(obj.type, msg.length);
+    c.ws.send(msg);
 }
 
 function broadcast(obj) {
     const msg = JSON.stringify(obj);
+    let n = 0;
     for (const ws of wss.clients) {
-        if (ws.readyState === WebSocket.OPEN) ws.send(msg);
+        if (ws.readyState === WebSocket.OPEN) { ws.send(msg); n++; }
     }
+    count(obj.type, msg.length, n);
 }
 
 // who: Spieler-ID, fuer den der Eintrag gilt (nur der hoert den Sound).

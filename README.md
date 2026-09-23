@@ -1050,6 +1050,21 @@ der Katalog muss nicht jedem Tick-Kanal zur Last fallen). Nachrichten:
 `kmState`, `kmBuy {pack}`, `kmSell {id, n}`, `kmSellDupes`. Coins laufen in
 der Statistik unter `earned.cards`.
 
+## Auslieferung und Messung (5.4)
+
+- **Cache:** Cloudflare setzt fuer `.css`/`.js` `max-age=14400` (4 h), egal
+  was der Server schickt (Zone-Einstellung *Browser Cache TTL*). Nach einem
+  Deploy liefen dadurch alte `kekemon.js`/`market.js`/CSS gegen neues
+  `index.html` — Pack-Oeffnen blieb nach dem Platzen haengen, Markt-Karten
+  reagierten nicht. Seit 5.4 baut der Server `index.html` einmal je Start und
+  haengt an jede eingebundene Datei `?v=MD5-Anfang` (auch `patchnotes.json`);
+  solche Adressen gehen mit `immutable` raus. `index.html` selbst ist
+  `no-cache` und bei Cloudflare `DYNAMIC`.
+- **Messung:** jede Minute eine Journal-Zeile
+  `perf: loop p99 … ms, max … ms · N Verbindungen · raus … KB/s · Top-Nachrichten`
+  (`perf_hooks.monitorEventLoopDelay`, Zaehler in `send`/`broadcast`).
+  Ablesen: `journalctl -u snake | grep perf:`.
+
 ## Cases und Cosmetics (5.3)
 
 - **Cosmetics** kosten seit 5.3 das Doppelte (alle 135). Die Seltenheit wird
