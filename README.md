@@ -200,14 +200,15 @@ und Todes-Effekt (im Zustand als `sk`, der Todes-Effekt als `deathfx` an
 alle), Musik hoert nur man selbst.
 
 **134 Designs** in sechs Kategorien: 40 Skins, 36 Koepfe, 23 Trails, 15
-Todes-Effekte, 13 Namensfarben, 7 Musikstuecke. Dazu **„☀️ Sunny pop“**
-(seit 3.1, bis 3.2 als Lo-fi-Jazz „Sunny jazz“): gratis, gehoert jedem
-(`free: true`, `shop.FREE`), nie in der Rotation und ab Werk angelegt
-(`shop.DEFAULTS`). Legt man es ab, merkt sich `u.equipped.music = false`,
-sonst kaeme es zurueck. Eigener Modus `pop` im Sequencer (112 BPM,
+Todes-Effekte, 13 Namensfarben, 8 Musikstuecke, darunter **„☀️ Sunny pop“**
+(18.000, Rare, im normalen Rotations-Pool). War von 3.1 bis 3.3 gratis und
+ab Werk angelegt (erst als Lo-fi-Jazz, dann poppiger), seit 3.4 auf Wunsch
+Max wieder ein normales Shop-Item. Die Mechanik dafuer bleibt: `free: true`
+am Item (`shop.FREE`) und `shop.DEFAULTS`, beide derzeit leer. Beim Laden
+legt `accounts.js` ein nur gratis angelegtes Sunny pop ab (wer es nicht im
+Inventar hat, hat es nicht gekauft). Eigener Sequencer-Modus `pop` (112 BPM,
 C–G–Am–F, Kick/Snare/Hi-Hat aus Oszillatoren, pumpender Bass,
-Offbeat-Akkorde, Melodie aus einer Liste). Seit 3.3 rund 3,5 dB leiser als
-die Jazz-Fassung (offline gerendert: RMS 0,0116 statt 0,0174). Preise 4k–150k (beim Umbau
+Offbeat-Akkorde, Melodie aus einer Liste). Preise 4k–150k (beim Umbau
 etwa verdoppelt, Wunsch Max „ein wenig teurer“). Seltenheit nach Preis:
 Common < 10k ≤ Rare < 25k ≤ Epic < 60k ≤ Legendary.
 

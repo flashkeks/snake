@@ -102,6 +102,13 @@ module.exports = function createAccounts(dataDir) {
     }
     db.users = db.users || {};
     db.sessions = db.sessions || {};
+    // 3.4: Standard-Musik weg. Wer "Sunny pop" nur gratis angelegt hatte (nicht
+    // gekauft), legt es ab; false (= Standard abgelegt) braucht es nicht mehr
+    for (const u of Object.values(db.users)) {
+        const e = u.equipped;
+        if (!e || !('music' in e)) continue;
+        if (e.music === false || (e.music && shop.BY_ID[e.music] && !shop.BY_ID[e.music].free && shop.BY_ID[e.music].price && !(u.inventory || []).includes(e.music))) delete e.music;
+    }
 
     // Neue Datei gleich anlegen, damit das Backup von Anfang an etwas vorfindet
     let dirty = !fs.existsSync(file);

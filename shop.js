@@ -183,11 +183,10 @@ const ITEMS = [
     { id: 'music_spooky', cat: 'music', name: 'Spooky', icon: '🦇', price: 18000, desc: 'Haunted field (only you hear it)', look: { mode: 'pad', bpm: 60, type: 'triangle', vol: .035, steps: 8, chords: [[294, 349, 440], [233, 294, 349], [196, 233, 294], [220, 277, 330]], bass: [73, 58, 49, 55], lp: 900 } },
     { id: 'music_happy', cat: 'music', name: 'Happy hop', icon: '🐰', price: 14000, desc: 'Bouncy and cheerful (only you hear it)', look: { mode: 'arp', bpm: 150, type: 'square', vol: .025, steps: 16, chords: [[262, 330, 392], [196, 247, 294], [220, 262, 330], [175, 220, 262]], bass: [131, 98, 110, 87] } },
     { id: 'music_lounge', cat: 'music', name: 'Casino lounge', icon: '🍸', price: 26000, desc: 'Smooth jazz chords (only you hear it)', look: { mode: 'pad', bpm: 90, type: 'sine', vol: .04, steps: 8, chords: [[262, 330, 392, 494], [220, 262, 330, 392], [294, 349, 440, 523], [196, 247, 294, 349]], bass: [65, 55, 73, 49], lp: 2200 } },
-    // Gratis fuer alle und ab Werk angelegt (Wunsch Max 23.09.2026). Erst Lo-fi-Jazz,
-    // dann auf Wunsch leiser und poppiger: I–V–vi–IV, Beat, pumpender Bass,
-    // Offbeat-Akkorde, Ohrwurm-Melodie. Nie in der Rotation.
+    // Kurz (3.1–3.3) gratis und ab Werk angelegt, seit 3.4 normal im Shop (Max).
+    // I–V–vi–IV, Beat, pumpender Bass, Offbeat-Akkorde, Ohrwurm-Melodie.
     {
-        id: 'music_sunny', cat: 'music', name: 'Sunny pop', icon: '☀️', price: 0, free: true, desc: 'Happy upbeat pop – everyone has it',
+        id: 'music_sunny', cat: 'music', name: 'Sunny pop', icon: '☀️', price: 18000, desc: 'Happy upbeat pop (only you hear it)',
         look: {
             mode: 'pop', bpm: 112, vol: .02, steps: 8,
             // C – G – Am – F, zweimal
@@ -215,9 +214,10 @@ for (const it of ITEMS) {
 }
 
 const BY_ID = Object.fromEntries(ITEMS.map(i => [i.id, i]));
-// Gehoert jedem, ohne im Inventar zu stehen; DEFAULTS ist angelegt, bis man es ablegt
+// Gehoert jedem, ohne im Inventar zu stehen (free: true); DEFAULTS ist ab Werk
+// angelegt, bis man es ablegt. Beides derzeit leer (Standard-Musik 3.4 entfernt)
 const FREE = ITEMS.filter(i => i.free).map(i => i.id);
-const DEFAULTS = { music: 'music_sunny' };
+const DEFAULTS = {};
 
 // Was andere sehen (kompakt fuer den Zustand): Kategorie -> Item-Id, ohne Musik
 function visible(equipped) {
