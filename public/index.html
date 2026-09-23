@@ -1058,7 +1058,15 @@ button:disabled {
     align-items: center;
 }
 
-/* ---------- Sweet Kek (tumble slot) ---------- */
+#slots-btn,
+#slots2-btn {
+    white-space: nowrap;
+    font-size: 14px;
+    padding-left: 6px;
+    padding-right: 6px;
+}
+
+/* ---------- Budget Starlight (frueher Sweet Kek, tumble slot) ---------- */
 /* Zellgroesse (--c) rechnet s2Fit() aus, damit alles ohne Scrollen passt.
    --t skaliert alle Animationszeiten (Skip = schneller). */
 
@@ -1109,6 +1117,10 @@ button:disabled {
     background: rgba(255,255,255,.06);
     border: 1px solid rgba(255,255,255,.18);
     color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
 }
 
 /* Anzeige ueber dem Raster: im Basisspiel Einsatz/Multi/Gewinn, im Bonus vier Werte */
@@ -2064,8 +2076,8 @@ button:disabled {
                     <div class="msg" id="play-msg"></div>
 
                     <div class="row">
-                        <button type="button" class="gold" id="slots-btn">🎰 Kek Slots</button>
-                        <button type="button" class="gold" id="slots2-btn">🍬 Sweet Kek</button>
+                        <button type="button" class="gold" id="slots-btn">🎰 Slots</button>
+                        <button type="button" class="gold" id="slots2-btn">🌟 Budget Starlight</button>
                     </div>
 
                     <div class="hint" id="menu-hint">
@@ -2079,7 +2091,7 @@ button:disabled {
             <!-- Automat -->
             <div id="slots" class="overlay hidden">
                 <div class="card" style="width:min(420px,100%)">
-                    <h2>🎰 Kek Slots</h2>
+                    <h2>🎰 Slots</h2>
                     <div class="whoami">
                         <span>👤 <b id="slot-name"></b></span>
                         <span class="coins">🪙 <span id="slot-coins">0</span></span>
@@ -2103,7 +2115,7 @@ button:disabled {
             <div id="slots2" class="overlay hidden">
                 <div class="card">
                     <div class="s2-head">
-                        <div class="s2-title">🍬 Sweet Kek</div>
+                        <div class="s2-title">🌟 Budget Starlight</div>
                         <span class="coins">🪙 <span id="s2-coins">0</span></span>
                         <button type="button" class="s2-icon" id="s2-sound" title="Sound on/off">🔊</button>
                         <button type="button" class="s2-icon" id="s2-info" title="Paytable">ℹ️</button>
@@ -4151,6 +4163,8 @@ async function s2Run(d) {
     if (d.buy) await startBonus('Bonus bought');
 
     for (const sp of d.spins) {
+        // Skip gilt nur fuer den laufenden Spin
+        s2SetSpeed(1);
         if (sp.free) {
             // Counter shows the spins left after this one, before a retrigger adds more
             const left = sp.freeLeft - (sp.retrig ? RT : 0);
@@ -4165,6 +4179,7 @@ async function s2Run(d) {
         }
 
         const win = await s2PlaySpin(sp, d.bet);
+        s2SetSpeed(1);  // Ansagen danach wieder in normalem Tempo
 
         if (sp.free && win > 0) {
             await s2Count($('s2-total'), total, total + win, 800, true);

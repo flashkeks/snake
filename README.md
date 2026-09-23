@@ -14,8 +14,8 @@ Live: **`snake.flashkeks.com`** auf `edge` (Netcup).
 |---|---|
 | `server.js` | HTTP + WebSocket, Spiel-Tick, Items, Duelle, Cashout |
 | `accounts.js` | Konten, Sessions, Coins, Statistik (JSON-Datei im Datenordner) |
-| `slots.js` | Slot-Automat „Kek Slots“; `node slots.js` rechnet die Rueckzahlungsquote aus |
-| `slots2.js` | Tumble-Slot „Sweet Kek“; `node slots2.js 150000` simuliert Rueckzahlung, Bonus-Quote, Bonus-Kauf |
+| `slots.js` | Slot-Automat „Slots“ (frueher „Kek Slots“); `node slots.js` rechnet die Rueckzahlungsquote aus |
+| `slots2.js` | Tumble-Slot „Budget Starlight“ (frueher „Sweet Kek“, intern weiter `s2`/`spin2`); `node slots2.js 150000` simuliert Rueckzahlung, Bonus-Quote, Bonus-Kauf |
 | `events.js` | Mini-Events (Flag Quiz, Roulette, Blackjack): Ablauf, Einsaetze, Auszahlung |
 | `flags.js` | Laender fuer das Flag Quiz (ISO-Code + englischer Name) |
 | `public/index.html` | der ganze Browser-Teil in einer Datei |
@@ -109,7 +109,7 @@ Bis 22.09.2026 lief das Spiel im Calibre-Container von Michaffs unter
 
 ## Slot-Automat
 
-Hauptmenue → „🎰 Kek Slots", nur mit Konto. Drei Walzen, eine Linie, der
+Hauptmenue → „🎰 Slots", nur mit Konto. Drei Walzen, eine Linie, der
 Server wuerfelt. Einsatz frei von 1 Coin bis zum Kontostand (Chips 1–1000
 oder eigener Betrag; Server-Grenze 1.000.000, nur ganze Zahlen).
 
@@ -175,9 +175,9 @@ wirklich draufsitzt.
 **Schild** faengt einen Koerpertreffer ab, und seit 23.09.2026 auch den 💀
 aus Muenze oder Box.
 
-## Sweet Kek (Tumble-Slot)
+## Budget Starlight (Tumble-Slot, frueher „Sweet Kek")
 
-Hauptmenue → „🍬 Sweet Kek", nur mit Konto. Nach dem Vorbild von Starlight
+Hauptmenue → „🌟 Budget Starlight", nur mit Konto. Nach dem Vorbild von Starlight
 Princess / Gates of Olympus:
 
 - **6 × 5 Raster, gezahlt wird ueberall:** 8 oder mehr gleiche Symbole
@@ -221,10 +221,10 @@ laufen, bevor er deployt — der Bonus hat einen langen Schwanz, unter
 Der Server wuerfelt den ganzen Spin samt Freispielen auf einmal und schickt
 alle Zwischenraster, je Spin dazu `tw` (Tumble-Gewinn ohne Multi), `orbSum`,
 `multBefore`/`mult` und `scatterWin`; der Browser spielt nur ab. Waehrend der
-Animation wird SPIN zu ⏩ Skip (5× so schnell). Die Maschine passt ihre
+Animation wird SPIN zu ⏩ Skip (5× so schnell, nur fuer den laufenden Spin — der naechste Freispiel und alle Ansagen laufen wieder normal). Die Maschine passt ihre
 Zellgroesse an die Fensterhoehe an (`s2Fit`), damit nichts gescrollt werden
 muss. Sound komplett per Web Audio synthetisiert (Kompressor + Hall), 🔊
-schaltet ihn ab (merkt sich der Browser). Einsatz wie beim Kek Slots frei, ein Spin je 800 ms. Ab 100× gibt
+schaltet ihn ab (merkt sich der Browser). Einsatz wie bei Slots frei, ein Spin je 800 ms. Ab 100× gibt
 es eine Gold-Zeile im Feed.
 
 ## Mini-Events

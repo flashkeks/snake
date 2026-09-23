@@ -866,7 +866,7 @@ async function handle(c, data) {
             return;
         }
 
-        // --- Zweiter Automat: Sweet Kek (Tumble, Kugeln, Freispiele) ---
+        // --- Zweiter Automat: Budget Starlight (frueher Sweet Kek) (Tumble, Kugeln, Freispiele) ---
 
         case 'spin2': {
             if (!c.account) return send(c, { type: 'spin2Error', error: 'Accounts only' });
@@ -905,7 +905,7 @@ async function handle(c, data) {
                     scatterWin: Math.round(sp.scatterWin * bet * 100) / 100
                 }))
             });
-            if (r.win >= bet * 100) feed(`🍬 ${u.name} won ${r.win} coins (${Math.round(r.win / bet)}x) on Sweet Kek`, 'gold', c.id);
+            if (r.win >= bet * 100) feed(`🌟 ${u.name} won ${r.win} coins (${Math.round(r.win / bet)}x) on Budget Starlight`, 'gold', c.id);
             return;
         }
 
