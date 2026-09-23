@@ -183,28 +183,45 @@ und Max Win (100.000×), Plinko ×1000, Crossy Hardcore bis zum Ziel
 (`stats.crossyHardcoreWins`), Poker-Pot 10k, 100 Blackjack-Haende, 1000
 Casino-Runden, 1 Mio Coins, Arena-Kill/50 Kills, Extraction 1×/25×
 (`stats.arenaExtracts`), Legendary-/One-in-a-million-Item (`stats.bestOdds`), erstes Ticket (`stats.ticketsCreated`), Shop-Kauf,
-alle Skins.
+die 7 klassischen Skins.
 
-### 🛒 Shop (Issue #9)
+### 🎨 Cosmetic Shop (Issue #9, Umbau 23.09.2026)
 
-Hauptmenue → „🛒 Shop“ (nur Konten). Rein kosmetisch, kein Spielvorteil.
-Katalog in `shop.js`, Gekauftes in `u.inventory`, je Kategorie hoechstens
-ein angelegtes Teil in `u.equipped` (beim Kauf automatisch angelegt,
-„take off“ legt ab). Andere sehen Skin, Kopf, Trail, Namensfarbe und
-Todes-Effekt (im Zustand als `sk`, der Todes-Effekt als `deathfx` an alle),
-Musik hoert nur man selbst.
+Hauptmenue → „🎨 Cosmetic Shop“ (nur Konten). Rein kosmetisch, kein
+Spielvorteil. Katalog in `shop.js`, Gekauftes in `u.inventory`, je Kategorie
+hoechstens ein angelegtes Teil in `u.equipped` (beim Kauf automatisch
+angelegt, „take off“ legt ab). Andere sehen Skin, Kopf, Trail, Namensfarbe
+und Todes-Effekt (im Zustand als `sk`, der Todes-Effekt als `deathfx` an
+alle), Musik hoert nur man selbst.
 
-| Kategorie | Items (Preis) |
-|---|---|
-| Snake skins | Gradient 4k, Stripes 5k, Candy 6k, Neon 8k, Rainbow 15k, Galaxy 20k, Solid Gold 25k |
-| Heads (Emoji statt Auge) | 😎 2k, 👽 3k, 🤖 3k, 💀 4k, 🔥 6k, 🐉 8k, 👑 12k |
-| Trails (Partikel am Schwanz) | Bubbles 5k, Hearts 6k, Sparkles 7k, Fire 9k |
-| Death effects | Ghost 4k, Confetti 5k, Explosion 7k |
-| Name colors (Feld und Chat) | Gold 3k, Ice 3k, Rainbow 8k |
-| Music (WebAudio-Loop, solange man auf dem Feld ist) | Chiptune 8k, Lo-fi 8k |
+**134 Designs** in sechs Kategorien: 40 Skins, 36 Koepfe, 23 Trails, 15
+Todes-Effekte, 13 Namensfarben, 7 Musikstuecke. Preise 4k–150k (beim Umbau
+etwa verdoppelt, Wunsch Max „ein wenig teurer“). Seltenheit nach Preis:
+Common < 10k ≤ Rare < 25k ≤ Epic < 60k ≤ Legendary.
 
-Die Preise sind eine Coin-Senke (#11): `stats.shopSpent`,
-`earned.shop` (negativ). Kaeufe ab 15k gehen in den Feed. Jackpot und Stern
+**Rotation (Wunsch Max):** Kaufen geht nur, was gerade im Angebot ist.
+- ☀️ **Daily**, 8 Teile, neu um Mitternacht (Europe/Berlin): 2 Skins,
+  2 Koepfe, Trail, Todes-Effekt, Namensfarbe, ein beliebiges – ohne Legendary.
+- 📅 **Weekly**, 4 Premium-Teile, neu Montag 00:00: ein Legendary-Skin plus
+  drei Epic/Legendary. Nie gleichzeitig im Daily.
+- Die Auswahl ist fest aus Datum bzw. ISO-Woche geseedet
+  (`shop.rotation()`), fuer alle gleich, ohne Speicher.
+  `node shop.js 60` zeigt, was in den naechsten 60 Tagen drankommt.
+- 🎒 **Collection** zeigt Gekauftes je Kategorie (immer anlegbar),
+  📖 **Catalog** alles, Nicht-Angebotenes mit 🔒.
+- Der Server prueft beim Kauf die Rotation (`Not in the shop right now`);
+  der Browser holt sie beim Oeffnen (`shopRot`) und wenn der Countdown
+  ablaeuft.
+
+**Aussehen als Daten:** jedes Item hat ein `look` (Skins `fade`, `cycle`,
+`hue`, `glint`, `flash` plus Rand/Funkeln; Trails `emoji`, `dot`, `ring`;
+Tod `rise`, `boom`, `burst`, `implode`, `confetti`; Namen eine Farbe oder
+laufender Verlauf; Musik `arp`/`pad` mit Akkorden). Der Browser zeichnet das
+generisch – ein neues Design ist eine Zeile in `shop.js`, kein Client-Code.
+Chat-Namensfarben werden als CSS-Klassen `nc-ID` aus dem Katalog erzeugt.
+
+Die Preise sind eine Coin-Senke (#11): `stats.shopSpent`, `earned.shop`
+(negativ). Epic- und Legendary-Kaeufe gehen in den Feed. Jackpot und Stern
 ueberdecken den Skin fuer ihre Dauer.
 
 ### Coin-Wirtschaft (Issue #11)
@@ -843,12 +860,12 @@ Client → Server: `register`, `login`, `resume {token}`, `logout`,
 beim Blackjack, `sit {seat?}`/`stand`/`move` (`fold`, `check`,
 `call`, `raise {to}`, `allin`) beim Poker), `pokerCreate {buyIn, seats, name}`, `daily`, `dailyDone`, `crossStart {bet, diff}`, `crossStep`,
 `crossCash`, `plinko {bet, risk}`, `board {cat, game, period}`, `me`, `shJoin`,
-`shInput {mx, my, a, f, s}`, `shSlot {slot}`, `shMed`, `shInteract`, `shPing {t}`, `shLeave`, `arHub`, `arBuy {id}`, `arCase {id}`, `arSalvage {uids}`, `arEquip {slot, uid|null, n}`, `shopBuy {id}`, `shopEquip {cat, id|null}`, `setTitle {id|null}`, `tickets`, `ticketNew {subject, text}`, `ticketReply {id, text}`,
+`shInput {mx, my, a, f, s}`, `shSlot {slot}`, `shMed`, `shInteract`, `shPing {t}`, `shLeave`, `arHub`, `arBuy {id}`, `arCase {id}`, `arSalvage {uids}`, `arEquip {slot, uid|null, n}`, `shopRot`, `shopBuy {id}`, `shopEquip {cat, id|null}`, `setTitle {id|null}`, `tickets`, `ticketNew {subject, text}`, `ticketReply {id, text}`,
 `ticketRead {id}`.
 
 Server → Client: `welcome`, `mg` (Schritt im Map-Event), `sh`, `shJoined`
 (mit Map und Waffen), `shLeft` (Bilanz, Rueckgabe), `shKill`, `shHit`, `shHurt`,
-`shLoot`, `shBoom`, `shZap`, `shPong`, `shRooms`, `shError`, `arHub`, `arError`, `shopOk`, `shopError`, `deathfx`, `achievement`, `auth`, `authError`, `authExpired`, `account`,
+`shLoot`, `shBoom`, `shZap`, `shPong`, `shRooms`, `shError`, `arHub`, `arError`, `shopOk`, `shopRot`, `shopError`, `deathfx`, `achievement`, `auth`, `authError`, `authExpired`, `account`,
 `joined`, `joinError`, `left`, `died` (`cause`, `by`, `byId`, `at`), `swapfx`, `cashedout`, `cashoutCancel`, `state`
 (alle 60 ms, mit `arena` und `paused`), `duel`, `gamble`, `box`, `jackpot`,
 `feed` (mit `who` und `big` fuer den Sound), `chat`, `chatlog`, `highscores`, `board`,

@@ -2899,7 +2899,9 @@ span.tier-common, span.tier-uncommon, span.tier-rare, span.tier-epic, span.tier-
 /* ---------- Shop ---------- */
 
 #shop .card {
-    width: min(820px, 100%);
+    width: min(980px, 100%);
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
     border-color: #7dffb0;
 }
 
@@ -2954,16 +2956,38 @@ span.tier-common, span.tier-uncommon, span.tier-rare, span.tier-epic, span.tier-
     image-rendering: auto;
 }
 
-/* Namensfarben im Chat */
-.who.nc-name_gold { color: #ffd700 !important; }
-.who.nc-name_ice { color: #9ae6ff !important; }
-.who.nc-name_rainbow {
-    background: linear-gradient(90deg, #ff5b5b, #ffd23f, #7dffb0, #3da5ff, #a970ff, #ff5b5b);
-    background-size: 300% 100%;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent !important;
-    animation: goldShine 3s linear infinite;
+/* Namensfarben im Chat: werden aus dem Katalog erzeugt (#cos-css) */
+
+.shop-sub {
+    flex-wrap: wrap;
+    margin: 6px 0;
+}
+
+.shop-timer {
+    text-align: center;
+    font-weight: 800;
+    color: #ffd23f;
+    margin: 6px 0 10px;
+}
+
+.shop-item.rar-rare { border-color: rgba(61,165,255,.55); }
+.shop-item.rar-epic { border-color: rgba(184,132,255,.7); box-shadow: 0 0 12px rgba(184,132,255,.2); }
+.shop-item.rar-legendary { border-color: #ffd23f; box-shadow: 0 0 18px rgba(255,210,63,.3); }
+
+.shop-rar {
+    font-weight: 800;
+    opacity: 1 !important;
+}
+
+.shop-item.rar-common .shop-rar { color: #cfd8e3; }
+.shop-item.rar-rare .shop-rar { color: #3da5ff; }
+.shop-item.rar-epic .shop-rar { color: #b884ff; }
+.shop-item.rar-legendary .shop-rar { color: #ffd23f; }
+
+.shop-name {
+    font-size: 22px;
+    font-weight: 900;
+    padding: 8px 0;
 }
 
 /* ---------- Poker-Lobbys ---------- */
@@ -4192,7 +4216,7 @@ body.touch input, body.touch textarea {
                         <span>👤 <b id="me-name"></b></span>
                         <span class="coins">🪙 <span id="me-coins">0</span></span>
                         <button type="button" class="ghost" id="support-btn" style="font-size:13px;padding:5px 10px">💬 Support<span class="sp-badge" id="sp-badge" hidden></span></button>
-                        <button type="button" class="ghost" id="shop-btn" style="font-size:13px;padding:5px 10px">🛒 Shop</button>
+                        <button type="button" class="ghost" id="shop-btn" style="font-size:13px;padding:5px 10px">🎨 Cosmetic Shop</button>
                         <button type="button" class="ghost" id="konto-btn" style="font-size:13px;padding:5px 10px">Account</button>
                     </div>
 
@@ -4330,11 +4354,13 @@ body.touch input, body.touch textarea {
             <div id="shop" class="overlay hidden">
                 <div class="card">
                     <div class="s2-head">
-                        <div class="cs-title" style="color:#7dffb0;text-shadow:0 0 16px rgba(125,255,176,.4)">🛒 Shop</div>
+                        <div class="cs-title" style="color:#7dffb0;text-shadow:0 0 16px rgba(125,255,176,.4)">🎨 Cosmetic Shop</div>
                         <span class="coins">🪙 <span id="shop-coins">–</span></span>
                         <button type="button" class="s2-icon" id="shop-back" title="Back">✕</button>
                     </div>
                     <div class="cs-tabs" id="shop-tabs"></div>
+                    <div class="cr-diffs shop-sub" id="shop-sub" hidden></div>
+                    <div class="shop-timer" id="shop-timer"></div>
                     <div class="shop-grid" id="shop-grid"></div>
                     <div class="hint">Cosmetics only – no advantage. Others see your skin, head, trail, name color and death effect.</div>
                     <div class="msg" id="shop-msg"></div>
@@ -4776,6 +4802,7 @@ ws.onmessage = event => {
         case 'arHub': onArHub(data); break;
         case 'arError': showMsg('hub-msg', data.error, 'err'); break;
         case 'shopOk': onShopOk(data); break;
+        case 'shopRot': onShopRot(data.rot); break;
         case 'shopError': showMsg('shop-msg', data.error, 'err'); break;
         case 'deathfx': onDeathFx(data); break;
         case 'achievement': onAchievement(data); break;
@@ -8473,49 +8500,117 @@ $('sh-swap').onclick = () => {
     if (s) wsSend({ type: 'shSlot', slot: s.me.slot === 'primary' ? 'secondary' : 'primary' });
 };
 
-// ---------- Shop (#9): Kosmetik ----------
-// Katalog kommt mit `welcome` (shop.cats, shop.items). Gekauftes und
-// Angelegtes steht im Konto (me.inventory, me.equipped). Andere Spieler
-// bringen ihr Angelegtes im Zustand mit (p.sk).
+// ---------- Cosmetic Shop (#9, Umbau 23.09.2026) ----------
+// Katalog kommt mit `welcome` (shop.cats, shop.items, shop.rarities, shop.rot).
+// Kaufen geht nur, was in der Rotation ist (Daily 8, Weekly 4); Gekauftes
+// bleibt und laesst sich immer anlegen. Das Aussehen steht als `look` im
+// Katalog (siehe shop.js) und wird hier generisch gezeichnet.
+// Gekauftes und Angelegtes steht im Konto (me.inventory, me.equipped).
+// Andere Spieler bringen ihr Angelegtes im Zustand mit (p.sk).
 
 let shopInfo = null;
-let shopCat = 'skin';
+let shopTab = 'daily';      // daily | weekly | owned | all
+let shopCat = 'skin';       // Kategorie in Collection und Catalog
+let shopRot = null;         // { day: {ids, ends}, week: {ids, ends} } in performance.now()-Zeit
+const COS = {};             // Item-Id -> Item
 const HEAD_ICON = {};       // Item-Id -> Emoji, fuer Koepfe
-const cosParts = [];        // Trail-Partikel { x, y, t, kind, vx, vy }
+const cosParts = [];        // Trail-Partikel { x, y, t, kind, e, vx, vy }
 const cosDeaths = [];       // Todes-Effekte { fx, x, y, t }
+const RAR_COLOR = { common: '#cfd8e3', rare: '#3da5ff', epic: '#b884ff', legendary: '#ffd23f' };
 
 function initShop(info) {
     shopInfo = info;
-    for (const it of info.items) if (it.cat === 'head') HEAD_ICON[it.id] = it.icon;
-    $('shop-tabs').innerHTML = Object.entries(info.cats).map(([k, label]) =>
-        `<button type="button" data-shopcat="${k}" class="${k === shopCat ? 'on' : ''}">${esc(label)}</button>`).join('');
-    $('shop-tabs').querySelectorAll('button').forEach(b => b.onclick = () => {
-        shopCat = b.dataset.shopcat;
-        $('shop-tabs').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
-        drawShop();
-    });
+    for (const it of info.items) {
+        COS[it.id] = it;
+        if (it.cat === 'head') HEAD_ICON[it.id] = it.icon;
+    }
+    if (info.rot) onShopRot(info.rot);
+    // Namensfarben im Chat als CSS-Klassen nc-ID
+    let css = '';
+    for (const it of info.items) {
+        if (it.cat !== 'name' || !it.look) continue;
+        css += it.look.c ? `.who.nc-${it.id}, .nc-${it.id} { color: ${it.look.c} !important; }\n`
+            : `.who.nc-${it.id}, .nc-${it.id} { background: linear-gradient(90deg, ${[...it.look.g, it.look.g[0]].join(', ')}); background-size: 300% 100%; ` +
+              `-webkit-background-clip: text; background-clip: text; color: transparent !important; animation: goldShine 3s linear infinite; }\n`;
+    }
+    let st = $('cos-css');
+    if (!st) {
+        st = document.createElement('style');
+        st.id = 'cos-css';
+        document.head.appendChild(st);
+    }
+    st.textContent = css;
+}
+
+function onShopRot(r) {
+    const now = performance.now();
+    shopRot = { day: { ids: r.day.ids, ends: now + r.day.left }, week: { ids: r.week.ids, ends: now + r.week.left } };
+    if (!$('shop').classList.contains('hidden')) drawShop();
+}
+
+function inRot(id) {
+    return !!shopRot && (shopRot.day.ids.includes(id) || shopRot.week.ids.includes(id));
+}
+
+function leftText(ms) {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+    return d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : `${m}m ${s % 60}s`;
+}
+
+function shopCard(it) {
+    const owned = new Set((me && me.inventory) || []);
+    const eq = (me && me.equipped) || {};
+    const has = owned.has(it.id), on = eq[it.cat] === it.id, rot = inRot(it.id);
+    const btn = !me ? '<button type="button" disabled>Accounts only</button>'
+        : on ? `<button type="button" class="ghost" data-shopoff="${it.cat}">✓ Equipped · take off</button>`
+        : has ? `<button type="button" data-shopeq="${it.id}" data-cat="${it.cat}">Equip</button>`
+        : rot ? `<button type="button" class="gold" data-shopbuy="${it.id}" ${me.coins < it.price ? 'disabled' : ''}>🪙 ${it.price.toLocaleString('en-US')}</button>`
+        : `<button type="button" disabled>🔒 Not in the shop · 🪙 ${it.price.toLocaleString('en-US')}</button>`;
+    const prev = it.cat === 'skin' ? `<canvas class="shop-prev" data-prev="${it.id}" width="220" height="40"></canvas>`
+        : it.cat === 'name' ? `<div class="shop-name nc-${it.id}">${esc((me && me.name) || 'Your name')}</div>`
+        : `<div class="shop-icon">${it.icon}</div>`;
+    return `<div class="shop-item rar-${it.rarity} ${on ? 'on' : ''}">${prev}` +
+        `<b>${esc(it.name)}</b><small class="shop-rar">${shopInfo.cats[it.cat].replace(/s$/, '')} · ${it.rarity[0].toUpperCase() + it.rarity.slice(1)}</small>` +
+        `${it.desc ? `<small>${esc(it.desc)}</small>` : ''}${btn}</div>`;
 }
 
 function drawShop() {
     if (!shopInfo) return;
     $('shop-coins').textContent = me ? me.coins.toLocaleString('en-US') : '–';
-    const owned = new Set((me && me.inventory) || []);
-    const eq = (me && me.equipped) || {};
-    $('shop-grid').innerHTML = shopInfo.items.filter(it => it.cat === shopCat).map(it => {
-        const has = owned.has(it.id), on = eq[it.cat] === it.id;
-        const btn = !me ? '<button type="button" disabled>Accounts only</button>'
-            : on ? `<button type="button" class="ghost" data-shopoff="${it.cat}">✓ Equipped · take off</button>`
-            : has ? `<button type="button" data-shopeq="${it.id}" data-cat="${it.cat}">Equip</button>`
-            : `<button type="button" class="gold" data-shopbuy="${it.id}" ${me.coins < it.price ? 'disabled' : ''}>🪙 ${it.price.toLocaleString('en-US')}</button>`;
-        return `<div class="shop-item ${on ? 'on' : ''}">` +
-            (it.cat === 'skin' ? `<canvas class="shop-prev" data-prev="${it.id}" width="220" height="40"></canvas>` : `<div class="shop-icon">${it.icon}</div>`) +
-            `<b>${esc(it.name)}</b>${it.desc ? `<small>${esc(it.desc)}</small>` : ''}${btn}</div>`;
-    }).join('');
+    const tabs = [['daily', '☀️ Daily'], ['weekly', '📅 Weekly'], ['owned', '🎒 Collection'], ['all', '📖 Catalog']];
+    $('shop-tabs').innerHTML = tabs.map(([k, n]) => `<button type="button" data-shoptab="${k}" class="${k === shopTab ? 'on' : ''}">${n}</button>`).join('');
+    const withCats = shopTab === 'owned' || shopTab === 'all';
+    $('shop-sub').innerHTML = withCats ? Object.entries(shopInfo.cats).map(([k, n]) =>
+        `<button type="button" data-shopcat="${k}" class="${k === shopCat ? 'on' : ''}">${esc(n)}</button>`).join('') : '';
+    $('shop-sub').hidden = !withCats;
+    let list;
+    if (shopTab === 'daily' || shopTab === 'weekly') {
+        const r = shopRot && shopRot[shopTab === 'daily' ? 'day' : 'week'];
+        list = r ? r.ids.map(id => COS[id]).filter(Boolean) : [];
+        $('shop-timer').textContent = r ? `New ${shopTab === 'daily' ? 'daily' : 'weekly'} offers in ${leftText(r.ends - performance.now())}` : '';
+    } else {
+        const owned = new Set((me && me.inventory) || []);
+        list = shopInfo.items.filter(it => it.cat === shopCat && (shopTab === 'all' || owned.has(it.id)));
+        const all = shopInfo.items.filter(it => it.cat === shopCat).length;
+        $('shop-timer').textContent = shopTab === 'owned' ? `${list.length} of ${all} owned` : `${all} designs – buyable only while in the daily or weekly shop`;
+    }
+    $('shop-grid').innerHTML = list.map(shopCard).join('') ||
+        `<div class="hint">${shopTab === 'owned' ? 'Nothing here yet – check the daily and weekly shop.' : 'Loading…'}</div>`;
     drawPreviews();
-    $('shop-grid').querySelectorAll('[data-shopbuy]').forEach(b => b.onclick = () => wsSend({ type: 'shopBuy', id: b.dataset.shopbuy }));
-    $('shop-grid').querySelectorAll('[data-shopeq]').forEach(b => b.onclick = () => wsSend({ type: 'shopEquip', cat: b.dataset.cat, id: b.dataset.shopeq }));
-    $('shop-grid').querySelectorAll('[data-shopoff]').forEach(b => b.onclick = () => wsSend({ type: 'shopEquip', cat: b.dataset.shopoff, id: null }));
 }
+
+// Klicks einmal verdrahten (die Knoepfe werden bei jedem drawShop neu gebaut)
+$('shop').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    const d = b.dataset;
+    if (d.shoptab) { shopTab = d.shoptab; return drawShop(); }
+    if (d.shopcat) { shopCat = d.shopcat; return drawShop(); }
+    if (d.shopbuy) return wsSend({ type: 'shopBuy', id: d.shopbuy });
+    if (d.shopeq) return wsSend({ type: 'shopEquip', cat: d.cat, id: d.shopeq });
+    if (d.shopoff) return wsSend({ type: 'shopEquip', cat: d.shopoff, id: null });
+});
 
 // Vorschau der Skins (bewegt sich, ohne die Knoepfe neu zu bauen)
 function drawPreviews() {
@@ -8537,50 +8632,75 @@ function onShopOk(d) {
     if (d.bought) sfx.fanfare('end');
 }
 
+function lookOf(id) {
+    const it = id && COS[id];
+    return it && it.look;
+}
+
+function selfColor(c, base) {
+    return c === 'self' ? base : c;
+}
+
 // Farbe eines Segments (i = 0 ist der Kopf, n = Laenge)
 function skinColor(p, i, n, now, skinOverride) {
-    const skin = skinOverride || (p.sk && p.sk.skin);
     const base = p.color || '#888';
-    switch (skin) {
-        case 'skin_gradient': {
-            const k = Math.min(1, i / Math.max(8, n));
-            return `color-mix(in srgb, ${base} ${Math.round(100 - k * 70)}%, #000)`;
+    const L = lookOf(skinOverride || (p.sk && p.sk.skin));
+    if (!L) return base;
+    switch (L.k) {
+        case 'fade': {
+            const k = Math.min(1, i / Math.max(8, n - 1)) * (L.end || 1) * (L.c.length - 1);
+            const a = Math.min(L.c.length - 1, Math.floor(k)), f = k - a;
+            const A = selfColor(L.c[a], base);
+            if (f < .02 || a >= L.c.length - 1) return A;
+            return `color-mix(in srgb, ${A} ${Math.round((1 - f) * 100)}%, ${selfColor(L.c[a + 1], base)})`;
         }
-        case 'skin_stripes': return i % 3 === 2 ? '#ffffff' : base;
-        case 'skin_candy': return Math.floor(i / 2) % 2 ? '#ffffff' : '#ff4fa3';
-        case 'skin_neon': return 'rgba(10,10,20,.9)';
-        case 'skin_rainbow': return `hsl(${(i * 24 - now / 8) % 360}, 95%, 60%)`;
-        case 'skin_galaxy': return i % 2 ? '#1b1033' : '#2a1650';
-        case 'skin_gold': {
-            const glint = Math.max(0, 1 - Math.abs(((now / 30) % (n + 20)) - i) / 3);
-            return `hsl(45, 100%, ${45 + glint * 40}%)`;
+        case 'cycle': {
+            const off = L.mv ? Math.floor(now / 1000 * L.mv) : 0;
+            const len = L.c.length;
+            return selfColor(L.c[((Math.floor((i - off) / (L.w || 1)) % len) + len) % len], base);
         }
+        case 'hue': {
+            let d = i * L.step + now * L.sp;
+            if (L.span) {
+                d = ((d % (2 * L.span)) + 2 * L.span) % (2 * L.span);
+                if (d > L.span) d = 2 * L.span - d;
+            }
+            return `hsl(${(((L.h + d) % 360) + 360) % 360}, ${L.s}%, ${L.l}%)`;
+        }
+        case 'glint': {
+            const g = Math.max(0, 1 - Math.abs(((now / 30) % (n + 20)) - i) / 3);
+            return `hsl(${L.h}, ${L.s}%, ${L.l + g * L.g}%)`;
+        }
+        case 'flash':
+            return L.c[(Math.floor(now / L.ms) + (i < n / 2 ? 0 : 1)) % 2];
     }
     return base;
 }
 
-// Zusaetze je Segment (Neon-Rand, Galaxie-Sterne)
+// Zusaetze je Segment (Rand, Funkeln)
 function skinExtra(c, p, i, n, now, x, y, cell, skinOverride) {
-    const skin = skinOverride || (p.sk && p.sk.skin);
-    if (skin === 'skin_neon') {
-        c.strokeStyle = p.color || '#0f8';
+    const L = lookOf(skinOverride || (p.sk && p.sk.skin));
+    if (!L) return;
+    if (L.out) {
+        c.strokeStyle = L.out === 'self' ? (p.color || '#0f8') : L.out;
         c.lineWidth = 2;
         c.strokeRect(x + 2, y + 2, cell - 4, cell - 4);
-    } else if (skin === 'skin_galaxy' && ((i * 7 + Math.floor(now / 400)) % 5 === 0)) {
-        c.fillStyle = '#fff';
+    }
+    if (L.stars && ((i * 7 + Math.floor(now / 400)) % 5 === 0)) {
+        c.fillStyle = L.stars;
         c.fillRect(x + cell * ((i * 37) % 7) / 8, y + cell * ((i * 53) % 7) / 8, 2, 2);
     }
 }
 
-// Namensfarbe (Feld und Chat)
+// Namensfarbe auf dem Feld (Verlaeufe laufen durch)
 function nameStyle(id, now) {
-    if (id === 'name_gold') return '#ffd700';
-    if (id === 'name_ice') return '#9ae6ff';
-    if (id === 'name_rainbow') return `hsl(${(now / 6) % 360}, 100%, 65%)`;
-    return null;
+    const L = lookOf(id);
+    if (!L) return null;
+    if (L.c) return L.c;
+    const g = L.g, t = (now / 600) % g.length, a = Math.floor(t), f = t - a;
+    return `color-mix(in srgb, ${g[a]} ${Math.round((1 - f) * 100)}%, ${g[(a + 1) % g.length]})`;
 }
 
-// Trail-Partikel am Schwanz entstehen lassen (Weltkoordinaten)
 // Emojis einmal als Bild vorrendern und danach nur skaliert zeichnen. Text mit
 // Emoji in wechselnder Groesse zu zeichnen hat beim ersten Laden stark geruckelt
 // (die Emoji-Schrift wurde fuer jede Groesse neu gerastert).
@@ -8608,20 +8728,21 @@ function drawEmoji(ch, x, y, size) {
 const cosLastSpawn = new Map();
 function cosSpawn(p, body, now) {
     const t = p.sk && p.sk.trail;
-    if (!t || body.length < 2) return;
+    const L = lookOf(t);
+    if (!L || body.length < 2) return;
     if (now - (cosLastSpawn.get(p.id) || 0) < 60) return;
     cosLastSpawn.set(p.id, now);
     const tail = body[body.length - 1];
     cosParts.push({
-        kind: t, t: now,
+        kind: t, t: now, e: L.e ? L.e[Math.floor(Math.random() * L.e.length)] : null,
         x: tail.x + .5 + (Math.random() - .5) * .8, y: tail.y + .5 + (Math.random() - .5) * .8,
-        vx: (Math.random() - .5) * .6, vy: t === 'trail_fire' || t === 'trail_bubbles' ? -.8 - Math.random() * .6 : (Math.random() - .5) * .6
+        vx: (Math.random() - .5) * .6, vy: L.up ? -.8 - Math.random() * .6 : (Math.random() - .5) * .6
     });
     if (cosParts.length > 250) cosParts.splice(0, cosParts.length - 250);
 }
 
 function onDeathFx(d) {
-    cosDeaths.push({ ...d, t: performance.now() });
+    cosDeaths.push({ ...d, t: performance.now(), seed: Math.random() * 6 });
     if (cosDeaths.length > 20) cosDeaths.shift();
 }
 
@@ -8630,47 +8751,67 @@ function drawCosmetics(now, sx, sy, cell) {
     for (let i = cosParts.length - 1; i >= 0; i--) {
         const q = cosParts[i];
         const age = (now - q.t) / 700;
-        if (age >= 1) {
+        const L = lookOf(q.kind);
+        if (age >= 1 || !L) {
             cosParts.splice(i, 1);
             continue;
         }
         const x = sx(q.x + q.vx * age), y = sy(q.y + q.vy * age);
         ctx.globalAlpha = 1 - age;
-        if (q.kind === 'trail_fire') {
-            ctx.fillStyle = `hsl(${30 - age * 30}, 100%, ${60 - age * 20}%)`;
+        if (L.k === 'dot') {
+            ctx.fillStyle = L.hue ? `hsl(${(q.t / 4) % 360}, 95%, 60%)`
+                : L.h ? `hsl(${L.h[0] + (L.h[1] - L.h[0]) * age}, 100%, ${60 - age * 20}%)` : L.c;
             ctx.beginPath();
             ctx.arc(x, y, cell * (.35 - age * .2), 0, Math.PI * 2);
             ctx.fill();
-        } else if (q.kind === 'trail_bubbles') {
-            ctx.strokeStyle = '#9ae6ff';
+        } else if (L.k === 'ring') {
+            ctx.strokeStyle = L.c;
             ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.arc(x, y, cell * (.15 + age * .25), 0, Math.PI * 2);
             ctx.stroke();
-        } else {
-            drawEmoji(q.kind === 'trail_hearts' ? '💖' : '✨', x, y, cell * .7);
+        } else if (q.e) {
+            drawEmoji(q.e, x, y, cell * .7);
         }
     }
     ctx.globalAlpha = 1;
     for (let i = cosDeaths.length - 1; i >= 0; i--) {
         const d = cosDeaths[i];
         const age = (now - d.t) / 1600;
-        if (age >= 1) {
+        const L = lookOf(d.fx);
+        if (age >= 1 || !L) {
             cosDeaths.splice(i, 1);
             continue;
         }
         const x = sx(d.x) + cell / 2, y = sy(d.y) + cell / 2;
         ctx.globalAlpha = 1 - age;
-        if (d.fx === 'death_ghost') {
-            drawEmoji('👻', x + Math.sin(age * 10) * cell * .3, y - age * cell * 4, cell * 2.4);
-        } else if (d.fx === 'death_boom') {
-            ctx.strokeStyle = '#ffb347';
-            ctx.lineWidth = 6 * (1 - age);
+        if (L.k === 'rise') {
+            drawEmoji(L.e, x + Math.sin(age * 10) * cell * .3, y - age * cell * 4, cell * 2.4);
+        } else if (L.k === 'boom') {
+            ctx.strokeStyle = L.c;
+            ctx.lineWidth = (L.big ? 10 : 6) * (1 - age);
             ctx.beginPath();
-            ctx.arc(x, y, cell * (1 + age * 7), 0, Math.PI * 2);
+            ctx.arc(x, y, cell * (1 + age * (L.big ? 14 : 7)), 0, Math.PI * 2);
             ctx.stroke();
-            drawEmoji('💥', x, y, cell * (3 - age));
-        } else if (d.fx === 'death_confetti') {
+            drawEmoji(L.e, x, y, cell * (L.big ? 4.5 : 3) * (1 - age * .4));
+        } else if (L.k === 'burst') {
+            for (let k = 0; k < L.n; k++) {
+                const a = k / L.n * Math.PI * 2 + d.seed;
+                const r = cell * (1 + age * 6) * (0.7 + (k % 3) / 6);
+                drawEmoji(L.e[k % L.e.length], x + Math.cos(a) * r, y + Math.sin(a) * r + age * age * cell * 3, cell * 1.3);
+            }
+        } else if (L.k === 'implode') {
+            ctx.strokeStyle = L.c;
+            ctx.lineWidth = 4;
+            for (let k = 0; k < 3; k++) {
+                const r = cell * 9 * Math.max(0, 1 - age * 1.3 - k * .15);
+                if (r <= 0) continue;
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            drawEmoji(L.e, x, y, cell * 2.6 * Math.min(1, age * 2));
+        } else {
             for (let k = 0; k < 36; k++) {
                 const a = k / 36 * Math.PI * 2 + k;
                 const r = cell * (1 + age * 6) * (0.6 + (k % 5) / 8);
@@ -8683,20 +8824,10 @@ function drawCosmetics(now, sx, sy, cell) {
 }
 
 // ---------- Musik aus dem Shop: kleiner Sequencer, nur solange man spielt ----------
+// Die Stuecke stehen als look im Katalog: arp (Arpeggio + Bass) oder pad
+// (Akkordflaeche, Bass, leise Melodie).
 
-let music = null;           // { id, timer, next, step }
-const MUSIC = {
-    music_chip: {
-        bpm: 132, type: 'square', vol: .03, steps: 16,
-        chords: [[262, 330, 392], [220, 262, 330], [175, 220, 262], [196, 247, 294]],
-        bass: [131, 110, 87, 98]
-    },
-    music_lofi: {
-        bpm: 78, type: 'triangle', vol: .035, steps: 8,
-        chords: [[262, 330, 392, 494], [220, 262, 330, 392], [175, 220, 262, 330], [196, 247, 294, 349]],
-        bass: [65, 55, 44, 49], lp: 1400
-    }
-};
+let music = null;           // { id, next, step }
 
 function mTone(f, when, dur, type, vol, lp) {
     if (!sfxOk()) return;
@@ -8723,20 +8854,20 @@ function mTone(f, when, dur, type, vol, lp) {
 
 function musicTick() {
     const want = joined && me && me.equipped && me.equipped.music && !sfxMuted && sfxBus && audio.state === 'running' ? me.equipped.music : null;
-    if (!want) {
+    const m = lookOf(want);
+    if (!m) {
         music = null;
         return;
     }
     if (!music || music.id !== want) music = { id: want, next: audio.currentTime + .1, step: 0 };
-    const m = MUSIC[want];
     const stepDur = 60 / m.bpm / 2;
     // Immer etwas voraus planen
     while (music.next < audio.currentTime + .4) {
         const bar = Math.floor(music.step / m.steps) % m.chords.length;
         const ch = m.chords[bar];
         const i = music.step % m.steps;
-        if (want === 'music_chip') {
-            mTone(ch[i % ch.length] * 2, music.next, stepDur * .9, m.type, m.vol);
+        if (m.mode === 'arp') {
+            mTone(ch[i % ch.length] * 2, music.next, stepDur * .9, m.type, m.vol, m.lp);
             if (i % 4 === 0) mTone(m.bass[bar], music.next, stepDur * 3.5, 'triangle', m.vol * 2.5);
         } else {
             if (i === 0) ch.forEach(f => mTone(f, music.next, stepDur * m.steps * .95, m.type, m.vol, m.lp));
@@ -8755,10 +8886,24 @@ $('shop-btn').onclick = () => {
     showMsg('shop-msg', '');
     drawShop();
     showScreen('shop');
+    wsSend({ type: 'shopRot' });
 };
 $('shop-back').onclick = () => showScreen('menu');
-// Vorschau der Skins bewegt sich
-setInterval(() => { if (!$('shop').classList.contains('hidden') && shopCat === 'skin') drawPreviews(); }, 120);
+// Vorschau bewegt sich, Countdown laeuft, bei Ablauf neue Rotation holen
+let shopRotAsked = 0;
+setInterval(() => {
+    if ($('shop').classList.contains('hidden')) return;
+    drawPreviews();
+    if (shopRot && (shopTab === 'daily' || shopTab === 'weekly')) {
+        const r = shopRot[shopTab === 'daily' ? 'day' : 'week'];
+        const left = r.ends - performance.now();
+        $('shop-timer').textContent = `New ${shopTab} offers in ${leftText(left)}`;
+        if (left < 0 && performance.now() - shopRotAsked > 5000) {
+            shopRotAsked = performance.now();
+            wsSend({ type: 'shopRot' });
+        }
+    }
+}, 120);
 
 // ---------- Achievements (#3) ----------
 // Katalog kommt mit `welcome`, freigeschaltete stehen in me.achievements,

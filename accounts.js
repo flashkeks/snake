@@ -294,6 +294,7 @@ module.exports = function createAccounts(dataDir) {
             if (!u || !item) return 'Unknown item';
             u.inventory = u.inventory || [];
             if (u.inventory.includes(id)) return 'You already own that';
+            if (!shop.inRotation(id)) return 'Not in the shop right now';
             if (u.coins < item.price) return `You need ${item.price.toLocaleString('en-US')} coins`;
             u.coins -= item.price;
             u.inventory.push(id);

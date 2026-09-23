@@ -21,6 +21,12 @@ const startAdmin = require('./admin');
 const createShooter = require('./shooter');
 const shop = require('./shop');
 const arenaItems = require('./arena-items');
+
+// Cosmetic Shop: aktuelle Rotation mit Restzeit (der Browser rechnet selbst weiter)
+function shopRot() {
+    const now = Date.now(), r = shop.rotation(now);
+    return { day: { ids: r.day.ids, left: r.day.ends - now }, week: { ids: r.week.ids, left: r.week.ends - now } };
+}
 const achievements = require('./achievements');
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -1043,6 +1049,9 @@ async function handle(c, data) {
 
         // --- Shop (#9) ---
 
+        case 'shopRot':
+            return send(c, { type: 'shopRot', rot: shopRot() });
+
         case 'shopBuy':
         case 'shopEquip': {
             if (!c.account) return send(c, { type: 'shopError', error: 'Accounts only' });
@@ -1053,7 +1062,7 @@ async function handle(c, data) {
             if (data.type === 'shopBuy') {
                 const it = shop.BY_ID[data.id];
                 accounts.earn(c.account, 'shop', -it.price);
-                if (it.price >= 15000) feed(`🛒 ${accounts.get(c.account).name} bought ${it.icon} ${it.name}`, 'good', c.id);
+                if (it.rarity === 'epic' || it.rarity === 'legendary') feed(`🛒 ${accounts.get(c.account).name} bought ${it.icon} ${it.name}`, 'good', c.id);
             }
             // Auf dem Feld sofort sichtbar
             if (players.has(c.id)) c.cos = shop.visible(accounts.get(c.account).equipped);
@@ -1325,7 +1334,7 @@ wss.on('connection', (ws, req) => {
         durations: DURATION,
         palette: PALETTE,
         slots: { symbols: slots.SYMBOLS, bets: slots.BETS, twoCherry: slots.TWO_CHERRY },
-        shop: { cats: shop.CATS, items: shop.ITEMS },
+        shop: { cats: shop.CATS, items: shop.ITEMS, rarities: shop.RARITIES, rot: shopRot() },
         achievements: achievements.catalog(),
         arenaItems: arenaItems.catalog(),
         slots2: { pays: slots2.PAYS, scatterPays: slots2.SCATTER_PAYS, buyCost: slots2.BUY_COST, freeSpins: slots2.FREE_SPINS, retrigger: slots2.RETRIGGER, maxWin: slots2.MAX_WIN, rtp: slots2.RTP },

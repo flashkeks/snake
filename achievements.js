@@ -47,7 +47,7 @@ const LIST = [
     // Drumherum
     { id: 'first_ticket', icon: '💬', name: 'Feedback', desc: 'Open your first support ticket', check: (u, s) => (s.ticketsCreated || 0) >= 1 },
     { id: 'shopper', icon: '🛒', name: 'Shopper', desc: 'Buy something in the shop', check: u => (u.inventory || []).length >= 1 },
-    { id: 'fashionista', icon: '👗', name: 'Fashionista', desc: 'Own every snake skin', title: 'Fashionista', check: u => ['skin_gradient', 'skin_stripes', 'skin_candy', 'skin_neon', 'skin_rainbow', 'skin_galaxy', 'skin_gold'].every(id => (u.inventory || []).includes(id)) }
+    { id: 'fashionista', icon: '👗', name: 'Fashionista', desc: 'Own the 7 classic skins (Gradient to Solid Gold)', title: 'Fashionista', check: u => ['skin_gradient', 'skin_stripes', 'skin_candy', 'skin_neon', 'skin_rainbow', 'skin_galaxy', 'skin_gold'].every(id => (u.inventory || []).includes(id)) }
 ];
 
 const BY_ID = Object.fromEntries(LIST.map(a => [a.id, a]));
