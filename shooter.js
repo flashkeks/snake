@@ -260,10 +260,10 @@ function buildPvpMap(seed, name) {
 // kurze Mauern als Deckung, Stationen wie in COD Zombies am Rand
 const ZMB_W = 2600, ZMB_H = 1800;
 const ZMB_PERKS = {
-    jug: { name: 'Jugger-Kek', icon: '🥤', price: 2500, desc: '+100 max HP' },
-    speed: { name: 'Speed Kek', icon: '🧃', price: 3000, desc: '+25% fire rate' },
-    stamina: { name: 'Stamina Kek', icon: '🍹', price: 2000, desc: '+15% movement speed' },
-    quick: { name: 'Quick Kek', icon: '🧋', price: 1500, desc: 'Regeneration after 2 s, +2 HP/s' }
+    jug: { name: 'Juggernaut', icon: '🥤', price: 2500, desc: '+100 max HP' },
+    speed: { name: 'Rapid Fire', icon: '🧃', price: 3000, desc: '+25% fire rate' },
+    stamina: { name: 'Stamina', icon: '🍹', price: 2000, desc: '+15% movement speed' },
+    quick: { name: 'Regeneration', icon: '🧋', price: 1500, desc: 'Regeneration after 2 s, +2 HP/s' }
 };
 const ZMB_WALL = { smg: 750, shotgun: 1000, rifle: 1400, sniper: 1500 };
 const ZMB_BOX = 950, ZMB_PAP = 5000, ZMB_PAP_MAX = 3;

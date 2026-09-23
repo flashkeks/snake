@@ -814,9 +814,9 @@ Detailansicht.
   150, Boss 1000. **Stationen** (F): Wandwaffen (SMG 750, Shotgun 1000,
   Rifle 1400, Sniper 1500), Mystery Box 950 (zufaellige Waffe aus `elite`),
   Pack-a-Punch 5000 (bis Stufe 3, je Stufe ×1,6 Schaden, ×1,12 Feuerrate),
-  Perks: Jugger-Kek 2500 (+100 HP), Speed Kek 3000 (+25 % Feuerrate),
-  Stamina Kek 2000 (+15 % Tempo), Quick Kek 1500 (Regeneration nach 2 s, +2
-  HP/s). Gekaufte Waffen: zweiter Slot, sonst ersetzt die aktuelle.
+  Perks: Juggernaut 2500 (+100 HP), Rapid Fire 3000 (+25 % Feuerrate),
+  Stamina 2000 (+15 % Tempo), Regeneration 1500 (Heilung nach 2 s, +2
+  HP/s); bis 4.6 hiessen sie Jugger-Kek, Speed Kek, Stamina Kek, Quick Kek. Gekaufte Waffen: zweiter Slot, sonst ersetzt die aktuelle.
 - **Tod:** raus bis zum Ende der Welle, dann zurueck. Alle tot = Ende.
 - **Keine Verluste:** Kopien des Loadouts wie im PvP.
 - **Belohnung:** XP je Welle (20 × n am Wellenende) und am Schluss
