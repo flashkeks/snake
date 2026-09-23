@@ -714,19 +714,30 @@ function kill(id, killerId, how, cause) {
     removeFromField(id);
 }
 
+// Score -> Coins (5.5, Max): bis 10 000 eins zu eins, danach immer flacher.
+// Stuetzpunkte 10k -> 10k, 100k -> 30k, 1 Mio -> 100k; dazwischen und darueber
+// als Potenzkurve (glatt, keine Spruenge). Der Score selbst bleibt unbegrenzt.
+// Gleiche Formel im Browser (cashCoins in index.html) fuer die Anzeige.
+function cashCoins(score) {
+    if (score <= 10000) return Math.max(0, Math.floor(score));
+    if (score <= 100000) return Math.floor(10000 * Math.pow(score / 10000, Math.log10(3)));
+    return Math.floor(30000 * Math.pow(score / 100000, Math.log10(10 / 3)));
+}
+
 function finishCashout(id, p) {
     const score = scoreOf(p);
+    const coins = cashCoins(score);
     recordScore(p);
-    const balance = accounts.addCoins(p.account, score);
-    accounts.earn(p.account, 'snake', score);
+    const balance = accounts.addCoins(p.account, coins);
+    accounts.earn(p.account, 'snake', coins);
     accounts.stat(p.account, s => {
         s.cashouts++;
-        s.totalCashout += score;
-        s.bestCashout = Math.max(s.bestCashout, score);
+        s.totalCashout += coins;
+        s.bestCashout = Math.max(s.bestCashout, coins);
     });
 
-    feed(`💰 ${p.name} cashed out ${score} coins`, score >= 200 ? 'gold' : 'good', id);
-    send(p, { type: 'cashedout', coins: score, balance });
+    feed(`💰 ${p.name} cashed out ${coins.toLocaleString('en-US')} coins${coins < score ? ` (score ${score.toLocaleString('en-US')})` : ''}`, coins >= 200 ? 'gold' : 'good', id);
+    send(p, { type: 'cashedout', coins, score, balance });
     removeFromField(id);
     sendAccount(p);
 }
@@ -1566,6 +1577,12 @@ async function handle(c, data) {
         }
 
         // Nur fuer lokale Tests (SNAKE_TEST=1): Schlange wachsen lassen
+        case 'testCashout': {
+            const p = players.get(c.id);
+            if (process.env.SNAKE_TEST === '1' && p && p.account) finishCashout(c.id, p);
+            return;
+        }
+
         case 'testGrow': {
             const p = players.get(c.id);
             if (process.env.SNAKE_TEST === '1' && p) grow(p, Number(data.n) || 0);

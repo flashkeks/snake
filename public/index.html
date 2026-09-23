@@ -6015,7 +6015,7 @@ body.touch input, body.touch textarea {
 
                     <div class="hint" id="menu-hint">
                         WASD / arrow keys · swipe on mobile · Enter = chat<br>
-                        Hold Space for 5 s to cash out your score as coins. You keep going straight meanwhile.<br>
+                        Hold Space for 5 s to cash out your score as coins (1:1 up to 10,000, less per point above). You keep going straight meanwhile.<br>
                         The wall kills. Big 🎪 boxes start a mini event for everyone.
                     </div>
                 </div>
@@ -6613,7 +6613,7 @@ ws.onmessage = event => {
         case 'died': onDied(data); break;
         case 'swapfx': onSwap(data); break;
         case 'cashedout':
-            backToMenu(`<div class="result cash">💰 +${data.coins} coins cashed out! Balance ${data.balance}</div>`);
+            backToMenu(`<div class="result cash">💰 +${data.coins.toLocaleString('en-US')} coins cashed out${data.score > data.coins ? ` (score ${data.score.toLocaleString('en-US')})` : ''}! Balance ${data.balance.toLocaleString('en-US')}</div>`);
             fanfare('gold');
             break;
         case 'cashoutCancel':
@@ -6713,6 +6713,13 @@ ws.onmessage = event => {
 
 function wsSend(obj) {
     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+}
+
+// Wie server.js: Score -> Coins beim Cashout (1:1 bis 10k, dann flacher)
+function cashCoins(score) {
+    if (score <= 10000) return Math.max(0, Math.floor(score));
+    if (score <= 100000) return Math.floor(10000 * Math.pow(score / 10000, Math.log10(3)));
+    return Math.floor(30000 * Math.pow(score / 100000, Math.log10(10 / 3)));
 }
 
 function esc(s) {
@@ -13987,7 +13994,7 @@ function updatePanels() {
     $('score').textContent = mine
         ? `Score: ${mine.score} | Length: ${mine.len ?? mine.body.length} | Kills: ${mine.kills} | Players: ${players.length}`
         : `Players: ${players.length}`;
-    $('hud-score').textContent = mine ? `Score ${mine.score}` : '';
+    $('hud-score').textContent = mine ? `Score ${mine.score}${mine.score > 10000 ? ` · 💰 ${cashCoins(mine.score).toLocaleString('en-US')}` : ''}` : '';
 
     const fx = mine?.fx || {};
     const html = Object.entries(fx)

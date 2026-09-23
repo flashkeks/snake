@@ -176,6 +176,20 @@ module.exports = function createAccounts(dataDir) {
         db.meta.kmReset = new Date().toISOString();
     }
 
+    // Zweiter Kekemon-Reset (5.5, Max: "allen Spielern alle Karten weg, Stand
+    // auf 0, damit fair"): diesmal OHNE Erstattung (Max' Entscheidung). Einmalig.
+    if (!db.meta.kmReset2) {
+        for (const u of Object.values(db.users)) {
+            if (!u.cards && !(u.stats && u.stats.packs)) continue;
+            const n = Object.values(u.cards || {}).reduce((a, b) => a + b, 0);
+            delete u.cards;
+            if (u.stats) u.stats.packs = 0;
+            kmReset++;
+            console.log(`accounts: Kekemon-Reset 2 ${u.name}: ${n} Karten weg (keine Erstattung)`);
+        }
+        db.meta.kmReset2 = new Date().toISOString();
+    }
+
     // Neue Datei gleich anlegen, damit das Backup von Anfang an etwas vorfindet
     let dirty = !fs.existsSync(file) || repaired > 0 || kmReset > 0;
 

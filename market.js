@@ -37,6 +37,10 @@ module.exports = function createMarket(h) {
         }
     }
 
+    // Kekemon-Reset 2 (5.5): Karten im Auktionshaus und im Abholfach verfallen,
+    // Hoechstgebote gehen zurueck. Einmalig (Merker in market.json).
+    const resetCards = !st.kmReset2;
+
     let dirty = false, timer = null;
     function save(sync) {
         if (!dirty && !sync) return;
@@ -52,6 +56,20 @@ module.exports = function createMarket(h) {
     }
 
     const nameOf = key => (h.accounts.get(key) || {}).name || key;
+    if (resetCards) {
+        for (const l of st.listings.filter(x => x.asset.k === 'card')) {
+            if (l.bidder && l.bid) h.accounts.addCoins(l.bidder, l.bid);
+            console.log(`market: Kekemon-Reset 2 – Angebot ${l.id} von ${l.sellerName} entfernt`);
+        }
+        st.listings = st.listings.filter(x => x.asset.k !== 'card');
+        for (const k of Object.keys(st.claims)) {
+            st.claims[k] = st.claims[k].filter(x => x.asset.k !== 'card');
+            if (!st.claims[k].length) delete st.claims[k];
+        }
+        st.kmReset2 = new Date().toISOString();
+        dirty = true;
+        save(true);
+    }
     const toAll = (key, msg) => h.clientsOf(key).forEach(c => h.send(c, msg));
     const note = (key, text, kind) => toAll(key, { type: 'mkNote', text, kind: kind || 'ok' });
 
