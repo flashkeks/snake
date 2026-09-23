@@ -55,23 +55,27 @@ const MOBS = {
     },
     abomination: {
         zombie: true, boss: true, name: 'Abomination', icon: '🦠', color: '#b04fff', r: 46, hpBase: 2500, hpPer: 1200, speed: 90, chase: 110, aggro: 99999,
-        slam: { r: 230, dmg: 60, ms: 6000 }, contact: 50, summon: { kind: 'runner', n: 3, ms: 9000, max: 9 }, melee: 50
+        slam: { r: 230, dmg: 60, ms: 6000 }, contact: 50, summon: { kind: 'runner', n: 3, ms: 9000, max: 9 }, melee: 50,
+        charge: { ms: 9000, warn: 900, dur: 700, speed: 560 }, strikes: { n: 4, r: 100, dmg: 45, warn: 1200, ms: 11000, spread: 220 }
     },
     // ---------- Bosse (einer zur Zeit, reihum zufaellig) ----------
     king: {
         boss: true, name: 'Raccoon King', icon: '🦝', crown: true, color: '#ff3b3b', r: 44, hpBase: 5000, hpPer: 2500, speed: 125, aggro: 700, keep: 170,
         gun: { dmg: 16, speed: 620, ms: 850, burst: 3, spread: 0.12, life: 1.5, fan: true },
-        ring: { n: 20, ms: 9000 }, slam: { r: 250, dmg: 70, ms: 7000 }, contact: 45
+        ring: { n: 20, ms: 9000 }, slam: { r: 250, dmg: 70, ms: 7000 }, contact: 45,
+        charge: { ms: 8000, warn: 800, dur: 650, speed: 720 }, summon: { kind: 'scav', n: 2, ms: 22000, max: 4 }
     },
     golem: {
         boss: true, name: 'Iron Golem', icon: '🗿', color: '#a0a8b8', r: 52, hpBase: 8000, hpPer: 3500, speed: 85, aggro: 650, keep: 110, taken: 0.85,
         gun: { dmg: 45, speed: 430, ms: 2100, burst: 1, spread: 0, life: 2.2, explode: 110, big: true },
-        slam: { r: 320, dmg: 90, ms: 5500 }, contact: 60
+        slam: { r: 320, dmg: 90, ms: 5500 }, contact: 60,
+        strikes: { n: 6, r: 120, dmg: 75, warn: 1300, ms: 8500, spread: 300 }
     },
     queen: {
         boss: true, name: 'Hive Queen', icon: '🐝', color: '#ffd23f', r: 40, hpBase: 4200, hpPer: 2000, speed: 150, aggro: 800, keep: 340,
         gun: { dmg: 12, speed: 520, ms: 620, burst: 2, spread: 0.25, life: 1.9, homing: 0.9 },
-        ring: { n: 14, ms: 7000 }, summon: { kind: 'drone', n: 3, ms: 10000, max: 8 }, contact: 35
+        ring: { n: 14, ms: 7000 }, summon: { kind: 'drone', n: 3, ms: 10000, max: 8 }, contact: 35,
+        charge: { ms: 6500, warn: 600, dur: 500, speed: 820 }
     }
 };
 
@@ -81,7 +85,7 @@ const ROAMERS = [['scav', 55], ['brute', 18], ['sniper', 14], ['drone', 13]];
 
 // Fuer den Browser: was er zum Zeichnen braucht
 function catalog() {
-    return Object.fromEntries(Object.entries(MOBS).map(([k, m]) => [k, { name: m.name, icon: m.icon, color: m.color, r: m.r, boss: !!m.boss, crown: !!m.crown, elite: !!m.elite || (!!m.boss && !!m.zombie) }]));
+    return Object.fromEntries(Object.entries(MOBS).map(([k, m]) => [k, { name: m.name, icon: m.icon, color: m.color, r: m.r, boss: !!m.boss, crown: !!m.crown, elite: !!m.elite || (!!m.boss && !!m.zombie), slamR: m.slam ? m.slam.r : 0 }]));
 }
 
 module.exports = { MOBS, BOSSES, ROAMERS, catalog };

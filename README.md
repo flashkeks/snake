@@ -826,6 +826,30 @@ Detailansicht.
 - Protokoll: `pvpCreate {kind: 'zombies'}`, `pvpStart`; im Spiel `sh.zmb =
   { wave, phase, left, zombies, pts, perks, team: [[name, pts, kills, tot]] }`.
 
+### 4.6: Rueckmeldungen von Max
+
+- **Extraction ohne Stationen:** Haendler, Sani, Stadt und Aussenposten sind
+  wieder raus (die Beschreibung unter 4.2 ist insoweit ueberholt). Gegner,
+  Bosse und Militaerlager bleiben. Der Haendler-/Sani-Code bleibt fuer
+  spaeter liegen, die Map hat nur keine Stationen mehr.
+- **Nahkampf-Treffer** (Brute, Zombies, Boss-Beruehrung) kommen je Tick;
+  sie werden gesammelt und alle 350 ms als `shHurt {melee}` geschickt – roter
+  Rand und rote Zahl ueber dem eigenen Kopf (auch fuer normale Treffer).
+- **Boss-Angriffe:** Ansturm (`charge`: Warnbahn, dann schnell auf die Stelle,
+  2,5× Beruehrungsschaden) fuer King, Queen, Abomination; Einschlaege
+  (`strikes`: Warnkreise, dann Explosion, der erste genau aufs Ziel) fuer
+  Golem (6 Felsen) und Abomination (Saeure); der King ruft Scav-Wachen.
+  Formen im Browser (`drawBoss`): King mit Umhang, Golem als Fels mit Faeusten
+  und gluehenden Augen, Queen als Biene mit schlagenden Fluegeln,
+  Abomination als wabernder Blob.
+- **Zombies:** am Wellenende alle voll geheilt, zwei 💉 Heal-Stationen (600
+  Punkte, 25 s Abklingzeit), Stationen kleiner gezeichnet.
+- **Ergebnis-Screen** (`shResult`): nach Tod, Extraction, PvP und Zombies
+  ueber dem abgedunkelten letzten Bild – Titel, Todesursache mit Waffe, Zeit,
+  Kills, XP des Laufs, verlorene bzw. gesicherte Items, „Deploy again“ /
+  „Play again“ / „Back to the hub“ (ESC). `shLeft` schickt dafuer `kills`,
+  `secs`, `weapon`.
+
 ### 🤝 Handel (4.5, `arena-trade.js`)
 
 - Hub-Tab „Trade“: Anfrage an einen Namen (muss online sein, 60 s gueltig),

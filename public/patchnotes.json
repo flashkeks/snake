@@ -1,5 +1,16 @@
 [
   {
+    "version": "4.6",
+    "date": "23.09.2026",
+    "items": [
+      "Getting hit in melee now shows the red flash and a damage number",
+      "Bosses got their own shapes and new attacks: charges with a warning lane, rock/acid strikes with warning circles, summoned guards",
+      "New raid result screen: YOU DIED / EXTRACTED with time, kills, XP and the items you lost or secured – deploy again with one click",
+      "Zombies: full heal after every wave, new 💉 heal stations, smaller buy spots",
+      "Extraction: trader, medic, town and outpost removed – enemies and the military base stay"
+    ]
+  },
+  {
     "version": "4.5",
     "date": "23.09.2026",
     "items": [
