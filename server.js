@@ -377,7 +377,8 @@ function removeFromField(id) {
     p.cashout = null;
 }
 
-function kill(id, killerId, how) {
+// cause: wall, self, body, duel, star, gamble, box – der Browser macht daraus den Text
+function kill(id, killerId, how, cause) {
     const victim = players.get(id);
     if (!victim) return;
 
@@ -397,7 +398,16 @@ function kill(id, killerId, how) {
     }
 
     recordScore(victim);
-    send(victim, { type: 'died', by: killer ? killer.name : null, how: how || null, score: scoreOf(victim) });
+    const head = victim.body[0];
+    send(victim, {
+        type: 'died',
+        by: killer ? killer.name : null,
+        byId: killer ? killerId : null,
+        how: how || null,
+        cause: cause || null,
+        at: head ? { x: head.x, y: head.y } : null,
+        score: scoreOf(victim)
+    });
     removeFromField(id);
 }
 
@@ -489,7 +499,7 @@ function resolveFreezes() {
 
             for (const id of f.ids) {
                 const p = players.get(id);
-                if (id !== f.winner && p && p.frozen === f) kill(id, f.winner);
+                if (id !== f.winner && p && p.frozen === f) kill(id, f.winner, null, 'duel');
             }
             winner.frozen = null;
             resumeFx(winner, f.started);
@@ -511,7 +521,7 @@ function resolveFreezes() {
                     feed(`🛡️ ${p.name}'s shield blocked a 🪙💀`, 'good', id);
                     continue;
                 }
-                kill(id, null, 'gambled it all away 🪙💀');
+                kill(id, null, 'gambled it all away 🪙💀', 'gamble');
                 continue;
             }
 
@@ -654,6 +664,8 @@ function applyBox(id, p, o) {
             setLen(p, b);
             setLen(q, a);
             text = `${p.name} 🔀 ${q.name}: ${a} ⇄ ${b}`;
+            // Alle sehen den Strahl zwischen den Koepfen, die zwei bekommen ein Banner
+            broadcast({ type: 'swapfx', a: p.id, b: q.id, an: p.name, bn: q.name, al: a, bl: b });
             break;
         }
         case 'death':
@@ -663,7 +675,7 @@ function applyBox(id, p, o) {
                 feed(`🛡️ ${p.name}'s shield blocked a 💀 box`, 'good', id);
                 return;
             }
-            kill(id, null, 'opened a 💀 box');
+            kill(id, null, 'opened a 💀 box', 'box');
             return;
     }
 
@@ -886,7 +898,12 @@ async function handle(c, data) {
                 bonus: r.bonus,
                 balance,
                 // Gewinne je Spin schon in Coins, fuer die Anzeige waehrend der Animation
-                spins: r.spins.map(sp => ({ ...sp, win: Math.round(sp.win * bet * 100) / 100 }))
+                spins: r.spins.map(sp => ({
+                    ...sp,
+                    win: Math.round(sp.win * bet * 100) / 100,
+                    tw: Math.round(sp.tw * bet * 100) / 100,
+                    scatterWin: Math.round(sp.scatterWin * bet * 100) / 100
+                }))
             });
             if (r.win >= bet * 100) feed(`🍬 ${u.name} won ${r.win} coins (${Math.round(r.win / bet)}x) on Sweet Kek`, 'gold', c.id);
             return;
@@ -1300,8 +1317,8 @@ function gameTick() {
         if (ids.length > 1 && ids.some(id => moverIds.has(id))) headGroups.push(ids);
     }
 
-    for (const id of wall) kill(id, null, 'hit the wall');
-    for (const [id, killerId] of dead) kill(id, killerId, killerId ? null : 'ran into themselves');
+    for (const id of wall) kill(id, null, 'hit the wall', 'wall');
+    for (const [id, killerId] of dead) kill(id, killerId, killerId ? null : 'ran into themselves', killerId ? 'body' : 'self');
 
     // Genau ein Stern im Kopf-an-Kopf gewinnt ohne Walze. Sonst Duell.
     const inDuel = new Set();
@@ -1310,7 +1327,7 @@ function gameTick() {
         if (ids.length < 2) continue;
         const stars = ids.filter(id => star.has(id));
         if (stars.length === 1) {
-            for (const id of ids) if (id !== stars[0]) kill(id, stars[0]);
+            for (const id of ids) if (id !== stars[0]) kill(id, stars[0], null, 'star');
             continue;
         }
         ids.forEach(id => inDuel.add(id));

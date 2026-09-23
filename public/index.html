@@ -1059,19 +1059,32 @@ button:disabled {
 }
 
 /* ---------- Sweet Kek (tumble slot) ---------- */
+/* Zellgroesse (--c) rechnet s2Fit() aus, damit alles ohne Scrollen passt.
+   --t skaliert alle Animationszeiten (Skip = schneller). */
 
 #slots2 .card {
-    width: min(600px, 100%);
+    --c: 64px;
+    --t: 1;
+    width: auto;
+    min-width: min(360px, 100%);
     border-color: #ff5bd6;
     box-shadow: 0 0 50px rgba(255, 91, 214, .35);
-    padding: 14px;
-    gap: 10px;
+    padding: 10px 12px 12px;
+    gap: 8px;
+    position: relative;
+}
+
+.s2-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .s2-title {
-    font-size: 26px;
+    font-size: 20px;
     font-weight: 900;
-    text-align: center;
+    margin-right: auto;
+    white-space: nowrap;
     background: linear-gradient(90deg, #ff9ad5, #ffd23f, #9ad5ff, #ff9ad5);
     background-size: 300% 100%;
     -webkit-background-clip: text;
@@ -1080,22 +1093,131 @@ button:disabled {
     animation: goldShine 4s linear infinite;
 }
 
+.s2-head .coins {
+    font-weight: 900;
+    color: #ffd23f;
+    white-space: nowrap;
+}
+
+.s2-icon {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    font-size: 15px;
+    line-height: 1;
+    border-radius: 8px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.18);
+    color: #fff;
+}
+
+/* Anzeige ueber dem Raster: im Basisspiel Einsatz/Multi/Gewinn, im Bonus vier Werte */
+.s2-hud {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+
+.s2-hud.bonus {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.s2-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 3px 4px;
+    border-radius: 8px;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.1);
+    min-width: 0;
+}
+
+.s2-stat small {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    opacity: .7;
+    white-space: nowrap;
+}
+
+.s2-stat b {
+    font-size: 18px;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    display: inline-block;
+}
+
+.s2-stat.hide {
+    display: none;
+}
+
+.s2-stat.free b { color: #7dffb0; }
+.s2-stat.mult b { color: #e39bff; text-shadow: 0 0 10px #c86bff; }
+.s2-stat.win b { color: #ffd23f; text-shadow: 0 0 10px rgba(255,210,63,.6); }
+
+.s2-hud.bonus .s2-stat {
+    background: rgba(255, 210, 63, .08);
+    border-color: rgba(255, 210, 63, .35);
+}
+
+.s2-bump {
+    animation: s2bump calc(.45s * var(--t)) ease-out;
+}
+
+@keyframes s2bump {
+    40% { transform: scale(1.45); filter: brightness(1.8); }
+}
+
+.s2-stage {
+    position: relative;
+    align-self: center;
+}
+
 .s2-grid {
     position: relative;
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(6, var(--c));
     gap: 4px;
-    padding: 8px;
+    padding: 6px;
     border-radius: 14px;
     background: linear-gradient(180deg, #3b1250, #1a0626);
     border: 3px solid #ff9ad5;
     box-shadow: inset 0 0 30px rgba(0,0,0,.6), 0 0 20px rgba(255, 154, 213, .3);
     overflow: hidden;
+    transition: border-color .4s, background .4s;
 }
 
 .s2-grid.free {
     border-color: #ffd23f;
     background: linear-gradient(180deg, #4a2a05, #1f1002);
+    box-shadow: inset 0 0 30px rgba(0,0,0,.6), 0 0 26px rgba(255, 210, 63, .45);
+}
+
+.s2-grid.shake {
+    animation: s2shake .5s linear;
+}
+
+@keyframes s2shake {
+    10%, 50%, 90% { transform: translate(-4px, 2px); }
+    30%, 70% { transform: translate(4px, -2px); }
+}
+
+/* Blitz beim seltenen Multi im Basisspiel */
+.s2-grid.flash::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, rgba(255,255,255,.9), rgba(200,107,255,.4) 40%, transparent 70%);
+    animation: s2flash .7s ease-out forwards;
+    pointer-events: none;
+    z-index: 4;
+}
+
+@keyframes s2flash {
+    from { opacity: 1; }
+    to { opacity: 0; }
 }
 
 .s2-col {
@@ -1105,58 +1227,76 @@ button:disabled {
 }
 
 .s2-cell {
-    aspect-ratio: 1;
+    width: var(--c);
+    height: var(--c);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: clamp(22px, 5.5vw, 40px);
+    font-size: calc(var(--c) * .6);
     border-radius: 10px;
     background: rgba(255,255,255,.06);
     position: relative;
-    transition: transform .25s, opacity .25s, filter .25s;
+    transition: transform calc(.3s * var(--t)), opacity calc(.3s * var(--t)), filter calc(.3s * var(--t));
 }
 
 .s2-cell.drop {
-    animation: s2drop .45s cubic-bezier(.3,1.4,.5,1) both;
+    animation: s2drop calc(.5s * var(--t)) cubic-bezier(.3,1.35,.5,1) both;
 }
 
 @keyframes s2drop {
-    from { transform: translateY(-420px); }
+    from { transform: translateY(calc(var(--c) * -6)); }
+}
+
+.s2-cell.out {
+    animation: none !important;
+    transform: translateY(calc(var(--c) * 6));
+    transition: transform calc(.3s * var(--t)) ease-in;
 }
 
 .s2-cell.hit {
     background: rgba(255, 210, 63, .35);
     box-shadow: 0 0 16px #ffd23f;
-    animation: s2pulse .35s ease-in-out infinite alternate;
+    animation: s2pulse calc(.3s * var(--t)) ease-in-out infinite alternate;
+    z-index: 2;
 }
 
 @keyframes s2pulse {
-    to { transform: scale(1.12); }
+    to { transform: scale(1.14); }
 }
 
 .s2-cell.pop {
-    transform: scale(0) rotate(40deg);
+    transform: scale(1.6) rotate(25deg);
     opacity: 0;
-    filter: brightness(3);
+    filter: brightness(3) blur(2px);
 }
 
 .s2-cell.scatter {
     background: radial-gradient(circle, rgba(255,210,63,.45), rgba(255,210,63,.05));
 }
 
+.s2-cell.scatter.glow {
+    animation: s2star calc(.6s * var(--t)) ease-in-out infinite alternate;
+    z-index: 2;
+}
+
+@keyframes s2star {
+    to { transform: scale(1.2) rotate(12deg); filter: brightness(1.6) drop-shadow(0 0 10px #ffd23f); }
+}
+
 .s2-orb {
-    width: 86%;
-    height: 86%;
+    width: 88%;
+    height: 88%;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: clamp(11px, 2.4vw, 17px);
+    font-size: calc(var(--c) * .26);
     font-weight: 900;
     color: #fff;
     text-shadow: 0 0 6px #000;
     background: radial-gradient(circle at 35% 30%, #fff, #c86bff 35%, #5b0f9e 80%);
     box-shadow: 0 0 14px #c86bff;
+    animation: s2orbIdle 1.6s ease-in-out infinite;
 }
 
 .s2-orb.big {
@@ -1164,21 +1304,81 @@ button:disabled {
     box-shadow: 0 0 20px #ffd23f;
 }
 
-.s2-status {
+@keyframes s2orbIdle {
+    50% { transform: scale(1.06); box-shadow: 0 0 22px #e39bff; }
+}
+
+/* Kugel schlaegt ein: Ring laeuft nach aussen */
+.s2-cell.land::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 3px solid #e39bff;
+    animation: s2ring calc(.7s * var(--t)) ease-out forwards;
+    pointer-events: none;
+}
+
+.s2-cell.land.epic::before {
+    border-color: #fff;
+    border-width: 5px;
+    animation-duration: calc(1s * var(--t));
+}
+
+@keyframes s2ring {
+    from { transform: scale(.4); opacity: 1; }
+    to { transform: scale(2.6); opacity: 0; }
+}
+
+.s2-cell.charge .s2-orb {
+    animation: s2charge calc(.25s * var(--t)) ease-in-out infinite alternate;
+}
+
+@keyframes s2charge {
+    to { transform: scale(1.25); filter: brightness(1.7); }
+}
+
+/* Die fliegende Kopie einer Kugel (liegt ueber allem) */
+.s2-fly {
+    position: fixed;
+    z-index: 50;
+    pointer-events: none;
     display: flex;
-    justify-content: space-between;
-    gap: 8px;
-    font-weight: 800;
-    font-size: 15px;
-    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 0 0 6px #000;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff, #c86bff 35%, #5b0f9e 80%);
+    box-shadow: 0 0 24px #e39bff, 0 0 60px rgba(200,107,255,.6);
 }
 
-.s2-status .mult {
-    color: #c86bff;
-}
-
-.s2-status .win {
+/* Schwebende Zahl ueber dem Raster */
+.s2-float {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: calc(var(--c) * .6);
+    font-weight: 900;
     color: #ffd23f;
+    text-shadow: 0 0 14px #ff5bd6, 0 2px 4px #000;
+    pointer-events: none;
+    z-index: 6;
+    white-space: nowrap;
+    animation: s2floatUp calc(1.1s * var(--t)) ease-out forwards;
+}
+
+.s2-float.txt {
+    font-size: calc(var(--c) * .38);
+}
+
+@keyframes s2floatUp {
+    0% { opacity: 0; transform: translate(-50%, -30%) scale(.6); }
+    20% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+    75% { opacity: 1; transform: translate(-50%, -60%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -90%) scale(.9); }
 }
 
 .s2-banner {
@@ -1188,52 +1388,122 @@ button:disabled {
     align-items: center;
     justify-content: center;
     flex-direction: column;
-    font-size: 34px;
+    font-size: calc(var(--c) * .55);
     font-weight: 900;
     color: #ffd23f;
     text-shadow: 0 0 20px #ff5bd6, 0 2px 4px #000;
-    background: rgba(20, 0, 30, .55);
+    background: rgba(20, 0, 30, .6);
     pointer-events: none;
     animation: pop .5s ease-out;
     text-align: center;
-    z-index: 5;
+    z-index: 7;
+    border-radius: 12px;
 }
 
 .s2-banner small {
-    font-size: 18px;
+    font-size: calc(var(--c) * .26);
     color: #fff;
+    margin-top: 4px;
 }
 
 .s2-log {
-    min-height: 1.4em;
+    height: 1.3em;
     font-size: 13px;
     text-align: center;
     opacity: .85;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.s2-controls {
+.s2-bar {
     display: flex;
     gap: 8px;
-    flex-wrap: wrap;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
 }
 
-.s2-controls button {
+.s2-bet {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.s2-bet small {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    opacity: .7;
+    margin-right: 2px;
+}
+
+.s2-bet button {
+    width: 32px;
+    height: 36px;
+    padding: 0;
+    font-size: 20px;
+    font-weight: 900;
+}
+
+.s2-bet input {
+    width: 86px;
+    height: 36px;
+    text-align: center;
     font-size: 16px;
+    font-weight: 800;
+    color: #ffd23f;
+    background: #0b120e;
+    border: 1px solid rgba(255,210,63,.4);
+    border-radius: 8px;
+    -moz-appearance: textfield;
+}
+
+.s2-bet input::-webkit-inner-spin-button,
+.s2-bet input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 
 #s2-spin {
-    min-width: 140px;
-    font-size: 20px;
+    min-width: 120px;
+    height: 42px;
+    font-size: 19px;
 }
 
+#s2-buy {
+    height: 42px;
+    font-size: 14px;
+}
+
+/* Gewinntabelle als Einblendung ueber dem Raster */
 .s2-pay {
-    font-size: 12px;
+    position: absolute;
+    inset: 0;
+    z-index: 8;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 2px 10px;
-    opacity: .85;
+    grid-template-columns: repeat(4, auto);
+    align-content: center;
+    justify-content: center;
+    gap: 3px 16px;
+    padding: 10px;
+    font-size: 13px;
+    border-radius: 14px;
+    background: rgba(12, 2, 20, .95);
+    border: 2px solid #ff9ad5;
+    overflow: auto;
+}
+
+.s2-pay.hidden {
+    display: none;
+}
+
+.s2-pay p {
+    grid-column: 1 / -1;
+    margin: 6px 0 0;
+    font-size: 12px;
+    opacity: .8;
+    text-align: center;
 }
 
 /* ---------- Spiel-HUD ---------- */
@@ -1673,6 +1943,61 @@ button:disabled {
 #toast.show {
     opacity: 1;
 }
+
+/* Grosse Ansage mitten im Feld: Tod und Swap */
+#bigfx {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 9%;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+    pointer-events: none;
+    z-index: 4;
+    padding: 0 12px;
+}
+
+#bigfx.show {
+    display: flex;
+    animation: bigIn .45s cubic-bezier(.3,1.5,.5,1);
+}
+
+#bigfx b {
+    font-size: clamp(28px, 6vw, 54px);
+    font-weight: 900;
+    letter-spacing: .02em;
+    text-shadow: 0 0 24px currentColor, 0 3px 6px #000;
+}
+
+#bigfx span {
+    font-size: clamp(16px, 2.6vw, 24px);
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 0 2px 6px #000, 0 0 12px rgba(0,0,0,.8);
+}
+
+#bigfx small {
+    font-size: 14px;
+    font-weight: 700;
+    opacity: .8;
+    text-shadow: 0 2px 4px #000;
+}
+
+#bigfx.death b { color: #ff3b3b; }
+#bigfx.swap b { color: #ff6ae6; animation: swapHue .8s linear infinite; }
+#bigfx .up { color: #5dff9d; }
+#bigfx .down { color: #ff6b6b; }
+
+@keyframes bigIn {
+    from { transform: scale(.3); opacity: 0; }
+}
+
+@keyframes swapHue {
+    50% { color: #56e8ff; }
+}
 </style>
 </head>
 
@@ -1777,29 +2102,35 @@ button:disabled {
             <!-- Sweet Kek: tumble slot -->
             <div id="slots2" class="overlay hidden">
                 <div class="card">
-                    <div class="s2-title">🍬 Sweet Kek 🍪</div>
-                    <div class="whoami">
-                        <span>👤 <b id="s2-name"></b></span>
+                    <div class="s2-head">
+                        <div class="s2-title">🍬 Sweet Kek</div>
                         <span class="coins">🪙 <span id="s2-coins">0</span></span>
+                        <button type="button" class="s2-icon" id="s2-sound" title="Sound on/off">🔊</button>
+                        <button type="button" class="s2-icon" id="s2-info" title="Paytable">ℹ️</button>
+                        <button type="button" class="s2-icon" id="s2-back" title="Back to menu">✕</button>
                     </div>
-                    <div class="s2-grid" id="s2-grid"></div>
-                    <div class="s2-status">
-                        <span id="s2-free"></span>
-                        <span class="mult" id="s2-mult"></span>
-                        <span class="win" id="s2-win"></span>
+                    <div class="s2-hud" id="s2-hud">
+                        <div class="s2-stat free hide" id="s2-st-free"><small>FREE SPINS</small><b id="s2-free">0</b></div>
+                        <div class="s2-stat" id="s2-st-bet"><small>BET</small><b id="s2-betshow">10</b></div>
+                        <div class="s2-stat mult" id="s2-st-mult"><small>MULTIPLIER</small><b id="s2-mult">–</b></div>
+                        <div class="s2-stat win" id="s2-st-spin"><small id="s2-spinlabel">WIN</small><b id="s2-spinwin">0</b></div>
+                        <div class="s2-stat win hide" id="s2-st-total"><small>BONUS WIN</small><b id="s2-total">0</b></div>
+                    </div>
+                    <div class="s2-stage">
+                        <div class="s2-grid" id="s2-grid"></div>
+                        <div class="s2-pay hidden" id="s2-pay"></div>
                     </div>
                     <div class="s2-log" id="s2-log">8+ of a kind anywhere pay · 🔮 multiply · 4+ ⭐ = free spins</div>
-                    <div class="chips" id="s2-bets"></div>
-                    <div class="s2-controls">
+                    <div class="s2-bar">
+                        <div class="s2-bet">
+                            <small>BET</small>
+                            <button type="button" class="ghost" id="s2-minus">−</button>
+                            <input id="s2-custom" type="number" min="1" step="1" value="10" title="Type any amount">
+                            <button type="button" class="ghost" id="s2-plus">+</button>
+                        </div>
                         <button type="button" class="gold" id="s2-spin">SPIN</button>
                         <button type="button" class="ghost" id="s2-buy">Buy bonus</button>
-                        <button type="button" class="ghost" id="s2-skip" style="display:none">⏩ Skip</button>
                     </div>
-                    <details>
-                        <summary style="cursor:pointer;opacity:.7;font-size:13px">Paytable</summary>
-                        <div class="s2-pay" id="s2-pay"></div>
-                    </details>
-                    <button type="button" class="ghost" id="s2-back">← Back</button>
                 </div>
             </div>
 
@@ -1882,6 +2213,7 @@ button:disabled {
 
             <div id="banner"></div>
             <div id="toast"></div>
+            <div id="bigfx"></div>
         </div>
 
         <div id="score"></div>
@@ -1997,9 +2329,8 @@ ws.onmessage = event => {
         case 'left':
             backToMenu(null);
             break;
-        case 'died':
-            backToMenu(`<div class="result dead">💀 ${data.by ? 'Killed by ' + esc(data.by) : 'Dead'} — score ${data.score} lost</div>`);
-            break;
+        case 'died': onDied(data); break;
+        case 'swapfx': onSwap(data); break;
         case 'cashedout':
             backToMenu(`<div class="result cash">💰 +${data.coins} coins cashed out! Balance ${data.balance}</div>`);
             fanfare('gold');
@@ -2027,7 +2358,7 @@ ws.onmessage = event => {
         case 'spin': slotResult(data); break;
         case 'spinError': slotError(data.error); break;
         case 'spin2': s2Run(data); break;
-        case 'spin2Error': $('s2-log').textContent = data.error; $('s2-coins').textContent = me ? me.coins : 0; break;
+        case 'spin2Error': s2Error(data.error); break;
         case 'event': onEvent(data); break;
         case 'eventEnd': onEventEnd(); break;
         case 'eventError': showMsg('ev-msg', data.error, 'err'); break;
@@ -2408,6 +2739,7 @@ function colorOf(p) {
 }
 
 function camTarget(now) {
+    if (deathView && deathView.at) return deathView.at;
     const mine = players.find(p => p.id === myId);
     const who = mine || [...players].sort((a, b) => b.score - a.score)[0];
     if (who && who.body[0]) return interpBody(who, now)[0];
@@ -2603,8 +2935,150 @@ function draw(perfNow) {
             hx + cell / 2, hy - cell * 0.5);
     }
 
+    drawSwaps(perfNow, sx, sy, cell);
+    drawDeath(perfNow, sx, sy, cell, W);
     drawEffectBars();
     drawMinimap(now);
+}
+
+// ---------- Swap and death: make them obvious ----------
+
+const swapFx = [];          // { a, b, t }
+let deathView = null;       // { at, t, byId }
+let bigTimer = null;
+
+function bigFx(cls, html, ms) {
+    const el = $('bigfx');
+    el.className = cls;
+    el.innerHTML = html;
+    void el.offsetWidth;
+    el.classList.add('show');
+    clearTimeout(bigTimer);
+    bigTimer = setTimeout(() => el.className = '', ms);
+}
+
+function onSwap(d) {
+    swapFx.push({ a: d.a, b: d.b, t: performance.now() });
+    const involved = d.a === myId || d.b === myId;
+    if (!involved) return;
+    const mineA = d.a === myId;
+    const from = mineA ? d.al : d.bl;
+    const to = mineA ? d.bl : d.al;
+    const other = mineA ? d.bn : d.an;
+    const diff = to - from;
+    const who = mineA ? `You swapped with <b style="font-size:inherit;text-shadow:none">${esc(other)}</b>` : `${esc(other)} swapped with you`;
+    bigFx('swap', `<b>🔀 SWAPPED!</b><span>${who}</span>` +
+        `<span>Length ${from} → ${to} <span class="${diff >= 0 ? 'up' : 'down'}">(${diff >= 0 ? '+' : ''}${diff})</span></span>`, 2600);
+    sfxInit();
+    sTone(300, { dur: .6, type: 'triangle', vol: .12, slide: 1400, rev: .4 });
+    sTone(1400, { dur: .6, type: 'triangle', vol: .12, slide: 300, rev: .4 });
+    sNoise({ dur: .6, vol: .12, f: 600, f2: 5000, q: 3, rev: .3 });
+    const end = diff >= 0 ? [523, 659, 784, 1047] : [523, 466, 392, 311];
+    end.forEach((f, i) => sBell(f, .5 + i * .09, .1, .8));
+}
+
+const DEATH_TEXT = {
+    wall: () => ['🧱 You hit the wall', 'The border is deadly — even with a shield'],
+    self: () => ['🌀 You bit your own tail', ''],
+    body: by => [`🐍 You crashed into ${by}`, 'Other snakes are solid'],
+    duel: by => [`⚔️ ${by} won the head-to-head`, 'Lost the coin flip'],
+    star: by => [`⭐ ${by} had star power`, 'A star wins every head-to-head'],
+    gamble: () => ['🪙 Double or nothing: nothing', ''],
+    box: () => ['💀 You opened a death box', 'A shield would have saved you']
+};
+
+function onDied(d) {
+    joined = false;
+    spaceDown = false;
+    $('hud').classList.add('hidden');
+    const [title, hint] = (DEATH_TEXT[d.cause] || (() => [d.how ? '☠️ You ' + d.how : '☠️ You died', '']))(esc(d.by || 'someone'));
+    deathView = { at: d.at, t: performance.now(), byId: d.byId };
+    bigFx('death', `<b>💀 YOU DIED</b><span>${title}</span>${hint ? `<small>${hint}</small>` : ''}<small>Score ${d.score} lost</small>`, 2700);
+    sfxInit();
+    sTone(220, { dur: .9, type: 'sawtooth', vol: .07, slide: 55, lp: 1200, lp2: 200, rev: .4 });
+    sTone(90, { dur: .7, vol: .3, slide: 35, rev: .2 });
+    sNoise({ dur: .5, vol: .2, type: 'lowpass', f: 2000, f2: 100, rev: .3, a: .002 });
+    setTimeout(() => {
+        deathView = null;
+        $('bigfx').className = '';
+        backToMenu(`<div class="result dead">💀 ${title} — score ${d.score} lost</div>`);
+    }, 2700);
+}
+
+// Lightning between the two heads, both snakes glow for a moment
+function drawSwaps(now, sx, sy, cell) {
+    while (swapFx.length && now - swapFx[0].t > 2000) swapFx.shift();
+    for (const f of swapFx) {
+        const k = (now - f.t) / 2000;
+        const pa = players.find(p => p.id === f.a), pb = players.find(p => p.id === f.b);
+        const alpha = 1 - k;
+        for (const p of [pa, pb]) {
+            if (!p) continue;
+            ctx.strokeStyle = Math.floor(now / 100) % 2 ? `rgba(255,106,230,${alpha})` : `rgba(86,232,255,${alpha})`;
+            ctx.lineWidth = 3;
+            for (const part of interpBody(p, now)) ctx.strokeRect(sx(part.x), sy(part.y), cell, cell);
+            const h = interpBody(p, now)[0];
+            if (!h) continue;
+            ctx.beginPath();
+            ctx.arc(sx(h.x) + cell / 2, sy(h.y) + cell / 2, cell * (1 + k * 5), 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        if (!pa || !pb || k > .7) continue;
+        const ha = interpBody(pa, now)[0], hb = interpBody(pb, now)[0];
+        if (!ha || !hb) continue;
+        const x1 = sx(ha.x) + cell / 2, y1 = sy(ha.y) + cell / 2, x2 = sx(hb.x) + cell / 2, y2 = sy(hb.y) + cell / 2;
+        for (const [col, w] of [['rgba(86,232,255,', 7], ['rgba(255,255,255,', 2.5]]) {
+            ctx.strokeStyle = col + (1 - k / .7) + ')';
+            ctx.lineWidth = w;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            const n = 14;
+            for (let i = 1; i < n; i++) {
+                const t = i / n;
+                const j = (Math.random() - .5) * cell * 1.6;
+                ctx.lineTo(x1 + (x2 - x1) * t + j, y1 + (y2 - y1) * t + j);
+            }
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+        ctx.font = `${Math.floor(cell * 1.6)}px system-ui`;
+        ctx.fillText('🔀', (x1 + x2) / 2, (y1 + y2) / 2);
+    }
+}
+
+// Where you died: red vignette, skull, and a ring around whoever got you
+function drawDeath(now, sx, sy, cell, W) {
+    if (!deathView) return;
+    const k = Math.min(1, (now - deathView.t) / 400);
+    const g = ctx.createRadialGradient(W / 2, W / 2, W * .25, W / 2, W / 2, W * .75);
+    g.addColorStop(0, 'rgba(120,0,0,0)');
+    g.addColorStop(1, `rgba(160,0,0,${.55 * k})`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, W);
+    if (deathView.at) {
+        const cx = sx(deathView.at.x) + cell / 2, cy = sy(deathView.at.y) + cell / 2;
+        const ring = ((now - deathView.t) % 900) / 900;
+        ctx.strokeStyle = `rgba(255,60,60,${1 - ring})`;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(cx, cy, cell * (1 + ring * 4), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.font = `${Math.floor(cell * (1.6 + .2 * Math.sin(now / 120)))}px system-ui`;
+        ctx.fillText('💀', cx, cy);
+    }
+    const killer = deathView.byId && players.find(p => p.id === deathView.byId);
+    const kh = killer && interpBody(killer, now)[0];
+    if (kh) {
+        const cx = sx(kh.x) + cell / 2, cy = sy(kh.y) + cell / 2;
+        ctx.strokeStyle = '#ff3b3b';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(cx, cy, cell * 1.3, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.font = `bold ${Math.floor(cell * .7)}px system-ui`;
+        ctx.fillStyle = '#ff6b6b';
+        ctx.fillText('☠️ ' + killer.name, cx, cy + cell * 2.2);
+    }
 }
 
 // Own effects as bars with remaining time, top left under the HUD
@@ -3349,193 +3823,649 @@ let s2Info = null;
 let s2Bet = 10;
 let s2Busy = false;
 let s2Speed = 1;
-const S2_BETS = [1, 5, 10, 25, 50, 100, 250, 500, 1000];
+const S2_BETS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
+
+const s2Fmt = n => (Math.round(n * 100) / 100).toLocaleString('en-US');
+const s2Cols = () => $('s2-grid').querySelectorAll('.s2-col');
 
 function s2Sleep(ms) {
     return new Promise(r => setTimeout(r, ms / s2Speed));
 }
 
+function s2SetSpeed(v) {
+    s2Speed = v;
+    $('slots2').querySelector('.card').style.setProperty('--t', 1 / v);
+}
+
+function s2Bump(el) {
+    el.classList.remove('s2-bump');
+    void el.offsetWidth;
+    el.classList.add('s2-bump');
+}
+
+// Cell size so that the whole machine fits without scrolling
+function s2Fit() {
+    const ov = $('slots2');
+    if (ov.classList.contains('hidden')) return;
+    const card = ov.querySelector('.card');
+    const grid = $('s2-grid');
+    const cur = parseFloat(card.style.getPropertyValue('--c')) || 64;
+    const restH = card.offsetHeight - grid.offsetHeight;
+    const padH = grid.offsetHeight - (cur * 5 + 16);
+    const padW = grid.offsetWidth - (cur * 6 + 20);
+    const cellH = (ov.clientHeight - 32 - 4 - restH - padH - 16) / 5;
+    const cellW = (ov.clientWidth - 32 - 28 - padW - 20) / 6;
+    const c = Math.floor(Math.max(34, Math.min(92, cellH, cellW)));
+    card.style.setProperty('--c', c + 'px');
+}
+window.addEventListener('resize', s2Fit);
+
 function buildSlots2(info) {
     s2Info = info;
-    const bets = $('s2-bets');
-    bets.innerHTML = S2_BETS.map(b => `<button type="button" data-v="${b}" class="${b === s2Bet ? 'on' : ''}">${b}</button>`).join('') +
-        `<input class="chip-custom" id="s2-custom" type="number" min="1" step="1" placeholder="custom">`;
-    bets.querySelectorAll('button').forEach(btn => btn.onclick = () => {
-        s2Bet = Number(btn.dataset.v);
-        $('s2-custom').value = '';
-        s2Refresh();
-    });
-    $('s2-custom').oninput = e => {
-        const v = Math.floor(Number(e.target.value));
-        if (v >= 1) {
-            s2Bet = v;
-            s2Refresh();
-        }
-    };
     const pays = info.pays;
-    $('s2-pay').innerHTML = '<span></span><span>8–9</span><span>10–11</span><span>12+</span>' +
+    $('s2-pay').innerHTML = '<span></span><b>8–9</b><b>10–11</b><b>12+</b>' +
         Object.entries(pays).map(([sym, p]) => `<span style="font-size:18px">${sym}</span>` + p.map(v => `<span>×${v}</span>`).join('')).join('') +
-        `<span style="font-size:18px">⭐</span><span>4: ×${info.scatterPays[4]}</span><span>5: ×${info.scatterPays[5]}</span><span>6: ×${info.scatterPays[6]}</span>`;
+        `<span style="font-size:18px">⭐</span><span>4: ×${info.scatterPays[4]}</span><span>5: ×${info.scatterPays[5]}</span><span>6: ×${info.scatterPays[6]}</span>` +
+        `<p>Pays × bet for 8+ of a kind anywhere. Winners pop, new symbols tumble in.<br>` +
+        `🔮 orbs (×2–×500) multiply the win when a tumble ends with a win.<br>` +
+        `4+ ⭐ = ${info.freeSpins} free spins. In free spins every orb adds to a multiplier that stays for the whole bonus. 3+ ⭐ = +${info.retrigger} spins.<br>` +
+        `Max win ${info.maxWin}× bet. Tap to close.</p>`;
     s2RenderGrid(Array.from({ length: 6 }, () => Array.from({ length: 5 }, () => Object.keys(pays)[Math.floor(Math.random() * 8)])), true);
     s2Refresh();
 }
 
+function s2SetBet(v) {
+    s2Bet = Math.max(1, Math.floor(v) || 1);
+    $('s2-custom').value = s2Bet;
+    s2Refresh();
+}
+
 function s2Refresh() {
-    document.querySelectorAll('#s2-bets button').forEach(b => b.classList.toggle('on', Number(b.dataset.v) === s2Bet));
-    if (s2Info) $('s2-buy').textContent = `Buy bonus (${s2Bet * s2Info.buyCost})`;
-    if (me) {
-        $('s2-name').textContent = me.name;
-        if (!s2Busy) $('s2-coins').textContent = me.coins;
+    if (s2Info) $('s2-buy').textContent = `Buy bonus (${s2Fmt(s2Bet * s2Info.buyCost)})`;
+    if (!s2Busy) {
+        $('s2-betshow').textContent = s2Fmt(s2Bet);
+        if (me) $('s2-coins').textContent = s2Fmt(me.coins);
     }
 }
 
-function s2Cell(sym, cls) {
+function s2HudMode(bonus) {
+    $('s2-hud').classList.toggle('bonus', bonus);
+    $('s2-st-free').classList.toggle('hide', !bonus);
+    $('s2-st-total').classList.toggle('hide', !bonus);
+    $('s2-st-bet').classList.toggle('hide', bonus);
+    $('s2-spinlabel').textContent = bonus ? 'SPIN WIN' : 'WIN';
+    $('s2-grid').classList.toggle('free', bonus);
+}
+
+function s2Cell(sym, cls, delay) {
+    const st = delay ? ` style="animation-delay:calc(${delay}ms * var(--t))"` : '';
     if (sym[0] === 'x') {
         const v = Number(sym.slice(1));
-        return `<div class="s2-cell ${cls}"><div class="s2-orb ${v >= 25 ? 'big' : ''}">×${v}</div></div>`;
+        return `<div class="s2-cell ${cls}"${st}><div class="s2-orb ${v >= 25 ? 'big' : ''}">×${v}</div></div>`;
     }
-    if (sym === 'S') return `<div class="s2-cell scatter ${cls}">⭐</div>`;
-    return `<div class="s2-cell ${cls}">${sym}</div>`;
+    if (sym === 'S') return `<div class="s2-cell scatter ${cls}"${st}>⭐</div>`;
+    return `<div class="s2-cell ${cls}"${st}>${sym}</div>`;
 }
 
-// Draw a grid. `dropAll`: everything falls in. `prev`: only cells that changed fall.
+// Draw a grid. `dropAll`: everything falls in. `prev`: only the new cells on top fall.
+// Returns the cells that dropped in as [c, r].
 function s2RenderGrid(grid, dropAll, prev) {
     const el = $('s2-grid');
-    const banner = el.querySelector('.s2-banner');
+    const keep = [...el.querySelectorAll('.s2-banner, .s2-float')];
+    const dropped = [];
     el.innerHTML = grid.map((col, c) => {
-        // Cells that are new in this column are the ones on top
         let fresh = 0;
         if (prev) {
-            const kept = prev[c].filter((s, r) => !(prev.pop && prev.pop.has(c + ':' + r)));
+            const kept = prev[c].filter((s, r) => !prev.pop.has(c + ':' + r));
             fresh = col.length - kept.length;
         }
         return '<div class="s2-col">' + col.map((s, r) => {
             const drop = dropAll || r < fresh;
-            return s2Cell(s, drop ? 'drop' : '').replace('class="s2-cell', `style="animation-delay:${dropAll ? c * 60 + (4 - r) * 25 : (fresh - r) * 30}ms" class="s2-cell`);
+            if (drop) dropped.push([c, r]);
+            const delay = dropAll ? c * 90 + (4 - r) * 35 : (fresh - r) * 40;
+            return s2Cell(s, drop ? 'drop' : '', drop ? delay : 0);
         }).join('') + '</div>';
     }).join('');
-    if (banner) el.appendChild(banner);
+    keep.forEach(k => el.appendChild(k));
+    return dropped;
 }
 
 function s2Banner(html, ms) {
-    const el = $('s2-grid');
     const b = document.createElement('div');
     b.className = 's2-banner';
     b.innerHTML = html;
-    el.appendChild(b);
+    $('s2-grid').appendChild(b);
     return s2Sleep(ms).then(() => b.remove());
 }
 
-async function s2PlaySpin(sp, bet, runningWin) {
-    const steps = sp.steps;
-    s2RenderGrid(steps[0].grid, true);
-    beep(300, 0.08, 0.05);
-    await s2Sleep(650);
+function s2Float(text, txt) {
+    const f = document.createElement('div');
+    f.className = 's2-float' + (txt ? ' txt' : '');
+    f.textContent = text;
+    $('s2-grid').appendChild(f);
+    setTimeout(() => f.remove(), 1200 / s2Speed);
+}
 
-    let spinWin = 0;
+// Count a number up with coin ticks
+function s2Count(el, from, to, ms, ticks) {
+    return new Promise(res => {
+        const t0 = performance.now();
+        const dur = Math.max(1, ms / s2Speed);
+        let last = 0;
+        const step = now => {
+            const k = Math.min(1, (now - t0) / dur);
+            el.textContent = s2Fmt(from + (to - from) * (1 - Math.pow(1 - k, 3)));
+            if (ticks && now - last > 65 && k < 1) {
+                last = now;
+                sfx.tick(k);
+            }
+            if (k < 1) requestAnimationFrame(step);
+            else {
+                el.textContent = s2Fmt(to);
+                res();
+            }
+        };
+        requestAnimationFrame(step);
+    });
+}
+
+// New orbs and scatters that just landed get their entrance
+async function s2Land(grid, dropped, free) {
+    const cols = s2Cols();
+    const orbs = dropped.filter(([c, r]) => grid[c][r][0] === 'x');
+    const stars = dropped.filter(([c, r]) => grid[c][r] === 'S');
+    if (orbs.length) {
+        const g = $('s2-grid');
+        const epic = !free;     // in the base game orbs are rare -> big show
+        orbs.forEach(([c, r]) => {
+            const cell = cols[c].children[r];
+            cell.classList.add('land');
+            if (epic) cell.classList.add('epic');
+        });
+        if (epic) {
+            g.classList.add('flash', 'shake');
+            sfx.orbEpic();
+            s2Float('🔮 MULTIPLIER!', true);
+        } else {
+            sfx.orbLand(orbs.length);
+        }
+        await s2Sleep(epic ? 1000 : 380);
+        g.classList.remove('flash', 'shake');
+    }
+    if (stars.length) {
+        let n = 0;
+        for (const col of grid) for (const s of col) if (s === 'S') n++;
+        stars.forEach(([c, r], i) => {
+            cols[c].children[r].classList.add('glow');
+            setTimeout(() => sfx.scatter(n - stars.length + i + 1), i * 140 / s2Speed);
+        });
+        await s2Sleep(380 + stars.length * 140);
+    }
+}
+
+// Drop a fresh grid in (old symbols fall out first)
+async function s2DropIn(grid, free) {
+    $('s2-grid').querySelectorAll('.s2-cell').forEach((el, i) => {
+        el.style.transitionDelay = `calc(${Math.floor(i / 5) * 40}ms * var(--t))`;
+        el.classList.add('out');
+    });
+    sfx.spin();
+    await s2Sleep(420);
+    const dropped = s2RenderGrid(grid, true);
+    for (let c = 0; c < 6; c++) setTimeout(() => sfx.land(c), (c * 90 + 330) / s2Speed);
+    await s2Sleep(6 * 90 + 520);
+    await s2Land(grid, dropped, free);
+}
+
+// Orbs fly into the multiplier display, one after another
+async function s2FlyOrbs(sp) {
+    const last = sp.steps[sp.steps.length - 1].grid;
+    const cols = s2Cols();
+    const orbs = [];
+    last.forEach((col, c) => col.forEach((s, r) => { if (s[0] === 'x') orbs.push({ c, r, v: Number(s.slice(1)) }); }));
+    if (!orbs.length) return;
+
+    orbs.forEach(o => cols[o.c].children[o.r].classList.add('charge'));
+    sfx.charge();
+    await s2Sleep(700);
+
+    const target = $('s2-mult');
+    let m = sp.multBefore;
+    const flights = [];
+    for (const o of orbs) {
+        const cell = cols[o.c].children[o.r];
+        const from = cell.getBoundingClientRect();
+        const to = target.getBoundingClientRect();
+        const size = from.width * .88;
+        const fly = document.createElement('div');
+        fly.className = 's2-fly';
+        fly.textContent = '×' + o.v;
+        Object.assign(fly.style, {
+            left: from.left + (from.width - size) / 2 + 'px',
+            top: from.top + (from.height - size) / 2 + 'px',
+            width: size + 'px',
+            height: size + 'px',
+            fontSize: size * .3 + 'px'
+        });
+        document.body.appendChild(fly);
+        cell.firstElementChild.style.opacity = '.2';
+        const dx = to.left + to.width / 2 - (from.left + from.width / 2);
+        const dy = to.top + to.height / 2 - (from.top + from.height / 2);
+        sfx.fly();
+        const anim = fly.animate([
+            { transform: 'translate(0, 0) scale(1)' },
+            { transform: `translate(${dx * .35}px, ${dy * .35 - 50}px) scale(1.35)`, offset: .4 },
+            { transform: `translate(${dx}px, ${dy}px) scale(.45)`, opacity: .85 }
+        ], { duration: 750 / s2Speed, easing: 'cubic-bezier(.5,0,.8,.6)', fill: 'forwards' });
+        flights.push(anim.finished.then(() => {
+            fly.remove();
+            m += o.v;
+            target.textContent = '×' + m;
+            s2Bump(target);
+            sfx.orbHit(m);
+        }));
+        await s2Sleep(380);
+    }
+    await Promise.all(flights);
+    await s2Sleep(350);
+}
+
+async function s2PlaySpin(sp, bet) {
+    const steps = sp.steps;
+    const winEl = $('s2-spinwin');
+    winEl.textContent = '0';
+    await s2DropIn(steps[0].grid, sp.free);
+
+    let tw = 0;
     for (let i = 0; i < steps.length; i++) {
         const st = steps[i];
         if (!st.pop || !st.pop.length) break;
-        // Highlight the winners
-        const cols = $('s2-grid').querySelectorAll('.s2-col');
+        const cols = s2Cols();
         for (const [c, r] of st.pop) cols[c].children[r].classList.add('hit');
         const gain = st.wins.reduce((s, w) => s + w.pay, 0) * bet;
-        spinWin += gain;
-        $('s2-log').textContent = st.wins.map(w => `${w.n}× ${w.sym} = ${Math.round(w.pay * bet * 100) / 100}`).join(' · ');
-        beep(660 + i * 80, 0.1, 0.06);
-        await s2Sleep(550);
+        $('s2-log').textContent = st.wins.map(w => `${w.n}× ${w.sym} = ${s2Fmt(w.pay * bet)}`).join(' · ');
+        sfx.win(i);
+        s2Float('+' + s2Fmt(gain));
+        s2Count(winEl, tw, tw + gain, 600, false);
+        tw += gain;
+        await s2Sleep(1000);
+
         for (const [c, r] of st.pop) cols[c].children[r].classList.add('pop');
-        await s2Sleep(280);
-        // Remember which cells popped, then let the rest fall
+        sfx.pop(st.pop.length);
+        await s2Sleep(420);
+
         const prev = st.grid.map(col => col.slice());
         prev.pop = new Set(st.pop.map(([c, r]) => c + ':' + r));
-        s2RenderGrid(steps[i + 1].grid, false, prev);
-        $('s2-win').textContent = `Win ${Math.round((runningWin + spinWin) * 100) / 100}`;
-        await s2Sleep(420);
+        const dropped = s2RenderGrid(steps[i + 1].grid, false, prev);
+        const freshCols = new Set(dropped.map(([c]) => c));
+        [...freshCols].forEach((c, k) => setTimeout(() => sfx.land(c), (k * 50 + 250) / s2Speed));
+        await s2Sleep(650);
+        await s2Land(steps[i + 1].grid, dropped, sp.free);
     }
+    winEl.textContent = s2Fmt(sp.tw);
 
-    // Multipliers apply at the end of the tumble sequence
-    if (sp.win > 0 && sp.mult > 0) {
-        $('s2-mult').textContent = `🔮 ×${sp.mult}`;
-        await s2Banner(`🔮 ×${sp.mult}<small>${Math.round(spinWin * 100) / 100} → ${sp.win}</small>`, 1100);
-        fanfare(true);
+    // Tumble finished with a win: orbs fly into the multiplier, then it applies
+    if (sp.tw > 0 && sp.orbSum > 0) await s2FlyOrbs(sp);
+    if (sp.tw > 0 && sp.mult > 0) {
+        winEl.textContent = `${s2Fmt(sp.tw)} × ${sp.mult}`;
+        s2Bump(winEl);
+        sfx.multApply();
+        s2Float('×' + sp.mult);
+        await s2Sleep(900);
+        await s2Count(winEl, sp.tw, sp.tw * sp.mult, 1100, true);
+        s2Bump(winEl);
     }
-    if (!sp.free && sp.scatters >= 4) {
-        await s2Banner(`⭐ FREE SPINS ⭐<small>${sp.scatters} scatters</small>`, 1600);
-        fanfare('gold');
+    if (sp.scatterWin > 0) {
+        $('s2-log').textContent = `${sp.scatters}× ⭐ pays ${s2Fmt(sp.scatterWin)}`;
+        await s2Count(winEl, sp.win - sp.scatterWin, sp.win, 600, true);
     }
-    if (sp.retrig) {
-        await s2Banner(`+${s2Info.retrigger} FREE SPINS`, 1000);
-    }
+    if (sp.win > 0 && !(sp.tw > 0 && sp.mult > 0)) sfx.chime(sp.win / bet);
     return sp.win;
 }
 
 async function s2Run(d) {
     s2Busy = true;
-    s2Speed = 1;
-    $('s2-spin').disabled = true;
+    s2SetSpeed(1);
+    $('s2-spin').textContent = '⏩ Skip';
+    $('s2-spin').disabled = false;
     $('s2-buy').disabled = true;
-    $('s2-skip').style.display = '';
-    $('s2-mult').textContent = '';
-    $('s2-free').textContent = '';
-    $('s2-win').textContent = '';
-    $('s2-grid').classList.remove('free');
+    $('s2-minus').disabled = $('s2-plus').disabled = $('s2-custom').disabled = true;
+    $('s2-pay').classList.add('hidden');
+    $('s2-betshow').textContent = s2Fmt(d.bet);
+    $('s2-mult').textContent = '–';
+    $('s2-spinwin').textContent = '0';
+    s2HudMode(false);
 
-    let running = 0;
-    if (d.buy) {
-        await s2Banner('⭐ BONUS BOUGHT ⭐', 1200);
-    }
+    const RT = s2Info.retrigger;
+    let total = 0;
+    let inBonus = false;
+    const startBonus = async (label) => {
+        inBonus = true;
+        sfx.fanfare('bonus');
+        await s2Banner(`⭐ ${s2Info.freeSpins} FREE SPINS ⭐<small>${label}</small>`, 2600);
+        s2HudMode(true);
+        $('s2-free').textContent = s2Info.freeSpins;
+        $('s2-total').textContent = '0';
+        $('s2-mult').textContent = '–';
+    };
+    if (d.buy) await startBonus('Bonus bought');
+
     for (const sp of d.spins) {
         if (sp.free) {
-            $('s2-grid').classList.add('free');
-            $('s2-free').textContent = `Free spins left: ${sp.freeLeft}`;
+            // Counter shows the spins left after this one, before a retrigger adds more
+            const left = sp.freeLeft - (sp.retrig ? RT : 0);
+            $('s2-free').textContent = left;
+            s2Bump($('s2-free'));
+            $('s2-mult').textContent = sp.multBefore ? '×' + sp.multBefore : '–';
+            $('s2-spinwin').textContent = '0';
+            $('s2-log').textContent = `Free spin ${sp.n}`;
+            await s2Sleep(600);
+        } else {
+            $('s2-log').textContent = '';
         }
-        running += await s2PlaySpin(sp, d.bet, running);
-        $('s2-win').textContent = running > 0 ? `Win ${Math.round(running * 100) / 100}` : '';
-        await s2Sleep(sp.free ? 350 : 150);
+
+        const win = await s2PlaySpin(sp, d.bet);
+
+        if (sp.free && win > 0) {
+            await s2Count($('s2-total'), total, total + win, 800, true);
+            s2Bump($('s2-total'));
+        }
+        total += win;
+
+        if (!sp.free && sp.scatters >= 4) await startBonus(`${sp.scatters} scatters`);
+        if (sp.retrig) {
+            sfx.fanfare('retrig');
+            await s2Banner(`+${RT} FREE SPINS<small>${sp.scatters} scatters</small>`, 1800);
+            $('s2-free').textContent = sp.freeLeft;
+            s2Bump($('s2-free'));
+        }
+        await s2Sleep(sp.free ? 1000 : 250);
     }
 
     const x = d.win / d.bet;
-    if (d.win > 0) {
-        const label = x >= 100 ? '🍪 SWEET WIN 🍪' : x >= 50 ? 'MEGA WIN' : x >= 20 ? 'BIG WIN' : null;
-        if (label) {
-            fanfare('gold');
-            await s2Banner(`${label}<small>${d.win} coins (${Math.round(x)}x)${d.capped ? ' · max win' : ''}</small>`, 2200);
-        }
+    if (inBonus) {
+        sfx.fanfare(x >= 20 ? 'big' : 'end');
+        await s2Banner(`BONUS WIN<small>${s2Fmt(d.win)} coins · ${s2Fmt(x)}×${d.capped ? ' · MAX WIN' : ''}</small>`, 3000);
+    } else if (d.win > 0 && x >= 20) {
+        sfx.fanfare('big');
+        const label = x >= 100 ? '🍪 SWEET WIN 🍪' : x >= 50 ? 'MEGA WIN' : 'BIG WIN';
+        await s2Banner(`${label}<small>${s2Fmt(d.win)} coins · ${s2Fmt(x)}×${d.capped ? ' · MAX WIN' : ''}</small>`, 2600);
     }
-    $('s2-win').textContent = d.win > 0 ? `Won ${d.win}` : 'No win';
-    $('s2-log').textContent = d.bonus ? `Bonus total: ${d.win} coins` : $('s2-log').textContent;
-    $('s2-coins').textContent = d.balance;
+
+    s2HudMode(false);
+    $('s2-spinwin').textContent = s2Fmt(d.win);
+    $('s2-log').textContent = d.bonus ? `Bonus paid ${s2Fmt(d.win)} coins` : d.win > 0 ? `Won ${s2Fmt(d.win)} coins` : 'No win';
     if (me) {
         me.coins = d.balance;
         $('me-coins').textContent = d.balance;
     }
-    $('s2-grid').classList.remove('free');
-    $('s2-skip').style.display = 'none';
+    s2Done();
+}
+
+function s2Done() {
+    s2Busy = false;
+    s2SetSpeed(1);
+    $('s2-spin').textContent = 'SPIN';
     $('s2-spin').disabled = false;
     $('s2-buy').disabled = false;
-    s2Busy = false;
+    $('s2-minus').disabled = $('s2-plus').disabled = $('s2-custom').disabled = false;
     s2Refresh();
 }
 
+function s2Error(msg) {
+    $('s2-log').textContent = msg;
+    s2Done();
+}
+
 function s2Start(buy) {
-    if (s2Busy || !me) return;
-    unlockAudio();
+    if (s2Busy || !me || !s2Info) return;
+    sfxInit();
     const cost = buy ? s2Bet * s2Info.buyCost : s2Bet;
     if (me.coins < cost) {
         $('s2-log').textContent = 'Not enough coins';
         return;
     }
     if (buy && !confirm(`Buy the bonus for ${cost} coins?`)) return;
-    $('s2-coins').textContent = me.coins - cost;
+    s2Busy = true;
+    $('s2-spin').disabled = true;
+    $('s2-buy').disabled = true;
+    $('s2-coins').textContent = s2Fmt(me.coins - cost);
     wsSend({ type: 'spin2', bet: s2Bet, buy });
 }
 
-$('s2-spin').onclick = () => s2Start(false);
+$('s2-spin').onclick = () => {
+    if (s2Busy) {
+        s2SetSpeed(5);
+        return;
+    }
+    s2Start(false);
+};
 $('s2-buy').onclick = () => s2Start(true);
-$('s2-skip').onclick = () => { s2Speed = 6; };
+$('s2-minus').onclick = () => { sfxInit(); sfx.click(); s2SetBet(S2_BETS.filter(b => b < s2Bet).pop() || 1); };
+$('s2-plus').onclick = () => { sfxInit(); sfx.click(); s2SetBet(S2_BETS.find(b => b > s2Bet) || s2Bet); };
+$('s2-custom').oninput = e => {
+    const v = Math.floor(Number(e.target.value));
+    if (v >= 1) {
+        s2Bet = v;
+        s2Refresh();
+    }
+};
+$('s2-custom').onchange = () => s2SetBet(s2Bet);
+$('s2-info').onclick = () => $('s2-pay').classList.toggle('hidden');
+$('s2-pay').onclick = () => $('s2-pay').classList.add('hidden');
+$('s2-sound').onclick = () => {
+    sfxMuted = !sfxMuted;
+    try { localStorage.setItem('s2mute', sfxMuted ? '1' : ''); } catch {}
+    $('s2-sound').textContent = sfxMuted ? '🔇' : '🔊';
+    if (!sfxMuted) { sfxInit(); sfx.click(); }
+};
 $('s2-back').onclick = () => { if (!s2Busy) showScreen('menu'); };
-$('slots2-btn').onclick = () => { if (me) { s2Refresh(); showScreen('slots2'); } };
+$('slots2-btn').onclick = () => {
+    if (!me) return;
+    s2Refresh();
+    showScreen('slots2');
+    s2Fit();
+    requestAnimationFrame(s2Fit);
+};
+
+// ---------- Sweet Kek: sound ----------
+// Everything synthesized with Web Audio: a small mixer (compressor + reverb),
+// soft bells, bubbly pops, whooshes, a brassy fanfare. No files to load.
+
+let sfxMuted = false;
+try { sfxMuted = localStorage.getItem('s2mute') === '1'; } catch {}
+$('s2-sound').textContent = sfxMuted ? '🔇' : '🔊';
+
+let sfxBus = null;
+let sfxNoise = null;
+
+function sfxInit() {
+    unlockAudio();
+    if (!audio || sfxBus) return;
+    const comp = audio.createDynamicsCompressor();
+    comp.threshold.value = -16;
+    comp.ratio.value = 4;
+    const master = audio.createGain();
+    master.gain.value = .7;
+    master.connect(comp).connect(audio.destination);
+    // Reverb from decaying noise
+    const len = Math.floor(audio.sampleRate * 2.2);
+    const ir = audio.createBuffer(2, len, audio.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+        const d = ir.getChannelData(ch);
+        for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+    }
+    const verb = audio.createConvolver();
+    verb.buffer = ir;
+    const wet = audio.createGain();
+    wet.gain.value = .35;
+    verb.connect(wet).connect(master);
+    sfxNoise = audio.createBuffer(1, audio.sampleRate * 2, audio.sampleRate);
+    const nd = sfxNoise.getChannelData(0);
+    for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+    sfxBus = { master, verb };
+}
+
+function sfxOk() {
+    return !sfxMuted && sfxBus && audio.state === 'running';
+}
+
+function sfxOut(node, now, rev) {
+    node.connect(sfxBus.master);
+    if (rev) {
+        const s = audio.createGain();
+        s.gain.value = rev;
+        node.connect(s).connect(sfxBus.verb);
+    }
+}
+
+function sTone(f, o) {
+    if (!sfxOk()) return;
+    const { t = 0, dur = .3, type = 'sine', vol = .15, a = .005, slide = 0, rev = .3, detune = 0, lp = 0, lp2 = 0 } = o || {};
+    const now = audio.currentTime + t / s2Speed;
+    const osc = audio.createOscillator();
+    osc.type = type;
+    osc.frequency.setValueAtTime(f, now);
+    osc.detune.value = detune;
+    if (slide) osc.frequency.exponentialRampToValueAtTime(slide, now + dur);
+    const g = audio.createGain();
+    g.gain.setValueAtTime(.0001, now);
+    g.gain.exponentialRampToValueAtTime(vol, now + a);
+    g.gain.exponentialRampToValueAtTime(.0001, now + dur);
+    let src = osc;
+    if (lp) {
+        const fl = audio.createBiquadFilter();
+        fl.type = 'lowpass';
+        fl.frequency.setValueAtTime(lp, now);
+        if (lp2) fl.frequency.exponentialRampToValueAtTime(lp2, now + Math.min(dur, .4));
+        osc.connect(fl);
+        src = fl;
+    }
+    src.connect(g);
+    sfxOut(g, now, rev);
+    osc.start(now);
+    osc.stop(now + dur + .05);
+}
+
+function sNoise(o) {
+    if (!sfxOk()) return;
+    const { t = 0, dur = .3, vol = .1, type = 'bandpass', f = 1000, f2 = 0, q = 1, rev = .2, a = .01 } = o || {};
+    const now = audio.currentTime + t / s2Speed;
+    const src = audio.createBufferSource();
+    src.buffer = sfxNoise;
+    const fl = audio.createBiquadFilter();
+    fl.type = type;
+    fl.frequency.setValueAtTime(f, now);
+    if (f2) fl.frequency.exponentialRampToValueAtTime(f2, now + dur);
+    fl.Q.value = q;
+    const g = audio.createGain();
+    g.gain.setValueAtTime(.0001, now);
+    g.gain.exponentialRampToValueAtTime(vol, now + a);
+    g.gain.exponentialRampToValueAtTime(.0001, now + dur);
+    src.connect(fl).connect(g);
+    sfxOut(g, now, rev);
+    src.start(now, Math.random());
+    src.stop(now + dur + .05);
+}
+
+// Soft bell: fundamental plus an inharmonic shimmer
+function sBell(f, t, vol, dur) {
+    sTone(f, { t, dur: dur || .9, vol, rev: .55 });
+    sTone(f * 2.01, { t, dur: (dur || .9) * .6, vol: vol * .3, rev: .55 });
+    sTone(f * 3.99, { t, dur: .25, vol: vol * .12, rev: .4 });
+}
+
+// Brassy note: two detuned saws through a lowpass that opens up
+function sBrass(f, t, dur, vol) {
+    for (const det of [-7, 7]) sTone(f, { t, dur, type: 'sawtooth', vol, a: .03, detune: det, lp: 500, lp2: 2600, rev: .45 });
+}
+
+const PENTA = [523, 587, 659, 784, 880, 1047, 1175, 1319, 1568, 1760, 2093, 2349, 2637];
+const NOTE = { C4: 262, E4: 330, F4: 349, G4: 392, A4: 440, B4: 494, C5: 523, D5: 587, E5: 659, F5: 698, G5: 784, A5: 880, C6: 1047 };
+
+const sfx = {
+    click() {
+        sTone(1400, { dur: .04, type: 'triangle', vol: .06, rev: 0 });
+    },
+    spin() {
+        sNoise({ dur: .45, vol: .14, f: 2500, f2: 300, q: .8, rev: .1 });
+        sTone(110, { dur: .25, vol: .2, slide: 50, rev: 0 });
+    },
+    land(c) {
+        sTone(230 - c * 12, { dur: .12, type: 'triangle', vol: .13, slide: 110, rev: .08 });
+        sNoise({ dur: .04, vol: .05, type: 'highpass', f: 5000, rev: 0 });
+    },
+    win(i) {
+        const base = Math.min(i * 2, PENTA.length - 3);
+        for (let k = 0; k < 3; k++) sBell(PENTA[base + k], k * .075, .11);
+    },
+    pop(n) {
+        for (let k = 0; k < Math.min(n, 7); k++) {
+            sTone(650 + Math.random() * 600, { t: k * .028, dur: .14, vol: .1, slide: 160, rev: .15 });
+        }
+        sNoise({ dur: .08, vol: .06, type: 'highpass', f: 6000, rev: .1 });
+    },
+    scatter(k) {
+        const f = [784, 880, 1047, 1175, 1319, 1568, 1760][Math.min(k, 7) - 1] || 1568;
+        sBell(f, 0, .16, 1.3);
+        sTone(f * 1.5, { t: .05, dur: .8, vol: .04, rev: .7 });
+    },
+    orbLand(n) {
+        for (let k = 0; k < 5 + n; k++) sTone(1700 + k * 230, { t: k * .03, dur: .5, vol: .035, rev: .8 });
+        sTone(70, { dur: .5, vol: .28, slide: 40, rev: .1 });
+    },
+    orbEpic() {
+        // thunder + riser + shimmering chord
+        sNoise({ dur: .35, vol: .3, type: 'highpass', f: 1800, rev: .5, a: .002 });
+        sNoise({ dur: 1.6, vol: .3, type: 'lowpass', f: 900, f2: 80, rev: .3 });
+        sTone(55, { dur: 1.2, vol: .35, slide: 30, rev: .2 });
+        for (let k = 0; k < 8; k++) sTone(1500 + k * 260, { t: .1 + k * .04, dur: .9, vol: .035, rev: .9 });
+        [NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6].forEach((f, i) => sBell(f, .25 + i * .06, .09, 1.4));
+    },
+    charge() {
+        sTone(200, { dur: .7, type: 'triangle', vol: .08, slide: 900, rev: .3, a: .1 });
+        sNoise({ dur: .7, vol: .07, f: 600, f2: 4000, q: 4, rev: .3, a: .3 });
+    },
+    fly() {
+        sNoise({ dur: .55, vol: .12, f: 500, f2: 5000, q: 3, rev: .3 });
+        sTone(320, { dur: .5, type: 'triangle', vol: .05, slide: 1400, rev: .3 });
+    },
+    orbHit(m) {
+        sTone(150, { dur: .35, vol: .32, slide: 45, rev: .1 });
+        sNoise({ dur: .12, vol: .18, type: 'lowpass', f: 3500, rev: .2, a: .002 });
+        const f = PENTA[Math.min(PENTA.length - 1, 4 + Math.floor(Math.log2(m + 1)))];
+        sBell(f, .02, .12, 1);
+    },
+    multApply() {
+        sNoise({ dur: .6, vol: .1, f: 800, f2: 6000, q: 2, rev: .4 });
+        [NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6].forEach((f, i) => sBell(f, .15 + i * .07, .11, 1.2));
+        sTone(65, { t: .15, dur: .5, vol: .3, slide: 40, rev: .1 });
+    },
+    tick(k) {
+        sTone(1300 + k * 900 + Math.random() * 80, { dur: .045, type: 'triangle', vol: .045, rev: .05 });
+    },
+    chime(x) {
+        const n = x >= 5 ? 5 : x >= 1 ? 3 : 2;
+        for (let k = 0; k < n; k++) sBell(PENTA[3 + k * 2], k * .09, .1);
+    },
+    fanfare(kind) {
+        if (kind === 'bonus') {
+            const seq = [[NOTE.C4, NOTE.E4, NOTE.G4], [NOTE.F4, NOTE.A4, NOTE.C5], [NOTE.G4, NOTE.B4, NOTE.D5], [NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6]];
+            seq.forEach((ch, i) => ch.forEach(f => sBrass(f, i * .3, i === 3 ? 1.8 : .4, .045)));
+            sTone(65, { t: .9, dur: 1.2, vol: .3, slide: 45, rev: .2 });
+            for (let k = 0; k < 14; k++) sBell(PENTA[4 + (k % 8)], .9 + k * .06, .05, .6);
+        } else if (kind === 'retrig') {
+            [[NOTE.G4, NOTE.B4, NOTE.D5], [NOTE.C5, NOTE.E5, NOTE.G5]].forEach((ch, i) => ch.forEach(f => sBrass(f, i * .22, i ? 1 : .3, .045)));
+            for (let k = 0; k < 6; k++) sBell(PENTA[6 + k], .25 + k * .05, .06, .6);
+        } else if (kind === 'big') {
+            const seq = [[NOTE.C5, NOTE.E5, NOTE.G5], [NOTE.D5, NOTE.F5, NOTE.A5], [NOTE.E5, NOTE.G5, NOTE.C6]];
+            seq.forEach((ch, i) => ch.forEach(f => sBrass(f, i * .25, i === 2 ? 1.6 : .35, .05)));
+            for (let k = 0; k < 30; k++) sTone(1800 + Math.random() * 1800, { t: .5 + k * .05, dur: .12, type: 'triangle', vol: .04, rev: .3 });
+        } else {
+            [NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6].forEach((f, i) => sBell(f, i * .1, .1, 1.2));
+        }
+    }
+};
 
 // ---------- Seitenleisten ----------
 

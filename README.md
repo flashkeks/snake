@@ -184,11 +184,17 @@ Princess / Gates of Olympus:
   irgendwo zaehlen. Gewinnsymbole platzen, der Rest faellt nach, oben kommt
   Neues (Tumble), bis nichts mehr gewinnt.
 - **🔮 Multiplikator-Kugeln** ×2 bis ×500 bleiben liegen. Endet die
-  Tumble-Folge mit Gewinn, werden alle Kugeln addiert und mit dem Gewinn
-  multipliziert.
+  Tumble-Folge mit Gewinn, fliegen die Kugeln einzeln in die
+  MULTIPLIER-Anzeige, werden addiert und dann mit dem Gewinn multipliziert.
+  Im Basisspiel sind sie selten (~5 % der Spins zeigen eine) und kommen mit
+  Blitz, Wackeln und Donner.
 - **⭐ Scatter:** 4+ irgendwo = 15 Freispiele (dazu ×3/×5/×100 fuer 4/5/6).
   Im Bonus gibt es viel mehr Kugeln, und sie sammeln sich zu einem
-  Gesamtmultiplikator fuer den Rest des Bonus. 3+ Scatter im Bonus = +5.
+  Gesamtmultiplikator fuer den Rest des Bonus (zwei ×3 in Freispiel 1 =
+  ×6 fuer jeden weiteren Gewinn). Kugeln zaehlen nur in einem Spin mit
+  Gewinn. **Retrigger:** 3+ Scatter im Bonus = +5 Freispiele.
+- **Anzeige:** im Basisspiel BET / MULTIPLIER / WIN, im Bonus FREE SPINS
+  (verbleibend) / MULTIPLIER / SPIN WIN / BONUS WIN.
 - **Bonus kaufen** fuer 94 × Einsatz.
 - Hoechstens 5000 × Einsatz je Spin (Bonus eingerechnet).
 
@@ -203,15 +209,22 @@ Princess / Gates of Olympus:
 | 🍭 | 0,33 | 0,66 | 3,3 |
 | 🍬 | 0,26 | 0,59 | 2,64 |
 
-Abgestimmt per Simulation (150.000 Spins, 23.09.2026): **95,0 %**
-Rueckzahlung (Basis 63 %, Freispiele 32 %), Treffer bei 22 % der Spins,
+Basisspiel und Freispiele haben **eigene Symbol-Gewichte** (wie getrennte
+Walzensaetze): im Basisspiel mehr kleine Suessigkeiten und seltene Kugeln.
+Abgestimmt per Simulation (je 400.000 Spins, 23.09.2026): **~95 %**
+Rueckzahlung (Basis ~63 %, Freispiele ~32 %), Treffer bei ~47 % der Spins,
 Freispiele etwa jeder 280. Spin, gekaufter Bonus im Mittel ~90 × Einsatz.
-Wer an Gewichten, Kugeln oder Tabelle dreht, laesst `node slots2.js 150000`
-laufen, bevor er deployt.
+Wer an Gewichten, Kugeln oder Tabelle dreht, laesst `node slots2.js 400000`
+laufen, bevor er deployt — der Bonus hat einen langen Schwanz, unter
+~300.000 Spins schwankt die Quote um mehrere Prozentpunkte.
 
 Der Server wuerfelt den ganzen Spin samt Freispielen auf einmal und schickt
-alle Zwischenraster; der Browser spielt sie nur ab (⏩ Skip spielt 6× so
-schnell). Einsatz wie beim Kek Slots frei, ein Spin je 800 ms. Ab 100× gibt
+alle Zwischenraster, je Spin dazu `tw` (Tumble-Gewinn ohne Multi), `orbSum`,
+`multBefore`/`mult` und `scatterWin`; der Browser spielt nur ab. Waehrend der
+Animation wird SPIN zu ⏩ Skip (5× so schnell). Die Maschine passt ihre
+Zellgroesse an die Fensterhoehe an (`s2Fit`), damit nichts gescrollt werden
+muss. Sound komplett per Web Audio synthetisiert (Kompressor + Hall), 🔊
+schaltet ihn ab (merkt sich der Browser). Einsatz wie beim Kek Slots frei, ein Spin je 800 ms. Ab 100× gibt
 es eine Gold-Zeile im Feed.
 
 ## Mini-Events
@@ -258,6 +271,13 @@ und Blackjack nur zuschauen.
 - **Bestenliste** (nur Konten): bester Score, meiste Coins, meiste Kills.
 - **Chat:** 200 Zeichen, eine Nachricht je 600 ms, die letzten 50 bekommt
   jeder beim Verbinden. Gaeste erst, wenn sie im Spiel sind.
+- **Tod:** Die Kamera bleibt 2,7 s am Todesort stehen, 💀 mit Ring, roter
+  Rand, grosse Ansage mit Grund (Wand, eigener Schwanz, in wen man gefahren
+  ist, Kopf-an-Kopf verloren, Stern, 💀-Kiste, Double or Nothing), der
+  Schuldige bekommt einen roten Ring. Der Grund steht danach auch im Menue.
+- **Swap (🔀):** Blitz zwischen beiden Koepfen und leuchtende Schlangen fuer
+  alle, die hinschauen; die beiden Beteiligten bekommen ein grosses Banner
+  mit alter und neuer Laenge.
 - **Feed** mit Streak-Ansagen (DOPPELKILL, TRIPLEKILL, RAMPAGE, GODLIKE) und
   Gold-Zeilen fuer seltene Treffer.
 
@@ -280,7 +300,7 @@ Client → Server: `register`, `login`, `resume {token}`, `logout`,
 Blackjack).
 
 Server → Client: `welcome`, `auth`, `authError`, `authExpired`, `account`,
-`joined`, `joinError`, `left`, `died`, `cashedout`, `cashoutCancel`, `state`
+`joined`, `joinError`, `left`, `died` (`cause`, `by`, `byId`, `at`), `swapfx`, `cashedout`, `cashoutCancel`, `state`
 (alle 60 ms, mit `arena` und `paused`), `duel`, `gamble`, `box`, `jackpot`,
 `feed` (mit `who` und `big` fuer den Sound), `chat`, `chatlog`, `highscores`,
 `spin`, `spinError`, `spin2`, `spin2Error`, `event`, `eventEnd`, `eventError`, `resume`.

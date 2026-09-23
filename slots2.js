@@ -33,14 +33,18 @@ const PAYS = {
 const SCATTER = 'S';
 const SCATTER_PAYS = { 4: 3, 5: 5, 6: 100 };
 
-// Symbol-Gewichte. Abgestimmt per Simulation (23.09.2026, 150.000 Spins):
-// Rueckzahlung 95,0 % (Basis 63 %, Freispiele 32 %), Treffer bei 22 % der Spins,
-// Freispiele etwa jeder 280. Spin. Im Bonus kommen viel mehr Kugeln.
+// Symbol-Gewichte je Modus (wie getrennte Walzensaetze): im Basisspiel mehr
+// kleine Suessigkeiten, also oefter kleine Tumble-Gewinne; Kugeln sind dort
+// selten (~6 % der Spins zeigen eine, bei ~1,5 % wirkt sie). Im Bonus kommen
+// sie staendig. Abgestimmt per Simulation (23.09.2026, je 400.000 Spins):
+// Basis 62,5 % + Bonus 32,5 % (jeder ~276. Spin, Ø ~90x) = ~95 % Rueckzahlung,
+// Treffer bei ~47 % der Spins. Kauf fuer 94x zahlt ~95 %.
 const WEIGHTS = {
-    '👑': 8, '💎': 9, '🌙': 9, '🍪': 10, '🧁': 10, '🍩': 11, '🍭': 11, '🍬': 12
+    base: { '👑': 8, '💎': 9, '🌙': 9, '🍪': 10, '🧁': 10, '🍩': 14, '🍭': 18, '🍬': 21 },
+    free: { '👑': 8, '💎': 9, '🌙': 9, '🍪': 10, '🧁': 10, '🍩': 11, '🍭': 11, '🍬': 12 }
 };
-const SCATTER_W = { base: 1.6, free: 1.3 };
-const ORB_W = { base: 0.45, free: 6 };
+const SCATTER_W = { base: 1.72, free: 1.3 };
+const ORB_W = { base: 0.15, free: 6 };
 
 // Kugelwerte und wie oft sie kommen
 const ORBS = [
@@ -63,7 +67,7 @@ function pick(list) {
 
 function makeRoller(mode) {
     const table = [
-        ...Object.entries(WEIGHTS),
+        ...Object.entries(WEIGHTS[mode]),
         [SCATTER, SCATTER_W[mode]],
         ['ORB', ORB_W[mode]]
     ];
@@ -138,38 +142,39 @@ function play(opts) {
     let total = 0;
     let freeLeft = 0;
 
+    // Je Spin fuer die Anzeige: tw = Tumble-Gewinn ohne Multi, orbSum = Kugeln,
+    // die in diesem Spin gezaehlt haben (nur mit Gewinn), multBefore/mult =
+    // Multiplikator vor und nach dem Spin, scatterWin = Scatter-Auszahlung.
     if (!opts.buy) {
         const t = tumble(baseRoll);
-        let win = t.win;
-        let mult = 0;
-        if (win > 0 && t.orbs.length) {
-            mult = t.orbs.reduce((a, b) => a + b, 0);
-            win *= mult;
-        }
+        const tw = t.win;
+        const orbSum = tw > 0 ? t.orbs.reduce((a, b) => a + b, 0) : 0;
+        const mult = orbSum;
         const scatterWin = SCATTER_PAYS[Math.min(6, t.scatters)] || 0;
-        win += scatterWin;
-        spins.push({ steps: t.steps, win, mult, scatters: t.scatters, free: false });
+        const win = tw * (mult || 1) + scatterWin;
+        spins.push({ steps: t.steps, tw, orbSum, multBefore: 0, mult, scatterWin, win, scatters: t.scatters, free: false });
         total += win;
         if (t.scatters >= 4) freeLeft = FREE_SPINS;
     } else {
-        // Gekaufter Bonus: startet mit einem Raster voller Scatter-Ansage
+        // Gekaufter Bonus: startet direkt mit den Freispielen
         freeLeft = FREE_SPINS;
     }
 
+    // Im Bonus bleibt der Multiplikator fuer alle restlichen Freispiele stehen
     let totalMult = 0;
     let played = 0;
     while (freeLeft > 0 && played < 100) {
         freeLeft--;
         played++;
         const t = tumble(freeRoll);
-        let win = t.win;
-        if (win > 0 && t.orbs.length) {
-            totalMult += t.orbs.reduce((a, b) => a + b, 0);
-        }
-        if (win > 0 && totalMult > 0) win *= totalMult;
+        const tw = t.win;
+        const orbSum = tw > 0 ? t.orbs.reduce((a, b) => a + b, 0) : 0;
+        const multBefore = totalMult;
+        totalMult += orbSum;
+        const win = tw * (totalMult || 1);
         const retrig = t.scatters >= 3;
         if (retrig) freeLeft += RETRIGGER;
-        spins.push({ steps: t.steps, win, mult: totalMult, scatters: t.scatters, free: true, retrig, freeLeft });
+        spins.push({ steps: t.steps, tw, orbSum, multBefore, mult: totalMult, scatterWin: 0, win, scatters: t.scatters, free: true, retrig, freeLeft, n: played });
         total += win;
     }
 
