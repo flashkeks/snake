@@ -57,9 +57,17 @@ h1 .logo {
     box-shadow: 0 0 18px rgba(0,255,140,.5);
 }
 
+#topbar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin: 10px 0 8px;
+}
+
 #status {
     opacity: .7;
-    margin-bottom: 10px;
+    font-size: 13px;
 }
 
 #layout {
@@ -2695,7 +2703,6 @@ body.touch .sh-touchbtn {
     display: flex;
     justify-content: center;
     gap: 8px;
-    margin: -6px 0 6px;
 }
 
 #world-switch button {
@@ -2730,13 +2737,28 @@ body.world-arena #pad {
     display: none !important;
 }
 
+body.world-arena #layout {
+    width: 100%;
+    box-sizing: border-box;
+}
+
 body.world-arena #main {
     flex: 1;
     align-items: stretch;
+    width: 100%;
 }
 
 body.world-arena #stage {
-    min-height: calc(100vh - 130px);
+    width: 100%;
+}
+
+body.world-arena #stage {
+    min-height: calc(100vh - 70px);
+}
+
+/* Raid passt ohne Scrollen auf den Bildschirm (Max) */
+body.world-arena #sh-canvas {
+    height: calc(100vh - 195px);
 }
 
 body.world-arena #score,
@@ -5362,12 +5384,14 @@ body.touch input, body.touch textarea {
 
 <body>
 
-<h1><img class="logo" src="img/logo.png" alt=""> Kek-Game</h1>
-<div id="world-switch">
-    <button type="button" data-world="snake" class="on">🐍 Snake</button>
-    <button type="button" data-world="arena">🔫 Arena</button>
+<!-- Kopf (4.1): Logo und Titel weg (Max: ueberlappt), nur Umschalter und Verbindung -->
+<div id="topbar">
+    <div id="world-switch">
+        <button type="button" data-world="snake" class="on">🐍 Snake</button>
+        <button type="button" data-world="arena">🔫 Arena</button>
+    </div>
+    <div id="status">Connecting...</div>
 </div>
-<div id="status">Connecting...</div>
 
 <div id="layout">
     <div id="left">

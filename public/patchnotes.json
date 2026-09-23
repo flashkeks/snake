@@ -1,5 +1,14 @@
 [
   {
+    "version": "4.1",
+    "date": "23.09.2026",
+    "items": [
+      "Cleaner top bar: just the Snake / Arena switch",
+      "Arena uses the full page width – cases and shop no longer look like a phone",
+      "The raid fits on the screen without scrolling"
+    ]
+  },
+  {
     "version": "4.0",
     "date": "23.09.2026",
     "items": [
