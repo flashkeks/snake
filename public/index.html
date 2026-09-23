@@ -255,6 +255,73 @@ h1 .logo {
     font-weight: 700;
 }
 
+/* Titel im Chat (5.0): klein und abschaltbar (Max: nahmen zu viel Platz) */
+#chat-log .tt {
+    font-size: .6em;
+    padding: 0 4px;
+    margin: 0 3px 0 0;
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: 1px;
+    line-height: 1.5;
+}
+
+#chat.no-tt #chat-log .tt {
+    display: none;
+}
+
+#chat h2 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+#chat h2 .chat-tgl {
+    margin-left: auto;
+}
+
+.chat-tgl {
+    padding: 1px 7px;
+    font-size: 13px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.15);
+    color: #cfd8e3;
+    border-radius: 8px;
+    opacity: .5;
+}
+
+.chat-tgl.on {
+    opacity: 1;
+}
+
+/* @-Pings: Name hervorgehoben, eigene Erwaehnung markiert */
+#chat-log .at {
+    color: #7dd3ff;
+    font-weight: 700;
+}
+
+#chat-log .at.me {
+    color: #2a1a00;
+    background: #ffd23f;
+    border-radius: 4px;
+    padding: 0 3px;
+}
+
+#chat-log .mention {
+    background: rgba(255,210,63,.12);
+    border-left: 3px solid #ffd23f;
+    padding-left: 5px;
+    margin-left: -8px;
+    border-radius: 3px;
+}
+
+/* In game (5.0): wer woanders spielt */
+#board tr.away td {
+    opacity: .75;
+    font-size: .92em;
+}
+
 #chat-form {
     display: flex;
     gap: 6px;
@@ -4283,6 +4350,19 @@ span.tier-common, span.tier-uncommon, span.tier-rare, span.tier-epic, span.tier-
     font-size: 26px;
 }
 
+/* Anteil aller Spieler (wie bei Steam), unter 5 % golden */
+.ach-rate {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 800;
+    color: #9aa7b8;
+    white-space: nowrap;
+}
+
+.ach-rate.rare {
+    color: #ffd23f;
+}
+
 .ach-toast {
     position: fixed;
     left: 50%;
@@ -5750,6 +5830,7 @@ body.touch input, body.touch textarea {
     }
 }
 </style>
+<link rel="stylesheet" href="/kekemon.css">
 </head>
 
 <body>
@@ -5759,6 +5840,7 @@ body.touch input, body.touch textarea {
     <div id="world-switch">
         <button type="button" data-world="snake" class="on">🐍 Snake</button>
         <button type="button" data-world="arena">🔫 Arena</button>
+        <button type="button" data-world="cards">🃏 Kekémon</button>
     </div>
     <div id="status">Connecting...</div>
 </div>
@@ -5837,7 +5919,7 @@ body.touch input, body.touch textarea {
                     <div class="main-tabs" id="main-tabs">
                         <button type="button" data-main="games" class="on">🎮 Games</button>
                         <button type="button" data-main="gamba">🎰 Gamba</button>
-                        <button type="button" data-main="kekemon">🐾 Kekémon <small>soon</small></button>
+                        <button type="button" data-main="kekemon">🃏 Kekémon <small>new</small></button>
                     </div>
 
                     <div class="menu-sects one" data-mainpane="games">
@@ -5868,9 +5950,9 @@ body.touch input, body.touch textarea {
 
                     <div class="menu-sects one" data-mainpane="kekemon" hidden>
                         <div class="menu-sect kekemon">
-                            <h3>🐾 Kekémon</h3>
-                            <div class="gamba-list">Catch, raise and battle anime monsters.<br>Coming soon™ – stay tuned in the patch notes.</div>
-                            <button type="button" disabled>🔒 Coming soon</button>
+                            <h3>🃏 Kekémon</h3>
+                            <div class="gamba-list">Trading cards: 2000 anime, comic, film and series characters.<br>Open packs, fill your collection – battles and trading follow.</div>
+                            <button type="button" class="gold" id="km-menu-open">Open Kekémon →</button>
                         </div>
                     </div>
 
@@ -5988,6 +6070,28 @@ body.touch input, body.touch textarea {
                     <div class="msg" id="hub-msg"></div>
                 </div>
             </div>
+
+            <!-- Kekemon (5.0): Sammelkarten -->
+            <div id="kekemon" class="overlay hidden">
+                <div class="card">
+                    <div class="s2-head">
+                        <div class="cs-title" style="color:#ffb13d;text-shadow:0 0 16px rgba(255,177,61,.5)">🃏 Kekémon</div>
+                        <span class="coins">🪙 <span id="km-coins">–</span></span>
+                        <span class="coins" style="color:#cfd8e3" title="Cards collected">📖 <span id="km-count">–</span></span>
+                        <button type="button" class="s2-icon" id="km-back" title="Back">✕</button>
+                    </div>
+                    <div class="cs-tabs" id="km-tabs">
+                        <button type="button" data-kmtab="packs">📦 Packs</button>
+                        <button type="button" data-kmtab="album">📖 Collection</button>
+                        <button type="button" data-kmtab="battle">⚔️ Battle <small>5.1</small></button>
+                        <button type="button" data-kmtab="trade">🤝 Duels &amp; Trade <small>5.2</small></button>
+                    </div>
+                    <div class="msg" id="km-msg"></div>
+                    <div id="km-body"></div>
+                </div>
+            </div>
+            <div id="km-open" hidden></div>
+            <div id="km-view" hidden></div>
 
             <!-- Shop (#9) -->
             <div id="shop" class="overlay hidden">
@@ -6304,7 +6408,7 @@ body.touch input, body.touch textarea {
             <table id="hall"></table>
         </div>
         <div class="panel" id="chat">
-            <h2>💬 Chat</h2>
+            <h2>💬 Chat <button type="button" class="chat-tgl" id="chat-tt" title="Show titles in chat">🏷️</button><button type="button" class="chat-tgl" id="chat-ping" title="Sound when someone @mentions you">🔔</button></h2>
             <div id="chat-log"></div>
             <form id="chat-form">
                 <input id="chat-input" maxlength="200" placeholder="Enter to type" autocomplete="off">
@@ -6342,6 +6446,10 @@ let viewCells = 40;
 let cashoutMs = 5000;
 let players = [];
 let items = [];
+let joinedName = '';     // Name auf dem Feld (auch als Gast), fuer @-Pings
+let whereList = [];
+let onlineNames = [];     // alle eingeloggten Namen (fuer @-Vervollstaendigung)      // In game (5.0): wer ausserhalb vom Feld wo spielt
+let lastPlayers = [];
 let me = null;          // Konto oder null
 let token = null;
 let slotInfo = null;
@@ -6355,6 +6463,10 @@ ws.onopen = () => {
     status.textContent = '🟢 Connected';
     try { token = localStorage.getItem('snake-token'); } catch {}
     if (token) wsSend({ type: 'resume', token });
+    // Schirm, den wir vor dem Verbinden schon gemeldet haben wollten
+    const w = whereSent;
+    whereSent = '';
+    if (w) whereReport(w);
 };
 
 ws.onclose = () => {
@@ -6403,6 +6515,7 @@ ws.onmessage = event => {
             break;
         case 'joined':
             joined = true;
+            joinedName = data.name || '';
             showScreen(null);
             $('hud').classList.remove('hidden');
             $('hud-hint').style.display = data.guest ? 'none' : '';
@@ -6437,8 +6550,17 @@ ws.onmessage = event => {
         case 'feed': addFeed(data); break;
         case 'highscores': hall = data.top; if (hallBroadcast()) drawHall(); break;
         case 'board': onBoard(data); break;
-        case 'chatlog': data.list.forEach(addChat); break;
+        case 'chatlog': data.list.forEach(m => addChat({ ...m, old: true })); break;
         case 'chat': addChat(data); break;
+        case 'achRates':
+            achRates = data;
+            if (!$('konto').classList.contains('hidden')) drawAchievements();
+            break;
+        case 'where':
+            whereList = data.list || [];
+            onlineNames = data.online || [];
+            lastBoard = '';
+            break;
         case 'jackpot': showJackpot(data); break;
         case 'spin': slotResult(data); break;
         case 'spinError': slotError(data.error); break;
@@ -6456,6 +6578,8 @@ ws.onmessage = event => {
         case 'shFlash': onShFlash(data); break;
         case 'shPong': shRtt = shRtt * .7 + (performance.now() - data.t) * .3; break;
         case 'arHub': onArHub(data); break;
+        case 'kmState': onKmState(data); break;
+        case 'kmError': showMsg('km-msg', data.error, 'err'); break;
         case 'arXp': onArXp(data); break;
         case 'pvpLobbies': onPvpLobbies(data.lobbies); break;
         case 'trInvite': case 'trState': case 'trClosed': case 'trDone': case 'trInfo': onTrade(data); break;
@@ -6516,7 +6640,8 @@ function showMsg(id, text, kind) {
 // ---------- Screens ----------
 
 function showScreen(name) {
-    ['menu', 'casino', 'daily', 'cross', 'plinko', 'pokerlobby', 'shooter', 'arenahub', 'shop', 'support', 'slots', 'slots2', 'konto', 'event', 'offer'].forEach(s => $(s).classList.toggle('hidden', s !== name));
+    whereReport(name);
+    ['menu', 'casino', 'daily', 'cross', 'plinko', 'pokerlobby', 'shooter', 'arenahub', 'kekemon', 'shop', 'support', 'slots', 'slots2', 'konto', 'event', 'offer'].forEach(s => $(s).classList.toggle('hidden', s !== name));
 }
 
 function backToMenu(resultHtml) {
@@ -6541,6 +6666,7 @@ function setToken(t) {
 function setMe(user) {
     me = user;
     if ($('hub-coins')) $('hub-coins').textContent = me ? me.coins.toLocaleString('en-US') : '–';
+    if (typeof kmHead === 'function' && !$('kekemon').classList.contains('hidden')) kmHead();
     $('auth-box').style.display = me ? 'none' : '';
     $('me-box').style.display = me ? '' : 'none';
     $('guest-name').style.display = me ? 'none' : '';
@@ -6646,6 +6772,7 @@ $('konto-btn').onclick = () => {
     drawStats();
     drawAchievements();
     showScreen('konto');
+    wsSend({ type: 'achRates' });
     // Frische Zahlen holen (Spins schicken nur den Kontostand, nicht die Statistik)
     wsSend({ type: 'me' });
 };
@@ -6886,6 +7013,54 @@ $('chat-form').addEventListener('submit', e => {
     chatInput.blur();
 });
 
+// Tab nach @Anf… ergaenzt den Namen (aus Chat, Feld und "In game")
+chatInput.addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return;
+    const v = chatInput.value.slice(0, chatInput.selectionStart);
+    const m = v.match(/@([\p{L}\p{N}_.-]*)$/u);
+    if (!m) return;
+    e.preventDefault();
+    const pre = m[1].toLowerCase();
+    const names = [...new Set([...chatNames, ...onlineNames, ...whereList.map(w => w.name), ...lastPlayers.map(p => p.name)])]
+        .filter(n => n.toLowerCase().startsWith(pre) && n !== myChatName()).sort();
+    if (!names.length) return;
+    const rest = chatInput.value.slice(chatInput.selectionStart);
+    chatInput.value = v.slice(0, v.length - m[1].length) + names[0] + ' ' + rest;
+    const pos = v.length - m[1].length + names[0].length + 1;
+    chatInput.setSelectionRange(pos, pos);
+});
+
+$('chat-tt').onclick = () => {
+    chatTt = !chatTt;
+    try { localStorage.setItem('chatTt', chatTt ? '1' : '0'); } catch {}
+    chatToggles();
+};
+$('chat-ping').onclick = () => {
+    chatPing = !chatPing;
+    try { localStorage.setItem('chatPing', chatPing ? '1' : '0'); } catch {}
+    chatToggles();
+};
+
+const AT_RE = /@([\p{L}\p{N}_.-]{3,16})/gu;
+const chatNames = new Set();
+let chatPing = true;
+let chatTt = true;
+try {
+    chatPing = localStorage.getItem('chatPing') !== '0';
+    chatTt = localStorage.getItem('chatTt') !== '0';
+} catch {}
+chatToggles();
+
+function myChatName() {
+    return me ? me.name : (joinedName || '');
+}
+
+function chatToggles() {
+    $('chat').classList.toggle('no-tt', !chatTt);
+    $('chat-tt').classList.toggle('on', chatTt);
+    $('chat-ping').classList.toggle('on', chatPing);
+}
+
 function addChat(m) {
     const atBottom = chatLog.scrollHeight - chatLog.scrollTop - chatLog.clientHeight < 30;
     const line = document.createElement('div');
@@ -6900,7 +7075,30 @@ function addChat(m) {
         line.appendChild(tag);
     }
     line.appendChild(who);
-    line.appendChild(document.createTextNode(m.text));
+    // @Name hervorheben; bin ich gemeint: Zeile markieren und leise pingen
+    const mine = myChatName();
+    let hit = false, last = 0;
+    for (const x of m.text.matchAll(AT_RE)) {
+        line.appendChild(document.createTextNode(m.text.slice(last, x.index)));
+        const at = document.createElement('span');
+        const meant = mine && x[1].toLowerCase() === mine.toLowerCase();
+        at.className = 'at' + (meant ? ' me' : '');
+        at.textContent = x[0];
+        line.appendChild(at);
+        if (meant) hit = true;
+        last = x.index + x[0].length;
+    }
+    line.appendChild(document.createTextNode(m.text.slice(last)));
+    if (hit && m.name !== mine) {
+        line.classList.add('mention');
+        if (!m.old && chatPing) {
+            try {
+                sBell(NOTE.E5, 0, .035, .5);
+                sBell(NOTE.A5, .09, .03, .6);
+            } catch {}
+        }
+    }
+    if (m.name) chatNames.add(m.name);
     chatLog.appendChild(line);
     while (chatLog.children.length > 100) chatLog.firstChild.remove();
     if (atBottom) chatLog.scrollTop = chatLog.scrollHeight;
@@ -9636,12 +9834,14 @@ function setBonusText(items) {
 let world = 'snake';
 function setWorld(w) {
     if (w === world) return;
-    if (w === 'arena' && joined) return showMsg('play-msg', 'Leave the snake game first', 'err');
-    if (w === 'snake' && sh) return;
+    if (w !== 'snake' && joined) return showMsg('play-msg', 'Leave the snake game first', 'err');
+    if (w !== 'arena' && sh) return;
     world = w;
     document.body.classList.toggle('world-arena', w === 'arena');
+    document.body.classList.toggle('world-cards', w === 'cards');
     document.querySelectorAll('#world-switch [data-world]').forEach(b => b.classList.toggle('on', b.dataset.world === w));
     if (w === 'arena') hubOpen();
+    else if (w === 'cards') kmOpen();
     else showScreen('menu');
 }
 $('world-switch').onclick = e => {
@@ -9659,6 +9859,7 @@ function hubOpen(tab) {
     }
     if (world !== 'arena') {
         world = 'arena';
+        document.body.classList.remove('world-cards');
         document.body.classList.add('world-arena');
         document.querySelectorAll('#world-switch [data-world]').forEach(b => b.classList.toggle('on', b.dataset.world === 'arena'));
     }
@@ -12852,6 +13053,7 @@ setInterval(() => {
 // der angelegte Titel in me.title. Andere bringen ihren Titel als `tt` mit.
 
 let achCatalog = [];
+let achRates = null;        // { total, rates: {id: Prozent} } – Anteil aller Spieler
 
 // Titel-Schildchen fuer HTML-Listen
 function ttTag(tt) {
@@ -12882,8 +13084,10 @@ function drawAchievements() {
     const sorted = [...achCatalog].sort((x, y) => (!!have[y.id]) - (!!have[x.id]));
     $('ach-grid').innerHTML = sorted.map(a => {
         const got = have[a.id];
+        const pct = achRates ? achRates.rates[a.id] || 0 : null;
+        const rate = pct === null ? '' : `<span class="ach-rate${pct < 5 ? ' rare' : ''}" title="${pct}% of all ${achRates.total} players have this">${pct < 0.1 && pct > 0 ? '<0.1' : pct}%</span>`;
         return `<div class="ach ${got ? 'got' : ''}" title="${esc(a.desc)}"><span class="ach-ico">${got ? a.icon : '🔒'}</span>` +
-            `<div><b>${esc(a.name)}</b><small>${esc(a.desc)}${a.title ? ` · 🏷️ ${esc(a.title)}` : ''}</small></div></div>`;
+            `<div><b>${esc(a.name)}</b><small>${esc(a.desc)}${a.title ? ` · 🏷️ ${esc(a.title)}` : ''}</small></div>${rate}</div>`;
     }).join('');
 }
 
@@ -13770,11 +13974,26 @@ function updatePanels() {
             `<td class="name"><span class="dot" style="background:${esc(colorOf(p))}"></span>${i === 0 ? '👑 ' : ''}${esc(p.name)}${p.guest ? ' <span style="opacity:.5">(guest)</span>' : ''}${ttTag(p.tt)}</td>` +
             `<td class="num">⭐ ${p.score}</td>` +
             `<td class="num">🗡️ ${p.kills}</td></tr>`)
-        .join('') || '<tr><td style="opacity:.5">Nobody here</td></tr>';
+        .join('') + whereRows() || '<tr><td style="opacity:.5">Nobody here</td></tr>';
+    lastPlayers = players;
     if (rows !== lastBoard) {
         $('board').innerHTML = rows;
         lastBoard = rows;
     }
+}
+
+// In game (5.0): alle, die gerade woanders spielen (Slots, Arena, Karten …)
+function whereRows() {
+    return whereList.map(w => `<tr class="away"><td class="name">${esc(w.name)}</td><td class="num" colspan="2">${esc(w.w)}</td></tr>`).join('');
+}
+
+// Der Server fragt nicht, wir melden: auf welchem Schirm bin ich gerade
+let whereSent = '';
+function whereReport(name) {
+    const w = name || (joined ? 'field' : 'menu');
+    if (w === whereSent) return;
+    whereSent = w;
+    wsSend({ type: 'where', w });
 }
 
 // Leaderboard (#8): Kategorie, Spiel (bei Biggest ×) und Zeitraum.
@@ -14267,5 +14486,6 @@ function slotResult(d) {
     }, durations[2] + 100);
 }
 </script>
+<script src="/kekemon.js"></script>
 </body>
 </html>

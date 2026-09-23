@@ -25,6 +25,9 @@ const shop = require('./shop');
 const arenaItems = require('./arena-items');
 const arenaLevel = require('./arena-level');
 const luck = require('./luck');
+const cards = require('./cards');
+const zlib = require('zlib');
+const crypto = require('crypto');
 
 // Cosmetic Shop: aktuelle Rotation mit Restzeit (der Browser rechnet selbst weiter)
 function shopRot() {
@@ -39,6 +42,14 @@ const PUBLIC = path.join(__dirname, 'public');
 
 const accounts = createAccounts(DATA_DIR);
 const tickets = createTickets(DATA_DIR);
+
+// Kekemon (5.0): Karten einmal beim Start rechnen. Der Katalog (~2000 Karten)
+// geht per HTTP (gzip, lange cachebar ueber ?v=HASH), nicht ueber den Socket.
+const cardDb = cards.load(DATA_DIR);
+const cardJson = JSON.stringify(cards.catalog(cardDb));
+const cardHash = crypto.createHash('sha1').update(cardJson).digest('hex').slice(0, 10);
+const cardGz = zlib.gzipSync(cardJson);
+console.log(`Kekemon: ${cardDb.cards.length} Karten aus ${cardDb.source || 'nichts'}`);
 
 // Achievement erreicht (#3): allen Fenstern des Kontos zeigen, Feed-Zeile
 accounts.onUnlock = (key, a) => {
@@ -63,6 +74,15 @@ const server = http.createServer((req, res) => {
         return res.end();
     }
     const url = req.url.split('?')[0];
+    if (url === '/cards.json') {
+        const gz = /\bgzip\b/.test(req.headers['accept-encoding'] || '');
+        res.writeHead(200, {
+            'Content-Type': 'application/json',
+            'Cache-Control': /[?&]v=/.test(req.url) ? 'public, max-age=86400' : 'no-cache',
+            ...(gz ? { 'Content-Encoding': 'gzip' } : {})
+        });
+        return res.end(gz ? cardGz : cardJson);
+    }
     let file = url === '/' ? '/index.html' : url;
     file = path.normalize(file).replace(/^(\.\.[\/\\])+/, '');
     const filePath = path.join(PUBLIC, file);
@@ -165,11 +185,25 @@ const BOX_OUTCOMES = [
     { key: 'steal', icon: '🤏', label: 'Heist', good: true, rarity: 'red', weight: 4 },
     { key: 'star', icon: '⭐', label: 'Star', good: true, rarity: 'gold', weight: 3 },
     { key: 'jackpot', icon: '💎', label: 'Jackpot +50', good: true, rarity: 'gold', weight: 3 },
+    // Kleine Coins (5.0, Max): meist 10–100, 10k extrem selten (~1 von 30 000 Boxen)
+    { key: 'coins', icon: '🪙', label: 'Coins', good: true, rarity: 'blue', weight: 8 },
     { key: 'slow', icon: '🐌', label: 'Snail', good: false, rarity: 'bad', weight: 9 },
     { key: 'reverse', icon: '🔄', label: 'Reversed', good: false, rarity: 'bad', weight: 7 },
     { key: 'half', icon: '✂️', label: 'Halved', good: false, rarity: 'bad', weight: 6 },
     { key: 'death', icon: '💀', label: 'Unlucky', good: false, rarity: 'dead', weight: 2 }
 ];
+
+// Heist: so viel Laenge nimmt man jedem anderen weg
+const HEIST_PCT = 0.10;
+
+// Betrag der Coin-Box: [Coins, Gewicht]
+const BOX_COINS = [[10, 40], [25, 25], [50, 15], [100, 10], [250, 5], [500, 3], [1000, 1.5], [2500, 0.45], [10000, 0.05]];
+
+function boxCoins() {
+    let x = Math.random() * BOX_COINS.reduce((s, [, w]) => s + w, 0);
+    for (const [n, w] of BOX_COINS) if ((x -= w) < 0) return n;
+    return BOX_COINS[0][0];
+}
 
 // Goldmuenze: Double or Nothing
 const COIN_OUTCOMES = [
@@ -386,6 +420,109 @@ function broadcast(obj) {
 // big: laut fuer alle (ab ×10 an der Muenze).
 function feed(text, kind, who, big) {
     broadcast({ type: 'feed', text, kind: kind || 'info', who: who || null, big: !!big });
+}
+
+let achRatesCache = null;
+
+// ---------- In game (5.0): wer spielt gerade wo ----------
+
+// Schirm -> Anzeige. Menue, Konto, Support usw. zaehlen nicht als "spielt".
+const WHERE = {
+    casino: '🎰 Casino', daily: '🎁 Daily Wheel', cross: '🐔 Crossy Road', plinko: '🔻 Plinko',
+    pokerlobby: '♠️ Poker', slots: '🎰 Slots', slots2: '🌟 Starlight', arenahub: '🔫 Arena',
+    shooter: '🔫 Arena', kekemon: '🃏 Kekémon', shop: '🎨 Shop', event: '🎪 Event'
+};
+const TABLE_WHERE = { blackjack: '🃏 Blackjack', roulette: '🎡 Roulette', poker: '♠️ Poker' };
+
+function whereOf(c) {
+    if (players.has(c.id)) return null;           // steht schon als Snake-Spieler in der Liste
+    const k = rooms.kindOf(c);
+    if (k) return k === 'zombies' ? '🧟 Zombies' : '⚔️ PvP';
+    if (shooter.has(c)) return '🪂 Raid';
+    const t = tables.tableOf(c);
+    if (t) return TABLE_WHERE[t.kind] || '🎰 Casino';
+    return WHERE[c.where] || null;
+}
+
+let lastWhere = '';
+setInterval(() => {
+    const seen = new Map();
+    const online = new Set();
+    for (const c of clients.values()) {
+        const u = c.account ? accounts.get(c.account) : null;
+        const name = u ? u.name : null;
+        if (!name) continue;
+        online.add(name);
+        const w = whereOf(c);
+        // Mehrere Tabs: der spannendere Ort gewinnt (Match vor Hub)
+        if (w && (!seen.has(name) || /Raid|PvP|Zombies/.test(w))) seen.set(name, w);
+    }
+    const list = [...seen].map(([name, w]) => ({ name, w })).sort((a, b) => a.w.localeCompare(b.w) || a.name.localeCompare(b.name)).slice(0, 40);
+    // online: alle eingeloggten Namen, fuer die @-Vervollstaendigung im Chat
+    const msg = { type: 'where', list, online: [...online].sort().slice(0, 200) };
+    const j = JSON.stringify(msg);
+    if (j === lastWhere) return;
+    lastWhere = j;
+    broadcast(msg);
+}, 3000);
+
+// ---------- Kekemon (5.0) ----------
+
+// Verkaufswert einer Karte je Seltenheit (Doppelte -> Coins)
+const KM_SELL = { common: 40, uncommon: 100, rare: 300, epic: 900, legendary: 3000, secret: 12000 };
+
+function kmState(c, extra) {
+    const u = accounts.get(c.account);
+    send(c, { type: 'kmState', v: cardHash, have: u.cards || {}, packs: (u.stats && u.stats.packs) || 0, sell: KM_SELL, ...extra });
+}
+
+function kmHandle(c, d) {
+    if (!c.account) return send(c, { type: 'kmError', error: 'Log in to collect cards' });
+    const u = accounts.get(c.account);
+    u.cards = u.cards || {};
+    if (d.type === 'kmState') return kmState(c);
+    if (d.type === 'kmBuy') {
+        const p = cards.PACKS[d.pack];
+        if (!p || !Object.prototype.hasOwnProperty.call(cards.PACKS, d.pack)) return send(c, { type: 'kmError', error: 'Unknown pack' });
+        if (!cardDb.cards.length) return send(c, { type: 'kmError', error: 'No cards loaded' });
+        if (u.coins < p.price) return send(c, { type: 'kmError', error: 'Not enough coins' });
+        const got = cards.openPack(cardDb, d.pack);
+        accounts.addCoins(c.account, -p.price);
+        accounts.earn(c.account, 'cards', -p.price);
+        const fresh = got.map(id => !u.cards[id]);
+        for (const id of got) u.cards[id] = (u.cards[id] || 0) + 1;
+        accounts.stat(c.account, st => { st.packs = (st.packs || 0) + 1; });
+        accounts.touch();
+        // Grosse Zuege in den Feed
+        const best = got.map(id => cardDb.byId[id]).sort((a, b) => cards.RIDX[b.rarity] - cards.RIDX[a.rarity])[0];
+        if (cards.RIDX[best.rarity] >= cards.RIDX.legendary) {
+            const r = cards.RARITIES[cards.RIDX[best.rarity]];
+            feed(`🃏 ${u.name} pulled ${r.name} ${best.name}!`, 'good', c.id, best.rarity === 'secret');
+        }
+        sendAccount(c);
+        return kmState(c, { opened: { pack: d.pack, cards: got, fresh } });
+    }
+    if (d.type === 'kmSell' || d.type === 'kmSellDupes') {
+        // Nie die letzte Karte: verkauft wird nur, was doppelt ist
+        const list = d.type === 'kmSell' ? [[String(d.id), Math.max(1, Math.floor(Number(d.n) || 1))]]
+            : Object.keys(u.cards).filter(id => cardDb.byId[id] && (d.upTo == null || cards.RIDX[cardDb.byId[id].rarity] <= Number(d.upTo))).map(id => [id, u.cards[id] - 1]);
+        let n = 0, coins = 0;
+        for (const [id, want] of list) {
+            const card = cardDb.byId[id];
+            if (!card || !(u.cards[id] > 1)) continue;
+            const k = Math.min(want, u.cards[id] - 1);
+            if (k <= 0) continue;
+            u.cards[id] -= k;
+            n += k;
+            coins += k * KM_SELL[card.rarity];
+        }
+        if (!n) return send(c, { type: 'kmError', error: 'No duplicates to sell' });
+        accounts.addCoins(c.account, coins);
+        accounts.earn(c.account, 'cards', coins);
+        accounts.touch();
+        sendAccount(c);
+        return kmState(c, { sold: { n, coins } });
+    }
 }
 
 function sendAccount(c) {
@@ -695,6 +832,24 @@ function applyBox(id, p, o) {
         case 'jackpot':
             grow(p, 50);
             break;
+        case 'coins': {
+            // Gaeste haben kein Konto: fuer die gibt es Laenge statt Coins
+            if (!p.account) {
+                grow(p, 5);
+                text = `${p.name} ❓ 🪙 +5 (log in for coins)`;
+                break;
+            }
+            const n = boxCoins();
+            accounts.addCoins(p.account, n);
+            accounts.earn(p.account, 'snake', n);
+            sendAccount(p);
+            text = `${p.name} ❓ 🪙 found ${n.toLocaleString('en-US')} coins`;
+            if (n >= 1000) {
+                feed(text + '!', 'gold', id, n >= 10000);
+                return;
+            }
+            break;
+        }
         case 'half':
             setLen(p, Math.floor(p.len / 2));
             break;
@@ -746,7 +901,9 @@ function applyBox(id, p, o) {
         case 'steal': {
             let loot = 0;
             for (const q of others(p)) {
-                const take = Math.min(3, q.len - 1);
+                // 10 % der Laenge (mind. 1), seit 5.0 statt flat 3 (Max); Stern schuetzt
+                if (active(q, 'star')) continue;
+                const take = Math.min(Math.max(1, Math.round(q.len * HEIST_PCT)), q.len - 1);
                 if (take > 0) {
                     setLen(q, q.len - take);
                     loot += take;
@@ -974,6 +1131,13 @@ async function handle(c, data) {
 
         // --- Mini-Event ---
 
+        // Nur fuer lokale Tests (SNAKE_TEST=1): Box-Ergebnis direkt anwenden
+        case 'testBox': {
+            const o = BOX_OUTCOMES.find(x => x.key === data.key);
+            if (process.env.SNAKE_TEST === '1' && o && players.has(c.id)) applyBox(c.id, c, o);
+            return;
+        }
+
         // Nur fuer lokale Tests (SNAKE_TEST=1): Event sofort starten
         case 'testEvent':
             if (process.env.SNAKE_TEST === '1' && !events.active()) {
@@ -1094,6 +1258,25 @@ async function handle(c, data) {
             send(c, { type: 'shopOk', id: data.id || null, cat: data.cat || null, bought: data.type === 'shopBuy' });
             return;
         }
+
+        // Achievements (5.0): Anteil aller Spieler je Achievement, 60 s zwischengespeichert
+        case 'achRates':
+            if (!achRatesCache || Date.now() - achRatesCache.at > 60000) achRatesCache = { at: Date.now(), ...accounts.achRates() };
+            send(c, { type: 'achRates', total: achRatesCache.total, rates: achRatesCache.rates });
+            return;
+
+        // In game (5.0): der Browser meldet seinen Schirm
+        case 'where':
+            c.where = String(data.w || '').slice(0, 20);
+            return;
+
+        // Kekemon (5.0): Sammlung, Packs, Doppelte verkaufen
+        case 'kmState':
+        case 'kmBuy':
+        case 'kmSell':
+        case 'kmSellDupes':
+            kmHandle(c, data);
+            return;
 
         // Konto-Seite: aktuelle Statistik holen (#5)
         case 'me':

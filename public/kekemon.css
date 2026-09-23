@@ -1,0 +1,651 @@
+/* Kekemon (5.0): Sammelkarten im Stil von Pokemon-Karten. Rahmenfarbe = Typ,
+   Glanz (Holo) ab Epic. Die Welt ist eine Vollseite wie die Arena. */
+
+#world-switch [data-world="cards"].on {
+    background: #ffb13d;
+    border-color: #ffb13d;
+    color: #2a1600;
+    box-shadow: 0 0 18px rgba(255,177,61,.5);
+}
+
+body.world-cards #left,
+body.world-cards #side,
+body.world-cards #game,
+body.world-cards #hud,
+body.world-cards #pad,
+body.world-cards #score,
+body.world-cards #effects,
+body.world-cards #controls,
+body.world-cards #countdown {
+    display: none !important;
+}
+
+body.world-cards #layout {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+body.world-cards #main {
+    flex: 1;
+    align-items: stretch;
+    width: 100%;
+}
+
+body.world-cards #stage {
+    width: 100%;
+    min-height: calc(100vh - 70px);
+}
+
+body.world-cards #kekemon {
+    position: relative;
+    inset: auto;
+    background: transparent;
+    backdrop-filter: none;
+    padding: 0;
+    overflow: visible;
+}
+
+body.world-cards #kekemon > .card {
+    width: min(1400px, 100%);
+    max-height: none;
+}
+
+#kekemon .cs-tabs button.on {
+    background: #ffb13d;
+    border-color: #ffb13d;
+    color: #2a1600;
+}
+
+#kekemon .cs-tabs button:disabled {
+    opacity: .45;
+    cursor: default;
+}
+
+.km-note {
+    text-align: center;
+    color: #9aa7b8;
+    padding: 30px 10px;
+    line-height: 1.6;
+}
+
+/* ---------- Packs ---------- */
+
+.km-packs {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 14px;
+    margin-top: 14px;
+}
+
+.km-pack {
+    position: relative;
+    border-radius: 16px;
+    padding: 18px 14px 14px;
+    text-align: center;
+    background: linear-gradient(160deg, var(--pc, #ffb13d) 0%, rgba(20,20,35,.9) 70%);
+    border: 2px solid rgba(255,255,255,.18);
+    overflow: hidden;
+}
+
+.km-pack .ico {
+    font-size: 64px;
+    line-height: 1.1;
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,.5));
+}
+
+.km-pack h4 {
+    margin: 6px 0 4px;
+    font-size: 18px;
+}
+
+.km-pack .sub {
+    font-size: 12px;
+    color: #cfd8e3;
+    min-height: 32px;
+}
+
+.km-pack button {
+    margin-top: 10px;
+    width: 100%;
+}
+
+.km-odds {
+    margin-top: 14px;
+    font-size: 12px;
+    color: #9aa7b8;
+    text-align: center;
+}
+
+.km-odds b {
+    font-weight: 700;
+}
+
+/* ---------- Pack oeffnen ---------- */
+
+#km-open {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: radial-gradient(circle at 50% 40%, rgba(40,30,70,.96), rgba(5,5,12,.97));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: 16px;
+    box-sizing: border-box;
+    overflow: auto;
+}
+
+#km-open[hidden] {
+    display: none;
+}
+
+.km-open-pack {
+    font-size: 120px;
+    cursor: pointer;
+    animation: km-shake .5s ease-in-out infinite;
+    filter: drop-shadow(0 0 30px rgba(255,177,61,.7));
+    user-select: none;
+}
+
+.km-open-pack.burst {
+    animation: km-burst .45s ease-in forwards;
+}
+
+@keyframes km-shake {
+    0%, 100% { transform: rotate(-4deg) scale(1); }
+    50% { transform: rotate(4deg) scale(1.05); }
+}
+
+@keyframes km-burst {
+    to { transform: scale(2.4); opacity: 0; }
+}
+
+.km-open-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    max-width: 1300px;
+}
+
+.km-flip {
+    perspective: 900px;
+    width: 200px;
+    height: 280px;
+    cursor: pointer;
+    animation: km-deal .35s ease-out backwards;
+}
+
+@keyframes km-deal {
+    from { transform: translateY(60px) scale(.6); opacity: 0; }
+}
+
+.km-flip-in {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform .55s cubic-bezier(.2,.8,.3,1.2);
+    transform-style: preserve-3d;
+}
+
+.km-flip.up .km-flip-in {
+    transform: rotateY(180deg);
+}
+
+.km-flip-in > * {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+}
+
+.km-flip-in > .kc {
+    transform: rotateY(180deg);
+}
+
+.km-back {
+    border-radius: 12px;
+    background:
+        radial-gradient(circle at 50% 50%, #ffb13d 0 18%, #1b1030 19% 23%, transparent 24%),
+        repeating-linear-gradient(45deg, #2b1a55 0 10px, #24164a 10px 20px);
+    border: 6px solid #ffd23f;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 38px;
+}
+
+.km-back::after {
+    content: '🍪';
+}
+
+/* Seltenheit schimmert schon durch die Rueckseite */
+.km-flip[data-r="epic"] .km-back { box-shadow: 0 0 22px #b884ff; }
+.km-flip[data-r="legendary"] .km-back { box-shadow: 0 0 30px #ffd23f; animation: km-glow 1s ease-in-out infinite alternate; }
+.km-flip[data-r="secret"] .km-back { box-shadow: 0 0 36px #ff5bd6; animation: km-glow 0.6s ease-in-out infinite alternate; }
+
+@keyframes km-glow {
+    to { filter: brightness(1.35); }
+}
+
+.km-flip-in > .km-new {
+    position: absolute;
+    inset: auto;
+    top: -8px;
+    right: -8px;
+    z-index: 3;
+    background: #ff3d6e;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 900;
+    padding: 3px 7px;
+    border-radius: 999px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.5);
+    transform: rotateY(180deg);
+    backface-visibility: hidden;
+}
+
+.km-open-btns {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* ---------- Karte ---------- */
+
+.kc {
+    --tc: #cfd8e3;
+    --w: 200px;
+    position: relative;
+    width: var(--w);
+    height: calc(var(--w) * 1.4);
+    box-sizing: border-box;
+    border-radius: calc(var(--w) * .06);
+    padding: calc(var(--w) * .035);
+    background: linear-gradient(160deg, var(--tc), color-mix(in srgb, var(--tc) 45%, #111) 90%);
+    box-shadow: 0 4px 14px rgba(0,0,0,.5), inset 0 0 0 calc(var(--w) * .02) #ffd84a;
+    color: #15121c;
+    font-size: calc(var(--w) * .058);
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--w) * .02);
+    overflow: hidden;
+    text-align: left;
+    transition: transform .15s;
+    font-family: inherit;
+}
+
+.kc-inner {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--w) * .02);
+    background: rgba(255,255,255,.72);
+    border-radius: calc(var(--w) * .035);
+    padding: calc(var(--w) * .03);
+}
+
+.kc-top {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    font-weight: 900;
+}
+
+.kc-name {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 1.05em;
+}
+
+.kc-hp {
+    white-space: nowrap;
+    color: #b0152e;
+    font-size: .95em;
+}
+
+.kc-hp small {
+    font-size: .6em;
+}
+
+.kc-art {
+    position: relative;
+    height: 44%;
+    flex: none;
+    border-radius: 4px;
+    overflow: hidden;
+    background: radial-gradient(circle, color-mix(in srgb, var(--tc) 60%, #fff), var(--tc));
+    border: calc(var(--w) * .012) solid #c9a227;
+    box-sizing: border-box;
+}
+
+.kc-art img {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 50% 20%;
+    display: block;
+}
+
+.kc-art .ph {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(var(--w) * .3);
+}
+
+.kc-from {
+    font-size: .68em;
+    font-style: italic;
+    color: #3d3550;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+}
+
+.kc-atk {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 4px;
+    font-size: .82em;
+    border-top: 1px solid rgba(0,0,0,.12);
+    padding-top: 2px;
+}
+
+.kc-atk .cost {
+    white-space: nowrap;
+    letter-spacing: -2px;
+    font-size: .9em;
+}
+
+.kc-atk .an {
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.kc-atk .dmg {
+    font-weight: 900;
+    font-size: 1.15em;
+}
+
+.kc-atk .fx {
+    grid-column: 1 / -1;
+    font-size: .78em;
+    color: #4a4060;
+    line-height: 1.15;
+    margin-top: -2px;
+}
+
+.kc-foot {
+    margin-top: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: .66em;
+    color: #2d2640;
+    gap: 4px;
+}
+
+.kc-gem {
+    font-weight: 900;
+    padding: 1px 5px;
+    border-radius: 999px;
+    background: #15121c;
+    white-space: nowrap;
+}
+
+.kc-stats {
+    display: flex;
+    justify-content: space-around;
+    font-size: .66em;
+    font-weight: 700;
+    color: #2d2640;
+}
+
+.kc-count {
+    position: absolute;
+    top: 24%;
+    left: 8%;
+    z-index: 3;
+    background: #15121c;
+    color: #ffd23f;
+    font-weight: 900;
+    font-size: 12px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    border: 1px solid #ffd23f;
+}
+
+/* Kleine Karte im Album: nur Kopf, Bild, Herkunft, Seltenheit */
+.kc.mini {
+    --w: 150px;
+    cursor: pointer;
+}
+
+.kc.mini .kc-atk,
+.kc.mini .kc-stats {
+    display: none;
+}
+
+.kc.mini .kc-art {
+    height: 62%;
+}
+
+.kc.mini:hover {
+    transform: translateY(-3px) scale(1.03);
+}
+
+/* Fehlt noch: dunkle Silhouette mit Nummer */
+.kc.missing {
+    background: #1d1a26;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,.08);
+    color: #6b6480;
+}
+
+.kc.missing .kc-inner {
+    background: rgba(255,255,255,.03);
+}
+
+.kc.missing .kc-art {
+    background: #14121b;
+    border-color: #2a2636;
+}
+
+.kc.missing .kc-art img {
+    filter: brightness(0) opacity(.35);
+}
+
+.kc.missing .kc-hp,
+.kc.missing .kc-from,
+.kc.missing .kc-foot {
+    color: #6b6480;
+}
+
+/* Holo ab Epic: Regenbogen-Schimmer, folgt der Maus (--mx/--my) */
+.kc.holo::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    border-radius: inherit;
+    background:
+        linear-gradient(115deg, transparent 20%, rgba(255,255,255,.55) 40%, transparent 60%),
+        linear-gradient(115deg, #ff5bd6, #ffd23f, #7dffb0, #3da5ff, #b884ff, #ff5bd6);
+    background-size: 250% 250%, 400% 400%;
+    background-position: var(--mx, 50%) var(--my, 50%), var(--mx, 50%) var(--my, 50%);
+    mix-blend-mode: color-dodge;
+    opacity: .35;
+    animation: km-holo 6s linear infinite;
+}
+
+.kc.holo.r-legendary::after,
+.kc.holo.r-secret::after {
+    opacity: .5;
+}
+
+.kc.r-secret {
+    box-shadow: 0 0 18px rgba(255,91,214,.7), inset 0 0 0 calc(var(--w) * .02) #ff9be9;
+}
+
+.kc.r-legendary {
+    box-shadow: 0 0 14px rgba(255,210,63,.6), inset 0 0 0 calc(var(--w) * .02) #fff3b0;
+}
+
+@keyframes km-holo {
+    from { filter: hue-rotate(0deg); }
+    to { filter: hue-rotate(360deg); }
+}
+
+/* ---------- Album ---------- */
+
+.km-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin: 12px 0;
+}
+
+.km-bar select,
+.km-bar input {
+    background: rgba(255,255,255,.06);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 8px;
+    padding: 6px 8px;
+    font: inherit;
+    font-size: 14px;
+}
+
+.km-bar input {
+    flex: 1 1 160px;
+    min-width: 0;
+}
+
+.km-bar select option {
+    background: #1a1a2a;
+}
+
+.km-prog {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.km-prog > div {
+    background: rgba(255,255,255,.04);
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-size: 13px;
+}
+
+.km-prog .bar {
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.08);
+    margin-top: 5px;
+    overflow: hidden;
+}
+
+.km-prog .bar i {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, #ffb13d, #ffd23f);
+}
+
+.km-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 14px;
+    justify-items: center;
+    margin-top: 6px;
+}
+
+.km-more {
+    display: block;
+    margin: 16px auto 0;
+}
+
+/* Grosse Ansicht einer Karte */
+#km-view {
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: rgba(5,5,12,.88);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    flex-wrap: wrap;
+    padding: 16px;
+    box-sizing: border-box;
+    overflow: auto;
+}
+
+#km-view[hidden] {
+    display: none;
+}
+
+#km-view .kc {
+    --w: min(330px, 80vw);
+}
+
+.km-info {
+    width: min(320px, 90vw);
+    color: #cfd8e3;
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+.km-info h3 {
+    margin: 0 0 4px;
+    color: #fff;
+}
+
+.km-info button {
+    margin-top: 10px;
+    width: 100%;
+}
+
+@media (max-width: 600px) {
+    /* Drei Welten passen sonst nicht nebeneinander */
+    #world-switch button {
+        padding: 6px 10px;
+        font-size: 13px;
+    }
+
+    .kc.mini {
+        --w: 130px;
+    }
+
+    .km-grid {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 10px;
+    }
+
+    .km-flip {
+        width: 150px;
+        height: 210px;
+    }
+
+    .km-flip .kc {
+        --w: 150px;
+    }
+}

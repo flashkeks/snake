@@ -30,6 +30,9 @@ Live: **`snake.flashkeks.com`** auf `edge` (Netcup).
 | `luck.js` | Admin v2: erzwungene Mindestgewinne je Konto und Spiel |
 | `shop.js` | Shop (#9): Katalog, was andere von einem sehen |
 | `shooter.js` | Arena: Hub (Shop, Cases, Salvage, Loadout) und Raid (Map, Kisten, Beutel, Extraction, Kampf mit Effekten) |
+| `cards.js` | Kekémon (5.0): Karten aus Rohdaten rechnen (Typ, Seltenheit, Werte, Attacken — deterministisch aus der Id), Packs, Katalog fuer den Browser |
+| `tools/cards/build.js` | holt die Kartendaten (AniList, Superhero-API, TVMaze) nach `DATA_DIR/cards-raw.json`; `tools/cards/fixture.json` ist eine kleine Stichprobe fuer lokale Tests |
+| `public/kekemon.js`, `public/kekemon.css` | Kekémon im Browser: Karten-Look, Pack-Oeffnen, Album |
 | `arena-items.js` | Arena-Items: Waffen, Ruestungsteile und Sets, Granaten, Grade, Mods, Erzeugung je Quelle, kalibrierte Seltenheit, Salvage-Wert, Migration |
 | `minigames.js` | Map-Events (#6): Labyrinth, Coin Rush, Last Snake Standing – Map-Bau, Schritte, Kollisionen, Punkte |
 | `tables.js` | Casino-Tische Blackjack (mit Sidebets) und Roulette: Runden, Einsaetze, Auszahlung; haengt auch Poker als dritten Tisch ein |
@@ -298,7 +301,7 @@ Spin je 1,2 s.
 | Item | Anzahl | Wirkung |
 |---|---|---|
 | Frucht | 90 | 🍎 +1 (50), 🍌 +2 (24), 🍇 +3 (14), 🍉 +5 (8), 🍒 +10 (3), 🥭 +20 (1) — Gewichte in Klammern, ab +10 mit Aura und Feed-Zeile |
-| ❓ Mystery-Box | 30, Nachschub nach 3–6 s | kleine Walze nur beim Finder, Wirkung nach 1,6 s |
+| ❓ Mystery-Box | 30, Nachschub nach 3–6 s | kleine Walze nur beim Finder, Wirkung nach 1,6 s. Seit 5.0 auch 🪙 Coins (Gewicht 8): 10 (40), 25 (25), 50 (15), 100 (10), 250 (5), 500 (3), 1000 (1,5), 2500 (0,45), 10 000 (0,05) — 10k also etwa 1 von 30 000 Boxen. Gaeste bekommen +5 Laenge statt Coins |
 | 🪙 Muenze | bis 8, alle 3–6 s eine | Double or Nothing, grosse Walze **nur beim Spieler selbst** |
 
 Wer die Muenze nimmt, friert fuer 4,5 s ein und ist fuer die anderen nur ein
@@ -956,6 +959,74 @@ zaehlt ueber `periods.arenaKills`.
 
 **Test-Hook** (nur `SNAKE_TEST=1`): `shTp {x, y}` versetzt die eigene Figur
 und hebt den Spawnschutz auf.
+
+## 🃏 Kekémon (5.0)
+
+Sammelkarten im Pokemon-Stil, eigene Welt im Umschalter oben (🃏) und im
+Hauptmenue-Tab. Ausbau in drei Schritten: 5.0 Karten, Packs, Album — 5.1
+Kaempfe gegen KI-Arenen (3 gegen 3, Energie je Zug) — 5.2 PvP-Duelle und
+Kartentausch.
+
+**Daten.** `tools/cards/build.js` holt auf `edge` (als Deploy-User, Ziel
+`/srv/snake-data/cards-raw.json`, damit im Backup) die Rohdaten:
+
+| Reihe | Quelle | Menge | Rang |
+|---|---|---|---|
+| `anime` (AN) | AniList GraphQL, Charaktere nach Favoriten (MAL/Jikan war beim Bau down, gleiche Rangliste) | 1000 | Favoriten |
+| `hero` (HV) | Superhero-API (akabab), Marvel/DC/Star Wars … mit powerstats | 563 | Summe der Kampfwerte |
+| `tv` (TV) | TVMaze: Hauptcast der beliebtesten englischen Serien (Gewicht ≥ 97, Bewertung ≥ 7,5), je Serie bis 6 | 437 (fuellt auf 1000 Film/Serie auf) | Serien-Gewicht |
+
+Reine Film-Charaktere (Harry Potter, Herr der Ringe) braeuchten TMDB — das
+will einen Schluessel, den Max anlegen muesste (bleibt dann auf `edge`).
+Bilder werden direkt von den CDNs geladen (`referrerpolicy=no-referrer`,
+bei Fehler Typ-Symbol). Neu bauen:
+`cd /srv/snake && node tools/cards/build.js /srv/snake-data/cards-raw.json`,
+dann Dienst neu starten. Laeuft laenger als 60 s → im Hintergrund starten.
+
+**Karte** (`cards.js`, deterministisch aus der Id, gleiche Daten = gleiche
+Karten, also bleiben Sammlungen gueltig):
+- *Typ* (9: Fire, Water, Electric, Nature, Psychic, Dark, Light, Fighting,
+  Steel, je mit Schwaeche ×1,5) aus den Genres; Helden aus dem staerksten
+  Kampfwert, Schurken oft Dark.
+- *Seltenheit* aus dem Rang in der Reihe: Common 40 %, Uncommon 25 %, Rare
+  19 %, Epic 11 %, Legendary 4 %, Secret Rare 1 % der Karten.
+- *Werte* HP/ATK/DEF/SPD nach Seltenheit (Helden aus powerstats).
+- *Attacken*: eine 1-Energie-Attacke und eine grosse (2–3 Energie) mit
+  Effekt (burn, stun, pierce, heal, drain, boost). Kampfregeln folgen in 5.1.
+
+**Packs** (`PACKS`): Anime Booster und Heroes & Series Booster je 2000 Coins
+fuer 5 Karten, Kek Mega Booster 5000 fuer 8 aus allen Reihen mit Rare+ ×1,6.
+Zugchancen je Karte: Common 50, Uncommon 27, Rare 14, Epic 6,5, Legendary
+2,2, Secret 0,3; die letzte Karte ist immer mindestens Rare. Legendary und
+Secret landen im Feed. **Doppelte verkaufen** (nie die letzte):
+Common 40, Uncommon 100, Rare 300, Epic 900, Legendary 3000, Secret 12 000.
+Ein Pack bringt im Schnitt weniger zurueck, als es kostet.
+
+**Technik.** Sammlung je Konto in `u.cards` (`{id: Anzahl}`). Der Katalog
+(~2000 Karten, ~0,5 MB, gzip) kommt per HTTP `/cards.json?v=HASH` (lange
+cachebar), nicht ueber den Socket (`maxPayload` 4 KB gilt nur eingehend, aber
+der Katalog muss nicht jedem Tick-Kanal zur Last fallen). Nachrichten:
+`kmState`, `kmBuy {pack}`, `kmSell {id, n}`, `kmSellDupes`. Coins laufen in
+der Statistik unter `earned.cards`.
+
+## In game und Chat (5.0)
+
+- **In game** (rechte Spalte) zeigt neben den Schlangen alle eingeloggten
+  Spieler, die gerade woanders spielen: der Browser meldet seinen Schirm
+  (`where`), der Server ergaenzt, was er selbst weiss (Raid, PvP/Zombies-Match,
+  Casino-Tisch). Alle 3 s ein Broadcast `where {list, online}`, nur bei
+  Aenderung. Menue, Konto und Support zaehlen nicht.
+- **Chat**: Titel kleiner, 🏷️ blendet sie aus, 🔔 schaltet den Ping-Ton.
+  `@Name` wird hervorgehoben; ist man selbst gemeint, ist die Zeile markiert
+  und es klingt leise (nicht bei der Chat-Historie beim Verbinden). Tab nach
+  `@Anf` ergaenzt aus Chat, Feld und Online-Liste. Rein im Browser, der Server
+  kennt keine Pings.
+- **Heist** (Mystery-Box 🤏): nimmt jedem anderen 10 % seiner Laenge
+  (`HEIST_PCT`, mind. 1, nie das letzte Stueck), vorher flat 3. Wer ⭐ Star
+  hat, ist sicher.
+- **Achievement-Anteil**: `achRates` zaehlt ueber alle Konten, wie viele
+  jedes Achievement haben (60 s Cache), die Kontoseite zeigt den Prozentwert
+  wie bei Steam; unter 5 % golden.
 
 ## Mini-Events (Snake)
 

@@ -32,7 +32,7 @@ function sha256(s) {
 // daily = Daily Wheel, don = Double or Nothing (netto, kann negativ sein),
 // admin = Gutschriften/Abzuege im Admin-Interface, shooter = Kills in der
 // Arena (#7). Das Casino rechnet je Spiel in stats.games (#5).
-const EARN_SOURCES = ['snake', 'events', 'daily', 'don', 'admin', 'shooter', 'shop'];
+const EARN_SOURCES = ['snake', 'events', 'daily', 'don', 'admin', 'shooter', 'shop', 'cards'];
 
 // Statistik je Spiel (#5): plays, wagered (Einsatz), won (Auszahlung inkl.
 // Einsatz), bestWin (groesste Auszahlung), bestX (hoechster Multi). Beim
@@ -469,6 +469,15 @@ module.exports = function createAccounts(dataDir) {
         // ---------- Admin (nur ueber das Admin-Interface) ----------
 
         // Alle Konten fuer die Admin-Liste, ohne Hash und Salt
+        // Wie viel Prozent aller Konten ein Achievement haben (5.0, wie bei Steam)
+        achRates() {
+            const users = Object.values(db.users);
+            const n = {};
+            for (const u of users) for (const id of Object.keys(u.achievements || {})) n[id] = (n[id] || 0) + 1;
+            const total = users.length || 1;
+            return { total: users.length, rates: Object.fromEntries(Object.entries(n).map(([id, k]) => [id, Math.round(k / total * 1000) / 10])) };
+        },
+
         adminList() {
             return Object.entries(db.users).map(([key, u]) => ({
                 key, name: u.name, coins: u.coins, color: u.color || null,

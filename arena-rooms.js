@@ -176,6 +176,8 @@ module.exports = function createRooms(h) {
     return {
         handle, tick, leave, list, arenaOf,
         inLobby: c => !!lobbyOf(c),
+        // Laufendes Match: 'pvp' oder 'zombies' (fuer die In-game-Liste)
+        kindOf: c => { const l = lobbyOf(c); return l && l.arena ? l.kind : null; },
         // Browser fragt beim Start: in welcher Lobby bin ich?
         mine: c => { const l = lobbyOf(c); return l ? l.id : null; }
     };
