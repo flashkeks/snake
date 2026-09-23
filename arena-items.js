@@ -199,6 +199,15 @@ const SOURCES = {
     mage: { t: [0.4, 0.33, 0.2, 0.069, 0.001, 0.000005, 0], kinds: { weapon: 0.45, armor: 0.25, util: 0.25, pack: 0.05 }, tag: 'mage', tagShare: 0.75 },
     demo: { t: [0.4, 0.33, 0.2, 0.069, 0.001, 0.000005, 0], kinds: { weapon: 0.45, armor: 0.15, util: 0.35, pack: 0.05 }, tag: 'demo', tagShare: 0.75 },
     elite: { t: [0, 0.4, 0.4, 0.19745, 0.0025, 0.00005, 0.000005], kinds: { weapon: 0.45, armor: 0.33, util: 0.15, pack: 0.07 } },
+    // 5.2b (Max): Elite nur Waffen / nur Ruestung (samt Rucksaecken)
+    elite_w: { t: [0, 0.4, 0.4, 0.19745, 0.0025, 0.00005, 0.000005], kinds: { weapon: 1 } },
+    elite_a: { t: [0, 0.4, 0.4, 0.19745, 0.0025, 0.00005, 0.000005], kinds: { armor: 0.85, pack: 0.15 } },
+    // Die drei als 50k-Variante: ein Viertel des Wegs von Elite (10k) zu
+    // Sovereign (100k) – bewusst nicht mittig, sonst waere 50k fuer Waffen
+    // mehr Meta als die 100k-Case. t = elite + 0.25 * (sovereign - elite)
+    elite50: { t: [0, 0.3, 0.3875, 0.30614583, 0.00604167, 0.0002875, 0.00002875], kinds: { weapon: 0.45, armor: 0.33, util: 0.15, pack: 0.07 } },
+    elite_w50: { t: [0, 0.3, 0.3875, 0.30614583, 0.00604167, 0.0002875, 0.00002875], kinds: { weapon: 1 } },
+    elite_a50: { t: [0, 0.3, 0.3875, 0.30614583, 0.00604167, 0.0002875, 0.00002875], kinds: { armor: 0.85, pack: 0.15 } },
     sovereign: { t: [0, 0, 0.35, 0.6322333, 1 / 60, 0.001, 0.0001], kinds: { weapon: 0.45, armor: 0.33, util: 0.15, pack: 0.07 } },
     // Scrap-Shop: Waffe mit garantiert einem Effekt
     modded: { t: [0.6, 0.3, 0.1, 0, 0, 0, 0], kinds: { weapon: 1 }, effects: [0, 0.9, 0.095, 0.005] }
@@ -206,9 +215,14 @@ const SOURCES = {
 
 const CASES = {
     standard: { name: 'Standard case', icon: '📦', price: 1000, currency: 'coins', source: 'standard', desc: 'Everything, mostly common' },
-    mage: { name: 'Mage case', icon: '🔮', price: 3000, currency: 'coins', source: 'mage', desc: 'Mostly staffs, robes and spell scrolls' },
     demo: { name: 'Demolition case', icon: '🧨', price: 3000, currency: 'coins', source: 'demo', desc: 'Launchers, flamethrowers and explosives' },
-    elite: { name: 'Elite case', icon: '💎', price: 10000, currency: 'coins', source: 'elite', desc: 'Uncommon or better' },
+    // Mage case raus (5.2b, Max); Elite gibt es jetzt allgemein, nur Waffen, nur Ruestung – je 10k und 50k
+    elite: { name: 'Elite case General', icon: '💎', price: 10000, currency: 'coins', source: 'elite', desc: 'Uncommon or better – everything can drop' },
+    elite_w: { name: 'Elite case Weapons', icon: '🔫', price: 10000, currency: 'coins', source: 'elite_w', desc: 'Uncommon or better – weapons only' },
+    elite_a: { name: 'Elite case Armor', icon: '🛡️', price: 10000, currency: 'coins', source: 'elite_a', desc: 'Uncommon or better – armor and backpacks only' },
+    elite50: { name: 'Elite+ case General', icon: '💠', price: 50000, currency: 'coins', source: 'elite50', desc: 'Better odds than Elite – everything can drop' },
+    elite_w50: { name: 'Elite+ case Weapons', icon: '🎯', price: 50000, currency: 'coins', source: 'elite_w50', desc: 'Better odds than Elite – weapons only' },
+    elite_a50: { name: 'Elite+ case Armor', icon: '🏰', price: 50000, currency: 'coins', source: 'elite_a50', desc: 'Better odds than Elite – armor and backpacks only' },
     sovereign: { name: 'Sovereign case', icon: '👑', price: 100000, currency: 'coins', source: 'sovereign', desc: 'Rare or better – the only real shot at Mythic and Ultra' },
     scrap: { name: 'Scrap case', icon: '🧰', price: 60, currency: 'scrap', source: 'scrapcase', desc: 'Cheap, paid with scrap' }
 };

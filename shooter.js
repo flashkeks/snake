@@ -540,7 +540,7 @@ module.exports = function createArena(h, opts = {}) {
             return sendHub(c, { got: { ...items[0], n } });
         }
         if (d.type === 'arCase') {
-            const cs = I.CASES[d.id];
+            const cs = Object.prototype.hasOwnProperty.call(I.CASES, d.id) ? I.CASES[d.id] : null;
             if (!cs) return;
             if (a.inv.length >= I.INV_MAX) return h.send(c, { type: 'arError', error: 'Your stash is full – salvage something first' });
             const err = pay(c, cs.price, cs.currency);

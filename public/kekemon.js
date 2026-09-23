@@ -94,7 +94,15 @@ function kmOpen(tab) {
 function onKmState(d) {
     km = d;
     kmLoadCat(d.v).then(() => {
-        if (d.opened) kmShowPack(d.opened);
+        if (d.opened) {
+            try {
+                kmShowPack(d.opened);
+            } catch (e) {
+                // Lieber ohne Show als gar nichts sehen (5.2b)
+                console.error('pack opening', e);
+                try { kmSummary(); } catch { showMsg('km-msg', 'Pack opened – check your collection', 'ok'); }
+            }
+        }
         if (d.sold) showMsg('km-msg', `Sold ${d.sold.n} card${d.sold.n === 1 ? '' : 's'} for 🪙 ${d.sold.coins.toLocaleString('en-US')}`, 'ok');
         if (!$('kekemon').classList.contains('hidden')) kmDraw();
         const v = $('km-view');
@@ -230,7 +238,9 @@ function kmDrawPacks() {
             <div class="ico">${p.icon}</div>
             <h4>${esc(p.name)}</h4>
             <div class="sub">${p.size} cards · ${sets}<br><b>${p.sure} guaranteed Rare or better</b>${p.mega ? '<br>Better odds on every card' : ''}</div>
-            <button type="button" class="gold" data-kmbuy="${id}" ${poor ? 'disabled' : ''}>Open for 🪙 ${p.price.toLocaleString('en-US')}</button>
+            <button type="button" class="gold" data-kmbuy="${id}" ${poor ? 'disabled' : ''}>${poor && me
+                ? `🔒 🪙 ${p.price.toLocaleString('en-US')} · need ${(p.price - me.coins).toLocaleString('en-US')} more`
+                : `Open for 🪙 ${p.price.toLocaleString('en-US')}`}</button>
         </div>`;
     }).join('');
     const sell = kmCat.rarities.map(r => `<b style="color:${r.color}">${r.name}</b> ${kmCat.sell[r.id].toLocaleString('en-US')}`).join(' · ');

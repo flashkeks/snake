@@ -206,7 +206,9 @@ function mkSellView() {
         const sel = mkSell && JSON.stringify(mkSell.ref.k === 'card' ? { ...mkSell.ref, n: 1 } : mkSell.ref) === JSON.stringify(x.ref);
         return `<div class="mk-pick ${sel ? 'sel' : ''}" data-mkpick="${i}">${mkAsset(x.asset)}</div>`;
     }).join('');
-    const note = mkSellSrc === 'item' ? 'Items in your arena loadout are locked – take them off first.' : mkSellSrc === 'cos' ? 'Only bought cosmetics can be sold. If you wear it, it comes off.' : '';
+    const note = mkSellSrc === 'item' ? 'Items in your arena loadout are locked – take them off first.'
+        : mkSellSrc === 'cos' ? 'Only bought cosmetics can be sold. If you wear it, it comes off.'
+        : !list.length ? 'You have no Kekémon cards yet – open packs in 🃏 Kekémon first.' : '';
     let form = '<div class="hint">Pick something above.</div>';
     if (mkSell) {
         const card = mkSell.ref.k === 'card';

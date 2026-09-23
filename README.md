@@ -1050,6 +1050,28 @@ der Katalog muss nicht jedem Tick-Kanal zur Last fallen). Nachrichten:
 `kmState`, `kmBuy {pack}`, `kmSell {id, n}`, `kmSellDupes`. Coins laufen in
 der Statistik unter `earned.cards`.
 
+## Cases und Cosmetics (5.3)
+
+- **Cosmetics** kosten seit 5.3 das Doppelte (alle 135). Die Seltenheit wird
+  aus dem Preis gerechnet (`RARITIES.min` in `shop.js`), die Schwellen sind
+  mitverdoppelt (20k/50k/120k) — Verteilung unveraendert 43/54/26/12.
+- **Arena-Cases** (`CASES`/`SOURCES` in `arena-items.js`): Mage case entfernt
+  (Quelle `mage` bleibt fuer alte Verweise). Elite gibt es dreifach, je 10k:
+  *General* (`elite`, alles), *Weapons* (`elite_w`, nur Waffen), *Armor*
+  (`elite_a`, Ruestung 85 % + Rucksaecke 15 %). Dazu je eine **Elite+** fuer
+  50k (`elite50`, `elite_w50`, `elite_a50`) mit Stufen
+  `elite + 0,25 × (sovereign − elite)`: ein Viertel des Wegs zur 100k-Sovereign,
+  bewusst nicht die Mitte (Max: sonst waere 50k fuer Waffen mehr Meta als 100k).
+
+| Stufe | Elite 10k | Elite+ 50k | Sovereign 100k |
+|---|---|---|---|
+| Uncommon | 40 % | 30 % | – |
+| Rare | 40 % | 38,75 % | 35 % |
+| Epic | 19,745 % | 30,61 % | 63,22 % |
+| Legendary | 0,25 % | 0,60 % | 1,67 % |
+| Mythic | 1 in 20 000 | 1 in 3 478 | 1 in 1000 |
+| Ultra | 1 in 200 000 | 1 in 34 783 | 1 in 10 000 |
+
 ## 🏛️ Markt (5.2)
 
 Vierte Welt im Umschalter (🏛️ Market) und im Hauptmenue. Zwei Tabs.
