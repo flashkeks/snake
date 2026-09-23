@@ -18,9 +18,13 @@ const GYMS = [
     { id: 'volt', name: 'Volt Gym', icon: '⚡', leader: 'Sparky', type: 'electric', rar: ['uncommon', 'rare'], mul: 1.05, smart: 1, coins: 6500, pack: 'waifu' },
     { id: 'dojo', name: 'Iron Dojo', icon: '👊', leader: 'Master Ken', type: 'fighting', rar: ['rare'], mul: 1.12, smart: 1, coins: 8000, pack: 'film' },
     { id: 'mind', name: 'Mind Tower', icon: '🔮', leader: 'Oracle Lua', type: 'psychic', rar: ['rare', 'epic'], mul: 1.2, smart: 2, coins: 11000, pack: 'anime' },
-    { id: 'shadow', name: 'Shadow Gym', icon: '🌑', leader: 'Noct', type: 'dark', rar: ['epic'], mul: 1.3, smart: 2, coins: 15000, pack: 'waifu' },
-    { id: 'champ', name: 'Kek Champion', icon: '👑', leader: 'The Kek', type: null, rar: ['legendary', 'secret'], mul: 1.4, smart: 2, coins: 30000, pack: 'mixed' }
+    { id: 'shadow', name: 'Shadow Gym', icon: '🌑', leader: 'Noct', type: 'dark', rar: ['epic'], mul: 0.9, smart: 2, coins: 15000, pack: 'waifu' },
+    { id: 'champ', name: 'Kek Champion', icon: '👑', leader: 'The Kek', type: null, rar: ['legendary', 'secret'], mul: 0.9, smart: 2, coins: 30000, pack: 'mixed' }
 ];
+// Staerke per Simulation gegen Zufallsteams der passenden Seltenheit eingestellt
+// (24.09.2026, 400–600 Kaempfe je Arena): Sprout 75 %, Tide 64 %, Blaze 27 %,
+// Volt 39 %, Dojo 33 %, Mind 25 %, Shadow 17 %, Champion 38 % – mit Typvorteil
+// meist 70–95 %. Shadow/Champion waren mit x1,3/x1,4 bei 0–6 %.
 const REPEAT_SHARE = 0.15, REPEAT_PER_DAY = 3;
 
 function seeded(str) {

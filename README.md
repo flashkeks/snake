@@ -1151,9 +1151,13 @@ kein Timeout, im Schnitt 8 Runden, Zufallsteam gegen Zufallsteam 43 %.
 | ⚡ Volt Gym | Electric | Uncommon/Rare | ×1,05 | 1 | 6500 | Waifu |
 | 👊 Iron Dojo | Fighting | Rare | ×1,12 | 1 | 8000 | Heroes & Series |
 | 🔮 Mind Tower | Psychic | Rare/Epic | ×1,2 | 2 | 11 000 | Anime |
-| 🌑 Shadow Gym | Dark | Epic | ×1,3 | 2 | 15 000 | Waifu |
-| 👑 Kek Champion | alle | Legendary/Secret | ×1,4 | 2 | 30 000 | Mega |
+| 🌑 Shadow Gym | Dark | Epic | ×0,9 | 2 | 15 000 | Waifu |
+| 👑 Kek Champion | alle | Legendary/Secret | ×0,9 | 2 | 30 000 | Mega |
 
+Balance per Simulation mit den echten Karten (Zufallsteam der passenden
+Seltenheit, stur staerkster Angriff): Sprout 75 %, Tide 64 %, Blaze 27 %,
+Volt 39 %, Dojo 33 %, Mind 25 %, Shadow 17 %, Champion 38 %; mit Typvorteil
+meist 70–95 %. Shadow/Champion standen erst auf ×1,3/×1,4 = 0–6 %.
 Leiter-Teams sind fest (aus der Arena-Id gewuerfelt). Danach je Sieg 15 %
 der Coins, hoechstens 3 belohnte Siege je Arena und Tag. Ein Kampf lebt nur im
 Speicher (`c.kb`); Server-Neustart oder Tab zu = Kampf weg, ohne Strafe.
