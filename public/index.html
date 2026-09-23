@@ -471,6 +471,45 @@ button:disabled {
     font-size: 14px;
 }
 
+#konto .card {
+    width: min(680px, 100%);
+}
+
+#konto-stats {
+    overflow-x: auto;
+}
+
+/* Tabelle je Spiel auf der Konto-Seite, ueber beide Spalten */
+.konto-games {
+    grid-column: 1 / -1;
+    margin-top: 8px;
+    border-collapse: collapse;
+    font-size: 13px;
+    width: 100%;
+}
+
+.konto-games th, .konto-games td {
+    padding: 3px 6px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.konto-games th:first-child, .konto-games td:first-child {
+    text-align: left;
+}
+
+.konto-games th {
+    opacity: .6;
+    font-weight: 700;
+}
+
+.konto-games tbody tr:nth-child(odd) {
+    background: rgba(255,255,255,.04);
+}
+
+.konto-games .pos { color: #7dffb0; }
+.konto-games .neg { color: #ff8a8a; }
+
 .stats span:nth-child(even) {
     text-align: right;
     font-weight: 700;
@@ -4138,6 +4177,7 @@ ws.onmessage = event => {
             break;
         case 'account':
             setMe(data.user);
+            if (!$('konto').classList.contains('hidden')) drawStats();
             break;
         case 'joined':
             joined = true;
@@ -4361,6 +4401,8 @@ $('konto-btn').onclick = () => {
     showMsg('konto-msg', '');
     drawStats();
     showScreen('konto');
+    // Frische Zahlen holen (Spins schicken nur den Kontostand, nicht die Statistik)
+    wsSend({ type: 'me' });
 };
 $('konto-back').onclick = () => showScreen('menu');
 $('logout-btn').onclick = () => wsSend({ type: 'logout', token });
@@ -4379,20 +4421,43 @@ $('del-form').addEventListener('submit', e => {
     $('del-pass').value = '';
 });
 
+// Konto-Seite: Ueberblick plus Tabelle je Spiel (#5)
+const GAME_LABELS = {
+    slots: '🎰 Slots', starlight: '🌟 Budget Starlight', crossy: '🐔 Crossy Road', plinko: '🔻 Plinko',
+    daily: '🎁 Daily Wheel', blackjack: '🃏 Blackjack', roulette: '🎡 Roulette', poker: '♠️ Poker', don: '🪙 Double or Nothing'
+};
+
+function fmtN(n) {
+    return Math.round(n || 0).toLocaleString('en-US');
+}
+
+function fmtTime(ms) {
+    const m = Math.round((ms || 0) / 60000);
+    return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`;
+}
+
 function drawStats() {
     if (!me) return;
     const s = me.stats || {};
+    const e = s.earned || {};
     const rows = [
-        ['Coins', me.coins],
-        ['Best score', s.bestScore || 0],
-        ['Kills', s.kills || 0],
-        ['Cash outs', s.cashouts || 0],
-        ['Biggest cash out', s.bestCashout || 0],
-        ['Cashed out in total', s.totalCashout || 0],
-        ['Slot spins', s.spins || 0],
-        ['Biggest slot win', s.biggestWin || 0]
+        ['Coins', fmtN(me.coins)],
+        ['🐍 Best score', fmtN(s.bestScore)],
+        ['🐍 Kills / deaths', `${fmtN(s.kills)} / ${fmtN(s.deaths)}`],
+        ['🐍 Time on the field', fmtTime(s.playMs)],
+        ['🐍 Cash outs', `${fmtN(s.cashouts)} · best ${fmtN(s.bestCashout)} · total ${fmtN(s.totalCashout)}`],
+        ['🎪 Events played / won', `${fmtN(s.eventsPlayed)} / ${fmtN(s.eventWins)}`],
+        ['🔫 Arena kills / deaths', `${fmtN(s.shooterKills)} / ${fmtN(s.shooterDeaths)}`],
+        ['💰 Coins earned', `🐍 ${fmtN(e.snake)} · 🎪 ${fmtN(e.events)} · 🎁 ${fmtN(e.daily)} · 🔫 ${fmtN(e.shooter)}`]
     ];
-    $('konto-stats').innerHTML = rows.map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join('');
+    const games = Object.entries(s.games || {}).filter(([, g]) => g.plays).sort((a, b) => b[1].plays - a[1].plays);
+    $('konto-stats').innerHTML = rows.map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join('') +
+        (games.length ? '<table class="konto-games"><thead><tr><th></th><th>Played</th><th>Bet</th><th>Won</th><th>Net</th><th>Best win</th><th>Best ×</th></tr></thead><tbody>' +
+            games.map(([k, g]) => {
+                const net = g.won - g.wagered;
+                return `<tr><td>${GAME_LABELS[k] || esc(k)}</td><td>${fmtN(g.plays)}</td><td>${fmtN(g.wagered)}</td><td>${fmtN(g.won)}</td>` +
+                    `<td class="${net >= 0 ? 'pos' : 'neg'}">${k === 'daily' ? '' : (net >= 0 ? '+' : '') + fmtN(net)}</td><td>${fmtN(g.bestWin)}</td><td>${g.bestX ? '×' + g.bestX : ''}</td></tr>`;
+            }).join('') + '</tbody></table>' : '');
 }
 
 // ---------- Steuerung ----------

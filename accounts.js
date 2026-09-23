@@ -29,6 +29,34 @@ function sha256(s) {
 // Arena (#7). Das Casino rechnet je Spiel in stats.games (#5).
 const EARN_SOURCES = ['snake', 'events', 'daily', 'don', 'admin', 'shooter'];
 
+// Statistik je Spiel (#5): plays, wagered (Einsatz), won (Auszahlung inkl.
+// Einsatz), bestWin (groesste Auszahlung), bestX (hoechster Multi). Beim
+// Poker ist won der gewonnene Pot, beim Daily Wheel gibt es keinen Einsatz.
+const GAMES = ['slots', 'starlight', 'crossy', 'plinko', 'daily', 'blackjack', 'roulette', 'poker', 'don'];
+// Zaehlen nicht zur Casino-Bilanz (kein Einsatz bzw. kein Casino-Spiel)
+const NOT_CASINO = new Set(['daily', 'don']);
+
+function newGame() {
+    return { plays: 0, wagered: 0, won: 0, bestWin: 0, bestX: 0 };
+}
+
+// Zeitraeume fuers Leaderboard (#8): heute und diese Woche (Europe/Berlin,
+// ISO-Woche). Werden beim ersten Zugriff im neuen Zeitraum zurueckgesetzt.
+function newPeriod(id) {
+    return { id, bestScore: 0, kills: 0, bestWin: 0, bestX: {}, casinoNet: 0, eventWins: 0, arenaKills: 0 };
+}
+
+function weekId(day) {
+    // day = YYYY-MM-DD (Berlin); ISO-Woche: Donnerstag der Woche bestimmt das Jahr
+    const d = new Date(day + 'T12:00:00Z');
+    const wd = (d.getUTCDay() + 6) % 7;
+    d.setUTCDate(d.getUTCDate() - wd + 3);
+    const y = d.getUTCFullYear();
+    const first = new Date(Date.UTC(y, 0, 4));
+    const w = 1 + Math.round(((d - first) / 864e5 - 3 + ((first.getUTCDay() + 6) % 7)) / 7);
+    return `${y}-W${String(w).padStart(2, '0')}`;
+}
+
 function newStats() {
     return {
         bestScore: 0,
@@ -38,7 +66,16 @@ function newStats() {
         totalCashout: 0,
         spins: 0,
         biggestWin: 0,
-        earned: Object.fromEntries(EARN_SOURCES.map(k => [k, 0]))
+        earned: Object.fromEntries(EARN_SOURCES.map(k => [k, 0])),
+        // #5: Snake-Tode, Spielzeit auf dem Feld, Events, Arena
+        deaths: 0,
+        playMs: 0,
+        eventsPlayed: 0,
+        eventWins: 0,
+        shooterKills: 0,
+        shooterDeaths: 0,
+        games: {},
+        periods: {}
     };
 }
 
@@ -234,6 +271,36 @@ module.exports = function createAccounts(dataDir) {
             touch();
         },
 
+        // Zeitraum-Zaehler (heute, Woche) aktualisieren; fn bekommt je einen Zeitraum
+        period(key, fn) {
+            const day = berlinDay();
+            const week = weekId(day);
+            this.stat(key, s => {
+                if (!s.periods.day || s.periods.day.id !== day) s.periods.day = newPeriod(day);
+                if (!s.periods.week || s.periods.week.id !== week) s.periods.week = newPeriod(week);
+                fn(s.periods.day);
+                fn(s.periods.week);
+            });
+        },
+
+        // Eine Runde eines Spiels verbuchen (#5): wager = Einsatz, win = Auszahlung,
+        // x = Multi (Auszahlung / Grundeinsatz), falls sinnvoll
+        game(key, name, { wager = 0, win = 0, x = 0 } = {}) {
+            this.stat(key, s => {
+                const g = s.games[name] = { ...newGame(), ...s.games[name] };
+                g.plays++;
+                g.wagered += wager;
+                g.won += win;
+                g.bestWin = Math.max(g.bestWin, win);
+                if (x) g.bestX = Math.max(g.bestX, Math.round(x * 100) / 100);
+            });
+            this.period(key, p => {
+                p.bestWin = Math.max(p.bestWin, win);
+                if (x) p.bestX[name] = Math.max(p.bestX[name] || 0, Math.round(x * 100) / 100);
+                if (!NOT_CASINO.has(name)) p.casinoNet += win - wager;
+            });
+        },
+
         // Coins aus einer Quelle mitzaehlen (fuer das Balancing, #11)
         earn(key, source, n) {
             if (!n) return;
@@ -307,3 +374,6 @@ module.exports = function createAccounts(dataDir) {
         }
     };
 };
+
+module.exports.GAMES = GAMES;
+module.exports.weekId = weekId;

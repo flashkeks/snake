@@ -180,7 +180,10 @@ module.exports = function createShooter(h) {
             }
             farm.set(key, recent);
         }
-        if (shooter.account) h.accounts.stat(shooter.account, s => { s.shooterKills = (s.shooterKills || 0) + 1; });
+        if (shooter.account) {
+            h.accounts.stat(shooter.account, s => { s.shooterKills = (s.shooterKills || 0) + 1; });
+            h.accounts.period(shooter.account, x => { x.arenaKills++; });
+        }
         if (victim.account) h.accounts.stat(victim.account, s => { s.shooterDeaths = (s.shooterDeaths || 0) + 1; });
         const line = { killer: shooter.name, victim: victim.name, coins: paid, streak: shooter.streak };
         feedLog.push(line);

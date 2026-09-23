@@ -126,7 +126,34 @@ Bis 22.09.2026 lief das Spiel im Calibre-Container von Michaffs unter
 - Sessions: zufaelliger Token (32 Byte) im `localStorage`, auf dem Server nur
   sein sha256, 30 Tage gueltig.
 - Konto-Seite: Statistik, Passwort aendern (meldet alle anderen Geraete ab),
-  abmelden, Konto loeschen (mit Passwort).
+  abmelden, Konto loeschen (mit Passwort). Beim Oeffnen holt sie frische
+  Zahlen (`me`), weil Spins nur den Kontostand schicken.
+
+### Statistik (Issue #5)
+
+Seit 23.09.2026 in `stats` je Konto:
+
+- **Je Spiel** `stats.games.NAME = { plays, wagered, won, bestWin, bestX }`
+  fuer `slots`, `starlight`, `crossy`, `plinko`, `daily`, `blackjack`,
+  `roulette`, `poker`, `don`. `won` ist die Auszahlung inkl. Einsatz (Poker:
+  der gewonnene Pot), `bestX` = Auszahlung / Grundeinsatz (Starlight: /
+  Einsatz ohne Bonus-Kauf-Aufschlag; Roulette: beste Einzelwette; Blackjack
+  inkl. Sidebets). `accounts.game()` verbucht eine Runde.
+- **Snake:** `bestScore`, `kills`, `deaths`, `playMs` (Zeit auf dem Feld),
+  Cashouts wie bisher.
+- **Events:** `eventsPlayed`, `eventWins` (Platz 1 mit Punkten).
+- **Arena:** `shooterKills`, `shooterDeaths`.
+- **Herkunft der Coins:** `earned` (#11).
+- **Zeitraeume** `stats.periods.day` / `.week` (Europe/Berlin, ISO-Woche):
+  `bestScore`, `kills`, `bestWin`, `bestX` je Spiel, `casinoNet`,
+  `eventWins`, `arenaKills`. Setzen sich beim ersten Zugriff im neuen
+  Zeitraum zurueck (`accounts.period()`); Grundlage fuers Leaderboard (#8).
+- **Versteckte Gewinne:** Starlight, Plinko und Daily verbuchen ihre Runde
+  erst beim Aufloesen (`hideWin(..., onReveal)`), damit Leaderboard und
+  Statistik keinen Ausgang vorab verraten.
+
+Aeltere Zahlen vor dem 23.09.2026 gibt es nur in den alten Feldern
+(`spins`, `biggestWin`, `bestScore`, `kills`, Cashouts).
 - Ein Konto kann nur in einem Fenster gleichzeitig spielen.
 - Gaeste duerfen keinen Namen nehmen, der einem Konto gehoert.
 - Rate-Limits je IP (`cf-connecting-ip`): 5 neue Konten pro Stunde, 10

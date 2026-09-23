@@ -367,12 +367,14 @@ let lastTop = '';
 // aus dem Feed), bis der Browser die Animation fertig hat ('spin2Done') –
 // sonst sieht man direkt nach dem Bonus-Kauf, was rauskommt.
 // Rueckfall: Timer nach geschaetzter Animationsdauer, oder Verbindungsende.
-const pendingWins = new Map();  // Konto -> { amount, feed, timer }
+// Die Statistik je Spiel (#5) wird ebenfalls erst hier verbucht (onReveal),
+// damit das Leaderboard (#8) keinen Ausgang vorab verraet.
+const pendingWins = new Map();  // Konto -> { amount, feed, timer, onReveal }
 
-function hideWin(key, amount, feedLine, ms) {
+function hideWin(key, amount, feedLine, ms, onReveal) {
     revealWin(key);
     const timer = setTimeout(() => revealWin(key), ms);
-    pendingWins.set(key, { amount, feed: feedLine, timer });
+    pendingWins.set(key, { amount, feed: feedLine, timer, onReveal });
 }
 
 function revealWin(key) {
@@ -380,6 +382,7 @@ function revealWin(key) {
     if (!w) return;
     clearTimeout(w.timer);
     pendingWins.delete(key);
+    if (w.onReveal) w.onReveal();
     if (w.feed) feed(...w.feed);
     pushTop(false);
 }
@@ -401,6 +404,7 @@ function recordScore(p) {
     if (!p.account) return;
     const score = scoreOf(p);
     accounts.stat(p.account, s => { s.bestScore = Math.max(s.bestScore, score); });
+    accounts.period(p.account, x => { x.bestScore = Math.max(x.bestScore, score); });
 }
 
 // ---------- Tod, Verlassen, Cashout ----------
@@ -410,6 +414,9 @@ function removeFromField(id) {
     const p = players.get(id);
     if (!p) return;
     players.delete(id);
+    // Spielzeit auf dem Feld (#5)
+    if (p.account && p.joinedAt) accounts.stat(p.account, s => { s.playMs += Date.now() - p.joinedAt; });
+    p.joinedAt = null;
     p.joined = false;
     p.frozen = null;
     p.cashout = null;
@@ -427,7 +434,10 @@ function kill(id, killerId, how, cause) {
         grow(killer, Math.ceil(victim.len / 2));
         killer.kills++;
         killer.streak++;
-        if (killer.account) accounts.stat(killer.account, s => { s.kills++; });
+        if (killer.account) {
+            accounts.stat(killer.account, s => { s.kills++; });
+            accounts.period(killer.account, x => { x.kills++; });
+        }
 
         feed(`${killer.name} 🗡️ ${victim.name}`, 'kill');
         if (STREAKS[killer.streak]) feed(`${killer.name}: ${STREAKS[killer.streak]}!`, 'streak', killerId);
@@ -436,6 +446,7 @@ function kill(id, killerId, how, cause) {
     }
 
     recordScore(victim);
+    if (victim.account) accounts.stat(victim.account, s => { s.deaths++; });
     const head = victim.body[0];
     send(victim, {
         type: 'died',
@@ -829,6 +840,7 @@ async function handle(c, data) {
             }
 
             c.joined = true;
+            c.joinedAt = Date.now();
             c.name = uniqueName(name);
             c.guest = !c.account;
             c.color = cleanColor(data.color) || pickColor();
@@ -985,6 +997,11 @@ async function handle(c, data) {
             return;
         }
 
+        // Konto-Seite: aktuelle Statistik holen (#5)
+        case 'me':
+            if (c.account) sendAccount(c);
+            return;
+
         case 'shInput':
             shooter.input(c, data);
             return;
@@ -1018,7 +1035,7 @@ async function handle(c, data) {
             send(c, { type: 'daily', index: r.index, value: r.value, balance, user: accounts.publicUser(u) });
             // Erst nach dem Dreh (~7 s) in Bestenliste und Feed
             const line = r.value >= 10000 ? [`🎡 ${u.name} hit ${r.value} coins on the Daily Wheel!`, 'gold', c.id] : null;
-            hideWin(c.account, r.value, line, 12000);
+            hideWin(c.account, r.value, line, 12000, () => accounts.game(c.account, 'daily', { win: r.value }));
             return;
         }
 
@@ -1052,6 +1069,7 @@ async function handle(c, data) {
             const d = casino.DIFFS[g.diff];
             if (Math.random() < d.p) {
                 c.cross = null;
+                accounts.game(c.account, 'crossy', { wager: g.bet, win: 0 });
                 return send(c, { type: 'cross', state: 'dead', step: g.step + 1, bet: g.bet, diff: g.diff, balance: accounts.get(c.account).coins });
             }
             g.step++;
@@ -1091,7 +1109,7 @@ async function handle(c, data) {
             send(c, { type: 'plinko', bet, risk, path: r.path, slot: r.slot, mult: r.mult, win: r.win, balance });
             // Bis die Kugel unten ist (~0,13 s je Reihe) nicht in Bestenliste und Feed
             const line = r.mult >= 100 && r.win >= 1000 ? [`🔻 ${u.name} hit ×${r.mult} on Plinko: ${r.win} coins`, 'gold', c.id] : null;
-            hideWin(c.account, r.win, line, 1000 + plinko.ROWS * 150);
+            hideWin(c.account, r.win, line, 1000 + plinko.ROWS * 150, () => accounts.game(c.account, 'plinko', { wager: bet, win: r.win, x: r.mult }));
             return;
         }
 
@@ -1155,7 +1173,7 @@ async function handle(c, data) {
             const steps = r.spins.reduce((n, sp) => n + sp.steps.length, 0);
             const ms = Math.min(15 * 60e3, 20e3 + r.spins.length * 6e3 + steps * 3e3);
             const line = r.win >= bet * 100 ? [`🌟 ${u.name} won ${r.win} coins (${Math.round(r.win / bet)}x) on Budget Starlight`, 'gold', c.id] : null;
-            hideWin(c.account, r.win, line, ms);
+            hideWin(c.account, r.win, line, ms, () => accounts.game(c.account, 'starlight', { wager: cost, win: r.win, x: r.win / bet }));
             return;
         }
 
@@ -1183,6 +1201,7 @@ async function handle(c, data) {
                 s.biggestWin = Math.max(s.biggestWin, r.win);
             });
 
+            accounts.game(c.account, 'slots', { wager: bet, win: r.win, x: r.mult });
             send(c, { type: 'spin', reels: r.reels, win: r.win, mult: r.mult, bet, balance });
             if (r.mult >= 80) feed(`🎰 ${u.name} hit ${r.reels.join('')} → ${r.win} coins`, 'gold', c.id);
             return;
@@ -1455,6 +1474,7 @@ function crossCash(c, auto) {
     const win = Math.floor(g.bet * mult);
     const balance = accounts.addCoins(c.account, win);
     accounts.stat(c.account, s => { s.biggestWin = Math.max(s.biggestWin, win); });
+    accounts.game(c.account, 'crossy', { wager: g.bet, win, x: mult });
     send(c, { type: 'cross', state: 'cashed', auto, step: g.step, bet: g.bet, diff: g.diff, mult, win, balance });
     if (mult >= 20 && win >= 1000) {
         const u = accounts.get(c.account);
@@ -1502,6 +1522,7 @@ function answerOffer(p, accept) {
         if (f.coins > 0 && p.account) {
             accounts.addCoins(p.account, sign * f.coins);
             accounts.earn(p.account, 'don', sign * f.coins);
+            accounts.game(p.account, 'don', { wager: f.coins, win: win ? 2 * f.coins : 0, x: win ? 2 : 0 });
             sendAccount(p);
         }
         if (f.length > 0) {

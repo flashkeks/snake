@@ -242,6 +242,15 @@ module.exports = function createEvents(h) {
         rows.forEach((r, i) => {
             const m = ev.members.get(r.id);
             const bonus = r.value > 0 ? PLACE_BONUS[i] || 0 : 0;
+            if (m.account) {
+                // #5: Teilnahme, Sieg (Platz 1 mit Punkten)
+                const won = i === 0 && r.value > 0;
+                h.accounts.stat(m.account, s => {
+                    s.eventsPlayed++;
+                    if (won) s.eventWins++;
+                });
+                if (won) h.accounts.period(m.account, x => { x.eventWins++; });
+            }
             let coins = Math.floor((r.value * COINS_PER_POINT + bonus) * f);
             const length = Math.floor(r.value / 40);
             if (m.account && coins > 0) {

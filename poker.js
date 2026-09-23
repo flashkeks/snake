@@ -414,6 +414,14 @@ module.exports = function createPoker(h, cfg) {
     }
 
     function endHand(ms) {
+        // #5: je Spieler der Hand eine Runde; Einsatz = was er reingelegt hat,
+        // Auszahlung = was er aus dem Pot bekommt
+        for (const s of seated()) {
+            if (!s.inHand || !h.accounts.game) continue;
+            const r = (g.results || []).find(x => seats[x.seat] === s);
+            const win = r ? r.amount : 0;
+            h.accounts.game(s.account, 'poker', { wager: s.total, win, x: s.total && win ? win / s.total : 0 });
+        }
         // Einsaetze liegen jetzt im Pot bzw. beim Gewinner
         for (const x of seated()) x.bet = 0;
         setPhase('showdown', ms);

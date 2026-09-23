@@ -397,6 +397,17 @@ module.exports = function createTables(h) {
             const m = t.members.get(id);
             if (m) m.net += v;
         }
+        // #5: je Spieler eine Runde; Multi = beste Einzelwette (Einzelzahl x36)
+        const per = new Map();
+        for (const b of t.bets) {
+            if (!b.account) continue;
+            const e = per.get(b.account) || { wager: 0, win: 0, x: 0 };
+            e.wager += b.amount;
+            e.win += b.win;
+            e.x = Math.max(e.x, b.win / b.amount);
+            per.set(b.account, e);
+        }
+        for (const [acc, e] of per) h.accounts.game(acc, 'roulette', e);
         for (const m of t.members.values()) refreshAccount(m);
         const best = [...net].sort((a, b) => b[1] - a[1])[0];
         if (best && best[1] >= 500) {
@@ -499,6 +510,11 @@ module.exports = function createTables(h) {
             // Sidebets sind schon beim Austeilen bezahlt, zaehlen aber zur Bilanz der Runde
             net += seat.sideNet || 0;
             seat.net = net;
+            // #5: Einsatz = alle Haende + Sidebets, Auszahlung = Einsatz + Bilanz
+            if (seat.account) {
+                const wager = seat.hands.reduce((s2, hd) => s2 + hd.bet, 0) + seat.pp + seat.t3;
+                h.accounts.game(seat.account, 'blackjack', { wager, win: wager + net, x: wager ? (wager + net) / wager : 0 });
+            }
             const m = t.members.get(id);
             if (m) {
                 m.net += net;
