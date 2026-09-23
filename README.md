@@ -1127,7 +1127,7 @@ Schadenszahl, K.o.) und zeigt danach den Endstand.
 
 **Regeln:** 3 gegen 3, aktive Karte + zwei auf der Bank; die schnellere
 aktive Karte beginnt. Zugbeginn: aktive Karte +1 Energie (bleibt an der
-Karte, wird beim Angriff nicht verbraucht). Eine Aktion je Zug: Angriff
+Karte beim Wechseln, Angriffe verbrauchen ihre Kosten). Eine Aktion je Zug: Angriff
 (Energie ≥ Kosten), Aufladen (+1 extra) oder Auswechseln; Aufgeben geht immer.
 Schaden = Attacke + Boost, ×1,5 bei Schwaeche, minus 40 % Verteidigung (nicht
 bei Pierce), mind. 10. Effekte: Brennen 15 fuer 3 Zuege, Betaeuben (Zug
@@ -1145,19 +1145,22 @@ kein Timeout, im Schnitt 8 Runden, Zufallsteam gegen Zufallsteam 43 %.
 
 | Arena | Typ | Leiter-Karten | Staerke | KI | 1. Sieg | Pack |
 |---|---|---|---|---|---|---|
-| 🌱 Sprout Gym | Nature | Common | ×0,85 | 0 | 3000 | Anime |
-| 💧 Tide Gym | Water | Common/Uncommon | ×0,95 | 0 | 4000 | Heroes & Series |
-| 🔥 Blaze Gym | Fire | Uncommon | ×1,0 | 1 | 5000 | Anime |
-| ⚡ Volt Gym | Electric | Uncommon/Rare | ×1,05 | 1 | 6500 | Waifu |
-| 👊 Iron Dojo | Fighting | Rare | ×1,12 | 1 | 8000 | Heroes & Series |
-| 🔮 Mind Tower | Psychic | Rare/Epic | ×1,2 | 2 | 11 000 | Anime |
-| 🌑 Shadow Gym | Dark | Epic | ×0,9 | 2 | 15 000 | Waifu |
-| 👑 Kek Champion | alle | Legendary/Secret | ×0,9 | 2 | 30 000 | Mega |
+| 🌱 Sprout Gym | Nature | Common | ×1,1 | 0 | 3000 | Anime |
+| 💧 Tide Gym | Water | Common/Uncommon | ×0,9 | 1 | 4000 | Heroes & Series |
+| 🔥 Blaze Gym | Fire | Uncommon | ×0,9 | 1 | 5000 | Anime |
+| ⚡ Volt Gym | Electric | Uncommon/Rare | ×1,0 | 1 | 6500 | Waifu |
+| 👊 Iron Dojo | Fighting | Rare | ×1,0 | 1 | 8000 | Heroes & Series |
+| 🔮 Mind Tower | Psychic | Rare/Epic | ×1,1 | 2 | 11 000 | Anime |
+| 🌑 Shadow Gym | Dark | Epic | ×0,95 | 2 | 15 000 | Waifu |
+| 👑 Kek Champion | alle | Legendary/Secret | ×1,0 | 2 | 30 000 | Mega |
 
-Balance per Simulation mit den echten Karten (Zufallsteam der passenden
-Seltenheit, stur staerkster Angriff): Sprout 75 %, Tide 64 %, Blaze 27 %,
-Volt 39 %, Dojo 33 %, Mind 25 %, Shadow 17 %, Champion 38 %; mit Typvorteil
-meist 70–95 %. Shadow/Champion standen erst auf ×1,3/×1,4 = 0–6 %.
+**Energie wird verbraucht (5.7, Max: „man kann unendlich Energie nutzen"):**
+Angriffe kosten ihre Energie, vorher blieb sie liegen und die grosse Attacke
+ging ab drei Energie jede Runde. Kaempfe dauern jetzt ~14 statt ~8 Runden;
+sparen auf die grosse Attacke lohnt. Balance danach neu per Simulation (Spieler
+spart wie die KI; Zufallsteam / Team mit Typvorteil): Sprout 83/75 %,
+Tide 61/92 %, Blaze 45/74 %, Volt 54/86 %, Dojo 51/89 %, Mind ~40/65 %,
+Shadow 38/43 %, Champion 27/26 %.
 Leiter-Teams sind fest (aus der Arena-Id gewuerfelt). Danach je Sieg 15 %
 der Coins, hoechstens 3 belohnte Siege je Arena und Tag. Ein Kampf lebt nur im
 Speicher (`c.kb`); Server-Neustart oder Tab zu = Kampf weg, ohne Strafe.
