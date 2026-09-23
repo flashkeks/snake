@@ -24,7 +24,8 @@ Live: **`snake.flashkeks.com`** auf `edge` (Netcup).
 | `accounts.js` | Konten, Sessions, Coins, Statistik (JSON-Datei im Datenordner) |
 | `slots.js` | Slot-Automat „Slots“ (frueher „Kek Slots“); `node slots.js` rechnet die Rueckzahlungsquote aus |
 | `slots2.js` | Tumble-Slot „Budget Starlight“ (frueher „Sweet Kek“, intern weiter `s2`/`spin2`); `node slots2.js N` simuliert grob Rueckzahlung, Bonus-Quote, Bonus-Kauf (zum Abstimmen siehe unten) |
-| `events.js` | Quiz-Events im Snake (Flag Quiz, Trivia, Where is it?, Guess the number): Ablauf, Punkte, Belohnung |
+| `events.js` | Events im Snake (Flag Quiz, Trivia, Where is it?, Guess the number und die Map-Events): Ablauf, Punkte, Belohnung |
+| `minigames.js` | Map-Events (#6): Labyrinth, Coin Rush, Last Snake Standing – Map-Bau, Schritte, Kollisionen, Punkte |
 | `tables.js` | Casino-Tische Blackjack (mit Sidebets) und Roulette: Runden, Einsaetze, Auszahlung; haengt auch Poker als dritten Tisch ein |
 | `poker.js` | Poker (Texas Hold'em No-Limit, Spieler gegen Spieler): Sitze, Blinds, Setzrunden, Side-Pots, Handbewertung, Showdown |
 | `casino.js` | Daily Wheel und Crossy Road (Werte, Wahrscheinlichkeiten); `node casino.js` rechnet nach |
@@ -472,8 +473,30 @@ Screen mitten im Fall verlaesst, bekommt die Anzeige sofort verbucht
 
 Alle 90–180 s (das erste nach 45–75 s) taucht eine **3 × 3 grosse 🎪
 EVENT-Kiste** auf: bunt, pulsierend, mit Ringen, auf der Minimap markiert.
-Wer mit dem Kopf in die Kiste faehrt, startet ein Quiz fuer alle, die gerade
-auf dem Feld sind:
+Wer mit dem Kopf in die Kiste faehrt, startet ein Event fuer alle, die gerade
+auf dem Feld sind. Ausgelost wird aus sieben Arten: vier Quiz-Runden (unten)
+und drei **Map-Events** (seit 23.09.2026, Issue #6, `minigames.js`), bei
+denen alle auf eine eigene kleine Map wechseln und dort als Schlange ein
+Minispiel spielen:
+
+| Map-Event | Map | Zeit | Ziel | Punkte |
+|---|---|---|---|---|
+| 🌀 Labyrinth | 21 × 21, zufaellig generiert, mit ein paar Extra-Durchbruechen | 90 s | zuerst zum 🏁. Waende blocken nur, andere faehrt man durch | Ankunft 900, 750, 600 … (mind. 300); wer nicht ankommt, bis 300 nach Restweg |
+| 🪙 Coin Rush | 36 × 26, Rand und 6 Bloecke | 60 s | Muenzen sammeln (jede laesst wachsen) | 25 je Muenze; Crash = 2 s Pause, Muenzen bleiben |
+| ⚡ Last Snake Standing | 40 × 28, Rand und 3 Bloecke | 90 s | Tron: jede Spur bleibt, wer reinfaehrt, ist raus | Letzter 800, dann −200 je Platz (mind. 100) + 5 je Sekunde; allein 15 je Sekunde (max. 800) |
+
+- Steuerung wie im Spiel (Pfeile/WASD, Steuerkreuz). Der Server leitet
+  `direction` waehrend eines Map-Events an das Minispiel um
+  (`events.direction`), die eigene Schlange in der Hauptwelt steht.
+- 5 s Intro mit Regeln und Map-Vorschau, dann laeuft es; vorbei, wenn die
+  Zeit um ist, alle am Ziel sind bzw. beim Tron nur noch einer lebt.
+- Der Server rechnet alle Schritte (110–130 ms) und schickt je Schritt eine
+  kompakte `mg`-Nachricht an die Mitspieler; die Map (Waende, Ziel) kommt
+  einmal mit der `event`-Nachricht (`data.map`).
+- Belohnung wie bei den Quiz-Events (Formel unten), danach Podium und
+  Double or Nothing.
+
+Fuer alle Events gilt:
 
 - Das Spiel friert fuer alle ein, Effekt-Timer, Duelle und Muenzwuerfe ruhen.
   Laufende Cashouts brechen ab.
@@ -610,7 +633,8 @@ Nur lokal, nie auf `edge` setzen:
 - `SNAKE_TEST=1` schaltet dazu `testGrow {n}` frei (eigene Schlange waechst um
   n, z. B. um Score > 5000 zu pruefen).
 - `SNAKE_TEST=1` schaltet die Nachrichten `testEvent {kind}` (startet sofort
-  ein Quiz-Event: `flags`, `trivia`, `geo`, `estimate`) und
+  ein Event: `flags`, `trivia`, `geo`, `estimate`, `maze`, `coinrush`,
+  `tron`) und
   `testTable {result}` (naechste Roulette-Zahl am Tisch) frei.
 - `SNAKE_EVENT_SPEED=5` laesst alle Event- und Tisch-Phasen fuenfmal schneller
   laufen.
@@ -635,7 +659,7 @@ beim Blackjack, `sit {seat?}`/`stand`/`move` (`fold`, `check`,
 `crossCash`, `plinko {bet, risk}`, `tickets`, `ticketNew {subject, text}`, `ticketReply {id, text}`,
 `ticketRead {id}`.
 
-Server → Client: `welcome`, `auth`, `authError`, `authExpired`, `account`,
+Server → Client: `welcome`, `mg` (Schritt im Map-Event), `auth`, `authError`, `authExpired`, `account`,
 `joined`, `joinError`, `left`, `died` (`cause`, `by`, `byId`, `at`), `swapfx`, `cashedout`, `cashoutCancel`, `state`
 (alle 60 ms, mit `arena` und `paused`), `duel`, `gamble`, `box`, `jackpot`,
 `feed` (mit `who` und `big` fuer den Sound), `chat`, `chatlog`, `highscores`,

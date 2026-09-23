@@ -9,6 +9,8 @@
 //   trivia    Allgemeinwissen, 4 Antworten
 //   geo       "Where is ...?" – auf die Weltkarte klicken, Punkte nach Entfernung
 //   estimate  Zahl schaetzen (Hoehe, Laenge, Jahr ...), Punkte nach Abweichung
+//   maze, coinrush, tron   Map-Events (#6): alle spielen auf einer eigenen
+//             kleinen Map ein Snake-Minispiel, Logik in minigames.js
 //
 // Der Server ist die einzige Wahrheit. Jede Aenderung geht als eine
 // `event`-Nachricht mit dem ganzen oeffentlichen Zustand an alle.
@@ -17,12 +19,16 @@ const FLAGS = require('./flags');
 const TRIVIA = require('./trivia');
 const PLACES = require('./places');
 const ESTIMATES = require('./estimates');
+const createMinigame = require('./minigames');
 
 const KINDS = {
     flags: { title: '🏳️ Flag Quiz', rounds: 6, ask: 9000, reveal: 2500 },
     trivia: { title: '🧠 Trivia', rounds: 6, ask: 12000, reveal: 3000 },
     geo: { title: '🌍 Where is it?', rounds: 5, ask: 15000, reveal: 5000 },
-    estimate: { title: '📏 Guess the number', rounds: 5, ask: 15000, reveal: 5000 }
+    estimate: { title: '📏 Guess the number', rounds: 5, ask: 15000, reveal: 5000 },
+    maze: { title: createMinigame.GAMES.maze.title, minigame: true },
+    coinrush: { title: createMinigame.GAMES.coinrush.title, minigame: true },
+    tron: { title: createMinigame.GAMES.tron.title, minigame: true }
 };
 
 // Zeitraffer nur fuer lokale Tests (SNAKE_EVENT_SPEED=10 macht alles zehnmal schneller)
@@ -113,6 +119,13 @@ module.exports = function createEvents(h) {
     function publicData() {
         const q = ev.q;
         const reveal = ev.phase === 'reveal';
+        if (ev.mg) {
+            return {
+                map: ev.map,
+                rewards: ev.rewards || null,
+                factor: ev.factor || playerFactor(ev.members.size)
+            };
+        }
         const out = {
             round: ev.round,
             total: KINDS[ev.kind].rounds,
@@ -168,9 +181,13 @@ module.exports = function createEvents(h) {
             started: Date.now(),
             round: 0,
             q: null,
-            pool: shuffle([...{ flags: FLAGS, trivia: TRIVIA, geo: PLACES, estimate: ESTIMATES }[kind]])
+            pool: KINDS[kind].minigame ? [] : shuffle([...{ flags: FLAGS, trivia: TRIVIA, geo: PLACES, estimate: ESTIMATES }[kind]])
         };
-        phase('intro', 4000);
+        if (KINDS[kind].minigame) {
+            ev.mg = createMinigame(kind, [...ev.members.values()]);
+            ev.map = ev.mg.statics();
+            phase('intro', 5000);
+        } else phase('intro', 4000);
         h.feed(`🎪 EVENT: ${KINDS[kind].title}!`, 'gold', null, true);
         push();
         return true;
@@ -255,9 +272,42 @@ module.exports = function createEvents(h) {
 
     // ---------- Ablauf ----------
 
+    // Map-Event: Schritte an die Mitspieler, Rangliste einmal je Sekunde
+    function sendFrame() {
+        const f = ev.mg.frame();
+        for (const m of ev.members.values()) h.send(m.player, f);
+    }
+
+    function mgTick() {
+        if (ev.mg.tick()) {
+            sendFrame();
+            ev.score = ev.mg.scores();
+        }
+        if (ev.mg.done) {
+            ev.score = ev.mg.scores();
+            results();
+            push();
+            return;
+        }
+        if (Date.now() - (ev.lastPush || 0) > 1000) {
+            ev.lastPush = Date.now();
+            push();
+        }
+    }
+
     function tick() {
+        if (ev && ev.phase === 'play') return mgTick();
         if (!ev || !ev.phaseEnds || Date.now() < ev.phaseEnds) return;
         if (ev.phase === 'awards') return end();
+        if (ev.mg && ev.phase === 'intro') {
+            // Spielzeit steht im Minispiel; die Leiste oben zeigt sie an
+            ev.phase = 'play';
+            ev.phaseEnds = ev.mg.ends;
+            ev.phaseTotal = createMinigame.GAMES[ev.kind].play;
+            sendFrame();
+            push();
+            return;
+        }
         if (ev.phase === 'results') awards();
         else if (ev.phase === 'question') reveal();
         else if (ev.phase === 'intro' || ev.phase === 'reveal') {
@@ -265,6 +315,15 @@ module.exports = function createEvents(h) {
             else nextQuestion();
         }
         push();
+    }
+
+    // ---------- Steuerung im Map-Event ----------
+
+    // true = Richtung ging ans Minispiel (dann nicht an die Hauptwelt)
+    function direction(c, dir) {
+        if (!ev || !ev.mg || !participant(c)) return false;
+        if (ev.phase === 'play') ev.mg.steer(c.id, dir);
+        return true;
     }
 
     // ---------- Antworten ----------
@@ -307,7 +366,8 @@ module.exports = function createEvents(h) {
         start,
         tick,
         handle,
-        leave() {},     // Quiz-Events brauchen beim Gehen nichts aufzuraeumen
+        direction,
+        leave() {},     // Events brauchen beim Gehen nichts aufzuraeumen
         active: () => !!ev,
         // Nur fuer Tests: interner Zustand
         _state: () => ev,

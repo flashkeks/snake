@@ -860,6 +860,8 @@ async function handle(c, data) {
         }
 
         case 'direction': {
+            // Map-Event (#6): Steuerung geht an das Minispiel
+            if (events.direction(c, data.direction)) return;
             const p = players.get(c.id);
             if (!p) return;
             // Beim Cashout faehrt man stur geradeaus, im Event steht alles

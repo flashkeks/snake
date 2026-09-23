@@ -2429,6 +2429,25 @@ button:disabled {
 
 /* ---------- Poker ---------- */
 
+.mg-canvas {
+    display: block;
+    margin: 6px auto;
+    max-width: 100%;
+    height: auto;
+    min-width: 0;
+    min-height: 0;
+    border-radius: 8px;
+    border: 2px solid rgba(255,255,255,.15);
+    image-rendering: auto;
+}
+
+.mg-top {
+    text-align: center;
+    font-weight: 900;
+    font-size: 18px;
+    color: #ffd23f;
+}
+
 .pk {
     display: flex;
     flex-direction: column;
@@ -4048,6 +4067,7 @@ ws.onmessage = event => {
         case 'spin2': s2Run(data); break;
         case 'spin2Error': s2Error(data.error); break;
         case 'event': onEvent(data); break;
+        case 'mg': onMgFrame(data); break;
         case 'table': onTable(data); break;
         case 'tableLeft': onTableLeft(); break;
         case 'tableError': showMsg('ev-msg', data.error, 'err'); showMsg('casino-msg', data.error, 'err'); showMsg('pkl-msg', data.error, 'err'); break;
@@ -5118,7 +5138,7 @@ const PHASE_NAME = {
     waiting: 'Waiting for players',
     intro: 'Get ready', question: 'Question', reveal: 'Answer', betting: 'Place your bets',
     spinning: 'No more bets', playing: 'Your move', dealer: 'Dealer plays', results: 'Results', awards: 'Winners',
-    starting: 'Shuffling', preflop: 'Pre-flop', flop: 'Flop', turn: 'Turn', river: 'River', showdown: 'Showdown'
+    play: 'Go!', starting: 'Shuffling', preflop: 'Pre-flop', flop: 'Flop', turn: 'Turn', river: 'River', showdown: 'Showdown'
 };
 
 // Einsatz-Leiste fuer Roulette und Blackjack, wie bei Plinko: − Betrag +.
@@ -5193,6 +5213,7 @@ function renderEvent() {
     document.querySelector('#event .ev-body').classList.toggle('wide', (d.kind === 'roulette' || d.kind === 'geo' || d.kind === 'poker') && d.phase !== 'intro' && d.phase !== 'awards');
     document.querySelector('#event .ev-body h3').textContent = d.table ? 'At the table (this session)' : 'Event board';
 
+    if (MG_KINDS.includes(d.kind)) return renderMinigame(main, d, member);
     if (d.phase === 'intro') {
         const text = {
             flags: `${d.data.total} flags. Pick the right country, faster answers score more.`,
@@ -5255,6 +5276,109 @@ function renderFlags(main, d, member) {
             return `<button type="button" class="${cls}" data-ev="flag" data-i="${i}" ${dis}>${esc(o)}</button>`;
         }).join('') + '</div>' +
         (d.phase === 'reveal' ? `<div class="msg ok">${q.right.length} got it right</div>` : '');
+}
+
+// --- Map-Events (#6): Labyrinth, Coin Rush, Last Snake Standing ---
+// Die Map (Waende, Ziel) kommt einmal mit der Event-Nachricht, die Schlangen
+// je Schritt als `mg`. Gesteuert wird mit den normalen Pfeiltasten/WASD bzw.
+// dem Steuerkreuz: der Server leitet `direction` ans Minispiel um.
+
+const MG_KINDS = ['maze', 'coinrush', 'tron'];
+let mgFrame = null;
+const MG_RULES = {
+    maze: 'Find the way to the 🏁 goal. Walls just stop you, you can drive through the others.<br>First one there wins, the rest score by how close they got.',
+    coinrush: 'Collect as many 🪙 coins as you can. Crash into a wall or a snake and you are back after 2 s – your coins stay.',
+    tron: 'Everyone leaves a trail that never shrinks. Hit a wall or any trail and you are out.<br>Last snake standing wins.'
+};
+
+function onMgFrame(f) {
+    mgFrame = f;
+    if (ev && MG_KINDS.includes(ev.kind) && !$('event').classList.contains('hidden')) mgDraw();
+}
+
+function renderMinigame(main, d, member) {
+    const map = d.data.map;
+    if (d.phase === 'intro') {
+        mgFrame = null;
+        main.innerHTML = `<div class="big-note">${MG_RULES[d.kind]}<br><span style="opacity:.8;font-size:15px">Steer with the arrow keys / WASD (or the pad on touch). ` +
+            `🪙 1.5 coins per point + top 3 bonus${d.data.factor > 1 ? ` · <b>×${d.data.factor}</b> for ${d.members.length} players` : ''}</span></div>` +
+            '<canvas id="mg-canvas" class="mg-canvas"></canvas>' +
+            (member ? '' : '<div class="hint">You are watching. Only players on the field when the box was opened can play.</div>');
+        mgDraw();
+        return;
+    }
+    if (d.phase === 'play' || d.phase === 'results') {
+        if (!$('mg-res')) main.innerHTML = '<div class="mg-top" id="mg-top"></div><canvas id="mg-canvas" class="mg-canvas"></canvas><div id="mg-res"></div>';
+        const r = d.phase === 'results' && d.data.rewards && d.data.rewards[evMe()];
+        $('mg-res').innerHTML = d.phase === 'results'
+            ? `<div class="big-note">🏁 Time is up!</div>` + (r ? `<div class="result cash">+${r.coins} coins · +${r.length} length</div>` : '')
+            : '';
+        mgDraw();
+        return;
+    }
+    if (d.phase === 'awards') return renderPodium(main, d);
+}
+
+function mgDraw() {
+    const cv = $('mg-canvas');
+    if (!cv || !ev || !ev.data.map) return;
+    const map = ev.data.map;
+    const cell = Math.max(8, Math.floor(Math.min(720 / map.w, 480 / map.h)));
+    if (cv.width !== map.w * cell) {
+        cv.width = map.w * cell;
+        cv.height = map.h * cell;
+    }
+    const c = cv.getContext('2d');
+    c.fillStyle = '#0b1210';
+    c.fillRect(0, 0, cv.width, cv.height);
+    // Gitter
+    c.strokeStyle = 'rgba(255,255,255,.04)';
+    for (let x = 0; x <= map.w; x++) { c.beginPath(); c.moveTo(x * cell, 0); c.lineTo(x * cell, cv.height); c.stroke(); }
+    for (let y = 0; y <= map.h; y++) { c.beginPath(); c.moveTo(0, y * cell); c.lineTo(cv.width, y * cell); c.stroke(); }
+    // Waende
+    c.fillStyle = ev.kind === 'maze' ? '#3b4a6b' : '#44505f';
+    for (const k of map.walls) c.fillRect((k % map.w) * cell, Math.floor(k / map.w) * cell, cell, cell);
+    // Ziel
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    if (map.goal) {
+        c.font = `${cell}px system-ui`;
+        c.fillText('🏁', (map.goal.x + .5) * cell, (map.goal.y + .55) * cell);
+    }
+    const f = mgFrame;
+    if (!f) return;
+    // Muenzen
+    c.font = `${Math.round(cell * .85)}px system-ui`;
+    for (let i = 0; i < f.coins.length; i += 2) c.fillText('🪙', (f.coins[i] + .5) * cell, (f.coins[i + 1] + .55) * cell);
+    // Schlangen: eigene zuletzt (oben), tote halb durchsichtig
+    const me = evMe();
+    const list = [...f.snakes].sort((a, b) => (a.id === me) - (b.id === me));
+    for (const s of list) {
+        c.globalAlpha = s.a ? 1 : .3;
+        c.fillStyle = s.c || '#00ff88';
+        for (let i = s.b.length - 2; i >= 0; i -= 2) {
+            const head = i === 0;
+            const pad = head ? 0 : cell * .12;
+            c.fillRect(s.b[i] * cell + pad, s.b[i + 1] * cell + pad, cell - 2 * pad, cell - 2 * pad);
+        }
+        // Kopf mit Rahmen, eigener weiss
+        c.strokeStyle = s.id === me ? '#fff' : 'rgba(0,0,0,.6)';
+        c.lineWidth = s.id === me ? 2 : 1;
+        c.strokeRect(s.b[0] * cell + 1, s.b[1] * cell + 1, cell - 2, cell - 2);
+        // Name ueber dem Kopf
+        c.globalAlpha = s.a ? .9 : .3;
+        c.font = `bold ${Math.max(10, Math.round(cell * .7))}px system-ui`;
+        c.fillStyle = '#fff';
+        c.fillText(s.n + (ev.kind === 'coinrush' ? ` ${s.k}` : s.f ? ' 🏁' : ''), (s.b[0] + .5) * cell, s.b[1] * cell - cell * .5);
+    }
+    c.globalAlpha = 1;
+    // Kopfzeile: eigener Stand
+    const mine = f.snakes.find(s => s.id === me);
+    if ($('mg-top') && mine) {
+        $('mg-top').textContent = ev.kind === 'coinrush' ? `🪙 ${mine.k} coins${mine.a ? '' : ' · respawning…'}`
+            : ev.kind === 'maze' ? (mine.f ? `🏁 You made it! (#${f.fin.indexOf(me) + 1})` : 'Find the 🏁')
+            : mine.a ? `⚡ ${f.snakes.filter(s => s.a).length} still alive` : '💥 You are out';
+    }
 }
 
 // --- Where is it? (Weltkarte, equirectangular: x = lon + 180, y = 90 - lat) ---
