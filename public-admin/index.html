@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Snake and Gamba · Admin</title>
+<link rel="icon" href="/logo.png">
+<style>
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+:root {
+    --bg: #050807; --panel: #0a100d; --line: rgba(0,255,140,.22); --acc: #00ff88;
+    --gold: #ffd23f; --red: #ff5b5b; --text: #e8f5ee; --dim: #8fa89a;
+}
+body {
+    margin: 0; min-height: 100vh; color: var(--text); background: var(--bg);
+    font: 15px/1.45 system-ui, sans-serif;
+}
+header {
+    display: flex; align-items: center; gap: 14px; padding: 12px 20px;
+    border-bottom: 1px solid var(--line); background: #070c0a; position: sticky; top: 0; z-index: 5;
+}
+header img { width: 42px; height: 42px; border-radius: 50%; border: 2px solid var(--acc); }
+header h1 { margin: 0; font-size: 20px; }
+header .stats { margin-left: auto; display: flex; gap: 16px; font-size: 14px; color: var(--dim); flex-wrap: wrap; }
+header .stats b { color: var(--text); }
+nav { display: flex; gap: 6px; padding: 12px 20px 0; }
+nav button { position: relative; }
+nav button.on { background: var(--acc); color: #04130b; }
+.badge { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 6px; border-radius: 10px; background: var(--red); color: #fff; font-size: 12px; }
+main { padding: 16px 20px 40px; }
+button {
+    font: inherit; font-weight: 700; color: var(--text); background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.18); border-radius: 7px; padding: 6px 12px; cursor: pointer;
+}
+button:hover { border-color: var(--acc); }
+button.primary { background: var(--acc); color: #04130b; border: 0; }
+button.gold { background: var(--gold); color: #2a1a00; border: 0; }
+button.danger { background: rgba(255,91,91,.15); border-color: rgba(255,91,91,.5); color: #ffb3b3; }
+button:disabled { opacity: .45; cursor: default; }
+input, textarea, select {
+    font: inherit; color: var(--text); background: #0d1310; border: 1px solid var(--line);
+    border-radius: 7px; padding: 7px 9px; outline: none;
+}
+input:focus, textarea:focus { border-color: var(--acc); }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 7px 8px; border-bottom: 1px solid rgba(255,255,255,.06); text-align: left; white-space: nowrap; }
+th { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+tr:hover td { background: rgba(0,255,140,.03); }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 7px; vertical-align: -1px; }
+.toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.muted { color: var(--dim); }
+.msg { min-height: 1.3em; font-size: 14px; }
+.msg.ok { color: var(--acc); } .msg.err { color: var(--red); }
+
+/* Konto-Dialog */
+dialog { background: var(--panel); color: var(--text); border: 1px solid var(--acc); border-radius: 12px; padding: 18px; width: min(480px, 94vw); }
+dialog::backdrop { background: rgba(0,0,0,.6); }
+dialog h2 { margin: 0 0 10px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+.big { font-size: 26px; font-weight: 900; color: var(--gold); }
+
+/* Tickets */
+.tk { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 14px; align-items: start; }
+.tk-list { display: flex; flex-direction: column; gap: 6px; max-height: calc(100vh - 190px); overflow-y: auto; }
+.tk-item { text-align: left; font-weight: 400; display: flex; flex-direction: column; gap: 2px; padding: 9px 10px; }
+.tk-item.on { border-color: var(--acc); background: rgba(0,255,140,.07); }
+.tk-item .top { display: flex; justify-content: space-between; gap: 8px; }
+.tk-item b { font-weight: 800; }
+.tk-item.unread b::after { content: ' ●'; color: var(--red); }
+.tk-item small { color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st { font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 8px; }
+.st.open { background: rgba(0,255,140,.18); color: var(--acc); }
+.st.closed { background: rgba(255,255,255,.1); color: var(--dim); }
+.thread { display: flex; flex-direction: column; gap: 10px; max-height: calc(100vh - 330px); overflow-y: auto; padding: 4px; }
+.bubble { max-width: 80%; padding: 9px 12px; border-radius: 12px; white-space: pre-wrap; word-wrap: break-word; }
+.bubble.user { align-self: flex-start; background: rgba(255,255,255,.07); border-bottom-left-radius: 3px; }
+.bubble.admin { align-self: flex-end; background: rgba(0,255,140,.14); border: 1px solid rgba(0,255,140,.3); border-bottom-right-radius: 3px; }
+.bubble small { display: block; margin-top: 4px; font-size: 11px; color: var(--dim); }
+.reply { display: flex; gap: 8px; margin-top: 10px; }
+.reply textarea { flex: 1; min-height: 70px; resize: vertical; }
+@media (max-width: 860px) { .tk { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+    <img src="/logo.png" alt="">
+    <h1>Snake and Gamba · Admin</h1>
+    <div class="stats" id="stats"></div>
+</header>
+<nav>
+    <button type="button" data-tab="users" class="on">👥 Accounts</button>
+    <button type="button" data-tab="tickets">💬 Tickets<span class="badge" id="tk-badge" hidden></span></button>
+    <button type="button" data-tab="log">📜 Log</button>
+</nav>
+<main>
+    <section id="tab-users">
+        <div class="toolbar">
+            <input id="u-search" placeholder="Search name…" autocomplete="off">
+            <select id="u-sort">
+                <option value="coins">sort: coins</option>
+                <option value="lastSeen">sort: last seen</option>
+                <option value="name">sort: name</option>
+                <option value="spins">sort: spins</option>
+            </select>
+            <span class="muted" id="u-count"></span>
+        </div>
+        <div class="panel" style="overflow-x:auto">
+            <table>
+                <thead><tr>
+                    <th>Name</th><th class="num">Coins</th><th>Last seen</th><th class="num">Spins</th>
+                    <th class="num">Biggest win</th><th class="num">Best score</th><th class="num">Kills</th><th>Daily</th><th></th>
+                </tr></thead>
+                <tbody id="u-body"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <section id="tab-tickets" hidden>
+        <div class="tk">
+            <div>
+                <div class="toolbar">
+                    <select id="tk-filter">
+                        <option value="open">open</option>
+                        <option value="closed">closed</option>
+                        <option value="all">all</option>
+                    </select>
+                </div>
+                <div class="tk-list" id="tk-list"></div>
+            </div>
+            <div class="panel" id="tk-view"><span class="muted">Pick a ticket on the left.</span></div>
+        </div>
+    </section>
+
+    <section id="tab-log" hidden>
+        <div class="panel" style="overflow-x:auto">
+            <table>
+                <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Target</th><th>Detail</th></tr></thead>
+                <tbody id="log-body"></tbody>
+            </table>
+        </div>
+    </section>
+</main>
+
+<dialog id="dlg">
+    <h2 id="d-name"></h2>
+    <div class="muted" id="d-info"></div>
+    <div class="row">Coins: <span class="big" id="d-coins"></span></div>
+    <div class="row">
+        <button type="button" data-add="100">+100</button>
+        <button type="button" data-add="1000">+1k</button>
+        <button type="button" data-add="10000">+10k</button>
+        <button type="button" data-add="100000">+100k</button>
+        <button type="button" data-add="-1000">−1k</button>
+    </div>
+    <div class="row">
+        <input id="d-amount" type="number" step="1" placeholder="amount" style="width:140px">
+        <button type="button" class="primary" id="d-give">Give</button>
+        <button type="button" id="d-take">Take</button>
+        <button type="button" class="gold" id="d-set">Set to</button>
+    </div>
+    <div class="row"><input id="d-note" placeholder="note for the log (optional)" style="flex:1"></div>
+    <hr style="border-color:rgba(255,255,255,.1)">
+    <div class="row">
+        <button type="button" id="d-daily">Reset daily wheel</button>
+        <button type="button" id="d-logout">Log out everywhere</button>
+        <button type="button" class="danger" id="d-delete">Delete account…</button>
+    </div>
+    <div class="msg" id="d-msg"></div>
+    <div class="row" style="justify-content:flex-end"><button type="button" id="d-close">Close</button></div>
+</dialog>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = n => Number(n).toLocaleString('en-US');
+const ago = t => {
+    if (!t) return '–';
+    const s = (Date.now() - t) / 1000;
+    if (s < 90) return 'just now';
+    if (s < 5400) return Math.round(s / 60) + ' min ago';
+    if (s < 129600) return Math.round(s / 3600) + ' h ago';
+    return Math.round(s / 86400) + ' d ago';
+};
+const when = t => new Date(t).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' });
+
+async function api(path, opts) {
+    opts = opts || {};
+    const r = await fetch(path, {
+        method: opts.method || 'GET',
+        headers: opts.body ? { 'Content-Type': 'application/json', 'X-Admin': '1' } : { 'X-Admin': '1' },
+        body: opts.body ? JSON.stringify(opts.body) : undefined
+    });
+    const j = await r.json().catch(() => ({ error: 'bad response' }));
+    if (!r.ok) throw new Error(j.error || r.status);
+    return j;
+}
+
+// ---------- Tabs ----------
+
+let tab = 'users';
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+    tab = b.dataset.tab;
+    document.querySelectorAll('nav button').forEach(x => x.classList.toggle('on', x === b));
+    for (const t of ['users', 'tickets', 'log']) $('tab-' + t).hidden = t !== tab;
+    refresh();
+});
+
+// ---------- Overview ----------
+
+async function loadOverview() {
+    const o = await api('/api/overview');
+    const tb = o.online.tables;
+    $('stats').innerHTML =
+        `<span>🟢 <b>${o.online.loggedIn}</b> logged in · <b>${o.online.playing}</b> on the field · <b>${o.online.connections}</b> tabs</span>` +
+        `<span>🃏 <b>${(tb.blackjack || []).length}</b> · 🎡 <b>${(tb.roulette || []).length}</b></span>` +
+        `<span>👥 <b>${o.accounts}</b> accounts · 🪙 <b>${fmt(o.coins)}</b></span>` +
+        `<span>💬 <b>${o.ticketsOpen}</b> open</span>` +
+        `<span class="muted">${esc(o.you)}</span>`;
+    $('tk-badge').hidden = !o.ticketsUnread;
+    $('tk-badge').textContent = o.ticketsUnread;
+    document.title = (o.ticketsUnread ? `(${o.ticketsUnread}) ` : '') + 'Snake and Gamba · Admin';
+}
+
+// ---------- Accounts ----------
+
+let users = [];
+async function loadUsers() {
+    users = (await api('/api/users')).users;
+    drawUsers();
+}
+
+function drawUsers() {
+    const q = $('u-search').value.trim().toLowerCase();
+    const key = $('u-sort').value;
+    const list = users.filter(u => !q || u.name.toLowerCase().includes(q)).sort((a, b) =>
+        key === 'name' ? a.name.localeCompare(b.name) :
+        key === 'spins' ? b.stats.spins - a.stats.spins :
+        (b[key] || 0) - (a[key] || 0));
+    $('u-count').textContent = `${list.length} of ${users.length}`;
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date());
+    $('u-body').innerHTML = list.map(u => `<tr>
+        <td><span class="dot" style="background:${esc(u.color || '#555')}"></span><b>${esc(u.name)}</b></td>
+        <td class="num" style="color:var(--gold);font-weight:800">${fmt(u.coins)}</td>
+        <td>${ago(u.lastSeen)}</td>
+        <td class="num">${fmt(u.stats.spins)}</td>
+        <td class="num">${fmt(u.stats.biggestWin)}</td>
+        <td class="num">${fmt(u.stats.bestScore)}</td>
+        <td class="num">${fmt(u.stats.kills)}</td>
+        <td>${u.daily === today ? '✔ spun' : '<span class="muted">ready</span>'}</td>
+        <td><button type="button" data-user="${esc(u.key)}">Manage</button></td>
+    </tr>`).join('');
+}
+$('u-search').oninput = drawUsers;
+$('u-sort').onchange = drawUsers;
+$('u-body').onclick = e => {
+    const b = e.target.closest('[data-user]');
+    if (b) openUser(b.dataset.user);
+};
+
+let cur = null;
+function openUser(key) {
+    cur = users.find(u => u.key === key);
+    if (!cur) return;
+    $('d-name').innerHTML = `<span class="dot" style="background:${esc(cur.color || '#555')}"></span>${esc(cur.name)}`;
+    $('d-info').textContent = `created ${cur.created ? when(cur.created) : '–'} · last seen ${ago(cur.lastSeen)} · ${cur.sessions} active sessions`;
+    $('d-coins').textContent = fmt(cur.coins);
+    $('d-msg').textContent = '';
+    $('d-amount').value = '';
+    $('dlg').showModal();
+}
+
+async function coins(body) {
+    try {
+        body.note = $('d-note').value;
+        const r = await api(`/api/users/${encodeURIComponent(cur.key)}/coins`, { method: 'POST', body });
+        cur.coins = r.coins;
+        $('d-coins').textContent = fmt(r.coins);
+        msg('d-msg', `Saved – ${cur.name} now has ${fmt(r.coins)} coins`, 'ok');
+        loadUsers();
+        loadOverview();
+    } catch (e) {
+        msg('d-msg', e.message, 'err');
+    }
+}
+document.querySelectorAll('[data-add]').forEach(b => b.onclick = () => coins({ delta: Number(b.dataset.add) }));
+$('d-give').onclick = () => { const v = Math.floor(Number($('d-amount').value)); if (v > 0) coins({ delta: v }); };
+$('d-take').onclick = () => { const v = Math.floor(Number($('d-amount').value)); if (v > 0) coins({ delta: -v }); };
+$('d-set').onclick = () => { const v = Math.floor(Number($('d-amount').value)); if (v >= 0 && $('d-amount').value !== '') coins({ set: v }); };
+$('d-daily').onclick = async () => {
+    try { await api(`/api/users/${encodeURIComponent(cur.key)}/reset-daily`, { method: 'POST', body: {} }); msg('d-msg', 'Daily wheel is ready again', 'ok'); loadUsers(); }
+    catch (e) { msg('d-msg', e.message, 'err'); }
+};
+$('d-logout').onclick = async () => {
+    if (!confirm(`Log ${cur.name} out on all devices?`)) return;
+    try { const r = await api(`/api/users/${encodeURIComponent(cur.key)}/logout-all`, { method: 'POST', body: {} }); msg('d-msg', `${r.sessions} sessions ended`, 'ok'); }
+    catch (e) { msg('d-msg', e.message, 'err'); }
+};
+$('d-delete').onclick = async () => {
+    const typed = prompt(`Delete ${cur.name} for good? Coins and stats are gone.\nType the name to confirm:`);
+    if (typed === null) return;
+    try {
+        await api(`/api/users/${encodeURIComponent(cur.key)}`, { method: 'DELETE', body: { confirm: typed } });
+        $('dlg').close();
+        loadUsers();
+        loadOverview();
+    } catch (e) {
+        msg('d-msg', e.message, 'err');
+    }
+};
+$('d-close').onclick = () => $('dlg').close();
+
+function msg(id, text, kind) {
+    $(id).textContent = text;
+    $(id).className = 'msg ' + (kind || '');
+}
+
+// ---------- Tickets ----------
+
+let tickets = [];
+let openId = null;
+let openCount = -1;
+
+async function loadTickets() {
+    tickets = (await api('/api/tickets')).tickets;
+    const f = $('tk-filter').value;
+    const list = tickets.filter(t => f === 'all' || t.status === f);
+    $('tk-list').innerHTML = list.length ? list.map(t => `<button type="button" class="tk-item ${t.id === openId ? 'on' : ''} ${t.unread ? 'unread' : ''}" data-t="${t.id}">
+        <span class="top"><b>#${t.id} ${esc(t.subject)}</b><span class="st ${t.status}">${t.status}</span></span>
+        <small>${esc(t.name)} · ${t.count} msg · ${ago(t.updated)}</small>
+        ${t.last ? `<small>${t.last.from === 'admin' ? '↩ you: ' : ''}${esc(t.last.text)}</small>` : ''}
+    </button>`).join('') : '<span class="muted">Nothing here.</span>';
+    if (openId) loadTicket(openId, true);
+}
+$('tk-filter').onchange = loadTickets;
+$('tk-list').onclick = e => {
+    const b = e.target.closest('[data-t]');
+    if (!b) return;
+    openId = Number(b.dataset.t);
+    openCount = -1;
+    loadTicket(openId);
+    loadTickets();
+};
+
+async function loadTicket(id, quiet) {
+    const t = (await api('/api/tickets/' + id)).ticket;
+    // Nicht neu zeichnen, wenn sich nichts geaendert hat (sonst geht der Entwurf verloren)
+    if (quiet && t.messages.length === openCount) return;
+    openCount = t.messages.length;
+    const draft = $('tk-text') ? $('tk-text').value : '';
+    $('tk-view').innerHTML =
+        `<div class="toolbar" style="justify-content:space-between"><div><b style="font-size:18px">#${t.id} ${esc(t.subject)}</b><br>` +
+        `<span class="muted">${esc(t.name)} · opened ${when(t.created)}</span></div>` +
+        `<button type="button" id="tk-toggle" class="${t.status === 'open' ? '' : 'primary'}">${t.status === 'open' ? '✔ Close ticket' : 'Reopen'}</button></div>` +
+        '<div class="thread" id="tk-thread">' + t.messages.map(m =>
+            `<div class="bubble ${m.from}">${esc(m.text)}<small>${m.from === 'admin' ? 'Support' : esc(t.name)} · ${when(m.at)}</small></div>`).join('') + '</div>' +
+        `<form class="reply" id="tk-form"><textarea id="tk-text" maxlength="1500" placeholder="Reply as Support… (Ctrl+Enter sends)"></textarea>` +
+        `<button type="submit" class="primary">Send</button></form><div class="msg" id="tk-msg"></div>`;
+    $('tk-text').value = draft;
+    $('tk-thread').scrollTop = 1e9;
+    $('tk-toggle').onclick = async () => {
+        await api(`/api/tickets/${id}/status`, { method: 'POST', body: { status: t.status === 'open' ? 'closed' : 'open' } });
+        openCount = -1;
+        loadTickets();
+        loadOverview();
+    };
+    $('tk-form').onsubmit = async e => {
+        e.preventDefault();
+        const text = $('tk-text').value.trim();
+        if (!text) return;
+        try {
+            await api(`/api/tickets/${id}/reply`, { method: 'POST', body: { text } });
+            $('tk-text').value = '';
+            openCount = -1;
+            loadTicket(id);
+            loadTickets();
+        } catch (err) {
+            msg('tk-msg', err.message, 'err');
+        }
+    };
+    $('tk-text').onkeydown = e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) $('tk-form').requestSubmit(); };
+}
+
+// ---------- Log ----------
+
+async function loadLog() {
+    const l = (await api('/api/log')).log;
+    $('log-body').innerHTML = l.map(x => `<tr><td>${when(x.at)}</td><td>${esc(x.email)}</td><td>${esc(x.action)}</td><td>${esc(x.target || '')}</td>` +
+        `<td class="muted">${esc(x.detail ? JSON.stringify(x.detail) : '')}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">Nothing yet.</td></tr>';
+}
+
+// ---------- Refresh ----------
+
+async function refresh() {
+    try {
+        await loadOverview();
+        if (tab === 'users' && !$('dlg').open) await loadUsers();
+        if (tab === 'tickets') await loadTickets();
+        if (tab === 'log') await loadLog();
+    } catch (e) {
+        $('stats').innerHTML = `<span style="color:var(--red)">⚠ ${esc(e.message)}</span>`;
+    }
+}
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>

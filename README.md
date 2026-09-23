@@ -32,6 +32,9 @@ Live: **`snake.flashkeks.com`** auf `edge` (Netcup).
 | `places.js` | Orte fuer „Where is it?“ (Name, Hinweis, Koordinaten) |
 | `estimates.js` | Schaetzfragen (Frage, Zahl, Einheit, bei Jahreszahlen `tol`) |
 | `public/index.html` | der ganze Browser-Teil in einer Datei |
+| `tickets.js` | Support-Tickets (Spieler ↔ Support), JSON-Datei im Datenordner |
+| `admin.js` | Admin-Interface `admin-snake.flashkeks.com`: eigener HTTP-Server auf 127.0.0.1, prueft das Cloudflare-Access-JWT, JSON-API |
+| `public-admin/index.html` | die Admin-Seite (Konten, Tickets, Protokoll) |
 | `public/img/` | Logo, Favicons, `world.svg` (Landflaechen aus `world-atlas` 110m, equirectangular: x = Laenge + 180, y = 90 − Breite) |
 | `deploy.sh` | auf `edge`: pull, npm bei Bedarf, Syntaxcheck, Dienst neu starten |
 
@@ -373,6 +376,54 @@ aendern, und Antworten, die man belegen kann.
 - **Feed** mit Streak-Ansagen (DOPPELKILL, TRIPLEKILL, RAMPAGE, GODLIKE) und
   Gold-Zeilen fuer seltene Treffer.
 
+## Support-Tickets
+
+Hauptmenue → „💬 Support“ (nur mit Konto). Liste der eigenen Tickets, neues
+Ticket (Betreff bis 80 Zeichen, Text bis 1500), Chatverlauf mit Antworten.
+Gedacht vor allem fuer Verbesserungsvorschlaege. Antwortet der Support,
+kommt die Antwort live an: roter Zaehler am Knopf, Toast und Glocke. Hoechstens
+5 offene Tickets je Konto, 5 neue je Stunde, eine Nachricht je 2 s.
+Geschlossene Tickets nehmen nichts mehr an. Wird ein Konto geloescht,
+bleiben seine Tickets lesbar, der Name bekommt „(deleted)“.
+
+Gespeichert in `DATA_DIR/tickets.json` (wie `accounts.json`: gebuendelt,
+atomar, kaputt = Server startet nicht).
+
+## Admin-Interface (admin-snake.flashkeks.com)
+
+Laeuft im selben Prozess, aber als **eigener HTTP-Server nur auf
+127.0.0.1:`ADMIN_PORT`**, der Spiel-Port kennt keine Admin-Pfade. Ohne
+`ADMIN_PORT` gibt es kein Admin-Interface.
+
+**Zugang, doppelt gesichert, ohne eigenes Passwort:**
+
+1. Cloudflare Access vor `admin-snake.flashkeks.com` (Policy „Kek-Only“,
+   Mail-PIN).
+2. Der Server prueft selbst das Access-JWT aus `Cf-Access-Jwt-Assertion`:
+   RS256-Signatur gegen `https://TEAM.cloudflareaccess.com/cdn-cgi/access/certs`
+   (eine Stunde gemerkt, bei unbekanntem Schluessel neu geholt), Audience =
+   `SNAKE_ADMIN_AUD`, Aussteller, Ablauf, optional nur Mails aus
+   `SNAKE_ADMIN_EMAILS`. Fehlt `SNAKE_ADMIN_TEAM`/`SNAKE_ADMIN_AUD`, lehnt er
+   **alles** ab (403).
+
+Aendernde Aufrufe brauchen zusaetzlich den Header `X-Admin: 1` (gegen CSRF).
+Die Seite setzt ihn selbst.
+
+| Reiter | Was |
+|---|---|
+| Accounts | alle Konten mit Coins, zuletzt gesehen, Spins, groesstem Gewinn, bestem Score, Kills, Daily-Status. „Manage“: Coins geben/nehmen/setzen (mit Notiz), Daily Wheel zuruecksetzen, ueberall abmelden (wirft auch aus Spiel und Tisch), Konto loeschen (Name muss eingetippt werden) |
+| Tickets | offene zuerst, ungelesene markiert, Verlauf, Antworten (Strg+Enter), schliessen/wieder oeffnen |
+| Log | jede aendernde Aktion mit Mail, Ziel und Detail (Coins vorher/nachher) aus `DATA_DIR/admin-log.jsonl` |
+
+Oben: wer eingeloggt ist, wer spielt, wer an welchem Tisch sitzt, Konten,
+Coins gesamt, offene Tickets. Die Seite fragt alle 5 s neu.
+
+API (alles JSON): `GET /api/overview`, `GET /api/users`,
+`POST /api/users/KEY/coins {delta | set, note}`, `POST /api/users/KEY/reset-daily`,
+`POST /api/users/KEY/logout-all`, `DELETE /api/users/KEY {confirm: NAME}`,
+`GET /api/tickets`, `GET /api/tickets/ID`, `POST /api/tickets/ID/reply {text}`,
+`POST /api/tickets/ID/status {status}`, `GET /api/log`.
+
 ## Tests
 
 Nur lokal, nie auf `edge` setzen:
@@ -382,6 +433,10 @@ Nur lokal, nie auf `edge` setzen:
   `testTable {result}` (naechste Roulette-Zahl am Tisch) frei.
 - `SNAKE_EVENT_SPEED=5` laesst alle Event- und Tisch-Phasen fuenfmal schneller
   laufen.
+- `ADMIN_PORT=3101 SNAKE_ADMIN_INSECURE=1` startet das Admin-Interface lokal
+  **ohne** Anmeldepruefung. Nur fuer Tests, nie auf `edge`. Die
+  JWT-Pruefung selbst testet man mit eigenem Schluesselpaar ueber
+  `admin._setCerts([jwk])`.
 - Zwei Browser-Tests (Playwright) muessen getrennte Kontexte nehmen
   (`browser.newContext()`), sonst teilen sie sich den Login-Token im
   localStorage.
@@ -395,7 +450,8 @@ Client → Server: `register`, `login`, `resume {token}`, `logout`,
 `value` bei Guess the number), `tableJoin {kind}`, `tableLeave`,
 `tableAction` (`bet`/`clear` beim Roulette, `bet`/`clear`/`move` beim
 Blackjack), `daily`, `dailyDone`, `crossStart {bet, diff}`, `crossStep`,
-`crossCash`.
+`crossCash`, `tickets`, `ticketNew {subject, text}`, `ticketReply {id, text}`,
+`ticketRead {id}`.
 
 Server → Client: `welcome`, `auth`, `authError`, `authExpired`, `account`,
 `joined`, `joinError`, `left`, `died` (`cause`, `by`, `byId`, `at`), `swapfx`, `cashedout`, `cashoutCancel`, `state`
@@ -404,6 +460,6 @@ Server → Client: `welcome`, `auth`, `authError`, `authExpired`, `account`,
 `spin`, `spinError`, `spin2`, `spin2Error`, `event`, `eventEnd`, `eventError`, `resume`,
 `table` (Tisch-Zustand, nur an die am Tisch, mit `you`), `tableLeft`,
 `tableError`, `lobby`, `daily`, `dailyError`, `cross` (`state`: run, dead,
-cashed), `crossError`. `welcome` bringt dazu `wheel`, `cross` und `lobby`.
+cashed), `crossError`, `tickets` (`list`, `unread`, `open`), `ticketError`. `welcome` bringt dazu `wheel`, `cross` und `lobby`.
 
 Die Oberflaeche ist seit 23.09.2026 englisch, diese Doku bleibt deutsch.

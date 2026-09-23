@@ -145,12 +145,16 @@ module.exports = function createAccounts(dataDir) {
             if (!u || !crypto.timingSafeEqual(hash, Buffer.from(u.hash, 'hex'))) {
                 return { error: 'Wrong name or password' };
             }
+            u.lastSeen = Date.now();
+            touch();
             return { key, token: createSession(key), user: publicUser(u) };
         },
 
         resume(token) {
             const s = db.sessions[sha256(String(token || ''))];
             if (!s || s.expires < Date.now() || !db.users[s.user]) return null;
+            db.users[s.user].lastSeen = Date.now();
+            touch();
             return { key: s.user, user: publicUser(db.users[s.user]) };
         },
 
@@ -219,6 +223,55 @@ module.exports = function createAccounts(dataDir) {
             u.stats = { ...newStats(), ...u.stats };
             fn(u.stats);
             touch();
+        },
+
+        // ---------- Admin (nur ueber das Admin-Interface) ----------
+
+        // Alle Konten fuer die Admin-Liste, ohne Hash und Salt
+        adminList() {
+            return Object.entries(db.users).map(([key, u]) => ({
+                key, name: u.name, coins: u.coins, color: u.color || null,
+                created: u.created || null, lastSeen: u.lastSeen || null,
+                daily: u.daily || null, stats: { ...newStats(), ...u.stats },
+                sessions: Object.values(db.sessions).filter(x => x.user === key && x.expires > Date.now()).length
+            }));
+        },
+
+        adminSetCoins(key, n) {
+            const u = db.users[key];
+            if (!u) return null;
+            u.coins = Math.max(0, Math.floor(n));
+            touch();
+            return u.coins;
+        },
+
+        adminResetDaily(key) {
+            const u = db.users[key];
+            if (!u) return false;
+            delete u.daily;
+            touch();
+            return true;
+        },
+
+        // Alle Sessions eines Kontos weg; offene Verbindungen bleiben, bis sie neu laden
+        adminLogoutAll(key) {
+            let n = 0;
+            for (const [k, s] of Object.entries(db.sessions)) {
+                if (s.user === key) {
+                    delete db.sessions[k];
+                    n++;
+                }
+            }
+            touch();
+            return n;
+        },
+
+        adminDelete(key) {
+            if (!db.users[key]) return false;
+            delete db.users[key];
+            for (const [k, s] of Object.entries(db.sessions)) if (s.user === key) delete db.sessions[k];
+            touch();
+            return true;
         },
 
         // Bestenlisten: nur echte Konten

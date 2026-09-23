@@ -15,12 +15,15 @@ function validBet(n) {
 const createEvents = require('./events');
 const createTables = require('./tables');
 const casino = require('./casino');
+const createTickets = require('./tickets');
+const startAdmin = require('./admin');
 
 const PORT = Number(process.env.PORT) || 3000;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const PUBLIC = path.join(__dirname, 'public');
 
 const accounts = createAccounts(DATA_DIR);
+const tickets = createTickets(DATA_DIR);
 
 const server = http.createServer((req, res) => {
     const url = req.url.split('?')[0];
@@ -732,6 +735,7 @@ async function handle(c, data) {
             if (r.error) return send(c, { type: 'authError', error: r.error });
             c.account = r.key;
             send(c, { type: 'auth', token: r.token, user: r.user });
+            sendTickets(c);
             feed(`🎉 ${r.user.name} just signed up`);
             pushTop(true);
             return;
@@ -744,6 +748,7 @@ async function handle(c, data) {
             if (c.joined) return send(c, { type: 'authError', error: 'Leave the game first' });
             c.account = r.key;
             send(c, { type: 'auth', token: r.token, user: r.user });
+            sendTickets(c);
             return;
         }
 
@@ -752,6 +757,7 @@ async function handle(c, data) {
             if (!r) return send(c, { type: 'authExpired' });
             c.account = r.key;
             send(c, { type: 'auth', token: data.token, user: r.user });
+            sendTickets(c);
             return;
         }
 
@@ -885,6 +891,40 @@ async function handle(c, data) {
         case 'testEvent':
             if (process.env.SNAKE_TEST === '1' && !events.active()) {
                 startEvent(data.kind);
+            }
+            return;
+
+        // --- Support-Tickets ---
+
+        case 'tickets':
+            if (c.account) sendTickets(c);
+            return;
+
+        case 'ticketNew': {
+            if (!c.account) return send(c, { type: 'ticketError', error: 'Accounts only' });
+            if (!allow('ticket:' + c.account, 5, 3600e3)) return send(c, { type: 'ticketError', error: 'Too many new tickets, try again later' });
+            const u = accounts.get(c.account);
+            const r = tickets.create(c.account, u.name, data.subject, data.text);
+            if (r.error) return send(c, { type: 'ticketError', error: r.error });
+            sendTickets(c, r.ticket.id);
+            return;
+        }
+
+        case 'ticketReply': {
+            if (!c.account) return;
+            const now = Date.now();
+            if (now - (c.lastTicketMsg || 0) < 2000) return send(c, { type: 'ticketError', error: 'Slow down a little' });
+            c.lastTicketMsg = now;
+            const r = tickets.userReply(c.account, Number(data.id), data.text);
+            if (r.error) return send(c, { type: 'ticketError', error: r.error });
+            sendTickets(c, r.ticket.id);
+            return;
+        }
+
+        case 'ticketRead':
+            if (c.account) {
+                tickets.markRead(c.account, Number(data.id));
+                sendTickets(c);
             }
             return;
 
@@ -1259,6 +1299,48 @@ const tables = createTables({
     onChange: () => broadcast({ type: 'lobby', lobby: tables.lobby() })
 });
 
+// ---------- Support-Tickets ----------
+
+function sendTickets(c, open) {
+    if (!c.account) return;
+    send(c, { type: 'tickets', list: tickets.listFor(c.account), unread: tickets.unreadFor(c.account), open: open || null });
+}
+
+// ---------- Admin-Interface (admin-snake.flashkeks.com) ----------
+
+function clientsOf(key) {
+    return [...clients.values()].filter(c => c.account === key);
+}
+
+startAdmin({
+    accounts,
+    tickets,
+    dataDir: DATA_DIR,
+    publicDir: PUBLIC,
+    online: () => ({
+        connections: clients.size,
+        playing: players.size,
+        loggedIn: new Set([...clients.values()].filter(c => c.account).map(c => c.account)).size,
+        tables: tables.lobby()
+    }),
+    pushAccount: key => clientsOf(key).forEach(c => sendAccount(c)),
+    pushTicket: key => clientsOf(key).forEach(c => sendTickets(c)),
+    // Konto abmelden (Logout ueberall, Loeschen): raus aus Feld, Tisch und Crossy
+    kickAccount: key => clientsOf(key).forEach(c => {
+        const p = players.get(c.id);
+        if (p) {
+            recordScore(p);
+            events.leave(c.id);
+            removeFromField(c.id);
+            send(c, { type: 'left' });
+        }
+        tables.leave(c);
+        crossClose(c);
+        c.account = null;
+        send(c, { type: 'authExpired' });
+    })
+});
+
 function crossCash(c, auto) {
     const g = c.cross;
     c.cross = null;
@@ -1586,6 +1668,7 @@ setInterval(gameTick, TICK);
 
 function shutdown() {
     accounts.save(true);
+    tickets.save(true);
     process.exit(0);
 }
 process.on('SIGTERM', shutdown);
