@@ -2273,7 +2273,7 @@ button:disabled {
 .menu-sect.arena {
     grid-column: 1 / -1;
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
     column-gap: 14px;
     border-color: rgba(255,91,214,.4);
@@ -2284,11 +2284,28 @@ button:disabled {
     grid-column: 1 / -1;
 }
 
-#sh-play {
-    font-size: 18px;
-    padding: 10px;
+.sh-rooms {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+
+.sh-rooms button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 15px;
+    padding: 6px 12px;
     background: #ff5bd6;
     color: #fff;
+    line-height: 1.15;
+}
+
+.sh-rooms button small {
+    font-size: 11px;
+    font-weight: 600;
+    opacity: .85;
 }
 
 /* ---------- Shooter-Arena ---------- */
@@ -2314,19 +2331,103 @@ button:disabled {
     gap: 10px;
 }
 
+.sh-view {
+    position: relative;
+    min-width: 0;
+}
+
 #sh-canvas {
     display: block;
-    width: min(100%, calc((100vh - 120px) * 1.6));
-    margin: 0 auto;
-    height: auto;
-    aspect-ratio: 8 / 5;
+    width: 100%;
+    height: min(calc(100vh - 150px), max(62vw, 55vh));
     min-width: 0;
-    min-height: 0;
+    min-height: 260px;
     border-radius: 8px;
-    cursor: crosshair;
+    cursor: none;
     touch-action: none;
     image-rendering: auto;
+    border: 0;
+    background: #070a0f;
 }
+
+#sh-retry {
+    position: absolute;
+    left: 50%;
+    top: calc(50% + 50px);
+    transform: translateX(-50%);
+    font-size: 18px;
+}
+
+#sh-case {
+    font-size: 14px;
+    padding: 6px 12px;
+}
+
+.sh-caseview {
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    top: 30%;
+    height: 150px;
+    overflow: hidden;
+    border-radius: 12px;
+    background: rgba(8,10,16,.94);
+    border: 2px solid #ffd23f;
+    box-shadow: 0 0 40px rgba(255,210,63,.4);
+}
+
+.sh-strip {
+    display: flex;
+    position: absolute;
+    top: 14px;
+    left: 0;
+    will-change: transform;
+}
+
+.sh-item {
+    flex: none;
+    width: 90px;
+    height: 90px;
+    margin-right: 6px;
+    border-radius: 10px;
+    background: linear-gradient(160deg, #26304a, #151b2a);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+}
+
+.sh-item small {
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.sh-pointer {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 36px;
+    width: 3px;
+    background: #ffd23f;
+    transform: translateX(-50%);
+    z-index: 2;
+    box-shadow: 0 0 10px #ffd23f;
+}
+
+.sh-caseres {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 8px;
+    text-align: center;
+    font-weight: 700;
+}
+
+.rar-common { color: #cfd8e3; }
+.rar-rare { color: #3da5ff; }
+.rar-epic { color: #a970ff; }
+.rar-legendary { color: #ffd23f; }
 
 #sh-stats {
     font-weight: 800;
@@ -3757,8 +3858,12 @@ body.touch input, body.touch textarea {
                         </div>
                         <div class="menu-sect arena">
                             <h3>🔫 Arena</h3>
-                            <div class="gamba-list">Top-down shooter · +50 coins per kill</div>
-                            <button type="button" id="sh-play">Enter the arena →</button>
+                            <div class="gamba-list">Top-down shooter · bounties in the stake arenas</div>
+                            <div class="sh-rooms">
+                                <button type="button" data-shroom="free">Free<small>empty</small></button>
+                                <button type="button" data-shroom="s100">🪙 100/life<small>empty</small></button>
+                                <button type="button" data-shroom="s1000">🪙 1k/life<small>empty</small></button>
+                            </div>
                             <div class="gamba-live" id="sh-live"></div>
                             <div class="msg" id="sh-menu-msg"></div>
                         </div>
@@ -3835,21 +3940,30 @@ body.touch input, body.touch textarea {
                 </div>
             </div>
 
-            <!-- Shooter-Arena (#7) -->
+            <!-- Shooter-Arena (#7, Einsaetze #12) -->
             <div id="shooter" class="overlay hidden">
                 <div class="card">
                     <div class="s2-head">
-                        <div class="cs-title" style="color:#ff5bd6;text-shadow:0 0 16px rgba(255,91,214,.5)">🔫 Arena</div>
+                        <div class="cs-title" id="sh-title" style="color:#ff5bd6;text-shadow:0 0 16px rgba(255,91,214,.5)">🔫 Arena</div>
                         <span id="sh-stats"></span>
+                        <button type="button" class="gold" id="sh-case" hidden title="Random gear for this life (E)">🎁 Case</button>
                         <span class="coins">🪙 <span id="sh-coins">–</span></span>
                         <button type="button" class="s2-icon" id="sh-leave" title="Leave the arena">✕</button>
                     </div>
                     <div class="sh-main">
-                        <canvas id="sh-canvas" width="1600" height="1000"></canvas>
-                        <div>
+                        <div class="sh-view">
+                            <canvas id="sh-canvas"></canvas>
+                            <button type="button" class="gold" id="sh-retry" hidden>Try again</button>
+                            <div class="sh-caseview" id="sh-caseview" hidden>
+                                <div class="sh-pointer"></div>
+                                <div class="sh-strip" id="sh-strip"></div>
+                                <div class="sh-caseres" id="sh-caseres"></div>
+                            </div>
+                        </div>
+                        <div class="sh-side">
                             <h3 style="margin:0 0 4px">Players</h3>
                             <table class="sh-board"><tbody id="sh-board"></tbody></table>
-                            <div class="hint" style="margin-top:8px">WASD / arrows move<br>mouse aim, click or Space shoot<br>touch: left = move, right = aim + fire</div>
+                            <div class="hint" style="margin-top:8px">WASD move · mouse aim · click/Space shoot<br>E = case (stake arenas)<br>touch: left stick move, right stick aim + fire</div>
                         </div>
                     </div>
                     <div class="msg" id="sh-msg"></div>
@@ -4272,10 +4386,16 @@ ws.onmessage = event => {
         case 'event': onEvent(data); break;
         case 'mg': onMgFrame(data); break;
         case 'sh': onSh(data); break;
+        case 'shRooms': onShRooms(data.rooms); break;
+        case 'shHit': onShHit(data); break;
+        case 'shHurt': onShHurt(data); break;
+        case 'shCase': onShCase(data); break;
+        case 'shPickup': beep(900, 0.08, 0.05); break;
+        case 'shPong': shRtt = shRtt * .7 + (performance.now() - data.t) * .3; break;
         case 'shJoined': onShJoined(data); break;
         case 'shLeft': onShLeft(data); break;
         case 'shKill': onShKill(data); break;
-        case 'shError': showMsg('sh-menu-msg', data.error, 'err'); break;
+        case 'shError': showMsg(sh ? 'sh-msg' : 'sh-menu-msg', data.error, 'err'); break;
         case 'table': onTable(data); break;
         case 'tableLeft': onTableLeft(); break;
         case 'tableError': showMsg('ev-msg', data.error, 'err'); showMsg('casino-msg', data.error, 'err'); showMsg('pkl-msg', data.error, 'err'); break;
@@ -4472,7 +4592,7 @@ $('del-form').addEventListener('submit', e => {
 // Konto-Seite: Ueberblick plus Tabelle je Spiel (#5)
 const GAME_LABELS = {
     slots: '🎰 Slots', starlight: '🌟 Budget Starlight', crossy: '🐔 Crossy Road', plinko: '🔻 Plinko',
-    daily: '🎁 Daily Wheel', blackjack: '🃏 Blackjack', roulette: '🎡 Roulette', poker: '♠️ Poker', don: '🪙 Double or Nothing'
+    daily: '🎁 Daily Wheel', blackjack: '🃏 Blackjack', roulette: '🎡 Roulette', poker: '♠️ Poker', don: '🪙 Double or Nothing', arena: '🔫 Arena (stakes)'
 };
 
 function fmtN(n) {
@@ -6980,116 +7100,290 @@ const sfx = {
     }
 };
 
-// ---------- Shooter-Arena (#7) ----------
-// Der Server rechnet alles; hier nur Eingaben schicken und die Zustaende
-// (20/s) mit 100 ms Verzoegerung weich zwischen zwei Staenden zeichnen.
+// ---------- Shooter-Arena (#7, Einsaetze #12) ----------
+// Eigene Figur: sofort lokal bewegt (gleiche Waende, gleiches Tempo wie der
+// Server) und nur sanft an den Server angeglichen. Andere: 50 ms verzoegert
+// zwischen zwei Staenden interpoliert. Kugeln: mit Geschwindigkeit
+// weitergerechnet. Kamera folgt der eigenen Figur, Minimap oben links.
 
-let sh = null;              // { id, map } solange man in der Arena ist
-let shSnaps = [];           // [{ t (lokal), players, bullets, pickups }]
+let sh = null;              // { id, room, fee, casePrice, map, weapons } in der Arena
+let shSnaps = [];           // [{ recv, ...Zustand }]
 const shKeys = new Set();
 const shIn = { mx: 0, my: 0, a: 0, f: false };
+let shSeq = 0;
 let shSent = '';
 let shLastSend = 0;
 let shFeed = [];
-let shTouch = { move: null, aim: null };
-const SH_DELAY = 100;
+let shRooms = [];
+let shPred = null;          // { x, y, sp } vorausberechnete eigene Position
+let shHist = [];            // [{ t, x, y }] eigene Positionen der letzten Sekunde
+let shRtt = 80;
+let shMarks = [];           // Treffer-Markierungen { x, y, dmg, kill, t }
+let shHurtAt = 0;
+let shFlashAt = 0;
+let shLastLocalShot = 0;
+let shMouse = null;         // Mausposition in CSS-Pixeln im Canvas
+let shCam = { x: 0, y: 0, s: 1 };
+let shLastFrame = 0;
+let shPingTimer = null;
+const shTouch = { move: null, aim: null };
+const SH_INTERP = 50;
+const SH_ITEM_ICON = { smg: '🔫', rifle: '🪖', shotgun: '💥', sniper: '🎯', deagle: '✨', armor: '🛡️', pistol: '🔫' };
+const SH_ITEM_NAME = { smg: 'SMG', rifle: 'Rifle', shotgun: 'Shotgun', sniper: 'Sniper', deagle: 'Golden Deagle', armor: 'Armor +50', pistol: 'Pistol' };
 
-function shJoinClick() {
+function shJoin(room) {
     unlockAudio();
+    sfxInit();
     showMsg('sh-menu-msg', '');
-    wsSend({ type: 'shJoin', name: $('guest-name').value.trim() });
+    wsSend({ type: 'shJoin', name: $('guest-name').value.trim(), room });
+}
+
+function onShRooms(rooms) {
+    shRooms = rooms;
+    for (const r of rooms) {
+        const el = document.querySelector(`[data-shroom="${r.id}"] small`);
+        if (el) el.textContent = r.players.length ? `${r.players.length} playing` : 'empty';
+    }
+    const n = rooms.reduce((s, r) => s + r.players.length, 0);
+    $('sh-live').textContent = n ? `● ${n} in the arena` : '';
 }
 
 function onShJoined(d) {
-    sh = { id: d.id, map: d.map };
+    sh = { id: d.id, room: d.room, fee: d.fee, casePrice: d.casePrice, map: d.map, weapons: d.weapons };
     shSnaps = [];
+    shPred = null;
+    shHist = [];
+    shMarks = [];
     shFeed = (d.feed || []).map(f => ({ ...f, at: 0 }));
+    $('sh-title').textContent = d.fee ? `🔫 Arena · ${d.fee.toLocaleString('en-US')} per life` : '🔫 Arena · Free';
+    $('sh-case').hidden = !d.fee;
+    $('sh-case').textContent = `🎁 Case · ${d.casePrice}`;
+    showMsg('sh-msg', d.fee ? `Every life costs ${d.fee}. Kill someone to take their bounty – leave alive to get yours back.` : '');
     showScreen('shooter');
     document.body.classList.add('shooting');
-    shResize();
+    clearInterval(shPingTimer);
+    shPingTimer = setInterval(() => wsSend({ type: 'shPing', t: performance.now() }), 1000);
+    shLastFrame = performance.now();
     requestAnimationFrame(shFrame);
 }
 
 function onShLeft(d) {
     sh = null;
+    clearInterval(shPingTimer);
     document.body.classList.remove('shooting');
     shKeys.clear();
     shIn.f = false;
     if (!$('shooter').classList.contains('hidden')) {
         showScreen('menu');
-        $('menu-result').innerHTML = `<div class="result ${d.coins ? 'cash' : ''}">🔫 Arena: ${d.kills} kills · ${d.deaths} deaths${d.coins ? ` · +${d.coins} coins` : ''}</div>`;
+        $('menu-result').innerHTML = `<div class="result ${d.coins ? 'cash' : ''}">🔫 Arena: ${d.kills} kills · ${d.deaths} deaths` +
+            `${d.coins ? ` · +${d.coins} coins` : ''}${d.refund ? ` · bounty back: ${d.refund}` : ''}</div>`;
     }
 }
 
 function onSh(d) {
-    shSnaps.push({ t: performance.now(), ...d });
-    if (shSnaps.length > 6) shSnaps.shift();
+    d.recv = performance.now();
+    shSnaps.push(d);
+    if (shSnaps.length > 8) shSnaps.shift();
+    shReconcile(d);
 }
 
 function onShKill(k) {
     shFeed.push({ ...k, at: performance.now() });
     if (shFeed.length > 6) shFeed.shift();
-    if (k.killer === shMe()?.n) beep(1200, 0.08, 0.06);
-    if (k.victim === shMe()?.n) sTone(160, { dur: .4, vol: .2, slide: 60, rev: .1 });
+    const me = shMeServer();
+    if (me && k.killer === me.n) sfx.fanfare(k.coins >= 1000 ? 'big' : 'end');
 }
 
-function shMe() {
+function onShHit(d) {
+    shMarks.push({ ...d, t: performance.now() });
+    if (shMarks.length > 20) shMarks.shift();
+    sTone(d.kill ? 1500 : 2200, { dur: d.kill ? .18 : .05, type: 'square', vol: d.kill ? .07 : .04, rev: 0 });
+}
+
+function onShHurt(d) {
+    shHurtAt = performance.now();
+    sTone(140, { dur: .15, vol: .18, slide: 70, rev: .05 });
+}
+
+function onShCase(d) {
+    // Band mit Zufalls-Items, das Ergebnis landet unter dem Zeiger
+    const pool = ['smg', 'rifle', 'armor', 'shotgun', 'sniper', 'deagle'];
+    const n = 36, win = 30;
+    const items = Array.from({ length: n }, (_, i) => i === win ? d.item : pool[Math.floor(Math.random() * pool.length)]);
+    const strip = $('sh-strip');
+    strip.innerHTML = items.map(it => `<div class="sh-item">${SH_ITEM_ICON[it]}<small>${SH_ITEM_NAME[it]}</small></div>`).join('');
+    $('sh-caseview').hidden = false;
+    $('sh-caseres').textContent = '';
+    strip.style.transition = 'none';
+    strip.style.transform = 'translateX(0)';
+    void strip.offsetWidth;
+    const itemW = 96;
+    const target = win * itemW - ($('sh-caseview').clientWidth / 2 - itemW / 2) + (Math.random() - 0.5) * 60;
+    strip.style.transition = 'transform 3.2s cubic-bezier(.12,.8,.2,1)';
+    strip.style.transform = `translateX(${-target}px)`;
+    sfx.spin();
+    setTimeout(() => {
+        $('sh-caseres').innerHTML = `<b class="rar-${d.rarity}">${SH_ITEM_ICON[d.item]} ${SH_ITEM_NAME[d.item]}</b> · ${d.rarity}${d.later ? ' · for your next life' : ''}`;
+        sfx.fanfare(d.rarity === 'legendary' || d.rarity === 'epic' ? 'big' : 'end');
+        setTimeout(() => { $('sh-caseview').hidden = true; }, 2200);
+    }, 3300);
+}
+
+function shMeServer() {
     const s = shSnaps[shSnaps.length - 1];
     return s && sh ? s.players.find(p => p.id === sh.id) : null;
 }
 
-// Canvas in Welt-Koordinaten zeichnen; Groesse nach verfuegbarer Breite
-function shResize() {
-    const cv = $('sh-canvas');
-    if (!cv || !sh) return;
-    cv.width = sh.map.w;
-    cv.height = sh.map.h;
+// ---------- Vorhersage der eigenen Bewegung ----------
+
+function shBlocked(x, y, r) {
+    const m = sh.map;
+    if (x < r || y < r || x > m.w - r || y > m.h - r) return true;
+    return m.walls.some(([rx, ry, rw, rh]) => {
+        const cx = Math.max(rx, Math.min(x, rx + rw)), cy = Math.max(ry, Math.min(y, ry + rh));
+        return (x - cx) ** 2 + (y - cy) ** 2 < r * r;
+    });
 }
 
-// Zwei Staende um (jetzt - Verzoegerung) finden und dazwischen rechnen
-function shInterp() {
-    const t = performance.now() - SH_DELAY;
+function shPredict(dt) {
+    const me = shMeServer();
+    if (!me) return;
+    if (me.dead || me.br) {
+        shPred = null;
+        return;
+    }
+    // Neu gespawnt oder erster Stand: auf den Server setzen
+    if (!shPred || shPred.sp !== me.sp) {
+        shPred = { x: me.x, y: me.y, sp: me.sp };
+        shHist = [];
+    }
+    const m = sh.map;
+    const nx = shPred.x + shIn.mx * m.move * dt;
+    if (!shBlocked(nx, shPred.y, m.r)) shPred.x = nx;
+    const ny = shPred.y + shIn.my * m.move * dt;
+    if (!shBlocked(shPred.x, ny, m.r)) shPred.y = ny;
+    const now = performance.now();
+    shHist.push({ t: now, x: shPred.x, y: shPred.y });
+    while (shHist.length && now - shHist[0].t > 1500) shHist.shift();
+}
+
+// Server-Stand ist ~eine Laufzeit alt: mit der eigenen Position von damals
+// vergleichen. Beim Laufen kleine Abweichungen (Tick-Timing) ignorieren,
+// sonst zuckt die Figur; im Stand sanft ganz angleichen; grosse sofort.
+function shReconcile(d) {
+    if (!sh || !shPred) return;
+    const me = d.players.find(p => p.id === sh.id);
+    if (!me || me.dead || me.sp !== shPred.sp) return;
+    const t = performance.now() - shRtt - 35;
+    let past = shHist[0];
+    for (const h of shHist) {
+        if (h.t > t) break;
+        past = h;
+    }
+    if (!past) return;
+    const ex = me.x - past.x, ey = me.y - past.y;
+    const err = Math.hypot(ex, ey);
+    const moving = shIn.mx || shIn.my;
+    let k = 0;
+    if (err > 90) k = 1;
+    else if (!moving) k = err > 1 ? .12 : 0;
+    else if (err > 14) k = .08 * (err - 14) / err;
+    if (!k) return;
+    shPred.x += ex * k;
+    shPred.y += ey * k;
+    for (const h of shHist) {
+        h.x += ex * k;
+        h.y += ey * k;
+    }
+}
+
+// Andere Spieler: Stand um (jetzt - 50 ms) zwischen zwei Nachrichten
+function shOthers() {
+    const t = performance.now() - SH_INTERP;
     let a = shSnaps[0], b = shSnaps[shSnaps.length - 1];
     for (let i = 0; i < shSnaps.length - 1; i++) {
-        if (shSnaps[i].t <= t && shSnaps[i + 1].t >= t) {
+        if (shSnaps[i].recv <= t && shSnaps[i + 1].recv >= t) {
             a = shSnaps[i];
             b = shSnaps[i + 1];
             break;
         }
     }
-    const k = b.t > a.t ? Math.max(0, Math.min(1, (t - a.t) / (b.t - a.t))) : 1;
+    const k = b.recv > a.recv ? Math.max(0, Math.min(1, (t - a.recv) / (b.recv - a.recv))) : 1;
     const prev = new Map(a.players.map(p => [p.id, p]));
-    const players = b.players.map(p => {
+    return b.players.map(p => {
         const q = prev.get(p.id);
-        if (!q || q.dead !== p.dead) return p;
-        return { ...p, x: q.x + (p.x - q.x) * k, y: q.y + (p.y - q.y) * k };
+        if (!q || q.dead !== p.dead || q.sp !== p.sp) return p;
+        let da = p.a - q.a;
+        if (da > Math.PI) da -= Math.PI * 2;
+        if (da < -Math.PI) da += Math.PI * 2;
+        return { ...p, x: q.x + (p.x - q.x) * k, y: q.y + (p.y - q.y) * k, a: q.a + da * k };
     });
-    return { players, bullets: b.bullets, pickups: b.pickups };
 }
+
+// ---------- Zeichnen ----------
 
 function shFrame() {
     if (!sh) return;
     requestAnimationFrame(shFrame);
+    const now = performance.now();
+    const dt = Math.min(0.05, (now - shLastFrame) / 1000);
+    shLastFrame = now;
+    // Erst Eingaben lesen (und schicken), dann im selben Frame bewegen
     shSendInput();
+    shPredict(dt);
+    shAim();
+    shLocalFire(now);
+
     const cv = $('sh-canvas');
     if (!cv || !shSnaps.length) return;
+    // Canvas in echter Pixelgroesse
+    const r = cv.getBoundingClientRect();
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const cw = Math.round(r.width * dpr), ch = Math.round(r.height * dpr);
+    if (cv.width !== cw || cv.height !== ch) {
+        cv.width = cw;
+        cv.height = ch;
+    }
     const c = cv.getContext('2d');
     const m = sh.map;
-    const s = shInterp();
-    const now = performance.now();
+    const latest = shSnaps[shSnaps.length - 1];
+    const others = shOthers();
+    const meS = latest.players.find(p => p.id === sh.id);
 
-    // Boden
+    // Kamera: ~1100 Einheiten breit (auf dem Handy 750), folgt der eigenen Figur
+    const viewW = r.width < 700 ? 750 : 1100;
+    const s = cw / viewW;
+    const viewH = ch / s;
+    const focus = shPred || meS || { x: m.w / 2, y: m.h / 2 };
+    const clamp = (v, lo, hi) => lo > hi ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, v));
+    let camX = clamp(focus.x, viewW / 2, m.w - viewW / 2);
+    let camY = clamp(focus.y, viewH / 2, m.h - viewH / 2);
+    // Kleiner Wackler, wenn man getroffen wird
+    const hurt = Math.max(0, 1 - (now - shHurtAt) / 250);
+    camX += (Math.random() - .5) * 8 * hurt;
+    camY += (Math.random() - .5) * 8 * hurt;
+    shCam = { x: camX - viewW / 2, y: camY - viewH / 2, s };
+
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.fillStyle = '#070a0f';
+    c.fillRect(0, 0, cw, ch);
+    c.setTransform(s, 0, 0, s, -shCam.x * s, -shCam.y * s);
+
+    // Boden mit Gitter
     c.fillStyle = '#10161f';
     c.fillRect(0, 0, m.w, m.h);
-    c.strokeStyle = 'rgba(255,255,255,.04)';
+    c.strokeStyle = 'rgba(255,255,255,.05)';
     c.lineWidth = 1;
-    for (let x = 0; x <= m.w; x += 50) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, m.h); c.stroke(); }
-    for (let y = 0; y <= m.h; y += 50) { c.beginPath(); c.moveTo(0, y); c.lineTo(m.w, y); c.stroke(); }
-    // Waende
+    c.beginPath();
+    for (let x = 0; x <= m.w; x += 50) { c.moveTo(x, 0); c.lineTo(x, m.h); }
+    for (let y = 0; y <= m.h; y += 50) { c.moveTo(0, y); c.lineTo(m.w, y); }
+    c.stroke();
     for (const [x, y, w, h] of m.walls) {
+        c.fillStyle = 'rgba(0,0,0,.35)';
+        c.fillRect(x + 6, y + 6, w, h);
         c.fillStyle = '#3a4658';
         c.fillRect(x, y, w, h);
-        c.fillStyle = '#4f5f77';
+        c.fillStyle = '#51627c';
         c.fillRect(x, y, w, 6);
     }
     c.strokeStyle = '#ff5bd6';
@@ -7100,84 +7394,236 @@ function shFrame() {
     c.textAlign = 'center';
     c.textBaseline = 'middle';
     c.font = '30px system-ui';
-    for (const [x, y, icon] of s.pickups) {
-        const bob = Math.sin(now / 250 + x) * 3;
-        c.fillText(icon, x, y + bob);
-    }
+    for (const [x, y, icon] of latest.pickups) c.fillText(icon, x, y + Math.sin(now / 250 + x) * 3);
 
-    // Kugeln
-    c.fillStyle = '#fff6c2';
-    for (let i = 0; i < s.bullets.length; i += 2) {
+    // Kugeln: mit Geschwindigkeit weiterrechnen; eigene etwas voraus, fremde passend zur Verzoegerung
+    const age = (now - latest.recv) / 1000;
+    for (const [, x, y, vx, vy, owner] of latest.bullets) {
+        const t = owner === sh.id ? age + shRtt / 2000 : Math.max(0, age - SH_INTERP / 1000);
+        const bx = x + vx * t, by = y + vy * t;
+        const sp = Math.hypot(vx, vy) || 1;
+        c.strokeStyle = owner === sh.id ? 'rgba(255,246,194,.95)' : 'rgba(255,140,140,.95)';
+        c.lineWidth = 4;
         c.beginPath();
-        c.arc(s.bullets[i], s.bullets[i + 1], 4, 0, Math.PI * 2);
-        c.fill();
+        c.moveTo(bx - vx / sp * 16, by - vy / sp * 16);
+        c.lineTo(bx, by);
+        c.stroke();
     }
 
     // Spieler
-    for (const p of s.players) {
-        if (p.dead) continue;
+    for (const p of others) {
+        if (p.dead || p.br) continue;
         const mine = p.id === sh.id;
+        const x = mine && shPred ? shPred.x : p.x;
+        const y = mine && shPred ? shPred.y : p.y;
         const a = mine ? shIn.a : p.a;
-        c.save();
-        c.translate(p.x, p.y);
-        c.globalAlpha = p.pr ? .5 + .3 * Math.sin(now / 80) : 1;
-        // Lauf
-        c.rotate(a);
-        c.fillStyle = p.sg ? '#ffb347' : '#ccd';
-        c.fillRect(8, -5, 26, 10);
-        c.rotate(-a);
-        c.beginPath();
-        c.arc(0, 0, m.r, 0, Math.PI * 2);
-        c.fillStyle = p.c;
-        c.fill();
-        c.lineWidth = mine ? 4 : 2;
-        c.strokeStyle = mine ? '#fff' : 'rgba(0,0,0,.5)';
-        c.stroke();
-        if (p.rf) {
-            c.font = '16px system-ui';
-            c.fillText('⚡', 0, 1);
-        }
-        c.globalAlpha = 1;
-        // HP-Balken und Name
-        c.fillStyle = 'rgba(0,0,0,.6)';
-        c.fillRect(-22, -m.r - 14, 44, 6);
-        c.fillStyle = p.hp > 50 ? '#00d67a' : p.hp > 25 ? '#ffd23f' : '#f43f5e';
-        c.fillRect(-22, -m.r - 14, 44 * p.hp / 100, 6);
-        c.fillStyle = '#fff';
-        c.font = 'bold 15px system-ui';
-        c.fillText(p.n, 0, -m.r - 26);
-        c.restore();
+        shDrawPlayer(c, p, x, y, a, mine, now);
     }
 
-    // Eigener Tod: Countdown
-    const me = s.players.find(p => p.id === sh.id);
-    if (me && me.dead) {
-        c.fillStyle = 'rgba(0,0,0,.5)';
-        c.fillRect(0, 0, m.w, m.h);
-        c.fillStyle = '#fff';
-        c.font = 'bold 64px system-ui';
-        c.fillText(`💀 Respawn in ${Math.ceil(me.rs / 1000)}`, m.w / 2, m.h / 2);
+    // Treffer-Markierungen und Schadenszahlen
+    shMarks = shMarks.filter(mk => now - mk.t < 700);
+    for (const mk of shMarks) {
+        const k = (now - mk.t) / 700;
+        c.globalAlpha = 1 - k;
+        c.strokeStyle = mk.kill ? '#ff4d4d' : '#fff';
+        c.lineWidth = 3;
+        const z = 9;
+        c.beginPath();
+        c.moveTo(mk.x - z, mk.y - z); c.lineTo(mk.x - 3, mk.y - 3);
+        c.moveTo(mk.x + z, mk.y - z); c.lineTo(mk.x + 3, mk.y - 3);
+        c.moveTo(mk.x - z, mk.y + z); c.lineTo(mk.x - 3, mk.y + 3);
+        c.moveTo(mk.x + z, mk.y + z); c.lineTo(mk.x + 3, mk.y + 3);
+        c.stroke();
+        c.fillStyle = mk.kill ? '#ff4d4d' : '#ffd23f';
+        c.font = `bold ${mk.kill ? 26 : 20}px system-ui`;
+        c.fillText(mk.kill ? `💀 ${mk.dmg}` : mk.dmg, mk.x + 16, mk.y - 18 - k * 30);
+        c.globalAlpha = 1;
     }
+
+    // Fadenkreuz an der Maus
+    if (shMouse && !shTouch.aim) {
+        const wx = shCam.x + shMouse.x * dpr / s, wy = shCam.y + shMouse.y * dpr / s;
+        c.strokeStyle = '#fff';
+        c.lineWidth = 2;
+        c.beginPath();
+        c.arc(wx, wy, 10, 0, Math.PI * 2);
+        c.moveTo(wx - 16, wy); c.lineTo(wx - 5, wy);
+        c.moveTo(wx + 5, wy); c.lineTo(wx + 16, wy);
+        c.moveTo(wx, wy - 16); c.lineTo(wx, wy - 5);
+        c.moveTo(wx, wy + 5); c.lineTo(wx, wy + 16);
+        c.stroke();
+    }
+
+    // ---- Bildschirm-Ebene ----
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const W = r.width, H = r.height;
+    // Roter Rand bei Treffer
+    if (hurt > 0) {
+        const g = c.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .3, W / 2, H / 2, Math.max(W, H) * .7);
+        g.addColorStop(0, 'rgba(255,0,0,0)');
+        g.addColorStop(1, `rgba(255,0,0,${.45 * hurt})`);
+        c.fillStyle = g;
+        c.fillRect(0, 0, W, H);
+    }
+    shMinimap(c, latest, W, H);
 
     // Kill-Feed oben rechts
     c.textAlign = 'right';
-    c.font = 'bold 20px system-ui';
+    c.textBaseline = 'middle';
+    c.font = 'bold 14px system-ui';
     shFeed.filter(f => !f.at || now - f.at < 6000).slice(-5).forEach((f, i) => {
-        c.fillStyle = 'rgba(0,0,0,.55)';
-        const text = `${f.killer} 🔫 ${f.victim}${f.coins ? ` +${f.coins}🪙` : ''}`;
+        const text = `${f.killer} ${SH_ITEM_ICON[f.weapon] || '🔫'} ${f.victim}${f.coins ? ` +${f.coins.toLocaleString('en-US')}🪙` : ''}`;
         const w = c.measureText(text).width + 16;
-        c.fillRect(m.w - 20 - w, 20 + i * 32, w, 28);
+        c.fillStyle = 'rgba(0,0,0,.6)';
+        c.fillRect(W - 12 - w, 12 + i * 26, w, 22);
         c.fillStyle = '#fff';
-        c.fillText(text, m.w - 28, 35 + i * 32);
+        c.fillText(text, W - 20, 23 + i * 26);
     });
 
-    // Anzeige oben
-    if (me) $('sh-stats').textContent = `❤️ ${me.hp} · ${me.k} kills · ${me.d} deaths${me.rf ? ' · ⚡ rapid' : ''}${me.sg ? ' · 🔫 shotgun' : ''}`;
-    $('sh-board').innerHTML = [...s.players].sort((x, y) => y.k - x.k || x.d - y.d).map(p =>
-        `<tr class="${p.id === sh.id ? 'me' : ''}"><td><span class="dot" style="background:${esc(p.c)}"></span>${esc(p.n)}</td><td style="text-align:right">${p.k}</td><td style="text-align:right;opacity:.7">${p.d}</td></tr>`).join('');
+    // HUD unten: HP, Waffe, Kopfgeld
+    if (meS && !meS.dead && !meS.br) {
+        const bw = Math.min(260, W * .4);
+        c.fillStyle = 'rgba(0,0,0,.6)';
+        c.fillRect(12, H - 46, bw + 8, 34);
+        c.fillStyle = meS.hp > meS.mh / 2 ? '#00d67a' : meS.hp > meS.mh / 4 ? '#ffd23f' : '#f43f5e';
+        c.fillRect(16, H - 42, bw * meS.hp / meS.mh, 26);
+        c.fillStyle = '#fff';
+        c.textAlign = 'left';
+        c.font = 'bold 15px system-ui';
+        c.fillText(`❤️ ${meS.hp}${meS.mh > 100 ? ' 🛡️' : ''}`, 22, H - 29);
+        c.fillText(`${SH_ITEM_ICON[meS.w] || '🔫'} ${SH_ITEM_NAME[meS.w] || meS.w}${meS.b ? `   🎯 bounty ${meS.b.toLocaleString('en-US')}` : ''}`, bw + 34, H - 29);
+    }
+    // Tot / kein Geld
+    if (meS && (meS.dead || meS.br)) {
+        c.fillStyle = 'rgba(0,0,0,.5)';
+        c.fillRect(0, 0, W, H);
+        c.fillStyle = '#fff';
+        c.textAlign = 'center';
+        c.font = `bold ${Math.round(Math.min(40, W / 16))}px system-ui`;
+        c.fillText(meS.br ? `💸 Not enough coins for a life (${sh.fee})` : `💀 Respawn in ${Math.ceil(meS.rs / 1000)}${sh.fee ? ` · costs ${sh.fee}` : ''}`, W / 2, H / 2);
+    }
+    $('sh-retry').hidden = !(meS && meS.br);
+
+    // Touch-Sticks
+    for (const st of [shTouch.move, shTouch.aim]) {
+        if (!st) continue;
+        const rr = cv.getBoundingClientRect();
+        const bx = st.x0 - rr.left, by = st.y0 - rr.top;
+        c.strokeStyle = 'rgba(255,255,255,.35)';
+        c.lineWidth = 3;
+        c.beginPath();
+        c.arc(bx, by, 50, 0, Math.PI * 2);
+        c.stroke();
+        const dx = st.x - st.x0, dy = st.y - st.y0, len = Math.min(50, Math.hypot(dx, dy)), ang = Math.atan2(dy, dx);
+        c.fillStyle = st === shTouch.aim ? 'rgba(255,91,214,.6)' : 'rgba(255,255,255,.45)';
+        c.beginPath();
+        c.arc(bx + Math.cos(ang) * len, by + Math.sin(ang) * len, 22, 0, Math.PI * 2);
+        c.fill();
+    }
+
+    if (meS) $('sh-stats').textContent = `${meS.k} kills · ${meS.d} deaths`;
+    $('sh-board').innerHTML = [...latest.players].sort((x, y) => y.k - x.k || x.d - y.d).map(p =>
+        `<tr class="${p.id === sh.id ? 'me' : ''}"><td><span class="dot" style="background:${esc(p.c)}"></span>${esc(p.n)}</td><td style="text-align:right">${p.k}</td><td style="text-align:right;opacity:.7">${p.d}</td>${sh.fee ? `<td style="text-align:right;color:#ffd23f">${p.b ? p.b.toLocaleString('en-US') : ''}</td>` : ''}</tr>`).join('');
 }
 
-// Eingaben: Tasten, Maus, Touch -> hoechstens 20/s an den Server
+function shDrawPlayer(c, p, x, y, a, mine, now) {
+    const m = sh.map;
+    const w = sh.weapons[p.w] || sh.weapons.pistol;
+    c.save();
+    c.translate(x, y);
+    c.globalAlpha = p.pr ? .5 + .3 * Math.sin(now / 80) : 1;
+    c.fillStyle = 'rgba(0,0,0,.35)';
+    c.beginPath();
+    c.arc(4, 5, m.r, 0, Math.PI * 2);
+    c.fill();
+    // Lauf, Laenge je Waffe
+    c.rotate(a);
+    const len = { sniper: 38, rifle: 32, shotgun: 28, smg: 24, deagle: 26 }[p.w] || 24;
+    c.fillStyle = p.w === 'deagle' ? '#ffd23f' : '#ccd3e0';
+    c.fillRect(8, -5, len, 10);
+    // Muendungsfeuer bei eigenen Schuessen
+    if (mine && now - shFlashAt < 60) {
+        c.fillStyle = '#fff3b0';
+        c.beginPath();
+        c.arc(8 + len + 6, 0, 8, 0, Math.PI * 2);
+        c.fill();
+    }
+    c.rotate(-a);
+    c.beginPath();
+    c.arc(0, 0, m.r, 0, Math.PI * 2);
+    c.fillStyle = p.c;
+    c.fill();
+    c.lineWidth = mine ? 4 : 2;
+    c.strokeStyle = mine ? '#fff' : 'rgba(0,0,0,.6)';
+    c.stroke();
+    if (p.mh > 100) {
+        c.strokeStyle = '#3da5ff';
+        c.lineWidth = 3;
+        c.beginPath();
+        c.arc(0, 0, m.r + 5, 0, Math.PI * 2);
+        c.stroke();
+    }
+    c.globalAlpha = 1;
+    // HP-Balken und Name (eigener Balken steht unten im HUD)
+    if (!mine) {
+        c.fillStyle = 'rgba(0,0,0,.6)';
+        c.fillRect(-24, -m.r - 14, 48, 6);
+        c.fillStyle = p.hp > p.mh / 2 ? '#00d67a' : p.hp > p.mh / 4 ? '#ffd23f' : '#f43f5e';
+        c.fillRect(-24, -m.r - 14, 48 * p.hp / p.mh, 6);
+    }
+    c.fillStyle = '#fff';
+    c.font = 'bold 14px system-ui';
+    c.textAlign = 'center';
+    c.fillText(p.n + (p.b && !mine ? ` 🎯${p.b >= 1000 ? (p.b / 1000) + 'k' : p.b}` : ''), 0, -m.r - 24);
+    c.restore();
+}
+
+function shMinimap(c, latest, W, H) {
+    const m = sh.map;
+    const mw = Math.min(180, W * .28), mh = mw * m.h / m.w;
+    const x0 = 10, y0 = 10, k = mw / m.w;
+    c.fillStyle = 'rgba(0,0,0,.55)';
+    c.fillRect(x0, y0, mw, mh);
+    c.fillStyle = 'rgba(120,140,170,.7)';
+    for (const [x, y, w, h] of m.walls) c.fillRect(x0 + x * k, y0 + y * k, Math.max(1, w * k), Math.max(1, h * k));
+    for (const p of latest.players) {
+        if (p.dead || p.br) continue;
+        const mine = p.id === sh.id;
+        const px = mine && shPred ? shPred.x : p.x, py = mine && shPred ? shPred.y : p.y;
+        c.fillStyle = mine ? '#fff' : p.c;
+        c.beginPath();
+        c.arc(x0 + px * k, y0 + py * k, mine ? 3.5 : 2.5, 0, Math.PI * 2);
+        c.fill();
+    }
+    // Sichtfenster
+    c.strokeStyle = 'rgba(255,255,255,.5)';
+    c.lineWidth = 1;
+    const vw = (c.canvas.width / shCam.s), vh = (c.canvas.height / shCam.s);
+    c.strokeRect(x0 + shCam.x * k, y0 + shCam.y * k, vw * k, vh * k);
+}
+
+// ---------- Eingaben ----------
+
+// Zielwinkel von der (vorausberechneten) eigenen Position zur Maus
+function shAim() {
+    if (shTouch.aim || !shMouse || !shPred) return;
+    const cv = $('sh-canvas');
+    const dpr = cv.width / cv.getBoundingClientRect().width;
+    const wx = shCam.x + shMouse.x * dpr / shCam.s, wy = shCam.y + shMouse.y * dpr / shCam.s;
+    shIn.a = Math.atan2(wy - shPred.y, wx - shPred.x);
+}
+
+// Eigene Schuesse sofort fuehlen: Muendungsfeuer und Ton im Waffentakt
+function shLocalFire(now) {
+    const me = shMeServer();
+    if (!shIn.f || !me || me.dead || me.br) return;
+    const w = sh.weapons[me.w] || sh.weapons.pistol;
+    if (now - shLastLocalShot < w.ms) return;
+    shLastLocalShot = now;
+    shFlashAt = now;
+    sNoise({ dur: .06, vol: me.w === 'sniper' ? .22 : .12, type: 'highpass', f: me.w === 'shotgun' ? 800 : 2000, rev: .05, a: .001 });
+}
+
 function shSendInput() {
     let mx = 0, my = 0;
     if (shKeys.has('w') || shKeys.has('arrowup')) my -= 1;
@@ -7187,29 +7633,22 @@ function shSendInput() {
     if (shTouch.move) {
         const t = shTouch.move;
         const dx = t.x - t.x0, dy = t.y - t.y0, len = Math.hypot(dx, dy);
-        if (len > 8) { mx = dx / Math.max(len, 50); my = dy / Math.max(len, 50); }
+        if (len > 8) { mx = dx / Math.max(len, 45); my = dy / Math.max(len, 45); }
     }
+    const len = Math.hypot(mx, my);
+    if (len > 1) { mx /= len; my /= len; }
     shIn.mx = Math.round(mx * 100) / 100;
     shIn.my = Math.round(my * 100) / 100;
     const key = `${shIn.mx},${shIn.my},${shIn.a.toFixed(2)},${shIn.f}`;
     const now = performance.now();
-    if ((key !== shSent && now - shLastSend > 50) || now - shLastSend > 500) {
-        shSent = key;
+    // Bewegung und Feuer sofort, reines Zielen hoechstens 30/s, sonst alle 250 ms
+    const moveKey = `${shIn.mx},${shIn.my},${shIn.f}`;
+    const urgent = moveKey !== shSent.split('|')[0];
+    if ((key !== shSent.split('|')[1] && (urgent || now - shLastSend > 33)) || now - shLastSend > 250) {
+        shSent = moveKey + '|' + key;
         shLastSend = now;
-        wsSend({ type: 'shInput', mx: shIn.mx, my: shIn.my, a: Math.round(shIn.a * 100) / 100, f: shIn.f });
+        wsSend({ type: 'shInput', mx: shIn.mx, my: shIn.my, a: Math.round(shIn.a * 100) / 100, f: shIn.f, s: ++shSeq });
     }
-}
-
-// Bildschirm-Punkt -> Welt-Koordinate im Canvas
-function shWorld(ev) {
-    const cv = $('sh-canvas');
-    const r = cv.getBoundingClientRect();
-    return { x: (ev.clientX - r.left) / r.width * cv.width, y: (ev.clientY - r.top) / r.height * cv.height };
-}
-
-function shAimAt(pt) {
-    const me = shMe();
-    if (me) shIn.a = Math.atan2(pt.y - me.y, pt.x - me.x);
 }
 
 document.addEventListener('keydown', e => {
@@ -7223,6 +7662,7 @@ document.addEventListener('keydown', e => {
         e.preventDefault();
         shIn.f = true;
     }
+    if (k === 'e' && sh.fee && !e.repeat) wsSend({ type: 'shCase' });
 });
 document.addEventListener('keyup', e => {
     if (!sh) return;
@@ -7231,32 +7671,43 @@ document.addEventListener('keyup', e => {
 });
 window.addEventListener('blur', () => { shKeys.clear(); shIn.f = false; });
 
-$('sh-canvas').addEventListener('mousemove', e => { if (sh) shAimAt(shWorld(e)); });
-$('sh-canvas').addEventListener('mousedown', e => { if (sh) { shAimAt(shWorld(e)); shIn.f = true; e.preventDefault(); } });
+const shCanvas = $('sh-canvas');
+function shMousePos(e) {
+    const r = shCanvas.getBoundingClientRect();
+    shMouse = { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+shCanvas.addEventListener('mousemove', e => { if (sh) shMousePos(e); });
+shCanvas.addEventListener('mouseleave', () => { shMouse = null; });
+shCanvas.addEventListener('mousedown', e => { if (sh) { shMousePos(e); shAim(); shIn.f = true; e.preventDefault(); } });
 document.addEventListener('mouseup', () => { if (sh) shIn.f = false; });
-$('sh-canvas').addEventListener('contextmenu', e => { if (sh) e.preventDefault(); });
+shCanvas.addEventListener('contextmenu', e => { if (sh) e.preventDefault(); });
 
-// Touch: linke Haelfte = Stick zum Laufen, rechte Haelfte = zielen und feuern
-$('sh-canvas').addEventListener('touchstart', e => {
+// Touch: zwei Sticks. Links laufen, rechts zielen (Richtung vom Startpunkt) und feuern
+shCanvas.addEventListener('touchstart', e => {
     if (!sh) return;
     e.preventDefault();
-    const cv = $('sh-canvas');
-    const r = cv.getBoundingClientRect();
+    const r = shCanvas.getBoundingClientRect();
     for (const t of e.changedTouches) {
-        if (t.clientX - r.left < r.width / 2 && !shTouch.move) shTouch.move = { id: t.identifier, x0: t.clientX, y0: t.clientY, x: t.clientX, y: t.clientY };
-        else if (!shTouch.aim) {
-            shTouch.aim = { id: t.identifier };
-            shAimAt(shWorld(t));
-            shIn.f = true;
-        }
+        const st = { id: t.identifier, x0: t.clientX, y0: t.clientY, x: t.clientX, y: t.clientY };
+        if (t.clientX - r.left < r.width / 2 && !shTouch.move) shTouch.move = st;
+        else if (!shTouch.aim) shTouch.aim = st;
     }
 }, { passive: false });
-$('sh-canvas').addEventListener('touchmove', e => {
+shCanvas.addEventListener('touchmove', e => {
     if (!sh) return;
     e.preventDefault();
     for (const t of e.changedTouches) {
-        if (shTouch.move && t.identifier === shTouch.move.id) Object.assign(shTouch.move, { x: t.clientX, y: t.clientY });
-        if (shTouch.aim && t.identifier === shTouch.aim.id) shAimAt(shWorld(t));
+        for (const st of [shTouch.move, shTouch.aim]) {
+            if (st && t.identifier === st.id) Object.assign(st, { x: t.clientX, y: t.clientY });
+        }
+        const a = shTouch.aim;
+        if (a && t.identifier === a.id) {
+            const dx = a.x - a.x0, dy = a.y - a.y0;
+            if (Math.hypot(dx, dy) > 12) {
+                shIn.a = Math.atan2(dy, dx);
+                shIn.f = true;
+            }
+        }
     }
 }, { passive: false });
 const shTouchEnd = e => {
@@ -7268,11 +7719,13 @@ const shTouchEnd = e => {
         }
     }
 };
-$('sh-canvas').addEventListener('touchend', shTouchEnd);
-$('sh-canvas').addEventListener('touchcancel', shTouchEnd);
+shCanvas.addEventListener('touchend', shTouchEnd);
+shCanvas.addEventListener('touchcancel', shTouchEnd);
 
-$('sh-play').onclick = shJoinClick;
+document.querySelectorAll('[data-shroom]').forEach(b => b.onclick = () => shJoin(b.dataset.shroom));
 $('sh-leave').onclick = () => wsSend({ type: 'shLeave' });
+$('sh-case').onclick = () => wsSend({ type: 'shCase' });
+$('sh-retry').onclick = () => wsSend({ type: 'shRetry' });
 
 // ---------- Casino: Lobby ----------
 

@@ -996,7 +996,7 @@ async function handle(c, data) {
                 if (accounts.exists(name)) return send(c, { type: 'shError', error: 'That name belongs to an account. Log in or pick another name' });
             }
             const u = c.account ? accounts.get(c.account) : null;
-            const err = shooter.join(c, name, cleanColor(data.color) || (u && u.color) || null);
+            const err = shooter.join(c, name, cleanColor(data.color) || (u && u.color) || null, String(data.room || 'free'));
             if (err) send(c, { type: 'shError', error: err });
             return;
         }
@@ -1021,6 +1021,20 @@ async function handle(c, data) {
 
         case 'shInput':
             shooter.input(c, data);
+            return;
+
+        // Einsatz-Arenen (#12): Case kaufen, nach Geldmangel weiterspielen
+        case 'shCase':
+            shooter.buyCase(c);
+            return;
+
+        case 'shRetry':
+            shooter.retry(c);
+            return;
+
+        // Laufzeit messen, damit der Browser seine Vorhersage abgleichen kann
+        case 'shPing':
+            send(c, { type: 'shPong', t: Number(data.t) || 0 });
             return;
 
         case 'shLeave':
@@ -1249,6 +1263,7 @@ wss.on('connection', (ws, req) => {
         lobby: tables.lobby()
     });
     send(c, { type: 'highscores', top: topNow() });
+    send(c, { type: 'shRooms', rooms: shooter.rooms() });
     send(c, { type: 'chatlog', list: chatLog });
 
     ws.on('message', msg => {
@@ -1436,7 +1451,12 @@ const tables = createTables({
 
 // ---------- Shooter-Arena (#7) ----------
 
-const shooter = createShooter({ accounts, send, feed, refresh: c => sendAccount(c) });
+const shooter = createShooter({
+    accounts, send, feed,
+    refresh: c => sendAccount(c),
+    // Wer ist in welcher Arena: fuers Menue an alle
+    changed: () => broadcast({ type: 'shRooms', rooms: shooter.rooms() })
+});
 // Eigener, schnellerer Takt als das Snake-Feld (33 ms)
 setInterval(() => shooter.tick(), 16);
 
@@ -1822,6 +1842,7 @@ setInterval(gameTick, TICK);
 
 function shutdown() {
     tables.shutdown();
+    shooter.refundAll();
     accounts.save(true);
     tickets.save(true);
     process.exit(0);

@@ -32,9 +32,10 @@ const EARN_SOURCES = ['snake', 'events', 'daily', 'don', 'admin', 'shooter'];
 // Statistik je Spiel (#5): plays, wagered (Einsatz), won (Auszahlung inkl.
 // Einsatz), bestWin (groesste Auszahlung), bestX (hoechster Multi). Beim
 // Poker ist won der gewonnene Pot, beim Daily Wheel gibt es keinen Einsatz.
-const GAMES = ['slots', 'starlight', 'crossy', 'plinko', 'daily', 'blackjack', 'roulette', 'poker', 'don'];
+// arena = ein Leben in einer Einsatz-Arena (#12): Einsatz, erbeutete Kopfgelder
+const GAMES = ['slots', 'starlight', 'crossy', 'plinko', 'daily', 'blackjack', 'roulette', 'poker', 'don', 'arena'];
 // Zaehlen nicht zur Casino-Bilanz (kein Einsatz bzw. kein Casino-Spiel)
-const NOT_CASINO = new Set(['daily', 'don']);
+const NOT_CASINO = new Set(['daily', 'don', 'arena']);
 
 function newGame() {
     return { plays: 0, wagered: 0, won: 0, bestWin: 0, bestX: 0 };

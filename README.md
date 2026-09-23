@@ -26,7 +26,7 @@ Live: **`snake.flashkeks.com`** auf `edge` (Netcup).
 | `slots.js` | Slot-Automat „Slots“ (frueher „Kek Slots“); `node slots.js` rechnet die Rueckzahlungsquote aus |
 | `slots2.js` | Tumble-Slot „Budget Starlight“ (frueher „Sweet Kek“, intern weiter `s2`/`spin2`); `node slots2.js N` simuliert grob Rueckzahlung, Bonus-Quote, Bonus-Kauf (zum Abstimmen siehe unten) |
 | `events.js` | Events im Snake (Flag Quiz, Trivia, Where is it?, Guess the number und die Map-Events): Ablauf, Punkte, Belohnung |
-| `shooter.js` | Arena (#7): Bewegung, Kugeln, Treffer, Pickups, Kill-Coins mit Anti-Farming |
+| `shooter.js` | Arena (#7, #12): drei Arenen, Bewegung, Kugeln, Treffer, Waffen, Pickups, Kopfgeld-Escrow, Cases, Anti-Farming |
 | `minigames.js` | Map-Events (#6): Labyrinth, Coin Rush, Last Snake Standing – Map-Bau, Schritte, Kollisionen, Punkte |
 | `tables.js` | Casino-Tische Blackjack (mit Sidebets) und Roulette: Runden, Einsaetze, Auszahlung; haengt auch Poker als dritten Tisch ein |
 | `poker.js` | Poker (Texas Hold'em No-Limit, Spieler gegen Spieler): Sitze, Blinds, Setzrunden, Side-Pots, Handbewertung, Showdown |
@@ -498,32 +498,69 @@ geht eine Zeile in den Feed, wie ueblich erst nach der Landung. Wer den
 Screen mitten im Fall verlaesst, bekommt die Anzeige sofort verbucht
 (gerechnet hat der Server ohnehin schon).
 
-## 🔫 Arena (Shooter, Issue #7)
+## 🔫 Arena (Shooter, Issues #7 und #12)
 
-Hauptmenue → „Enter the arena“ (Konto oder Gastname). Top-down, jeder gegen
-jeden, bis 16 Spieler, die ganze Arena (1600 × 1000) ist im Vollbild zu
-sehen. Wer in der Arena ist, ist nicht auf dem Snake-Feld und an keinem
-Tisch (und umgekehrt).
+Hauptmenue → Bereich „Arena“, drei Arenen zur Wahl (Konto oder Gastname;
+Einsatz-Arenen nur mit Konto). Top-down, jeder gegen jeden, bis 16 Spieler
+je Arena, Vollbild. Wer in einer Arena ist, ist nicht auf dem Snake-Feld und
+an keinem Tisch (und umgekehrt).
 
-- **Steuerung:** WASD/Pfeile laufen, Maus zielt, Klick oder Leertaste
-  schiesst. Touch: linke Haelfte = Stick zum Laufen, rechte Haelfte =
-  zielen und feuern.
-- **Werte:** 100 HP, Pistole 20 Schaden, 4 Schuss/s. Pickups alle 6–12 s
-  (hoechstens 4): 🩹 +50 HP, ⚡ 8 s Schnellfeuer (~9/s), 🔫 8 s Schrotflinte
-  (5 Kugeln im Faecher, je 14). Tod → 3 s warten, neu an freiem Platz,
-  2 s unverwundbar (blinkt).
-- **Server rechnet alles** (33-ms-Takt, eigenes `setInterval`): Bewegung
-  mit Gleiten an Waenden, Kugeln in Teilschritten gegen Tunneln, Treffer.
-  Der Browser schickt nur Eingaben (`shInput {mx, my, a, f}`, hoechstens
-  20/s) und zeichnet die Zustaende (`sh`, 20/s) mit 100 ms Verzoegerung
-  interpoliert.
-- **Coins:** 50 je Kill fuer Konten, aber **nur fuer Kills an anderen Konten
-  von anderer IP** (Gaeste lassen sich beliebig oft aufmachen, Zweitkonten
-  im selben Netz auch), und derselbe Gegner zaehlt hoechstens 3× je 10
-  Minuten. Gezaehlt in `stats.earned.shooter`, dazu `stats.shooterKills`
-  und `stats.shooterDeaths`.
-- 5er-Killstreak geht in den Feed des Hauptspiels.
-- PvP-Einsaetze (Spawn kostet Coins, Cases) bleiben #12.
+| Arena | Einsatz | Kill bringt |
+|---|---|---|
+| Free | nichts | 50 Coins, nur an anderen Konten von anderer IP, derselbe Gegner hoechstens 3× je 10 min (Anti-Farming, die Coins entstehen aus dem Nichts) |
+| 🪙 100/life | 100 je Leben | das ganze Kopfgeld des Opfers (100) |
+| 🪙 1k/life | 1000 je Leben | das ganze Kopfgeld des Opfers (1000) |
+
+**Einsaetze (#12, seit 23.09.2026):** Beim Spawn zieht der Server den
+Einsatz vom Konto und haelt ihn als **Kopfgeld** (Escrow, `p.bounty`). Wer
+einen killt, bekommt dessen Kopfgeld komplett, kein Hausanteil – die
+Einsatz-Arenen sind also ein Nullsummenspiel zwischen den Spielern.
+- **Lebend gehen oder Verbindung weg:** Kopfgeld zurueck, das Leben gilt als
+  nicht verloren. Tot gehen: nichts zurueck (ist ja schon beim Killer).
+- **Kein Geld fuer das naechste Leben:** man bleibt drin, sieht zu, „Try
+  again“ versucht es erneut.
+- **Server-Neustart** (SIGTERM): `shooter.refundAll()` bucht alle offenen
+  Kopfgelder zurueck.
+- **Cases** (🎁 im Kopf oder Taste E, nur Einsatz-Arenen): Preis = 1/4 des
+  Einsatzes (25 bzw. 250), CS-artiges Band, Ergebnis gilt fuer dieses Leben
+  (tot gekauft: fuers naechste). Die Case-Preise sind die Coin-Senke.
+
+| Case-Item | Chance | Wirkung |
+|---|---|---|
+| SMG | 28 % | 11 Schuss/s, 10 Schaden, streut |
+| Rifle | 24 % | ~7/s, 22 Schaden, schnell |
+| Armor | 18 % | +50 HP (150 max) |
+| Shotgun | 16 % | 6 Kugeln im Faecher je 15, kurze Reichweite |
+| Sniper | 10 % | 95 Schaden, 1,1 s Pause, sehr schnelle Kugel |
+| Golden Deagle | 4 % | 55 Schaden, ~2,6/s (geht in den Feed) |
+
+Standard ist die Pistole (20 Schaden, ~4/s). Pickups auf der Map (alle
+6–12 s, hoechstens 4): 🩹 +50 HP, 🔫 SMG, 💥 Shotgun, 🛡️ Armor. Tod → 3 s,
+neu an freiem Platz, 2 s unverwundbar. Ausruestung ist mit dem Tod weg.
+
+**Steuerung** (ueberarbeitet am 23.09.2026, „bissl arsch“ laut Max):
+- WASD/Pfeile laufen, Maus zielt (eigenes Fadenkreuz), Klick oder
+  Leertaste schiesst, E = Case. Touch: zwei Sticks, links laufen, rechts
+  zielen (Richtung vom Startpunkt) und feuern.
+- **Eigene Bewegung wird im Browser vorausberechnet** (gleiche Waende,
+  gleiches Tempo, `map.move`) und nur sanft an den Server angeglichen: der
+  Server-Stand wird mit der eigenen Position von vor einer Laufzeit
+  verglichen (`shPing`/`shPong` misst sie); beim Laufen gilt eine Totzone von
+  14 Einheiten, im Stand wird ganz angeglichen, ab 90 sofort. Getestet ueber
+  einen Proxy mit 80 ms RTT: keine Rueckspruenge, Endposition 1 Einheit
+  neben dem Server.
+- **Kamera** folgt der eigenen Figur (~1100 Einheiten breit, Handy 750),
+  Minimap oben links mit Sichtfenster.
+- Andere Spieler 50 ms verzoegert interpoliert; **Kugeln** kommen mit
+  Geschwindigkeit (`[id, x, y, vx, vy, owner]`) und werden weitergerechnet.
+- **Feedback:** Muendungsfeuer und Ton sofort beim eigenen Schuss,
+  Hitmarker und Schadenszahl (`shHit`), roter Rand und Wackler bei Treffern
+  (`shHurt`), Kopfgeld ueber den Gegnern.
+- Server: 33-ms-Takt, Zustand 30/s, Kugeln in Teilschritten gegen Tunneln.
+
+Statistik: `stats.games.arena` je Leben in einer Einsatz-Arena (Einsatz,
+erbeutete Kopfgelder), zaehlt nicht zur Casino-Bilanz; `shooterKills`,
+`shooterDeaths`, `casesOpened`, `earned.shooter` (netto).
 
 ## Mini-Events (Snake)
 
@@ -722,12 +759,13 @@ Client → Server: `register`, `login`, `resume {token}`, `logout`,
 `tableAction` (`bet`/`clear` beim Roulette, `bet`/`pp`/`t3`/`clear`/`move`
 beim Blackjack, `sit {seat?}`/`stand`/`move` (`fold`, `check`,
 `call`, `raise {to}`, `allin`) beim Poker), `pokerCreate {buyIn, seats, name}`, `daily`, `dailyDone`, `crossStart {bet, diff}`, `crossStep`,
-`crossCash`, `plinko {bet, risk}`, `board {cat, game, period}`, `me`, `shJoin {name}`, `shInput {mx, my, a, f}`,
-`shLeave`, `tickets`, `ticketNew {subject, text}`, `ticketReply {id, text}`,
+`crossCash`, `plinko {bet, risk}`, `board {cat, game, period}`, `me`, `shJoin {name, room}`,
+`shInput {mx, my, a, f, s}`, `shCase`, `shRetry`, `shPing {t}`, `shLeave`, `tickets`, `ticketNew {subject, text}`, `ticketReply {id, text}`,
 `ticketRead {id}`.
 
 Server → Client: `welcome`, `mg` (Schritt im Map-Event), `sh`, `shJoined`
-(mit Map), `shLeft` (Bilanz), `shKill`, `shError`, `auth`, `authError`, `authExpired`, `account`,
+(mit Map und Waffen), `shLeft` (Bilanz, Rueckgabe), `shKill`, `shHit`, `shHurt`,
+`shCase`, `shPickup`, `shPong`, `shRooms`, `shError`, `auth`, `authError`, `authExpired`, `account`,
 `joined`, `joinError`, `left`, `died` (`cause`, `by`, `byId`, `at`), `swapfx`, `cashedout`, `cashoutCancel`, `state`
 (alle 60 ms, mit `arena` und `paused`), `duel`, `gamble`, `box`, `jackpot`,
 `feed` (mit `who` und `big` fuer den Sound), `chat`, `chatlog`, `highscores`, `board`,
