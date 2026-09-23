@@ -48,7 +48,17 @@ accounts.onUnlock = (key, a) => {
     if (u) feed(`🏆 ${u.name} unlocked ${a.icon} ${a.name}`, 'good');
 };
 
+// Umzug snake.flashkeks.com -> game.flashkeks.com (23.09.2026): steht
+// SNAKE_CANONICAL_HOST, leiten alle anderen Hosts (ausser localhost) dorthin
+// weiter. Erst setzen, wenn der neue Name im DNS und im Tunnel steht.
+const CANONICAL = process.env.SNAKE_CANONICAL_HOST || '';
+
 const server = http.createServer((req, res) => {
+    const host = String(req.headers.host || '').split(':')[0];
+    if (CANONICAL && host && host !== CANONICAL && !/^(localhost|127\.0\.0\.1)$/.test(host)) {
+        res.writeHead(301, { Location: `https://${CANONICAL}${req.url}` });
+        return res.end();
+    }
     const url = req.url.split('?')[0];
     let file = url === '/' ? '/index.html' : url;
     file = path.normalize(file).replace(/^(\.\.[\/\\])+/, '');

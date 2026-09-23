@@ -859,6 +859,23 @@ bleiben seine Tickets lesbar, der Name bekommt „(deleted)“.
 Gespeichert in `DATA_DIR/tickets.json` (wie `accounts.json`: gebuendelt,
 atomar, kaputt = Server startet nicht).
 
+## Patch notes
+
+Rechts unter dem Chat steht das Panel **📝 Patch notes**, gespeist aus
+`public/patchnotes.json` (neueste oben, offen; der Rest zugeklappt). **Jede
+Runde, die live geht, bekommt dort einen kurzen Eintrag** – englisch, eine
+Zeile je Aenderung, kein Fliesstext (Wunsch Max, 23.09.2026). Der Eintrag
+gehoert in denselben Commit wie die Aenderung.
+
+## Name und Adresse
+
+Seit 23.09.2026 heisst das Spiel **Kek-Game** (vorher „Snake and Gamba“).
+Neue Adresse `game.flashkeks.com`; `snake.flashkeks.com` soll danach per 301
+dorthin zeigen. Dafuer gibt es `SNAKE_CANONICAL_HOST` (z. B.
+`game.flashkeks.com`): ist er gesetzt, leitet der Server jeden anderen Host
+ausser localhost um (WebSockets sind nicht betroffen). Erst setzen, wenn der
+neue Name in DNS und Tunnel steht – sonst ist das Spiel weg.
+
 ## Bedienung allgemein
 
 **ESC** fuehrt ueberall eine Ebene zurueck (Casino-Spiele → Casino → Menue,

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Snake and Gamba</title>
+<title>Kek-Game</title>
 <link rel="icon" type="image/png" sizes="64x64" href="img/favicon-64.png">
 <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
 <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
@@ -195,6 +195,37 @@ h1 .logo {
     border-radius: 3px;
     margin-right: 6px;
     vertical-align: -1px;
+}
+
+#pn-list {
+    max-height: 300px;
+    overflow-y: auto;
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#pn-list details {
+    border-left: 3px solid var(--green, #00ff88);
+    padding-left: 8px;
+}
+
+#pn-list summary {
+    cursor: pointer;
+    font-weight: 800;
+}
+
+#pn-list summary small {
+    opacity: .6;
+    font-weight: 600;
+    margin-left: 6px;
+}
+
+#pn-list ul {
+    margin: 4px 0 0;
+    padding-left: 18px;
+    line-height: 1.45;
 }
 
 #chat {
@@ -4684,7 +4715,7 @@ body.touch input, body.touch textarea {
 
 <body>
 
-<h1><img class="logo" src="img/logo.png" alt=""> Snake and Gamba</h1>
+<h1><img class="logo" src="img/logo.png" alt=""> Kek-Game</h1>
 <div id="status">Connecting...</div>
 
 <div id="layout">
@@ -4723,7 +4754,7 @@ body.touch input, body.touch textarea {
             <!-- Hauptmenue -->
             <div id="menu" class="overlay">
                 <div class="card">
-                    <h2><img class="menu-logo" src="img/logo.png" alt=""> Snake and Gamba</h2>
+                    <h2><img class="menu-logo" src="img/logo.png" alt=""> Kek-Game</h2>
 
                     <div id="menu-result"></div>
 
@@ -5207,6 +5238,10 @@ body.touch input, body.touch textarea {
                 <button type="submit">↵</button>
             </form>
         </div>
+        <div class="panel" id="patchnotes">
+            <h2>📝 Patch notes</h2>
+            <div id="pn-list"></div>
+        </div>
     </div>
 </div>
 
@@ -5216,6 +5251,12 @@ const ctx = canvas.getContext('2d');
 const $ = id => document.getElementById(id);
 
 const status = $('status');
+
+// Patch notes (public/patchnotes.json): neueste offen, der Rest zugeklappt
+fetch('patchnotes.json').then(r => r.json()).then(list => {
+    $('pn-list').innerHTML = list.map((p, i) => `<details ${i === 0 ? 'open' : ''}><summary>${esc(p.title)}<small>${esc(p.date)}</small></summary>` +
+        `<ul>${p.items.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>`).join('');
+}).catch(() => { $('patchnotes').hidden = true; });
 
 let myId = null;
 let joined = false;

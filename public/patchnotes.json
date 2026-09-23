@@ -1,0 +1,47 @@
+[
+  { "date": "23.09.2026", "title": "Kek-Game", "items": [
+    "New name: Kek-Game",
+    "Patch notes live here now",
+    "ESC always takes you one menu back",
+    "Slots: the feed no longer spoils a big win before the reels stop"
+  ] },
+  { "date": "23.09.2026", "title": "Arena: round 4", "items": [
+    "Hub split into Equip, Inventory and Salvage",
+    "Equip: click a slot to pick from matching items",
+    "Salvage: one click for all Common/Uncommon/Rare/Epic",
+    "Compact cards (Rare · ⚡ score), details on hover",
+    "Backpacks: new slot, 12 to 50 raid slots",
+    "Raid inventory in the middle, Apex style",
+    "Burning is quiet: just a red edge for the one who burns",
+    "Railgun: instant beam through walls, 250 damage",
+    "Fat Boy: real mini nuke with mushroom cloud",
+    "Singularity: every hit opens a black hole",
+    "Glowing tracers from Epic up, rockets, magic orbs, new sounds"
+  ] },
+  { "date": "23.09.2026", "title": "Arena: round 3", "items": [
+    "Rarity rolled per case, Legendary to Ultra rare",
+    "New cases: Mage, Demolition, Sovereign (100k)",
+    "Special items from Epic up: Flamethrower, Railgun, Fat Boy …",
+    "Effects equally rare on every tier",
+    "Two consumable slots (Q/G): nuke, black hole, flashbang, blink …",
+    "Armor only from cases and crates",
+    "Doors on buildings are visible"
+  ] },
+  { "date": "23.09.2026", "title": "Arena: round 2", "items": [
+    "Helmet, vest, pants, boots with set bonuses",
+    "Grenades, hiding in buildings, bushes and smoke",
+    "Slow health regeneration, raid inventory (Tab)"
+  ] },
+  { "date": "23.09.2026", "title": "Arena becomes a raid", "items": [
+    "Extraction shooter: loadout, loot crates, extraction zones",
+    "Cases, shop, salvage to scrap"
+  ] },
+  { "date": "23.09.2026", "title": "Cosmetic Shop", "items": [
+    "134 designs, daily and weekly offers"
+  ] },
+  { "date": "23.09.2026", "title": "Casino & more", "items": [
+    "Poker lobbies, Plinko, blackjack side bets",
+    "Achievements with titles, stats, leaderboard filters",
+    "Map events: Maze, Coin Rush, Last Snake Standing"
+  ] }
+]
