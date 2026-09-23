@@ -24,6 +24,8 @@ const createTrade = require('./trade');
 const createAssets = require('./assets');
 const createMarket = require('./market');
 const createLobby = require('./lobby');
+const kmBattle = require('./km-battle');
+const createGyms = require('./km-gyms');
 const shop = require('./shop');
 const arenaItems = require('./arena-items');
 const arenaLevel = require('./arena-level');
@@ -1351,6 +1353,14 @@ async function handle(c, data) {
             send(c, { type: 'achRates', total: achRatesCache.total, rates: achRatesCache.rates });
             return;
 
+        // Kekemon-Kaempfe (5.6)
+        case 'kbGyms':
+        case 'kbStart':
+        case 'kbAct':
+        case 'kbLeave':
+            gyms.handle(c, data);
+            return;
+
         // In game (5.0): der Browser meldet seinen Schirm
         case 'where':
             c.where = String(data.w || '').slice(0, 20);
@@ -1945,6 +1955,12 @@ const market = createMarket({
 });
 
 const lobby = createLobby({ accounts, send, titleOf: key => accounts.titleOf(key) });
+
+// Kekemon-Kaempfe gegen KI-Arenen (5.6)
+const gyms = createGyms({
+    accounts, cards, cardDb, battle: kmBattle, send, feed, refresh: mkRefresh,
+    log: line => console.log(line)
+});
 
 // Eigener, schnellerer Takt als das Snake-Feld (33 ms)
 setInterval(() => {

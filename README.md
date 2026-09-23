@@ -30,6 +30,8 @@ Live: **`snake.flashkeks.com`** auf `edge` (Netcup).
 | `luck.js` | Admin v2: erzwungene Mindestgewinne je Konto und Spiel |
 | `shop.js` | Shop (#9): Katalog, was andere von einem sehen |
 | `shooter.js` | Arena: Hub (Shop, Cases, Salvage, Loadout) und Raid (Map, Kisten, Beutel, Extraction, Kampf mit Effekten) |
+| `km-battle.js` | Kekémon-Kampflogik (3 gegen 3, Energie, Effekte, KI) ohne Netz – testbar per Simulation |
+| `km-gyms.js` | Die 8 KI-Arenen: Leiter-Teams, Freischalten, Belohnungen, Fortschritt `u.kmGyms` |
 | `cards-moves.js` | Kekémon: Attacken je Figur (SIG) und je Serie (FRAN) |
 | `cards.js` | Kekémon (5.0): Karten aus Rohdaten rechnen (Typ, Seltenheit, Werte, Attacken — deterministisch aus der Id), Packs, Katalog fuer den Browser |
 | `tools/cards/build.js` | holt die Kartendaten (AniList, Superhero-API, TVMaze) nach `DATA_DIR/cards-raw.json`; `tools/cards/fixture.json` ist eine kleine Stichprobe fuer lokale Tests |
@@ -1116,6 +1118,45 @@ der Statistik unter `earned.cards`.
 | Legendary | 0,25 % | 0,60 % | 1,67 % |
 | Mythic | 1 in 20 000 | 1 in 3 478 | 1 in 1000 |
 | Ultra | 1 in 200 000 | 1 in 34 783 | 1 in 10 000 |
+
+## ⚔️ Kekémon-Kaempfe gegen KI-Arenen (5.6)
+
+Tab „Gym battles" in Kekémon. Server rechnet (`km-battle.js`), der Browser
+spielt die Ereignisliste als Animation ab (Ausfallschritt, Wackeln,
+Schadenszahl, K.o.) und zeigt danach den Endstand.
+
+**Regeln:** 3 gegen 3, aktive Karte + zwei auf der Bank; die schnellere
+aktive Karte beginnt. Zugbeginn: aktive Karte +1 Energie (bleibt an der
+Karte, wird beim Angriff nicht verbraucht). Eine Aktion je Zug: Angriff
+(Energie ≥ Kosten), Aufladen (+1 extra) oder Auswechseln; Aufgeben geht immer.
+Schaden = Attacke + Boost, ×1,5 bei Schwaeche, minus 40 % Verteidigung (nicht
+bei Pierce), mind. 10. Effekte: Brennen 15 fuer 3 Zuege, Betaeuben (Zug
+faellt aus, danach bis zur naechsten eigenen Aktion immun – sonst
+Dauerbetaeubung), Heilen 30, Aussaugen halber Schaden, Boost +20 dauerhaft.
+Nach 40 Runden gewinnt, wer anteilig mehr HP hat (Heilen gegen Heilen).
+Varianten: Pokeball +3 %, Masterball +8 %, Shiny +10 % HP und Schaden.
+
+**KI** (Stufe je Arena): 0 haut um, wenn moeglich, sonst staerkster Angriff;
+1 laedt auf, wenn die grosse Attacke dadurch eine Runde frueher kommt; 2
+wechselt bei schlechter Paarung. Simulation 5000 Zufallskaempfe: kein Haenger,
+kein Timeout, im Schnitt 8 Runden, Zufallsteam gegen Zufallsteam 43 %.
+
+**Arenen** (`GYMS`), eine schaltet die naechste frei:
+
+| Arena | Typ | Leiter-Karten | Staerke | KI | 1. Sieg | Pack |
+|---|---|---|---|---|---|---|
+| 🌱 Sprout Gym | Nature | Common | ×0,85 | 0 | 3000 | Anime |
+| 💧 Tide Gym | Water | Common/Uncommon | ×0,95 | 0 | 4000 | Heroes & Series |
+| 🔥 Blaze Gym | Fire | Uncommon | ×1,0 | 1 | 5000 | Anime |
+| ⚡ Volt Gym | Electric | Uncommon/Rare | ×1,05 | 1 | 6500 | Waifu |
+| 👊 Iron Dojo | Fighting | Rare | ×1,12 | 1 | 8000 | Heroes & Series |
+| 🔮 Mind Tower | Psychic | Rare/Epic | ×1,2 | 2 | 11 000 | Anime |
+| 🌑 Shadow Gym | Dark | Epic | ×1,3 | 2 | 15 000 | Waifu |
+| 👑 Kek Champion | alle | Legendary/Secret | ×1,4 | 2 | 30 000 | Mega |
+
+Leiter-Teams sind fest (aus der Arena-Id gewuerfelt). Danach je Sieg 15 %
+der Coins, hoechstens 3 belohnte Siege je Arena und Tag. Ein Kampf lebt nur im
+Speicher (`c.kb`); Server-Neustart oder Tab zu = Kampf weg, ohne Strafe.
 
 ## 🏛️ Markt (5.2)
 

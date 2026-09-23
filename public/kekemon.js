@@ -177,9 +177,8 @@ function kmDraw() {
     }
     if (kmTab === 'packs') body.innerHTML = kmDrawPacks();
     else if (kmTab === 'album') body.innerHTML = kmDrawAlbum();
-    else body.innerHTML = `<div class="km-note">${kmTab === 'battle'
-        ? '⚔️ <b>Battles are coming in 5.2</b><br>Build a team of three cards and fight AI gyms for coins and packs.'
-        : '🤝 <b>PvP duels and card trading are coming in 5.3</b>'}</div>`;
+    else if (kmTab === 'battle') body.innerHTML = kmDrawBattleTab();
+    else body.innerHTML = '<div class="km-note">🤝 <b>Trading cards</b> works in the 🏛️ Market: Auction Hall or trade with a player in the lobby (F).<br>PvP duels are next.</div>';
 }
 
 // "1 in 12,345" oder Prozent, je nachdem was lesbarer ist
@@ -584,3 +583,285 @@ document.addEventListener('keydown', e => {
 });
 
 $('km-menu-open').onclick = () => setWorld('cards');
+
+// ---------- Kaempfe gegen KI-Arenen (5.6) ----------
+// Der Server rechnet (km-battle.js), der Browser spielt die Ereignisse ab.
+// kbShown = was gerade zu sehen ist; waehrend des Abspielens wird es Schritt
+// fuer Schritt an den Endstand (kb.battle.view) herangefuehrt.
+
+let kb = null;               // letzter kbState: { gyms, battle }
+let kbPick = null;           // Team-Auswahl { gym, team: [keys] }
+let kbShown = null;          // angezeigter Kampfstand
+let kbQueue = [];            // abzuspielende Ereignisse
+let kbBusy = false;
+let kbLog = [];
+let kbResult = null;
+let kbFx = [];               // kurzlebige Effekte { s, text, cls }
+const KB_WEAK = 1.5, KB_DEF = 0.4;
+
+function kbGymOf(id) {
+    return kb && kb.gyms.find(g => g.id === id);
+}
+
+function onKbState(d) {
+    const first = !kb;
+    kb = d;
+    if (d.started) {
+        kbResult = null;
+        kbLog = [];
+        kbPick = null;
+        // Frischer Kampf: vorher alle voll, Energie 0, erste Karte vorne
+        kbShown = JSON.parse(JSON.stringify(d.battle.view));
+        for (const s of kbShown.sides) {
+            s.active = 0;
+            for (const c of s.cards) Object.assign(c, { hp: c.maxHp, energy: 0, burn: 0, stun: false, boost: 0 });
+        }
+    }
+    if (d.result) kbResult = d.result;
+    // Seite neu geladen, Kampf laeuft noch: Stand direkt uebernehmen
+    if (first && d.battle && !kbShown) kbShown = d.battle.view;
+    if (d.ev && d.ev.length) {
+        kbQueue.push(...d.ev);
+        if (!kbBusy) kbPlay();
+    } else if (d.battle) kbShown = d.battle.view;
+    if (kmTab === 'battle' && !$('kekemon').classList.contains('hidden') && !kbBusy) kmDraw();
+}
+
+// Schaden wie auf dem Server (nur fuer die Vorschau auf den Knoepfen)
+function kbDmg(att, def, a) {
+    const A = kmCat.byId[att.id], D = kmCat.byId[def.id];
+    let d = a.dmg + (att.boost || 0);
+    const weak = D.weak === A.type;
+    if (weak) d *= KB_WEAK;
+    if (a.effect !== 'pierce') d -= def.def * KB_DEF;
+    return { dmg: Math.max(10, Math.round(d)), weak };
+}
+
+function kbName(s, v = kbShown) {
+    const c = v.sides[s].cards[v.sides[s].active];
+    return (s === 1 ? v.sides[1].name + "'s " : '') + kmCat.byId[c.id].name;
+}
+
+// Ein Ereignis nach dem anderen, mit Pause und Effekt
+function kbPlay() {
+    if (!kbQueue.length) {
+        kbBusy = false;
+        if (kb && kb.battle) kbShown = kb.battle.view;
+        if (kmTab === 'battle') kmDraw();
+        return;
+    }
+    kbBusy = true;
+    const e = kbQueue.shift();
+    const v = kbShown;
+    const actv = s => v.sides[s].cards[v.sides[s].active];
+    let wait = 120, anim = null;
+    const log = t => { kbLog.push(t); if (kbLog.length > 6) kbLog.shift(); };
+    if (e.k === 'start') log(e.first === 0 ? 'You are faster – you start!' : `${v.sides[1].name} is faster and starts.`);
+    else if (e.k === 'energy') { actv(e.s).energy = e.n; wait = 150; }
+    else if (e.k === 'charge') { actv(e.s).energy = e.n; log(`${kbName(e.s)} charges up (⚡ ${e.n})`); anim = { s: e.s, text: '+⚡', cls: 'charge' }; wait = 650; kmSfx('charge'); }
+    else if (e.k === 'burn') { actv(e.s).hp = e.hp; actv(e.s).burn = Math.max(0, actv(e.s).burn - 1); log(`${kbName(e.s)} burns for ${e.dmg}`); anim = { s: e.s, text: '🔥 −' + e.dmg, cls: 'hit' }; wait = 700; }
+    else if (e.k === 'stunned') { actv(e.s).stun = false; log(`${kbName(e.s)} is stunned and skips the turn`); anim = { s: e.s, text: '💫', cls: 'stun' }; wait = 750; }
+    else if (e.k === 'atk') {
+        const me = actv(e.s), foe = actv(1 - e.s);
+        foe.hp = e.hp;
+        if (e.myHp !== undefined) me.hp = e.myHp;
+        if (e.boost) me.boost = e.boost;
+        if (e.eff === 'burn' && e.hp > 0) foe.burn = 3;
+        if (e.eff === 'stun' && e.hp > 0 && !e.resist) foe.stun = true;
+        log(`${kbName(e.s)} uses ${e.name}: ${e.dmg} damage${e.weak ? ' – super effective!' : ''}${e.heal ? ` · heals ${e.heal}` : ''}${e.boost ? ' · power up!' : ''}${e.resist ? ' · resisted the stun' : ''}`);
+        anim = { s: 1 - e.s, from: e.s, text: '−' + e.dmg + (e.weak ? ' ×1.5' : ''), cls: e.weak ? 'hit big' : 'hit' };
+        wait = 950;
+        if (e.weak || e.dmg >= 100) kmSfx('fanfare', 'small'); else kmSfx('click');
+    }
+    else if (e.k === 'ko') { log(`💥 ${kmCat.byId[e.id].name} is knocked out!`); anim = { s: e.s, text: 'K.O.', cls: 'ko' }; wait = 900; }
+    else if (e.k === 'switch') { v.sides[e.s].active = e.to; log(`${e.s === 0 ? 'You send' : v.sides[1].name + ' sends'} out ${kmCat.byId[v.sides[e.s].cards[e.to].id].name}`); wait = 600; }
+    else if (e.k === 'choose') { v.needSwitch = true; log('Pick your next card'); }
+    else if (e.k === 'timeout') log('Time is up – the side with more HP left wins');
+    else if (e.k === 'forfeit') log('You gave up');
+    else if (e.k === 'end') { v.over = true; v.winner = e.winner; wait = 400; }
+    kbFx = anim ? [anim] : [];
+    if (kmTab === 'battle' && !$('kekemon').classList.contains('hidden')) kmDraw();
+    setTimeout(kbPlay, wait);
+}
+
+function kbStars(g) {
+    const n = kb.gyms.indexOf(g) + 1;
+    return '★'.repeat(Math.ceil(n / 2)) + '☆'.repeat(4 - Math.ceil(n / 2));
+}
+
+function kbDrawGyms() {
+    const T = kmCat.types;
+    const rules = `<details class="kb-rules"><summary>📖 How battles work</summary><ul>
+        <li>3 vs 3. Your first card fights, the other two wait on the bench. The faster card starts.</li>
+        <li>Each turn your active card gets <b>+1 energy</b>. Energy stays on that card and is not used up.</li>
+        <li>One action per turn: <b>attack</b> (needs the energy shown), <b>charge</b> (+1 extra energy) or <b>switch</b>.</li>
+        <li>Weakness: ×1.5 damage. Defense lowers damage (not for pierce). Burn 15 for 3 turns, stun skips a turn (not twice in a row), heal 30, drain half the damage, boost +20 damage.</li>
+        <li>Pokéball +3 %, Masterball +8 %, Shiny +10 % HP and damage.</li>
+        <li>First win against a gym: coins + a free pack. After that ${Math.round(0.15 * 100)} % of the coins, 3 times per gym and day.</li>
+    </ul></details>`;
+    const tiles = kb.gyms.map(g => {
+        const t = g.type ? T[g.type] : null;
+        const weakTo = t ? T[t.weak] : null;
+        const team = g.team.map(id => kmCard(kmCat.byId[id], { mini: true })).join('');
+        return `<div class="kb-gym ${g.unlocked ? '' : 'locked'} ${g.cleared ? 'cleared' : ''}" style="--gc:${t ? t.color : '#ffd23f'}">
+            <div class="kb-gym-head"><span class="ico">${g.icon}</span><div><b>${esc(g.name)}</b><small>Leader ${esc(g.leader)} · ${t ? t.icon + ' ' + t.name : '🌈 All types'} · <span class="kb-stars">${kbStars(g)}</span></small></div>
+            ${g.cleared ? '<span class="kb-badge">✔ Cleared</span>' : ''}</div>
+            <div class="kb-team">${g.unlocked ? team : '<div class="km-note">🔒 Beat the previous gym first</div>'}</div>
+            <div class="kb-gym-foot">
+                <span>${g.cleared ? `🪙 ${g.repeat.toLocaleString('en-US')} per win · ${g.rewardsLeft} left today` : `🪙 ${g.coins.toLocaleString('en-US')} + ${kmCat.packs[g.pack].icon} free ${esc(kmCat.packs[g.pack].name)}`}</span>
+                ${weakTo ? `<span class="hint">Weak to ${weakTo.icon} ${weakTo.name}</span>` : ''}
+                <button type="button" class="gold" data-kbgym="${g.id}" ${g.unlocked ? '' : 'disabled'}>⚔️ Challenge</button>
+            </div>
+        </div>`;
+    }).join('');
+    return rules + `<div class="kb-gyms">${tiles}</div>`;
+}
+
+function kbDrawPick() {
+    const g = kbGymOf(kbPick.gym);
+    const own = kmOwn();
+    const T = kmCat.types;
+    const t = g.type ? T[g.type] : null;
+    // Jede Variante einzeln waehlbar, staerkste zuerst
+    const list = [];
+    for (const [id, o] of Object.entries(own)) {
+        const c = kmCat.byId[id];
+        if (!c) continue;
+        for (const v of Object.keys(o.vars)) list.push({ c, v, key: kmKeyOf(id, v) });
+    }
+    list.sort((a, b) => (b.c.hp + b.c.atk * 2) - (a.c.hp + a.c.atk * 2));
+    const chosen = kbPick.team;
+    const slots = [0, 1, 2].map(i => {
+        const k = chosen[i];
+        if (!k) return '<div class="kb-slot empty">?</div>';
+        const { id, v } = kmParse(k);
+        return `<div class="kb-slot" data-kbunpick="${i}">${kmCard(kmCat.byId[id], { mini: true, v })}</div>`;
+    }).join('');
+    const grid = list.map(x => {
+        const on = chosen.includes(x.key);
+        const blocked = !on && chosen.some(k => kmParse(k).id === x.c.id);
+        const good = t && x.c.type === t.weak;
+        const bad = t && kmCat.types[x.c.type] && x.c.weak === g.type;
+        return `<div class="kb-cand ${on ? 'on' : ''} ${blocked ? 'off' : ''}" data-kbpick="${esc(x.key)}">${kmCard(x.c, { mini: true, v: x.v })}${good ? '<span class="kb-tag good">Strong</span>' : bad ? '<span class="kb-tag bad">Weak</span>' : ''}</div>`;
+    }).join('');
+    return `<div class="kb-pick-head"><button type="button" class="ghost" id="kb-back">← Gyms</button>
+        <b>${g.icon} ${esc(g.name)}</b> <span class="hint">${t ? `Leader uses ${t.icon} ${t.name} – ${T[t.weak].icon} ${T[t.weak].name} cards hit it ×1.5` : 'The champion uses every type'}</span></div>
+        <div class="kb-slots">${slots}<button type="button" class="gold" id="kb-fight" ${chosen.length === 3 ? '' : 'disabled'}>⚔️ Fight!</button></div>
+        <div class="hint">Pick three different cards. The first one starts.</div>
+        <div class="km-grid">${grid || '<div class="km-note" style="grid-column:1/-1">You need cards first – open packs in 📦 Packs.</div>'}</div>`;
+}
+
+// Eine Seite des Kampfes
+function kbSide(s) {
+    const v = kbShown;
+    const side = v.sides[s];
+    const act = side.cards[side.active];
+    const c = kmCat.byId[act.id];
+    const fx = kbFx.find(f => f.s === s);
+    const lunge = kbFx.find(f => f.from === s);
+    const pct = Math.max(0, act.hp / act.maxHp * 100);
+    const status = (act.burn ? `<span title="Burning">🔥${act.burn}</span>` : '') + (act.stun ? '<span title="Stunned">💫</span>' : '') + (act.boost ? `<span title="Boost">⬆️+${act.boost}</span>` : '');
+    const bench = side.cards.map((x, i) => {
+        if (i === side.active) return '';
+        const cc = kmCat.byId[x.id];
+        const canSw = s === 0 && x.hp > 0 && !kbBusy && !v.over && (v.needSwitch || v.turn === 0);
+        return `<div class="kb-bench ${x.hp <= 0 ? 'dead' : ''} ${canSw ? 'can' : ''}" ${canSw ? `data-kbsw="${i}"` : ''} title="${esc(cc.name)} · ${x.hp}/${x.maxHp} HP">
+            ${kmCard(cc, { mini: true, v: x.v })}<div class="kb-mhp"><i style="width:${x.hp / x.maxHp * 100}%"></i></div>${canSw ? '<span class="kb-swap">⇄</span>' : ''}</div>`;
+    }).join('');
+    return `<div class="kb-side s${s} ${v.turn === s && !v.over ? 'turn' : ''}">
+        <div class="kb-who">${s === 0 ? '🧑 ' + esc(side.name) : '🏟️ ' + esc(side.name)}</div>
+        <div class="kb-row">
+            <div class="kb-act ${act.hp <= 0 ? 'dead' : ''} ${fx ? fx.cls : ''} ${lunge ? 'lunge' : ''}">
+                ${kmCard(c, { v: act.v })}
+                ${fx ? `<span class="kb-float ${fx.cls}">${fx.text}</span>` : ''}
+            </div>
+            <div class="kb-info">
+                <b>${esc(c.name)}</b>
+                <div class="kb-hp ${pct < 25 ? 'low' : pct < 55 ? 'mid' : ''}"><i style="width:${pct}%"></i><span>${Math.max(0, act.hp)} / ${act.maxHp}</span></div>
+                <div class="kb-energy">${act.energy ? kmCat.types[c.type].icon.repeat(Math.min(act.energy, 6)) + (act.energy > 6 ? ` +${act.energy - 6}` : '') : '<span class="hint">no energy</span>'}</div>
+                <div class="kb-status">${status}</div>
+                <div class="kb-benchrow">${bench}</div>
+            </div>
+        </div>
+    </div>`;
+}
+
+function kbDrawBattle() {
+    const v = kbShown;
+    const gym = kbGymOf(kb.battle ? kb.battle.gym : kbResult ? kbResult.gym : null) || kb.gyms[0];
+    const t = gym.type ? kmCat.types[gym.type] : null;
+    let actions = '';
+    if (v.over && !kbBusy) {
+        const r = kbResult || { win: v.winner === 0 };
+        actions = `<div class="kb-result ${r.win ? 'win' : 'lose'}">
+            <div class="big">${r.win ? '🏆 VICTORY' : '💀 DEFEAT'}</div>
+            ${r.win ? `<div>${r.coins ? `+🪙 ${r.coins.toLocaleString('en-US')}` : 'No coins left from this gym today'}${r.first ? ' · first clear!' : ''}</div>` : '<div>Try another team – type advantage matters.</div>'}
+            ${r.pack ? `<button type="button" class="gold" id="kb-openpack">🎁 Open your free ${esc(kmCat.packs[r.pack.pack].name)}</button>` : ''}
+            <button type="button" id="kb-done">Back to gyms</button>
+        </div>`;
+    } else if (!kbBusy && v.needSwitch) {
+        actions = '<div class="kb-hintbig">Your card was knocked out – pick the next one from your bench (⇄)</div>';
+    } else if (!kbBusy && v.turn === 0) {
+        const me = v.sides[0].cards[v.sides[0].active], foe = v.sides[1].cards[v.sides[1].active];
+        const btns = me.attacks.map((a, i) => {
+            const d = kbDmg(me, foe, a);
+            const ok = me.energy >= a.cost;
+            return `<button type="button" class="kb-atk ${ok ? '' : 'no'}" data-kbatk="${i}" ${ok ? '' : 'disabled'}>
+                <span class="cost">${kmCost(a.cost, kmCat.byId[me.id].type)}</span><b>${esc(a.name)}</b>
+                <span class="dmg">${d.dmg}${d.weak ? ' ×1.5' : ''}</span>${a.effect !== 'none' ? `<small>${esc(kmCat.effects[a.effect])}</small>` : ''}</button>`;
+        }).join('');
+        actions = `<div class="kb-actions">${btns}
+            <button type="button" class="kb-charge" data-kbcharge="1">⚡ Charge<small>+1 energy, no attack</small></button>
+            <button type="button" class="ghost kb-ff" data-kbff="1">🏳️ Give up</button></div>`;
+    } else if (!v.over) {
+        actions = `<div class="kb-hintbig">${kbBusy ? '…' : v.sides[1].name + ' is thinking…'}</div>`;
+    }
+    return `<div class="kb-arena" style="--gc:${t ? t.color : '#ffd23f'}">
+        <div class="kb-top"><b>${gym.icon} ${esc(gym.name)}</b><span>Round ${v.round}</span></div>
+        ${kbSide(1)}
+        <div class="kb-log">${kbLog.map((l, i) => `<div style="opacity:${0.45 + 0.55 * (i + 1) / kbLog.length}">${esc(l)}</div>`).join('')}</div>
+        ${kbSide(0)}
+        ${actions}
+    </div>`;
+}
+
+function kmDrawBattleTab() {
+    if (!kb) {
+        wsSend({ type: 'kbGyms' });
+        return '<div class="km-note">Loading gyms…</div>';
+    }
+    if (kbShown && (kb.battle || kbBusy || kbResult)) return kbDrawBattle();
+    if (kbPick) return kbDrawPick();
+    return kbDrawGyms();
+}
+
+$('km-body').addEventListener('click', e => {
+    if (kmTab !== 'battle') return;
+    const t = e.target.closest('[data-kbgym],[data-kbpick],[data-kbunpick],[data-kbatk],[data-kbcharge],[data-kbsw],[data-kbff],#kb-back,#kb-fight,#kb-done,#kb-openpack');
+    if (!t) return;
+    e.stopPropagation();
+    const ds = t.dataset;
+    if (ds.kbgym) { kbPick = { gym: ds.kbgym, team: [] }; return kmDraw(); }
+    if (t.id === 'kb-back') { kbPick = null; return kmDraw(); }
+    if (ds.kbpick) {
+        const k = ds.kbpick, team = kbPick.team;
+        const i = team.indexOf(k);
+        if (i >= 0) team.splice(i, 1);
+        else if (team.length < 3 && !team.some(x => kmParse(x).id === kmParse(k).id)) team.push(k);
+        return kmDraw();
+    }
+    if (ds.kbunpick !== undefined) { kbPick.team.splice(Number(ds.kbunpick), 1); return kmDraw(); }
+    if (t.id === 'kb-fight') return wsSend({ type: 'kbStart', gym: kbPick.gym, team: kbPick.team });
+    if (kbBusy) return;
+    if (ds.kbatk !== undefined) return wsSend({ type: 'kbAct', a: 'atk', i: Number(ds.kbatk) });
+    if (ds.kbcharge) return wsSend({ type: 'kbAct', a: 'charge' });
+    if (ds.kbsw !== undefined) return wsSend({ type: 'kbAct', a: 'switch', to: Number(ds.kbsw) });
+    if (ds.kbff) { if (confirm('Give up this battle?')) wsSend({ type: 'kbAct', a: 'forfeit' }); return; }
+    if (t.id === 'kb-openpack' && kbResult && kbResult.pack) {
+        const p = kbResult.pack;
+        kbResult.pack = null;
+        kmDraw();
+        return kmShowPack(p);
+    }
+    if (t.id === 'kb-done') { kbResult = null; kbShown = null; wsSend({ type: 'kbGyms' }); return kmDraw(); }
+}, true);

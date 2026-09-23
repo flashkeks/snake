@@ -6139,8 +6139,8 @@ body.touch input, body.touch textarea {
                     <div class="cs-tabs" id="km-tabs">
                         <button type="button" data-kmtab="packs">📦 Packs</button>
                         <button type="button" data-kmtab="album">📖 Collection</button>
-                        <button type="button" data-kmtab="battle">⚔️ Battle <small>5.2</small></button>
-                        <button type="button" data-kmtab="trade">🤝 Duels &amp; Trade <small>5.3</small></button>
+                        <button type="button" data-kmtab="battle">⚔️ Gym battles</button>
+                        <button type="button" data-kmtab="trade">🤝 Trade</button>
                     </div>
                     <div class="msg" id="km-msg"></div>
                     <div id="km-body"></div>
@@ -6663,6 +6663,7 @@ ws.onmessage = event => {
         case 'shPong': shRtt = shRtt * .7 + (performance.now() - data.t) * .3; break;
         case 'arHub': onArHub(data); break;
         case 'kmState': onKmState(data); break;
+        case 'kbState': onKbState(data); break;
         case 'mkState': onMkState(data); break;
         case 'mkNote': mkToast(data.text, data.kind); if (!$('market').classList.contains('hidden')) showMsg('mk-msg', data.text, data.kind === 'err' ? 'err' : 'ok'); break;
         case 'lbJoined': onLbJoined(data); break;
