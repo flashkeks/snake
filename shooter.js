@@ -258,6 +258,56 @@ function buildPvpMap(seed, name) {
         stations: [], town: null, outpost: null, military: null, spawns
     };
 }
+// Zombie-Map (4.4): offen (Zombies laufen direkt auf Spieler zu), Saeulen und
+// kurze Mauern als Deckung, Stationen wie in COD Zombies am Rand
+const ZMB_W = 2600, ZMB_H = 1800;
+const ZMB_PERKS = {
+    jug: { name: 'Jugger-Kek', icon: '🥤', price: 2500, desc: '+100 max HP' },
+    speed: { name: 'Speed Kek', icon: '🧃', price: 3000, desc: '+25% fire rate' },
+    stamina: { name: 'Stamina Kek', icon: '🍹', price: 2000, desc: '+15% movement speed' },
+    quick: { name: 'Quick Kek', icon: '🧋', price: 1500, desc: 'Regeneration after 2 s, +2 HP/s' }
+};
+const ZMB_WALL = { smg: 750, shotgun: 1000, rifle: 1400, sniper: 1500 };
+const ZMB_BOX = 950, ZMB_PAP = 5000, ZMB_PAP_MAX = 3;
+function buildZombieMap() {
+    const rand = rng(777);
+    const walls = [];
+    const overlaps = (a, b, m) => a[0] < b[0] + b[2] + m && a[0] + a[2] + m > b[0] && a[1] < b[1] + b[3] + m && a[1] + a[3] + m > b[1];
+    const center = [ZMB_W / 2 - 260, ZMB_H / 2 - 200, 520, 400];
+    for (let k = 0; k < 2000 && walls.length < 26; k++) {
+        const type = rand();
+        const r = type < 0.6 ? [0, 0, 60 + rand() * 50, 60 + rand() * 50] : type < 0.8 ? [0, 0, 160 + rand() * 120, WALL_T] : [0, 0, WALL_T, 160 + rand() * 120];
+        r[0] = 200 + rand() * (ZMB_W - 400 - r[2]);
+        r[1] = 200 + rand() * (ZMB_H - 400 - r[3]);
+        if (walls.some(o => overlaps(r, o, 150)) || overlaps(r, center, 60)) continue;
+        walls.push(r.map(Math.round));
+    }
+    const st = (kind, x, y, extra) => ({ kind, x: Math.round(x), y: Math.round(y), ...extra });
+    const stations = [
+        st('wall', 90, ZMB_H * 0.3, { base: 'smg', price: ZMB_WALL.smg }),
+        st('wall', 90, ZMB_H * 0.7, { base: 'shotgun', price: ZMB_WALL.shotgun }),
+        st('wall', ZMB_W - 90, ZMB_H * 0.3, { base: 'rifle', price: ZMB_WALL.rifle }),
+        st('wall', ZMB_W - 90, ZMB_H * 0.7, { base: 'sniper', price: ZMB_WALL.sniper }),
+        st('box', ZMB_W / 2, ZMB_H - 110, { price: ZMB_BOX }),
+        st('pap', ZMB_W / 2, 110, { price: ZMB_PAP }),
+        st('perk', 150, 150, { perk: 'jug', price: ZMB_PERKS.jug.price }),
+        st('perk', ZMB_W - 150, 150, { perk: 'speed', price: ZMB_PERKS.speed.price }),
+        st('perk', 150, ZMB_H - 150, { perk: 'stamina', price: ZMB_PERKS.stamina.price }),
+        st('perk', ZMB_W - 150, ZMB_H - 150, { perk: 'quick', price: ZMB_PERKS.quick.price })
+    ];
+    const zspawns = [];
+    for (let i = 0; i < 12; i++) {
+        const edge = i % 4, t = 0.15 + (Math.floor(i / 4) * 0.35);
+        zspawns.push(edge === 0 ? { x: ZMB_W * t, y: 40 } : edge === 1 ? { x: ZMB_W * t, y: ZMB_H - 40 } : edge === 2 ? { x: 40, y: ZMB_H * t } : { x: ZMB_W - 40, y: ZMB_H * t });
+    }
+    const spawns = { a: [0, 1, 2, 3].map(i => ({ x: ZMB_W / 2 - 90 + (i % 2) * 180, y: ZMB_H / 2 - 60 + Math.floor(i / 2) * 120 })) };
+    return {
+        name: 'Kek Mall', walls, crates: [], extracts: [], buildings: [], bushes: [], doors: [], stations,
+        town: null, outpost: null, military: null, spawns, zspawns, arena: [0, 0, ZMB_W, ZMB_H]
+    };
+}
+const ZOMBIE_WORLD = makeWorld(buildZombieMap(), ZMB_W, ZMB_H);
+
 const PVP_WORLDS = [[101, 'Courtyard'], [202, 'Depot'], [303, 'Crossing'], [404, 'Yard']].map(([s, n]) => makeWorld(buildPvpMap(s, n), PVP_W, PVP_H));
 
 // Bewegen mit Rutschen: in kleinen Schritten bis an die Wand heran und an
@@ -414,7 +464,7 @@ module.exports = function createArena(h, opts = {}) {
         const u = h.accounts.get(c.account);
         h.send(c, {
             type: 'arHub', inv: a.inv.map(it => ({ ...it, sv: I.salvageValue(it) })), loadout: a.loadout,
-            scrap: a.scrap, coins: u.coins, inRaid: players.has(c.id), prog: progView(c, a), pvp: a.pvp || null, ...extra
+            scrap: a.scrap, coins: u.coins, inRaid: players.has(c.id), prog: progView(c, a), pvp: a.pvp || null, zombies: a.zombies || null, ...extra
         });
     }
 
@@ -624,6 +674,19 @@ module.exports = function createArena(h, opts = {}) {
             p.healMul *= b.heal;
             p.packMax += b.pack;
         }
+        // Zombie-Perks
+        if (p.perks && p.perks.length) {
+            if (p.perks.includes('jug')) {
+                p.hp = p.hp / p.maxHp * (p.maxHp + 100);
+                p.maxHp += 100;
+            }
+            if (p.perks.includes('speed')) p.rateMul *= 1.25;
+            if (p.perks.includes('stamina')) p.speedMul *= 1.15;
+            if (p.perks.includes('quick')) {
+                p.regen += 2;
+                p.b.regenDelay = 2000;
+            }
+        }
     }
 
     // Spieler-Objekt fuer Raid und PvP
@@ -648,6 +711,7 @@ module.exports = function createArena(h, opts = {}) {
             return null;
         }
         if (pvp) return joinPvp(c, name, team);
+        if (zb) return joinZombies(c, name);
         if (players.size >= MAX_PLAYERS) return 'The raid is full';
         const a = st(c);
         const take = uid => {
@@ -686,7 +750,8 @@ module.exports = function createArena(h, opts = {}) {
                 w: W, h: H, walls: MAP.walls, buildings: MAP.buildings, doors: MAP.doors, bushes: MAP.bushes, wallT: WALL_T,
                 extracts: MAP.extracts, extractR: EXTRACT_R, r: R, move: MOVE, view: VIEW, throwRange: I.THROW_RANGE,
                 stations: MAP.stations, town: MAP.town, outpost: MAP.outpost, military: MAP.military, mobs: M.catalog(),
-                trader: { buy: TRADER_BUY, sell: TRADER_SELL }, medic: { cost: MEDIC_COST, cd: MEDIC_CD }
+                trader: { buy: TRADER_BUY, sell: TRADER_SELL }, medic: { cost: MEDIC_COST, cd: MEDIC_CD },
+                perks: ZMB_PERKS, arena: MAP.arena || null
             },
             packMax: p0PackMax(c), feed: pvp ? [] : feedLog.slice(-6), mode, team: players.get(c.id) ? players.get(c.id).team : undefined,
             mapName: MAP.name || null
@@ -745,6 +810,7 @@ module.exports = function createArena(h, opts = {}) {
     // by = Name eines Gegners (NPC/Boss), falls der getoetet hat
     function die(p, killer, how, by) {
         if (pvp) return how === 'left' ? pvpLeave(p) : pvpDown(p, killer);
+        if (zb) return how === 'left' ? zLeave(p) : zDown(p);
         if (!players.has(p.id)) return;
         players.delete(p.id);
         const loot = lootOf(p);
@@ -904,6 +970,11 @@ module.exports = function createArena(h, opts = {}) {
     // Naechste Kiste oder naechster Beutel in Reichweite
     function interact(p) {
         if (pvp) return;
+        if (zb) {
+            const s = MAP.stations.find(x => Math.hypot(x.x - p.x, x.y - p.y) < INTERACT_R + 30);
+            if (s && !p.dead) zStation(p, s);
+            return;
+        }
         const now = Date.now();
         let best = null, bd = INTERACT_R;
         for (const cr of crates) {
@@ -1201,6 +1272,11 @@ module.exports = function createArena(h, opts = {}) {
         w.ms /= p.rateMul;
         w.homing += p.homing;
         w.crit = (w.crit || 0) + p.b.crit;
+        // Pack-a-Punch (Zombies): je Stufe ×1,6 Schaden, ×1,12 Feuerrate
+        if (item && item.pap) {
+            w.dmg *= Math.pow(1.6, item.pap);
+            w.ms /= Math.pow(1.12, item.pap);
+        }
         if (now < p.rampUntil) w.ms /= 1.25;
         if (now - p.lastShot < w.ms / SPEED) return;
         p.lastShot = now;
@@ -1495,6 +1571,191 @@ module.exports = function createArena(h, opts = {}) {
         }
     }
 
+    // ---------- Zombies (4.4): Wellen, Punkte, Stationen ----------
+    // Bis 4 Spieler in einem Team. Punkte fuer Treffer (10) und Kills (60,
+    // Tank 150, Boss 1000). Damit: Wandwaffen, Mystery Box, Pack-a-Punch,
+    // Perks. Wer stirbt, ist bis zum Ende der Welle raus; sind alle tot, ist
+    // Schluss. Wie im PvP mit Kopien des Loadouts: nichts geht verloren.
+    const zb = mode === 'zombies' ? { wave: 0, phase: 'wait', until: 0, toSpawn: 0, spawnAt: 0, over: false, kills: new Map(), dt: 0 } : null;
+
+    function joinZombies(c, name) {
+        const a = st(c);
+        const copy = uid => {
+            const it = uid && a.inv.find(x => x.uid === uid);
+            return it ? JSON.parse(JSON.stringify(it)) : null;
+        };
+        const gear = { primary: copy(a.loadout.primary) || starterPistol(), secondary: copy(a.loadout.secondary) };
+        for (const s of [...I.SLOTS, 'backpack']) gear[s] = copy(a.loadout[s]);
+        const util = (a.loadout.util || []).map(u => u && Math.min(u.n, count(a, u.base)) > 0 ? { base: u.base, n: Math.min(u.n, count(a, u.base)) } : null);
+        const spot = MAP.spawns.a[players.size % MAP.spawns.a.length];
+        const p = newPlayer(c, name, null, a, gear, util, spot);
+        p.team = 'a';
+        p.dead = false;
+        p.pts = 500;
+        p.perks = [];
+        gearStats(p);
+        players.set(c.id, p);
+        zb.kills.set(c.id, 0);
+        sendJoined(c);
+        sendInv(p);
+        return null;
+    }
+
+    function zStart() {
+        zb.phase = 'break';
+        zb.until = Date.now() + 6000 / SPEED;
+        for (const p of players.values()) h.send(p.c, { type: 'shEvent', text: '🧟 The dead are coming – first wave in 6 s', kind: 'boss' });
+    }
+
+    function zWave(now) {
+        zb.wave++;
+        zb.phase = 'wave';
+        zb.toSpawn = Math.round((6 + 4 * zb.wave) * (1 + 0.5 * (players.size - 1)));
+        zb.spawnAt = now;
+        if (zb.wave % 5 === 0) {
+            const s = MAP.zspawns[Math.floor(Math.random() * MAP.zspawns.length)];
+            const m = spawnMob('abomination', s.x, s.y, now);
+            m.hp = m.maxHp = Math.round(m.maxHp * (1 + 0.25 * (zb.wave / 5 - 1)));
+            bossId = m.id;
+        }
+        for (const p of players.values()) h.send(p.c, { type: 'shEvent', text: `🧟 Wave ${zb.wave}${zb.wave % 5 === 0 ? ' – the Abomination is here!' : ''}`, kind: 'boss' });
+    }
+
+    function zSpawn(now) {
+        const alive = [...players.values()].filter(p => !p.dead);
+        const spots = MAP.zspawns.filter(s => alive.every(p => Math.hypot(p.x - s.x, p.y - s.y) > 350));
+        const s = (spots.length ? spots : MAP.zspawns)[Math.floor(Math.random() * (spots.length || MAP.zspawns.length))];
+        const w = zb.wave;
+        const pool = [['zombie', 60], ['runner', w >= 2 ? 22 : 0], ['spitter', w >= 3 ? 12 : 0], ['tank', w >= 4 ? 8 : 0]].filter(([, n]) => n > 0);
+        let r = Math.random() * pool.reduce((a, [, n]) => a + n, 0), kind = 'zombie';
+        for (const [k, n] of pool) if ((r -= n) < 0) { kind = k; break; }
+        const m = spawnMob(kind, s.x + (Math.random() - 0.5) * 60, s.y + (Math.random() - 0.5) * 60, now);
+        m.hp = m.maxHp = Math.round(m.maxHp * (1 + 0.2 * (w - 1)));
+    }
+
+    function zTick(now, dt) {
+        if (zb.over || zb.phase === 'wait') return;
+        if (players.size && ![...players.values()].some(p => !p.dead)) return zFinish();
+        if (zb.phase === 'break' && now >= zb.until) zWave(now);
+        else if (zb.phase === 'wave') {
+            const cap = 22 + 4 * players.size;
+            if (zb.toSpawn > 0 && now >= zb.spawnAt && mobs.length < cap) {
+                zSpawn(now);
+                zb.toSpawn--;
+                zb.spawnAt = now + Math.max(220, 1100 - 60 * zb.wave) / SPEED;
+            }
+            if (zb.toSpawn === 0 && !mobs.length) {
+                zb.phase = 'break';
+                zb.until = now + 12000 / SPEED;
+                bossId = null;
+                for (const p of players.values()) {
+                    award(p, 20 * zb.wave, `wave ${zb.wave}`);
+                    // Wer gefallen ist, kommt zur Pause zurueck
+                    if (p.dead) {
+                        const sp = MAP.spawns.a[0];
+                        Object.assign(p, { dead: false, x: sp.x, y: sp.y, hp: p.maxHp, burn: null, protect: now + 3000 / SPEED });
+                    }
+                    h.send(p.c, { type: 'shEvent', text: `✅ Wave ${zb.wave} survived – next one in 12 s`, kind: 'drop' });
+                }
+            }
+        }
+        gridMobs();
+        for (const m of [...mobs]) if (m.hp > 0 && mobs.includes(m)) mobTick(m, now, dt);
+        gridMobs();
+    }
+
+    function zDown(p) {
+        if (p.dead) return;
+        p.dead = true;
+        p.fire = false;
+        p.mx = p.my = 0;
+        for (const q of players.values()) h.send(q.c, { type: 'shKill', killer: '🧟', victim: p.name, how: 'npc', loot: 0 });
+        h.send(p.c, { type: 'shEvent', text: '💀 You are down – survive, team! You are back after this wave', kind: 'self' });
+    }
+
+    function zLeave(p) {
+        zResult(p);
+        players.delete(p.id);
+        if (!players.size) zFinish();
+    }
+
+    // Ergebnis fuer einen Spieler: XP nach Welle, Bestwert
+    function zResult(p) {
+        const a = st(p.c);
+        a.zombies = a.zombies || { bestWave: 0, games: 0, kills: 0 };
+        const reached = Math.max(0, zb.wave - (zb.phase === 'wave' ? 1 : 0));
+        a.zombies.bestWave = Math.max(a.zombies.bestWave, reached);
+        a.zombies.games++;
+        a.zombies.kills += zb.kills.get(p.id) || 0;
+        const xp = Math.round(40 * Math.pow(reached, 1.35));
+        award(p, xp, `survived ${reached} wave${reached === 1 ? '' : 's'}`);
+        h.accounts.touch();
+        h.send(p.c, { type: 'shLeft', result: 'zombies', wave: reached, kills: zb.kills.get(p.id) || 0, best: a.zombies.bestWave, xp });
+    }
+
+    function zFinish() {
+        if (zb.over) return;
+        zb.over = true;
+        for (const p of [...players.values()]) zResult(p);
+        players.clear();
+        mobs.length = 0;
+        if (opts.onDone) opts.onDone({ wave: zb.wave });
+    }
+
+    // F an einer Station: kaufen mit Punkten
+    function zStation(p, s) {
+        const say = text => h.send(p.c, { type: 'shEvent', text, kind: 'self' });
+        const pay = price => {
+            if (p.pts < price) {
+                say(`💰 You need ${price} points`);
+                return false;
+            }
+            p.pts -= price;
+            return true;
+        };
+        const giveWeapon = it => {
+            if (!p.gear.secondary) {
+                p.gear.secondary = it;
+                p.slot = 'secondary';
+            } else p.gear[p.slot] = it;
+            gearStats(p);
+            sendInv(p);
+        };
+        if (s.kind === 'wall') {
+            if (!pay(s.price)) return;
+            giveWeapon(I.plain('weapon', s.base));
+            return say(`🔫 ${I.WEAPONS[s.base].name} bought`);
+        }
+        if (s.kind === 'box') {
+            if (!pay(s.price)) return;
+            let it = null;
+            for (let k = 0; k < 30 && (!it || it.kind !== 'weapon'); k++) it = I.generate('elite');
+            if (!it || it.kind !== 'weapon') it = I.plain('weapon', 'rifle');
+            giveWeapon(it);
+            fxAt(s.x, s.y, { type: 'shFx', kind: 'phoenix', x: s.x, y: s.y });
+            return say(`🎁 Mystery box: ${it.name}`);
+        }
+        if (s.kind === 'pap') {
+            const it = p.gear[p.slot];
+            if (!it || it.starter && false) return;
+            if ((it.pap || 0) >= ZMB_PAP_MAX) return say('⚡ That weapon is fully upgraded');
+            if (!pay(s.price)) return;
+            it.pap = (it.pap || 0) + 1;
+            it.name = it.name.replace(/ ⚡+$/, '') + ' ' + '⚡'.repeat(it.pap);
+            sendInv(p);
+            fxAt(s.x, s.y, { type: 'shFx', kind: 'nova', x: s.x, y: s.y, r: 160 });
+            return say(`⚡ Pack-a-Punch level ${it.pap}: ×${Math.pow(1.6, it.pap).toFixed(1)} damage`);
+        }
+        if (s.kind === 'perk') {
+            const d = ZMB_PERKS[s.perk];
+            if (p.perks.includes(s.perk)) return say(`${d.icon} You already have ${d.name}`);
+            if (!pay(s.price)) return;
+            p.perks.push(s.perk);
+            gearStats(p);
+            return say(`${d.icon} ${d.name}: ${d.desc}`);
+        }
+    }
+
     // ---------- Events: Boss und Versorgungsabwurf ----------
 
     const randIn = ([a, b]) => a + Math.random() * (b - a);
@@ -1595,6 +1856,7 @@ module.exports = function createArena(h, opts = {}) {
             if (w.frost) m.slowUntil = now + 1500 / SPEED;
             if (w.vamp && attacker) attacker.hp = Math.min(attacker.maxHp, attacker.hp + dmg * w.vamp);
         }
+        if (zb && attacker && players.has(attacker.id) && !(w && w.dot)) attacker.pts += 10;
         if (m.hp <= 0) mobDies(m, attacker && players.has(attacker.id) ? attacker : null, now);
     }
 
@@ -1603,6 +1865,17 @@ module.exports = function createArena(h, opts = {}) {
         if (i < 0) return;
         mobs.splice(i, 1);
         const def = m.def;
+        if (zb) {
+            if (m.id === bossId) bossId = null;
+            if (killer) {
+                killer.pts += def.boss ? 1000 : m.kind === 'tank' ? 150 : 60;
+                zb.kills.set(killer.id, (zb.kills.get(killer.id) || 0) + 1);
+                award(killer, L.XP[def.xp || 'npc'] * (def.boss ? 20 : def.xpMul || 1), def.name.toLowerCase());
+            }
+            for (const o of [...mobs]) if (o.parent === m.id) mobs.splice(mobs.indexOf(o), 1);
+            fxAt(m.x, m.y, { type: 'shFx', kind: 'mobdie', x: Math.round(m.x), y: Math.round(m.y), icon: def.icon });
+            return;
+        }
         if (m.id === bossId) {
             bossId = null;
             nextBossAt = now + randIn(BOSS_EVERY) / SPEED;
@@ -1693,11 +1966,11 @@ module.exports = function createArena(h, opts = {}) {
         if (m.burn) {
             if (now > m.burn.until) m.burn = null;
             else {
-                hurtMob(m, players.get(m.burn.from) || null, m.burn.dps * dt, now, m.x, m.y);
+                hurtMob(m, players.get(m.burn.from) || null, m.burn.dps * dt, now, m.x, m.y, false, { dot: true });
                 if (!(m.hp > 0)) return;
             }
         }
-        if (def.boss && now - m.born > BOSS_LIFE / SPEED) {
+        if (def.boss && !def.zombie && now - m.born > BOSS_LIFE / SPEED) {
             mobs.splice(mobs.indexOf(m), 1);
             bossId = null;
             nextBossAt = now + randIn(BOSS_EVERY) / SPEED;
@@ -1706,7 +1979,20 @@ module.exports = function createArena(h, opts = {}) {
         }
         // Ziel pruefen/suchen, nicht jeden Tick
         let tgt = m.tgt ? players.get(m.tgt) : null;
-        if (now >= m.nextThink) {
+        if (def.zombie) {
+            if (now >= m.nextThink || !tgt || tgt.dead) {
+                m.nextThink = now + 300 + Math.random() * 200;
+                let best = null, bd = Infinity;
+                for (const q of players.values()) {
+                    if (q.dead) continue;
+                    const d = Math.hypot(q.x - m.x, q.y - m.y);
+                    if (d < bd) { best = q; bd = d; }
+                }
+                tgt = best;
+                m.tgt = best ? best.id : null;
+                if (best && clear(m.x, m.y, best.x, best.y)) m.seen = now;
+            }
+        } else if (now >= m.nextThink) {
             m.nextThink = now + 250 + Math.random() * 150;
             if (tgt && mobSees(m, tgt, now, def.aggro * 1.5)) m.seen = now;
             else if (tgt && now - m.seen > 3500) tgt = m.tgt = null;
@@ -1903,6 +2189,7 @@ module.exports = function createArena(h, opts = {}) {
         }
         if (mode === 'extract') eventTick(now, dt);
         if (pvp) pvpTick(now);
+        if (zb) zTick(now, dt);
         nadeTick(now, dt);
 
         for (const p of [...players.values()]) {
@@ -2037,6 +2324,8 @@ module.exports = function createArena(h, opts = {}) {
                     hid: (!!(p.zone || p.smoke !== null) && now - p.lastShot >= REVEAL_MS * p.b.reveal) || stillHidden(p, now)
                 },
                 pvp: pvp ? { round: pvp.round, score: pvp.score, phase: pvp.phase, left: Math.max(0, Math.round(pvp.until - now)), last: pvp.last, team: p.team } : undefined,
+                zmb: zb ? { wave: zb.wave, phase: zb.phase, left: Math.max(0, Math.round(zb.until - now)), zombies: mobs.length + zb.toSpawn, pts: p.pts, perks: p.perks,
+                    team: plist.map(q => [q.name, q.pts, zb.kills.get(q.id) || 0, q.dead ? 1 : 0]) } : undefined,
                 players: plist.filter(q => q === p || (inView(q.x, q.y) && canSee(p, q, now))).map(q => {
                     const qw = q.gear[q.slot] || q.gear.primary;
                     return {
@@ -2065,6 +2354,7 @@ module.exports = function createArena(h, opts = {}) {
     return {
         join, leave, input, action, tick, refundAll, hubAction,
         startPvp: () => pvpRound(Date.now()), pvpState: () => pvp,
+        startZombies: () => zStart(), zState: () => zb,
         has: c => players.has(c.id),
         names: () => [...players.values()].map(p => p.name),
         rooms: () => [{ id: 'raid', players: [...players.values()].map(p => p.name) }],
@@ -2079,5 +2369,6 @@ module.exports.blocked = blocked;
 module.exports.slide = WORLD.slide;
 module.exports.WORLD = WORLD;
 module.exports.PVP_WORLDS = PVP_WORLDS;
+module.exports.ZOMBIE_WORLD = ZOMBIE_WORLD;
 module.exports.W = W;
 module.exports.H = H;

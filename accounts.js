@@ -685,6 +685,13 @@ module.exports = function createAccounts(dataDir) {
                     casino: casinoNet(s), events: s.eventWins, arena: s.shooterKills
                 }[cat] || 0;
             };
+            // Zombies (4.4): beste ueberlebte Welle
+            if (cat === 'zwave') {
+                return Object.values(db.users)
+                    .filter(u => u.arena && u.arena.zombies && u.arena.zombies.bestWave > 0)
+                    .map(u => ({ name: u.name, value: u.arena.zombies.bestWave, tt: ach.titleOf(u) || undefined, k: u.arena.zombies.kills }))
+                    .sort((a, b) => b.value - a.value || b.k - a.k).slice(0, 10);
+            }
             // PvP-Wertung (4.3): Elo, nur wer schon gespielt hat
             if (cat === 'pvp') {
                 return Object.values(db.users)

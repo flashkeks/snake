@@ -6054,6 +6054,7 @@ body.touch input, body.touch textarea {
                     <option value="arena">🔫 Arena kills</option>
                     <option value="alevel">🎖️ Arena level</option>
                     <option value="pvp">⚔️ PvP rating</option>
+                    <option value="zwave">🧟 Zombies: best wave</option>
                 </select>
                 <select id="hall-game" title="Game" hidden>
                     <option value="starlight">🌟 Starlight</option>
@@ -9585,17 +9586,18 @@ $('hub-body').addEventListener('dragend', () => {
 function onPvpLobbies(list) {
     pvpLobbies = list;
     pvpLobbiesAt = performance.now();
-    if (hub && hubTab === 'play' && hubMode === 'pvp' && !$('arenahub').classList.contains('hidden')) hubDraw();
+    if (hub && hubTab === 'play' && (hubMode === 'pvp' || hubMode === 'zombies') && !$('arenahub').classList.contains('hidden')) hubDraw();
 }
 
 function hubPvp() {
     const r = hub.pvp || { rating: 1000, wins: 0, losses: 0, draws: 0, kills: 0, deaths: 0 };
-    const mine = me && pvpLobbies.find(l => [...l.a, ...l.b].some(x => x.name === me.name));
+    const myLobby = me && pvpLobbies.find(l => [...l.a, ...l.b].some(x => x.name === me.name));
+    const mine = myLobby && myLobby.kind === 'pvp' ? myLobby : null;
     const team = (l, t) => {
         const list = l[t];
         const rows = list.map(x => `<div>${esc(x.name)} <small>Lv ${x.lv} · ${x.rating}</small></div>`).join('');
         const empty = '<div class="hint">– free –</div>'.repeat(Math.max(0, l.size - list.length));
-        const can = !mine && l.state !== 'playing' && list.length < l.size;
+        const can = !myLobby && l.state !== 'playing' && list.length < l.size;
         return `<div class="pvp-team ${t}"><b>${t === 'a' ? '🔵 Blue' : '🔴 Red'}</b>${rows}${empty}` +
             (can ? `<button type="button" data-pvp="join" data-id="${l.id}" data-team="${t}">Join</button>` : '') + '</div>';
     };
@@ -9608,14 +9610,38 @@ function hubPvp() {
             (isMine && l.state !== 'playing' ? `<div class="pvp-acts"><button type="button" class="ghost" data-pvp="switch">⇄ Switch team</button><button type="button" class="danger" data-pvp="leave">Leave lobby</button></div>` : '') + '</div>';
     };
     return `<div class="pvp-top"><div><b>⚔️ PvP rating ${r.rating}</b> <span class="hint">· ${r.wins} W / ${r.losses} L${r.draws ? ` / ${r.draws} D` : ''} · ${r.kills} kills</span></div>` +
-        (mine ? '' : `<div class="pvp-create">Create a lobby: <button type="button" class="gold" data-pvp="create" data-size="1">1v1</button>` +
+        (myLobby ? '' : `<div class="pvp-create">Create a lobby: <button type="button" class="gold" data-pvp="create" data-size="1">1v1</button>` +
             `<button type="button" class="gold" data-pvp="create" data-size="2">2v2</button><button type="button" class="gold" data-pvp="create" data-size="3">3v3</button></div>`) + '</div>' +
         `<div class="hint">Best of 5 rounds. You fight with <b>copies</b> of your loadout – nothing leaves your stash, nothing is lost. No friendly fire. Win +300 XP, each kill +60 XP. Leaving a match counts as a loss.</div>` +
-        `<div class="pvp-list">${pvpLobbies.map(lobby).join('') || '<div class="hint">No lobbies yet – create one!</div>'}</div>` +
+        `<div class="pvp-list">${pvpLobbies.filter(l => l.kind === 'pvp').map(lobby).join('') || '<div class="hint">No lobbies yet – create one!</div>'}</div>` +
+        `<h4 style="margin:14px 0 6px">Your loadout</h4>` + hubLoadout();
+}
+
+// Zombies: Lobbys mit bis zu 4 Spielern, der Host startet
+function hubZombies() {
+    const r = hub.zombies || { bestWave: 0, games: 0, kills: 0 };
+    const myLobby = me && pvpLobbies.find(l => [...l.a, ...l.b].some(x => x.name === me.name));
+    const left = l => l.startIn !== null ? Math.max(0, Math.ceil((l.startIn - (performance.now() - pvpLobbiesAt)) / 1000)) : null;
+    const lobby = l => {
+        const isMine = myLobby && myLobby.id === l.id;
+        const isHost = isMine && l.host === me.name;
+        return `<div class="pvp-lobby ${isMine ? 'mine' : ''}"><div class="pvp-head"><b>🧟 ${l.a.length}/4</b><span>host ${esc(l.host)}</span>` +
+            `<span class="pvp-state">${l.state === 'playing' ? '🧟 surviving…' : l.state === 'starting' ? `⏱️ starts in ${left(l)} s` : 'waiting'}</span></div>` +
+            `<div class="pvp-team a">${l.a.map(x => `<div>${esc(x.name)} <small>Lv ${x.lv} · best wave ${x.best || 0}</small></div>`).join('')}` +
+            (!myLobby && l.state !== 'playing' && l.a.length < 4 ? `<button type="button" data-pvp="join" data-id="${l.id}" data-team="a">Join</button>` : '') + '</div>' +
+            (isMine && l.state === 'open' ? `<div class="pvp-acts">${isHost ? '<button type="button" class="gold" data-pvp="start">▶ Start now</button>' : '<span class="hint">Waiting for the host to start…</span>'}<button type="button" class="danger" data-pvp="leave">Leave lobby</button></div>` : '') + '</div>';
+    };
+    return `<div class="pvp-top"><div><b>🧟 Best wave ${r.bestWave}</b> <span class="hint">· ${r.games} games · ${r.kills} zombies killed</span></div>` +
+        (myLobby ? '' : '<div class="pvp-create"><button type="button" class="gold" data-pvp="create" data-kind="zombies">＋ Create a zombies lobby</button></div>') + '</div>' +
+        `<div class="hint">Survive as many waves as you can, up to 4 players. Points for every hit and kill – spend them on wall guns 🔫, the mystery box 🎁, Pack-a-Punch ⚡ (×1.6 damage per level) and perks 🥤. ` +
+        `You bring <b>copies</b> of your loadout – nothing is lost. Fallen players come back after the wave. XP for every wave you survive.</div>` +
+        `<div class="pvp-list">${pvpLobbies.filter(l => l.kind === 'zombies').map(lobby).join('') || '<div class="hint">No lobbies yet – create one!</div>'}</div>` +
         `<h4 style="margin:14px 0 6px">Your loadout</h4>` + hubLoadout();
 }
 
 function pvpClick(ds) {
+    if (ds.pvp === 'create' && ds.kind === 'zombies') return wsSend({ type: 'pvpCreate', kind: 'zombies' });
+    if (ds.pvp === 'start') return wsSend({ type: 'pvpStart' });
     if (ds.pvp === 'create') wsSend({ type: 'pvpCreate', size: Number(ds.size) });
     if (ds.pvp === 'join') wsSend({ type: 'pvpJoin', id: Number(ds.id), team: ds.team });
     if (ds.pvp === 'switch') wsSend({ type: 'pvpSwitch' });
@@ -9623,7 +9649,7 @@ function pvpClick(ds) {
 }
 // Countdown der Lobby mitlaufen lassen
 setInterval(() => {
-    if (hub && hubTab === 'play' && hubMode === 'pvp' && pvpLobbies.some(l => l.state === 'starting') && !$('arenahub').classList.contains('hidden')) hubDraw();
+    if (hub && hubTab === 'play' && (hubMode === 'pvp' || hubMode === 'zombies') && pvpLobbies.some(l => l.state === 'starting') && !$('arenahub').classList.contains('hidden')) hubDraw();
 }, 1000);
 
 // ---------- Profil: Level, Stat-Punkte, Skill Tree ----------
@@ -9735,7 +9761,7 @@ $('hub-body').addEventListener('click', e => {
     const m = e.target.closest('.mode[data-mode]');
     if (!m || hubCaseBusy) return;
     hubMode = m.dataset.mode;
-    if (hubMode === 'pvp') wsSend({ type: 'pvpList' });
+    if (hubMode === 'pvp' || hubMode === 'zombies') wsSend({ type: 'pvpList' });
     hubDraw();
 });
 
@@ -9835,8 +9861,8 @@ function hubDraw() {
         html = `<div class="modes">` +
             `<div class="mode ${hubMode === 'extract' ? 'on' : ''}" data-mode="extract"><b>🪂 Extraction</b><small>Loot, enemies, bosses, extract alive. Everything you take in is at risk.</small></div>` +
             `<div class="mode ${hubMode === 'pvp' ? 'on' : ''}" data-mode="pvp"><b>⚔️ PvP arena</b><small>1v1 · 2v2 · 3v3 lobbies, best of 5 – you never lose items</small></div>` +
-            `<div class="mode soon"><b>🧟 Zombies</b><small>Survive the waves, up to 4 players, no item loss</small><i>soon</i></div></div>` +
-            (hubMode === 'pvp' ? hubPvp() + (hubLast ? `<div class="raid-result ${hubLast.result}">${hubLast.html}</div>` : '') : hubLoadout() +
+            `<div class="mode ${hubMode === 'zombies' ? 'on' : ''}" data-mode="zombies"><b>🧟 Zombies</b><small>Survive the waves, up to 4 players, buy guns and perks – no item loss</small></div></div>` +
+            (hubMode === 'pvp' || hubMode === 'zombies' ? (hubMode === 'pvp' ? hubPvp() : hubZombies()) + (hubLast ? `<div class="raid-result ${hubLast.result}">${hubLast.html}</div>` : '') : hubLoadout() +
             `<div class="hub-play"><button type="button" class="gold" id="hub-deploy">🪂 Deploy into the raid</button>` +
             `<div class="hint">${shRoomCount ? `● ${shRoomCount} in the raid right now · ` : ''}Everything you take in is at risk. Get to a 🚁 extraction zone and stand in it for 6 s to keep your loot. ` +
             `If you die or leave, the killer gets it all. Hide in buildings, bushes and smoke – nobody outside sees you until you shoot.</div></div>` +
@@ -10055,7 +10081,7 @@ function onShRooms(rooms) {
 
 function onShJoined(d) {
     sh = { id: d.id, map: d.map, packMax: d.packMax, mode: d.mode || 'extract', team: d.team, mapName: d.mapName };
-    $('sh-title').textContent = sh.mode === 'pvp' ? `⚔️ PvP · ${d.mapName || ''} · ${d.team === 'b' ? '🔴 Red' : '🔵 Blue'}` : '🔫 Raid';
+    $('sh-title').textContent = sh.mode === 'pvp' ? `⚔️ PvP · ${d.mapName || ''} · ${d.team === 'b' ? '🔴 Red' : '🔵 Blue'}` : sh.mode === 'zombies' ? `🧟 Zombies · ${d.mapName || ''}` : '🔫 Raid';
     shBlindUntil = 0;
     shInvOpen = false;
     $('sh-inv').hidden = true;
@@ -10245,6 +10271,12 @@ function onShLeft(d) {
     shKeys.clear();
     shIn.f = false;
     const list = items => (items || []).map(it => `<span class="tier-${it.t}">${itemIcon(it)} ${esc(it.n)}</span>`).join(' · ') || 'nothing';
+    if (d.result === 'zombies') {
+        hubLast = { result: d.wave > 0 ? 'ok' : 'dead', html: `🧟 <b>You survived ${d.wave} wave${d.wave === 1 ? '' : 's'}</b> · ${d.kills} kills · +${d.xp.toLocaleString('en-US')} XP · best wave ${d.best}` };
+        hubMode = 'zombies';
+        wsSend({ type: 'pvpList' });
+        return hubOpen('play');
+    }
     if (d.result === 'pvp') {
         const res = d.left ? '🏳️ You left the match' : d.draw ? '🤝 Draw' : d.won ? '🏆 VICTORY' : '💀 Defeat';
         hubLast = { result: d.won ? 'ok' : 'dead', html: `⚔️ <b>${res}</b> ${d.score[0]} : ${d.score[1]} · ${d.kills} kill${d.kills === 1 ? '' : 's'} · rating ${d.rating} (${d.delta >= 0 ? '+' : ''}${d.delta})` };
@@ -10457,6 +10489,24 @@ function shOthers() {
     });
 }
 
+// Aussehen einer Station (Extraction: Sani/Haendler, Zombies: Kaufstationen)
+function stationLook(s) {
+    const m = sh.map;
+    if (s.kind === 'medic') return { icon: '⛑️', rgb: '0,214,122', label: `Medic · ${m.medic.cost} ⚙️`, hint: `F · heal to full (${m.medic.cost} scrap)` };
+    if (s.kind === 'trader') return { icon: '🏪', rgb: '255,210,63', label: 'Trader', hint: 'F · trade (buy with scrap, sell your loot)' };
+    if (s.kind === 'wall') {
+        const w = arenaCat.weapons[s.base] || {};
+        return { icon: w.icon || '🔫', rgb: '120,180,255', label: `${w.name || s.base} · 💰 ${s.price}`, hint: `F · buy ${w.name || s.base} (${s.price} points)` };
+    }
+    if (s.kind === 'box') return { icon: '🎁', rgb: '184,132,255', label: `Mystery box · 💰 ${s.price}`, hint: `F · mystery box: random weapon (${s.price} points)` };
+    if (s.kind === 'pap') return { icon: '⚡', rgb: '255,120,255', label: `Pack-a-Punch · 💰 ${s.price}`, hint: `F · upgrade your weapon: ×1.6 damage (${s.price} points)` };
+    if (s.kind === 'perk') {
+        const d = (m.perks || {})[s.perk] || {};
+        return { icon: d.icon || '🥤', rgb: '255,160,60', label: `${d.name} · 💰 ${s.price}`, hint: `F · ${d.name}: ${d.desc} (${s.price} points)` };
+    }
+    return { icon: '❔', rgb: '200,200,200', label: s.kind, hint: 'F' };
+}
+
 // Gegner wie die Spieler 50 ms verzoegert zwischen zwei Staenden
 function shMobsInterp() {
     const t = performance.now() - SH_INTERP;
@@ -10512,7 +10562,7 @@ function shNearLoot(s) {
     }
     for (const st of sh.map.stations || []) {
         const d = Math.hypot(st.x - shPred.x, st.y - shPred.y);
-        if (d < bd + 20) { best = { kind: st.kind, x: st.x, y: st.y }; bd = d; }
+        if (d < bd + 20) { best = { kind: st.kind, x: st.x, y: st.y, st }; bd = d; }
     }
     return best;
 }
@@ -10630,20 +10680,20 @@ function shFrame() {
     }
     for (const s of m.stations || []) {
         if (!vis(s.x, s.y, 120)) continue;
-        const med = s.kind === 'medic';
+        const L = stationLook(s);
         const pulse = .5 + .5 * Math.sin(now / 400 + s.x);
-        c.fillStyle = med ? `rgba(0,214,122,${.15 + .1 * pulse})` : `rgba(255,210,63,${.15 + .1 * pulse})`;
+        c.fillStyle = `rgba(${L.rgb},${.15 + .1 * pulse})`;
         c.beginPath();
         c.arc(s.x, s.y, 58, 0, Math.PI * 2);
         c.fill();
-        c.strokeStyle = med ? '#00d67a' : '#ffd23f';
+        c.strokeStyle = `rgb(${L.rgb})`;
         c.lineWidth = 3;
         c.stroke();
-        drawEmojiC(c, med ? '⛑️' : '🏪', s.x, s.y, 46);
+        drawEmojiC(c, L.icon, s.x, s.y, 46);
         c.fillStyle = '#fff';
         c.font = 'bold 14px system-ui';
         c.textAlign = 'center';
-        c.fillText(med ? `Medic · ${m.medic.cost} ⚙️` : 'Trader', s.x, s.y + 48);
+        c.fillText(L.label, s.x, s.y + 48);
     }
     // Kisten und Beutel (Militaerkisten gross mit Leuchten)
     for (const [, x, y, ready, mil] of latest.crates) {
@@ -11276,8 +11326,7 @@ function shFrame() {
     const loot = shNearLoot(latest);
     if (loot) {
         c.font = 'bold 18px system-ui';
-        const t = loot.kind === 'crate' ? 'F · open crate' : loot.kind === 'trader' ? 'F · trade (buy with scrap, sell your loot)'
-            : loot.kind === 'medic' ? `F · heal to full (${sh.map.medic.cost} scrap)` : `F · take bag (${loot.n} items)`;
+        const t = loot.kind === 'crate' ? 'F · open crate' : loot.kind === 'bag' ? `F · take bag (${loot.n} items)` : stationLook(loot.st).hint;
         const w = c.measureText(t).width + 24;
         c.fillStyle = 'rgba(0,0,0,.65)';
         c.fillRect(W / 2 - w / 2, H - 100, w, 32);
@@ -11435,6 +11484,39 @@ function shDrawPlayer(c, p, x, y, a, mine, now, my) {
 
 // Boss-Lebensleiste oben, Pfeile am Bildrand zu Boss und Abwurf, Ansage
 function shEventHud(c, latest, W, H, now, dpr) {
+    const zm = latest.zmb;
+    if (zm) {
+        const secs = Math.max(0, Math.ceil((zm.left - (now - latest.recv)) / 1000));
+        const perks = (zm.perks || []).map(k => (sh.map.perks[k] || {}).icon).join('');
+        const text = zm.phase === 'break' ? `🧟 Wave ${zm.wave + 1} in ${secs} s · 💰 ${zm.pts.toLocaleString('en-US')} ${perks}` : `🧟 Wave ${zm.wave} · ${zm.zombies} left · 💰 ${zm.pts.toLocaleString('en-US')} ${perks}`;
+        c.font = 'bold 18px system-ui';
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        const w = c.measureText(text).width + 30;
+        const y0 = shBossPos() ? 50 : 12;
+        c.fillStyle = 'rgba(0,0,0,.7)';
+        c.fillRect(W / 2 - w / 2, y0, w, 32);
+        c.fillStyle = '#b5ff7d';
+        c.fillText(text, W / 2, y0 + 16);
+        // Mitspieler: Punkte und Kills
+        c.textAlign = 'left';
+        c.font = 'bold 12px system-ui';
+        zm.team.forEach(([n, pts, k, dead], i) => {
+            const t = `${dead ? '💀' : '🙂'} ${n} · 💰 ${pts} · ${k} kills`;
+            c.fillStyle = 'rgba(0,0,0,.55)';
+            c.fillRect(12, H - 140 - i * 20, c.measureText(t).width + 12, 18);
+            c.fillStyle = dead ? '#ff9b9b' : '#fff';
+            c.fillText(t, 18, H - 131 - i * 20);
+        });
+        if (latest.me.dead) {
+            c.fillStyle = 'rgba(0,0,0,.45)';
+            c.fillRect(0, 0, W, H);
+            c.font = 'bold 30px system-ui';
+            c.textAlign = 'center';
+            c.fillStyle = '#ff9b9b';
+            c.fillText('💀 You are down – back after this wave', W / 2, H / 2);
+        }
+    }
     const pv = latest.pvp;
     if (pv) {
         const my = pv.team === 'b' ? [pv.score[1], pv.score[0]] : pv.score;
@@ -11512,7 +11594,7 @@ function shEventHud(c, latest, W, H, now, dpr) {
         c.textAlign = 'center';
         c.textBaseline = 'middle';
         const w = Math.min(W - 30, c.measureText(shEventMsg.text).width + 32);
-        const y = bs || latest.pvp ? 64 : 40;
+        const y = bs || latest.pvp || latest.zmb ? (bs && latest.zmb ? 100 : 64) : 40;
         c.fillStyle = shEventMsg.kind === 'boss' ? 'rgba(60,8,12,.9)' : 'rgba(8,24,50,.9)';
         c.fillRect(W / 2 - w / 2, y - 18, w, 36);
         c.fillStyle = shEventMsg.kind === 'boss' ? '#ff9b9b' : '#9fd0ff';
@@ -11761,7 +11843,8 @@ shCanvas.addEventListener('touchcancel', shTouchEnd);
 $('sh-open').onclick = () => hubOpen();
 $('hub-back').onclick = () => { if (!hubCaseBusy) setWorld('snake'); };
 $('sh-leave').onclick = () => {
-    const q = sh && sh.mode === 'pvp' ? 'Leave the match? It counts as a loss (−20 rating). You keep all your items.' : 'Leave the raid? You lose everything you carry – like dying.';
+    const q = sh && sh.mode === 'pvp' ? 'Leave the match? It counts as a loss (−20 rating). You keep all your items.'
+        : sh && sh.mode === 'zombies' ? 'Leave the zombies game? Your waves so far count, you keep all your items.' : 'Leave the raid? You lose everything you carry – like dying.';
     if (confirm(q)) wsSend({ type: 'shLeave' });
 };
 $('sh-med').onclick = () => shUse(0);
@@ -13155,18 +13238,18 @@ function hallBroadcast() {
 
 function hallRequest() {
     if (hallBroadcast()) return drawHall();
-    wsSend({ type: 'board', cat: hallSel.cat, game: hallSel.game, period: ['coins', 'alevel', 'pvp'].includes(hallSel.cat) ? 'all' : hallSel.period });
+    wsSend({ type: 'board', cat: hallSel.cat, game: hallSel.game, period: ['coins', 'alevel', 'pvp', 'zwave'].includes(hallSel.cat) ? 'all' : hallSel.period });
 }
 
 function hallChanged() {
     // Coins und Arena-Level gibt es nur als "All time"
-    if (['coins', 'alevel', 'pvp'].includes(hallSel.cat)) hallSel.period = 'all';
+    if (['coins', 'alevel', 'pvp', 'zwave'].includes(hallSel.cat)) hallSel.period = 'all';
     $('hall-cat').value = hallSel.cat;
     $('hall-game').value = hallSel.game;
     $('hall-game').hidden = hallSel.cat !== 'bestx';
     document.querySelectorAll('#hall-tabs button').forEach(x => {
         x.classList.toggle('on', x.dataset.period === hallSel.period);
-        x.disabled = ['coins', 'alevel', 'pvp'].includes(hallSel.cat) && x.dataset.period !== 'all';
+        x.disabled = ['coins', 'alevel', 'pvp', 'zwave'].includes(hallSel.cat) && x.dataset.period !== 'all';
     });
     try { localStorage.setItem('hallSel', JSON.stringify(hallSel)); } catch (e) {}
     hallList = null;
@@ -13185,7 +13268,7 @@ setInterval(() => { if (!hallBroadcast() && ws.readyState === WebSocket.OPEN) ha
 
 function onBoard(d) {
     if (d.cat !== hallSel.cat || (d.cat === 'bestx' && d.game !== hallSel.game)) return;
-    if (!['coins', 'alevel', 'pvp'].includes(d.cat) && d.period !== hallSel.period) return;
+    if (!['coins', 'alevel', 'pvp', 'zwave'].includes(d.cat) && d.period !== hallSel.period) return;
     hallList = d.list;
     drawHall();
 }
@@ -13199,7 +13282,7 @@ function drawHall() {
         $('hall').innerHTML = '<tr><td style="opacity:.5">Loading…</td></tr>';
         return;
     }
-    const fmt = (v, s) => cat === 'pvp' ? `⚔️ ${v} · ${s.w}-${s.l}` : cat === 'alevel' ? `Lv ${s.lv} · ${Number(v).toLocaleString('en-US')} XP` : cat === 'bestx' ? `×${v}` : `${icon} ${cat === 'casino' && v > 0 ? '+' : ''}${Number(v).toLocaleString('en-US')}`;
+    const fmt = (v, s) => cat === 'zwave' ? `Wave ${v} · ${s.k} kills` : cat === 'pvp' ? `⚔️ ${v} · ${s.w}-${s.l}` : cat === 'alevel' ? `Lv ${s.lv} · ${Number(v).toLocaleString('en-US')} XP` : cat === 'bestx' ? `×${v}` : `${icon} ${cat === 'casino' && v > 0 ? '+' : ''}${Number(v).toLocaleString('en-US')}`;
     $('hall').innerHTML = list.map((s, i) =>
         `<tr><td class="name">${medals[i] || (i + 1) + '.'} ${esc(s.name)}${ttTag(s.tt)}</td>` +
         `<td class="num">${fmt(s.value, s)}</td></tr>`

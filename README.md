@@ -797,6 +797,35 @@ Detailansicht.
   `pvpSwitch`, `pvpLeave`; Server schickt `pvpLobbies`, im Match `sh.pvp =
   { round, score, phase, left, last, team }`, Spieler mit `tm`.
 
+### 🧟 Zombies (4.4)
+
+- **Lobby:** Play → Zombies, bis 4 Spieler in einem Team (`arena-rooms.js`,
+  `kind: 'zombies'`). Der Host startet („Start now“), bei 4 Spielern geht es
+  von selbst los. Eigene Instanz `createArena({mode: 'zombies'})` auf der Map
+  „Kek Mall“ (2600 × 1800, offen, Saeulen und kurze Mauern).
+- **Wellen:** Welle n: (6 + 4n) × (1 + 0,5 je weiterem Spieler) Zombies, HP
+  ×(1 + 0,2 (n−1)), Nachschub von 12 Randpunkten (nicht direkt neben
+  Spielern), hoechstens 22 + 4 je Spieler gleichzeitig. Ab Welle 2 Runner, ab
+  3 Spitter (Fernkampf), ab 4 Tanks, jede 5. Welle die Abomination (Boss,
+  ruft Runner). 12 s Pause zwischen den Wellen, 6 s vor der ersten.
+- **Zombies** (`arena-mobs.js`, `zombie: true`) jagen immer den naechsten
+  lebenden Spieler (keine Sichtlinie noetig), Spitter schiessen nur mit Sicht.
+- **Punkte:** Start 500, je Treffer 10 (nicht fuer Brennen), Kill 60, Tank
+  150, Boss 1000. **Stationen** (F): Wandwaffen (SMG 750, Shotgun 1000,
+  Rifle 1400, Sniper 1500), Mystery Box 950 (zufaellige Waffe aus `elite`),
+  Pack-a-Punch 5000 (bis Stufe 3, je Stufe ×1,6 Schaden, ×1,12 Feuerrate),
+  Perks: Jugger-Kek 2500 (+100 HP), Speed Kek 3000 (+25 % Feuerrate),
+  Stamina Kek 2000 (+15 % Tempo), Quick Kek 1500 (Regeneration nach 2 s, +2
+  HP/s). Gekaufte Waffen: zweiter Slot, sonst ersetzt die aktuelle.
+- **Tod:** raus bis zum Ende der Welle, dann zurueck. Alle tot = Ende.
+- **Keine Verluste:** Kopien des Loadouts wie im PvP.
+- **Belohnung:** XP je Welle (20 × n am Wellenende) und am Schluss
+  40 × Wellen^1,35 (Welle 10 ≈ 900); Kills XP wie NPCs. Gespeichert in
+  `u.arena.zombies = { bestWave, games, kills }`, Leaderboard „Zombies: best
+  wave“.
+- Protokoll: `pvpCreate {kind: 'zombies'}`, `pvpStart`; im Spiel `sh.zmb =
+  { wave, phase, left, zombies, pts, perks, team: [[name, pts, kills, tot]] }`.
+
 ### Raid (`shooter.js`)
 
 - **Map** 4000 × 2800, fest aus Seed 1337: 16 Gebaeude mit Tueren, 90

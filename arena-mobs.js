@@ -35,6 +35,28 @@ const MOBS = {
         gun: { dmg: 8, speed: 820, ms: 1250, burst: 6, spread: 0.4, life: 0.6 },
         xp: 'elite', xpMul: 1, drop: { chance: 1, src: 'elite', n: 1 }
     },
+    // ---------- Zombies (4.4): jagen immer den naechsten Spieler, HP wachsen je Welle ----------
+    zombie: {
+        zombie: true, name: 'Zombie', icon: '🧟', color: '#7fbf5f', r: 17, hp: 60, speed: 95, chase: 95, aggro: 99999,
+        melee: 30, xp: 'npc', xpMul: 0.5
+    },
+    runner: {
+        zombie: true, name: 'Runner', icon: '🧟‍♂️', color: '#b5e36b', r: 15, hp: 40, speed: 190, chase: 190, aggro: 99999,
+        melee: 22, xp: 'npc', xpMul: 0.5
+    },
+    tank: {
+        zombie: true, name: 'Tank', icon: '🧌', color: '#5f8f4f', r: 27, hp: 420, speed: 70, chase: 75, aggro: 99999, taken: 0.85,
+        melee: 55, xp: 'npc', xpMul: 2
+    },
+    spitter: {
+        zombie: true, name: 'Spitter', icon: '🤢', color: '#9fdf3f', r: 16, hp: 55, speed: 100, aggro: 99999, range: 520, keep: 260,
+        gun: { dmg: 14, speed: 420, ms: 2000, burst: 1, spread: 0.05, life: 1.5 },
+        xp: 'npc', xpMul: 0.8
+    },
+    abomination: {
+        zombie: true, boss: true, name: 'Abomination', icon: '🦠', color: '#b04fff', r: 46, hpBase: 2500, hpPer: 1200, speed: 90, chase: 110, aggro: 99999,
+        slam: { r: 230, dmg: 60, ms: 6000 }, contact: 50, summon: { kind: 'runner', n: 3, ms: 9000, max: 9 }, melee: 50
+    },
     // ---------- Bosse (einer zur Zeit, reihum zufaellig) ----------
     king: {
         boss: true, name: 'Raccoon King', icon: '🦝', crown: true, color: '#ff3b3b', r: 44, hpBase: 5000, hpPer: 2500, speed: 125, aggro: 700, keep: 170,
@@ -53,13 +75,13 @@ const MOBS = {
     }
 };
 
-const BOSSES = Object.keys(MOBS).filter(k => MOBS[k].boss);
+const BOSSES = Object.keys(MOBS).filter(k => MOBS[k].boss && !MOBS[k].zombie);
 // Wer normal auf der Map herumlaeuft (Gewichte); Enforcer bewachen das Militaerlager
 const ROAMERS = [['scav', 55], ['brute', 18], ['sniper', 14], ['drone', 13]];
 
 // Fuer den Browser: was er zum Zeichnen braucht
 function catalog() {
-    return Object.fromEntries(Object.entries(MOBS).map(([k, m]) => [k, { name: m.name, icon: m.icon, color: m.color, r: m.r, boss: !!m.boss, crown: !!m.crown, elite: !!m.elite }]));
+    return Object.fromEntries(Object.entries(MOBS).map(([k, m]) => [k, { name: m.name, icon: m.icon, color: m.color, r: m.r, boss: !!m.boss, crown: !!m.crown, elite: !!m.elite || (!!m.boss && !!m.zombie) }]));
 }
 
 module.exports = { MOBS, BOSSES, ROAMERS, catalog };

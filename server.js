@@ -405,7 +405,7 @@ let lastTop = '';
 const pendingWins = new Map();  // Konto -> { amount, feed, timer, onReveal }
 
 // Leaderboard (#8): Kategorien und Spiele mit sinnvollem Multi
-const BOARD_CATS = ['score', 'coins', 'kills', 'bigwin', 'bestx', 'casino', 'events', 'arena', 'alevel', 'pvp'];
+const BOARD_CATS = ['score', 'coins', 'kills', 'bigwin', 'bestx', 'casino', 'events', 'arena', 'alevel', 'pvp', 'zwave'];
 const BOARD_X_GAMES = ['starlight', 'slots', 'plinko', 'crossy', 'roulette', 'blackjack', 'poker'];
 
 function hideWin(key, amount, feedLine, ms, onReveal) {
@@ -1053,7 +1053,7 @@ async function handle(c, data) {
             if (!BOARD_CATS.includes(cat) || !['day', 'week', 'all'].includes(period)) return;
             if (cat === 'bestx' && !BOARD_X_GAMES.includes(game)) return;
             if (!allow('board:' + c.id, 30, 60e3)) return;
-            const list = accounts.board(cat, game, cat === 'coins' || cat === 'alevel' || cat === 'pvp' ? 'all' : period, key => pendingWins.has(key) ? pendingWins.get(key).amount : 0);
+            const list = accounts.board(cat, game, ['coins', 'alevel', 'pvp', 'zwave'].includes(cat) ? 'all' : period, key => pendingWins.has(key) ? pendingWins.get(key).amount : 0);
             send(c, { type: 'board', cat, game, period, list });
             return;
         }
@@ -1137,6 +1137,7 @@ async function handle(c, data) {
         case 'pvpJoin':
         case 'pvpLeave':
         case 'pvpSwitch':
+        case 'pvpStart':
             rooms.handle(c, data);
             return;
 
@@ -1597,7 +1598,7 @@ const shooter = createShooter({
 });
 // PvP-Lobbys: jedes Match eine eigene Arena-Instanz auf einer kleinen Map
 const rooms = createRooms({
-    accounts, send, broadcast, feed, refresh: c => sendAccount(c), worlds: createShooter.PVP_WORLDS,
+    accounts, send, broadcast, feed, refresh: c => sendAccount(c), worlds: createShooter.PVP_WORLDS, zombieWorld: createShooter.ZOMBIE_WORLD,
     createArena: o => createShooter({ accounts, send, feed, refresh: c => sendAccount(c), changed: () => {} }, o),
     busy: c => shooter.has(c) || !!c.joined || !!c.cross
 });
