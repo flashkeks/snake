@@ -990,3 +990,44 @@ body.world-cards #kekemon > .card {
         --w: 220px;
     }
 }
+
+/* Varianten deutlich beschriften (5.4, Max) */
+.kc-vtags {
+    position: absolute;
+    left: 3%;
+    top: 4%;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    pointer-events: none;
+}
+
+.kc-vtags i {
+    font-style: normal;
+    font-weight: 900;
+    font-size: max(8px, calc(var(--w) * .052));
+    letter-spacing: .04em;
+    padding: 1px 5px;
+    border-radius: 4px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.5);
+    white-space: nowrap;
+}
+
+.kc-vtags .vp {
+    background: #e3263b;
+    color: #fff;
+}
+
+.kc-vtags .vm {
+    background: linear-gradient(90deg, #7b3fe4, #ff5bd6);
+    color: #fff;
+}
+
+.kc-vtags .vs {
+    background: linear-gradient(90deg, #ffd23f, #fff3b0, #ffd23f);
+    background-size: 200% 100%;
+    color: #6b4700;
+    animation: km-shine 2s linear infinite;
+}

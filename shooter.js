@@ -1828,8 +1828,28 @@ module.exports = function createArena(h, opts = {}) {
         return out;
     }
 
+    // Naechste freie Stelle fuer Radius r, spiralfoermig nach aussen (5.4, Max:
+    // Zombies und Boss spawnten teils in der Wand und hingen dort fest)
+    function freeNear(x, y, r) {
+        if (!mobBlocked(x, y, r)) return { x, y };
+        for (let d = 12; d <= 480; d += 12) {
+            const n = Math.max(8, Math.round(d / 6));
+            const off = Math.random() * Math.PI * 2;
+            for (let i = 0; i < n; i++) {
+                const a = off + i / n * Math.PI * 2;
+                const nx = x + Math.cos(a) * d, ny = y + Math.sin(a) * d;
+                if (!mobBlocked(nx, ny, r)) return { x: nx, y: ny };
+            }
+        }
+        return null;
+    }
+
     function spawnMob(kind, x, y, now, home) {
         const def = M.MOBS[kind];
+        // Nie in eine Wand setzen: Platz nach dem eigenen Radius suchen
+        const spot = freeNear(x, y, def.r + 4) || freeSpot(false);
+        x = spot.x;
+        y = spot.y;
         const hp = def.boss ? def.hpBase + def.hpPer * Math.max(1, players.size) : def.hp;
         const m = {
             id: 'm#' + (++mobSeq), kind, def, x, y, a: Math.random() * 6.28, hp, maxHp: hp,
@@ -2005,6 +2025,14 @@ module.exports = function createArena(h, opts = {}) {
 
     function mobTick(m, now, dt) {
         const def = m.def;
+        // Steckt trotzdem einer fest (alte Spawns, Rueckstoss): rausschieben, hoechstens alle 0,5 s pruefen
+        if (!m.wallCheck || now >= m.wallCheck) {
+            m.wallCheck = now + 500;
+            if (mobBlocked(m.x, m.y, def.r)) {
+                const s = freeNear(m.x, m.y, def.r + 2);
+                if (s) { m.x = s.x; m.y = s.y; }
+            }
+        }
         // Brennen
         if (m.burn) {
             if (now > m.burn.until) m.burn = null;

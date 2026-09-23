@@ -148,7 +148,7 @@ function kmCard(c, opt = {}) {
         ${opt.count > 1 ? `<span class="kc-count">×${opt.count}</span>` : ''}
         <div class="kc-inner">
             <div class="kc-top"><span class="kc-name">${v.includes('s') ? '✦ ' : ''}${opt.missing ? '???' : esc(c.name)}</span><span class="kc-hp"><small>HP</small>${c.hp} ${T.icon}</span></div>
-            <div class="kc-art"><span class="ph">${T.icon}</span><img class="bg" src="${img}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"><img class="fg" src="${img}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">${ball ? kmBall(ball) : ''}${v.includes('s') ? '<span class="kc-sparkle"></span>' : ''}</div>
+            <div class="kc-art"><span class="ph">${T.icon}</span><img class="bg" src="${img}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"><img class="fg" src="${img}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">${ball ? kmBall(ball) : ''}${v.includes('s') ? '<span class="kc-sparkle"></span>' : ''}${v ? `<span class="kc-vtags">${ball === 'm' ? '<i class="vm">MASTERBALL</i>' : ball === 'p' ? '<i class="vp">POKÉBALL</i>' : ''}${v.includes('s') ? '<i class="vs">✦ SHINY</i>' : ''}</span>` : ''}</div>
             <div class="kc-from">${opt.missing ? set.icon + ' ' + esc(set.name) : esc(c.from)}</div>
             ${atk}
             <div class="kc-stats"><span>⚔️ ${c.atk}</span><span>🛡️ ${c.def}</span><span>💨 ${c.spd}</span></div>

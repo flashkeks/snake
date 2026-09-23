@@ -202,14 +202,16 @@ const PACKS = {
 };
 // Gewichte je Platz (Summe egal, wird normiert)
 const ODDS = {
-    normal: { common: 62, uncommon: 27, rare: 9, epic: 1.7, legendary: 0.28, secret: 0.02 },
-    sure: { rare: 86, epic: 11.5, legendary: 2.2, secret: 0.3 },
-    megaNormal: { common: 62, uncommon: 27, rare: 27, epic: 5.1, legendary: 0.84, secret: 0.06 },
-    megaSure: { rare: 78, epic: 17, legendary: 4.4, secret: 0.6 }
+    // 5.4 (Max: "16 % Legendary im Mega ist way zu hoch"): alles ab Rare deutlich seltener
+    normal: { common: 64, uncommon: 27, rare: 7.5, epic: 1.3, legendary: 0.18, secret: 0.02 },
+    sure: { rare: 92, epic: 7, legendary: 0.9, secret: 0.1 },
+    megaNormal: { common: 60, uncommon: 28, rare: 10, epic: 1.7, legendary: 0.28, secret: 0.02 },
+    megaSure: { rare: 86, epic: 11.5, legendary: 2.2, secret: 0.3 }
 };
 // Varianten je Karte: Ball (Pokeball selten, Masterball sehr selten) und Shiny (extrem selten).
 // Im Mega-Pack doppelt so oft.
-const VARIANTS = { poke: 0.025, master: 0.0025, shiny: 0.001 };
+// 5.4 (Max: "deutlich seltener bei allen"): vorher 2,5 % / 0,25 % / 0,1 %
+const VARIANTS = { poke: 0.01, master: 0.001, shiny: 0.0005 };
 // Verkaufswert: Grundwert je Seltenheit, mal Ball und Shiny
 const SELL = { common: 250, uncommon: 600, rare: 1800, epic: 7000, legendary: 35000, secret: 250000 };
 const SELL_MUL = { p: 3, m: 20, s: 25 };

@@ -1008,14 +1008,17 @@ ueberall, Varianten doppelt so oft). Gewichte je Platz:
 
 | Platz | Common | Uncommon | Rare | Epic | Legendary | Secret |
 |---|---|---|---|---|---|---|
-| normal | 62 | 27 | 9 | 1,7 | 0,28 | 0,02 |
-| garantiert | – | – | 86 | 11,5 | 2,2 | 0,3 |
-| Mega normal | 62 | 27 | 27 | 5,1 | 0,84 | 0,06 |
-| Mega garantiert | – | – | 78 | 17 | 4,4 | 0,6 |
+| normal | 64 | 27 | 7,5 | 1,3 | 0,18 | 0,02 |
+| garantiert | – | – | 92 | 7 | 0,9 | 0,1 |
+| Mega normal | 60 | 28 | 10 | 1,7 | 0,28 | 0,02 |
+| Mega garantiert | – | – | 86 | 11,5 | 2,2 | 0,3 |
 
-Secret Rare damit etwa 1 in 263 Standard-Packs, 2 % im Mega-Pack.
-Varianten je Karte: Pokeball 2,5 %, Masterball 0,25 %, Shiny 0,1 % (Mega ×2).
-„SUPER MEGA" = Secret + Masterball + Shiny, etwa 1 in 105 Mio. Standard-Packs.
+Stand 5.4 (Max: „16 % Legendary im Mega ist way zu hoch", „bei allen deutlich
+seltener"): Standard-Pack Legendary 1,6 %, Secret 1 in 556; Mega-Pack
+Legendary 7,8 %, Secret 1 in 100 — Mega ist damit so viel wert wie 5
+Standard-Packs zum selben Preis. Rueckfluss beim Verkauf ~54 % / ~31 %.
+Varianten je Karte: Pokeball 1 %, Masterball 0,1 %, Shiny 0,05 % (Mega ×2),
+auf der Karte als POKÉBALL / MASTERBALL / ✦ SHINY beschriftet.
 Der Shop rechnet die Tabelle „Drop chances" im Browser aus denselben Zahlen.
 
 Verkaufswert (`SELL`): Common 250, Uncommon 600, Rare 1800, Epic 7000,
@@ -1051,6 +1054,16 @@ der Katalog muss nicht jedem Tick-Kanal zur Last fallen). Nachrichten:
 der Statistik unter `earned.cards`.
 
 ## Auslieferung und Messung (5.4)
+
+- **Snake-Zustand** (`state`, 16/s) geht nur noch an Browser in der
+  Snake-Welt (`SNAKE_OFF`: `arenahub`, `shooter`, `kekemon`, `market` nicht).
+  Messung vorher: 95 % des ausgehenden Traffics waren `state`, auch an Leute
+  im Raid, die ihn nie sehen.
+- **Spawns in Waenden** (Zombies, Bosse): `spawnMob` sucht mit `freeNear`
+  spiralfoermig die naechste Stelle frei fuer den eigenen Radius; `mobTick`
+  schiebt alle 0,5 s raus, wer doch in einer Wand steckt. Vorher lag jeder
+  9. Zombie und 60 % der Bosse (Radius 46) an den Zombie-Spawnpunkten in der
+  Wand.
 
 - **Cache:** Cloudflare setzt fuer `.css`/`.js` `max-age=14400` (4 h), egal
   was der Server schickt (Zone-Einstellung *Browser Cache TTL*). Nach einem

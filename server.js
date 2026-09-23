@@ -2306,7 +2306,10 @@ function broadcastState(now) {
         return out;
     };
 
-    broadcast({
+    // Nur an Browser in der Snake-Welt (5.4): wer in Arena, Kekemon oder Markt
+    // ist, sieht das Feld nicht – vorher gingen 16 Zustaende/s trotzdem raus
+    // (95 % des Traffics, in der Arena doppelt zu den Raid-Snapshots)
+    const msg = JSON.stringify({
         type: 'state',
         arena,
         paused: !!paused,
@@ -2331,7 +2334,16 @@ function broadcastState(now) {
             fx: fxLeft(p)
         }))
     });
+    let n = 0;
+    for (const c of clients.values()) {
+        if (!c.joined && SNAKE_OFF.has(c.where)) continue;
+        if (c.ws.readyState === WebSocket.OPEN) { c.ws.send(msg); n++; }
+    }
+    count('state', msg.length, n);
 }
+
+// Schirme, auf denen das Snake-Feld nicht zu sehen ist
+const SNAKE_OFF = new Set(['arenahub', 'shooter', 'kekemon', 'market']);
 
 setInterval(gameTick, TICK);
 
