@@ -1,5 +1,14 @@
 [
   {
+    "version": "3.2",
+    "date": "23.09.2026",
+    "items": [
+      "Arena: drag & drop items onto weapon, armor, backpack and Q/G slots",
+      "Equip tab shows your stash – drag a slot back to take it off",
+      "Raid inventory: drag from the backpack onto slots and back"
+    ]
+  },
+  {
     "version": "3.1",
     "date": "23.09.2026",
     "items": [

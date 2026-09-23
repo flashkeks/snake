@@ -2690,6 +2690,33 @@ body.touch .sh-touchbtn {
     cursor: pointer;
 }
 
+/* Drag & Drop: passende Ziele leuchten, das unter der Maus staerker */
+[draggable="true"] {
+    cursor: grab;
+}
+.drop-ok {
+    outline: 2px dashed rgba(0,255,136,.6);
+    outline-offset: 2px;
+    border-radius: 10px;
+}
+.drop-hover {
+    outline: 3px solid #00ff88;
+    background: rgba(0,255,136,.12);
+}
+.stash {
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: 12px;
+    background: rgba(255,255,255,.03);
+}
+.stash .picker-head {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
 .lo-slot.open .it {
     box-shadow: 0 0 0 3px #ffd23f;
 }
@@ -8557,6 +8584,67 @@ function hubPicker() {
         `<div class="inv-grid">${cards || '<div class="hint">Nothing for this slot in your stash.</div>'}</div></div>`;
 }
 
+// Lager im Equip-Tab: alles Ausruestbare, per Drag & Drop auf die Slots
+function hubStash(filters) {
+    const list = hub.inv.filter(hubFilterFn).sort(hubSort);
+    const cards = hubStacks(list).map(({ it, uids }) => itemCard(it, { n: uids.length, eq: hubEquippedAs(it.uid) })).join('');
+    return `<div class="stash" data-stash="1"><div class="picker-head"><b>Stash</b><span class="hint">Drag an item onto a slot · drag a slot back here to take it off · or click a slot</span></div>` +
+        filters + `<div class="inv-grid">${cards || '<div class="hint">Your stash is empty.</div>'}</div></div>`;
+}
+
+// ---------- Drag & Drop: Lager/Rucksack auf Waffen- und Ausruestungs-Slots ----------
+let hubDrag = null;         // { uid, from: Slot oder null }
+
+function dndClear(root) {
+    root.querySelectorAll('.drop-ok, .drop-hover').forEach(x => x.classList.remove('drop-ok', 'drop-hover'));
+}
+
+$('hub-body').addEventListener('dragstart', e => {
+    const t = e.target.closest && e.target.closest('[data-uid]');
+    if (!t || !hub || hubTab !== 'equip') return;
+    const slotEl = t.closest('.lo-slot[data-slot]');
+    hubDrag = { uid: t.dataset.uid, from: slotEl ? slotEl.dataset.slot : null };
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', hubDrag.uid); } catch {}
+    itTip.hidden = true;
+    const it = hub.inv.find(x => x.uid === hubDrag.uid);
+    if (it) $('hub-body').querySelectorAll('.lo-slot[data-slot]').forEach(s => { if (fitsSlot(it, s.dataset.slot)) s.classList.add('drop-ok'); });
+    if (hubDrag.from) { const st = $('hub-body').querySelector('[data-stash]'); if (st) st.classList.add('drop-ok'); }
+});
+$('hub-body').addEventListener('dragover', e => {
+    if (!hubDrag) return;
+    const tgt = e.target.closest('.drop-ok');
+    $('hub-body').querySelectorAll('.drop-hover').forEach(x => x !== tgt && x.classList.remove('drop-hover'));
+    if (!tgt) return;
+    e.preventDefault();
+    tgt.classList.add('drop-hover');
+});
+$('hub-body').addEventListener('drop', e => {
+    const d = hubDrag;
+    const tgt = d && e.target.closest('.drop-ok');
+    if (!tgt) return;
+    e.preventDefault();
+    hubDrag = null;
+    dndClear($('hub-body'));
+    const it = hub.inv.find(x => x.uid === d.uid);
+    if (tgt.dataset.stash) {
+        // Slot zurueck ins Lager = ablegen
+        if (d.from.startsWith('util')) hubSetUtil(Number(d.from.slice(4)), null, 0);
+        else wsSend({ type: 'arEquip', slot: d.from, uid: null });
+        return;
+    }
+    const slot = tgt.dataset.slot;
+    if (!it || slot === d.from) return;
+    if (slot.startsWith('util')) {
+        const have = utilHave()[it.base] || 0;
+        hubSetUtil(Number(slot.slice(4)), it.base, Math.min(arenaCat.utils[it.base].stack, have));
+    } else wsSend({ type: 'arEquip', slot, uid: it.uid });
+});
+$('hub-body').addEventListener('dragend', () => {
+    hubDrag = null;
+    dndClear($('hub-body'));
+});
+
 // Verbrauchsgut im Lager zu Stapeln zusammenfassen
 function hubStacks(list) {
     const out = [], stacks = {};
@@ -8595,7 +8683,8 @@ function hubDraw() {
             `If you die or leave, the killer gets it all. Hide in buildings, bushes and smoke – nobody outside sees you until you shoot.</div></div>` +
             (hubLast ? `<div class="raid-result ${hubLast.result}">${hubLast.html}</div>` : '');
     } else if (hubTab === 'equip') {
-        html = hubLoadout() + hubPicker();
+        html = hubLoadout() + (hubPick ? hubPicker() : hubStash(filters));
+        setTimeout(() => $('hub-body').querySelectorAll('.it[data-uid]').forEach(x => { x.draggable = true; }), 0);
     } else if (hubTab === 'inv') {
         const list = inv.filter(hubFilterFn).sort(hubSort);
         const sel = hubSel && inv.find(x => x.uid === hubSel);
@@ -8739,6 +8828,18 @@ $('hub-body').addEventListener('click', e => {
     }
     if (ds.case) return wsSend({ type: 'arCase', id: ds.case });
     if (ds.buy) return wsSend({ type: 'arBuy', id: ds.buy, n: Number(ds.n) || 1 });
+    const slotEl = t.closest('.lo-slot[data-slot]');
+    if (slotEl && !t.matches('button')) {
+        hubPick = hubPick === slotEl.dataset.slot ? null : slotEl.dataset.slot;
+        if (hubTab !== 'equip') hubTab = 'equip';
+        return hubDraw();
+    }
+    if (hubTab === 'equip' && ds.uid && t.closest('[data-stash]')) {
+        const it = hub.inv.find(x => x.uid === ds.uid);
+        if (!it) return;
+        hubPick = it.kind === 'weapon' ? (hub.loadout.primary ? 'secondary' : 'primary') : it.kind === 'pack' ? 'backpack' : it.kind === 'util' ? 'util0' : it.slot;
+        return hubDraw();
+    }
     // Item in der Auswahl eines Slots: ausruesten
     if (hubTab === 'equip' && ds.uid && t.closest('.picker')) {
         const it = hub.inv.find(x => x.uid === ds.uid);
@@ -8880,7 +8981,64 @@ function shInvDraw() {
         `<div class="ri-bottom">${['helmet', 'vest', 'pants', 'boots', 'backpack'].map(gearSlot).join('')}<span class="ri-gap"></span>${utilSlot(0)}${utilSlot(1)}</div>` +
         (bonus ? `<div class="set-active">🧩 ${bonus}</div>` : '') +
         `<div class="ri-actions">${actions}<button type="button" class="ghost" data-inv-close="1">Close (Tab)</button></div>`;
+    // Rucksack-Items und belegte Slots lassen sich ziehen (Starter-Pistole nicht)
+    $('sh-inv').querySelectorAll('.ri-cell[data-ri="pack"]').forEach(x => { x.draggable = true; });
+    for (const s of ['primary', 'secondary', 'helmet', 'vest', 'pants', 'boots', 'backpack']) {
+        const it = d.gear[s], el = $('sh-inv').querySelector(`[data-ri="gear"][data-key="${s}"]`);
+        if (el && it && !it.s) el.draggable = true;
+    }
+    d.util.forEach((u, i) => { const el = $('sh-inv').querySelector(`[data-key="util${i}"]`); if (el && u) el.draggable = true; });
 }
+
+// Drag & Drop im Raid: Rucksack auf Waffen/Ruestung/Q/G, Ausgeruestetes zurueck in den Rucksack
+let shDrag = null;          // { where, key }
+function shFits(it, where, key) {
+    if (where === 'util') return it.k === 'util';
+    if (key === 'primary' || key === 'secondary') return it.k === 'weapon';
+    if (key === 'backpack') return it.k === 'pack';
+    return it.k === 'armor' && it.sl === key;
+}
+$('sh-inv').addEventListener('dragstart', e => {
+    const c = e.target.closest && e.target.closest('[data-ri]');
+    if (!c || !shInvState) return;
+    shDrag = { where: c.dataset.ri, key: c.dataset.key };
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', shDrag.key); } catch {}
+    itTip.hidden = true;
+    const root = $('sh-inv');
+    if (shDrag.where === 'pack') {
+        const it = shInvState.pack.find(x => x.uid === shDrag.key);
+        if (it) root.querySelectorAll('[data-ri="gear"], [data-ri="util"]').forEach(s => { if (shFits(it, s.dataset.ri, s.dataset.key)) s.classList.add('drop-ok'); });
+    } else {
+        const g = root.querySelector('.ri-pack');
+        if (g) g.classList.add('drop-ok');
+    }
+});
+$('sh-inv').addEventListener('dragover', e => {
+    if (!shDrag) return;
+    const tgt = e.target.closest('.drop-ok');
+    $('sh-inv').querySelectorAll('.drop-hover').forEach(x => x !== tgt && x.classList.remove('drop-hover'));
+    if (!tgt) return;
+    e.preventDefault();
+    tgt.classList.add('drop-hover');
+});
+$('sh-inv').addEventListener('drop', e => {
+    const d = shDrag;
+    const tgt = d && e.target.closest('.drop-ok');
+    if (!tgt) return;
+    e.preventDefault();
+    shDrag = null;
+    shInvSel = null;
+    dndClear($('sh-inv'));
+    if (tgt.classList.contains('ri-pack')) return wsSend({ type: 'shInv', op: 'unequip', slot: d.key });
+    const key = tgt.dataset.key;
+    const slot = tgt.dataset.ri === 'util' ? key.slice(4) : key === 'primary' || key === 'secondary' ? key : undefined;
+    wsSend({ type: 'shInv', op: 'equip', uid: d.key, slot });
+});
+$('sh-inv').addEventListener('dragend', () => {
+    shDrag = null;
+    dndClear($('sh-inv'));
+});
 
 $('sh-inv').addEventListener('click', e => {
     const b = e.target.closest('button');

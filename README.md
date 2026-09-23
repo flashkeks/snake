@@ -590,6 +590,7 @@ Tabs:
 | 🪂 Play | Loadout-Ueberblick, **Deploy**, Ergebnis des letzten Raids |
 | 🎒 Equip | nur das Loadout: 2 Waffen, Helm, Weste, Hose, Schuhe, **Rucksack**, zwei Verbrauchsgut-Slots (Q/G). Klick auf einen Slot oeffnet darunter die passende Auswahl (nach Score sortiert), Klick ruestet aus, „Take off“ legt ab |
 | 📦 Inventory | alle Items als Liste, Filter je Art/Slot; Klick zeigt alles zum Item mit Ausruesten und Salvage |
+| Drag & Drop (seit 3.2) | Im Equip-Tab steht ohne offene Auswahl das Lager (mit Filtern); Items auf passende Slots ziehen (passende leuchten gestrichelt), einen Slot zurueck aufs Lager ziehen legt ab. Im Raid-Inventar (Tab) gleich: Rucksack auf Waffen/Ruestung/Rucksack/Q/G, Ausgeruestetes zurueck in den Rucksack. HTML5-DnD, also Maus; auf dem Handy bleibt das Antippen |
 | ♻️ Salvage | Knoepfe „alle Common/Uncommon/Rare/Epic“ (ohne Ausgeruestetes und Verbrauchsgut, Scrap-Wert vorab) und Mehrfachauswahl |
 | 🎁 Cases | Standard, Mage, Demolition, Elite, Sovereign, Scrap – mit Chancen je Stufe; CS-Band mit 34 Feldern, Treffer auf Feld 29 |
 | 🛒 Shop | Grundwaffen, Bandage, Medkit, Frag, Smoke (×1 oder ×5) und Daypack fuer Coins; Verbrauchsgut und „Waffe mit Zufallseffekt“ fuer Scrap. Keine Ruestung |
