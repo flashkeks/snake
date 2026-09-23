@@ -26,6 +26,7 @@ Live: **`snake.flashkeks.com`** auf `edge` (Netcup).
 | `slots.js` | Slot-Automat „Slots“ (frueher „Kek Slots“); `node slots.js` rechnet die Rueckzahlungsquote aus |
 | `slots2.js` | Tumble-Slot „Budget Starlight“ (frueher „Sweet Kek“, intern weiter `s2`/`spin2`); `node slots2.js N` simuliert grob Rueckzahlung, Bonus-Quote, Bonus-Kauf (zum Abstimmen siehe unten) |
 | `events.js` | Events im Snake (Flag Quiz, Trivia, Where is it?, Guess the number und die Map-Events): Ablauf, Punkte, Belohnung |
+| `shop.js` | Shop (#9): Katalog, was andere von einem sehen |
 | `shooter.js` | Arena (#7, #12): drei Arenen, Bewegung, Kugeln, Treffer, Waffen, Pickups, Kopfgeld-Escrow, Cases, Anti-Farming |
 | `minigames.js` | Map-Events (#6): Labyrinth, Coin Rush, Last Snake Standing – Map-Bau, Schritte, Kollisionen, Punkte |
 | `tables.js` | Casino-Tische Blackjack (mit Sidebets) und Roulette: Runden, Einsaetze, Auszahlung; haengt auch Poker als dritten Tisch ein |
@@ -158,6 +159,28 @@ Aeltere Zahlen vor dem 23.09.2026 gibt es nur in den alten Feldern
 - Gaeste duerfen keinen Namen nehmen, der einem Konto gehoert.
 - Rate-Limits je IP (`cf-connecting-ip`): 5 neue Konten pro Stunde, 10
   Logins bzw. Passwortversuche pro 5 Minuten.
+
+### 🛒 Shop (Issue #9)
+
+Hauptmenue → „🛒 Shop“ (nur Konten). Rein kosmetisch, kein Spielvorteil.
+Katalog in `shop.js`, Gekauftes in `u.inventory`, je Kategorie hoechstens
+ein angelegtes Teil in `u.equipped` (beim Kauf automatisch angelegt,
+„take off“ legt ab). Andere sehen Skin, Kopf, Trail, Namensfarbe und
+Todes-Effekt (im Zustand als `sk`, der Todes-Effekt als `deathfx` an alle),
+Musik hoert nur man selbst.
+
+| Kategorie | Items (Preis) |
+|---|---|
+| Snake skins | Gradient 4k, Stripes 5k, Candy 6k, Neon 8k, Rainbow 15k, Galaxy 20k, Solid Gold 25k |
+| Heads (Emoji statt Auge) | 😎 2k, 👽 3k, 🤖 3k, 💀 4k, 🔥 6k, 🐉 8k, 👑 12k |
+| Trails (Partikel am Schwanz) | Bubbles 5k, Hearts 6k, Sparkles 7k, Fire 9k |
+| Death effects | Ghost 4k, Confetti 5k, Explosion 7k |
+| Name colors (Feld und Chat) | Gold 3k, Ice 3k, Rainbow 8k |
+| Music (WebAudio-Loop, solange man auf dem Feld ist) | Chiptune 8k, Lo-fi 8k |
+
+Die Preise sind eine Coin-Senke (#11): `stats.shopSpent`,
+`earned.shop` (negativ). Kaeufe ab 15k gehen in den Feed. Jackpot und Stern
+ueberdecken den Skin fuer ihre Dauer.
 
 ### Coin-Wirtschaft (Issue #11)
 
@@ -760,12 +783,12 @@ Client → Server: `register`, `login`, `resume {token}`, `logout`,
 beim Blackjack, `sit {seat?}`/`stand`/`move` (`fold`, `check`,
 `call`, `raise {to}`, `allin`) beim Poker), `pokerCreate {buyIn, seats, name}`, `daily`, `dailyDone`, `crossStart {bet, diff}`, `crossStep`,
 `crossCash`, `plinko {bet, risk}`, `board {cat, game, period}`, `me`, `shJoin {name, room}`,
-`shInput {mx, my, a, f, s}`, `shCase`, `shRetry`, `shPing {t}`, `shLeave`, `tickets`, `ticketNew {subject, text}`, `ticketReply {id, text}`,
+`shInput {mx, my, a, f, s}`, `shCase`, `shRetry`, `shPing {t}`, `shLeave`, `shopBuy {id}`, `shopEquip {cat, id|null}`, `tickets`, `ticketNew {subject, text}`, `ticketReply {id, text}`,
 `ticketRead {id}`.
 
 Server → Client: `welcome`, `mg` (Schritt im Map-Event), `sh`, `shJoined`
 (mit Map und Waffen), `shLeft` (Bilanz, Rueckgabe), `shKill`, `shHit`, `shHurt`,
-`shCase`, `shPickup`, `shPong`, `shRooms`, `shError`, `auth`, `authError`, `authExpired`, `account`,
+`shCase`, `shPickup`, `shPong`, `shRooms`, `shError`, `shopOk`, `shopError`, `deathfx`, `auth`, `authError`, `authExpired`, `account`,
 `joined`, `joinError`, `left`, `died` (`cause`, `by`, `byId`, `at`), `swapfx`, `cashedout`, `cashoutCancel`, `state`
 (alle 60 ms, mit `arena` und `paused`), `duel`, `gamble`, `box`, `jackpot`,
 `feed` (mit `who` und `big` fuer den Sound), `chat`, `chatlog`, `highscores`, `board`,

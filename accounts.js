@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { berlinDay } = require('./casino');
+const shop = require('./shop');
 
 const START_COINS = 100;
 const SESSION_DAYS = 30;
@@ -27,7 +28,7 @@ function sha256(s) {
 // daily = Daily Wheel, don = Double or Nothing (netto, kann negativ sein),
 // admin = Gutschriften/Abzuege im Admin-Interface, shooter = Kills in der
 // Arena (#7). Das Casino rechnet je Spiel in stats.games (#5).
-const EARN_SOURCES = ['snake', 'events', 'daily', 'don', 'admin', 'shooter'];
+const EARN_SOURCES = ['snake', 'events', 'daily', 'don', 'admin', 'shooter', 'shop'];
 
 // Statistik je Spiel (#5): plays, wagered (Einsatz), won (Auszahlung inkl.
 // Einsatz), bestWin (groesste Auszahlung), bestX (hoechster Multi). Beim
@@ -128,7 +129,11 @@ module.exports = function createAccounts(dataDir) {
     }
 
     function publicUser(u) {
-        return { name: u.name, coins: u.coins, color: u.color || null, stats: u.stats, dailyReady: u.daily !== berlinDay() };
+        return {
+            name: u.name, coins: u.coins, color: u.color || null, stats: u.stats, dailyReady: u.daily !== berlinDay(),
+            // Shop (#9)
+            inventory: u.inventory || [], equipped: u.equipped || {}
+        };
     }
 
     function createSession(key) {
@@ -234,6 +239,37 @@ module.exports = function createAccounts(dataDir) {
             for (const [k, s] of Object.entries(db.sessions)) if (s.user === key) delete db.sessions[k];
             touch();
             return { ok: true };
+        },
+
+        // Shop (#9): kaufen und anlegen. Rueckgabe: Fehlertext oder null
+        buy(key, id) {
+            const u = db.users[key];
+            const item = shop.BY_ID[id];
+            if (!u || !item) return 'Unknown item';
+            u.inventory = u.inventory || [];
+            if (u.inventory.includes(id)) return 'You already own that';
+            if (u.coins < item.price) return `You need ${item.price.toLocaleString('en-US')} coins`;
+            u.coins -= item.price;
+            u.inventory.push(id);
+            u.equipped = { ...u.equipped, [item.cat]: id };
+            touch();
+            this.stat(key, s => { s.shopSpent = (s.shopSpent || 0) + item.price; });
+            return null;
+        },
+
+        // id = null legt die Kategorie ab
+        equip(key, cat, id) {
+            const u = db.users[key];
+            if (!u || !shop.CATS[cat]) return 'Unknown category';
+            u.equipped = { ...u.equipped };
+            if (id === null) delete u.equipped[cat];
+            else {
+                const item = shop.BY_ID[id];
+                if (!item || item.cat !== cat || !(u.inventory || []).includes(id)) return 'You do not own that';
+                u.equipped[cat] = id;
+            }
+            touch();
+            return null;
         },
 
         setColor(key, color) {

@@ -19,6 +19,7 @@ const plinko = require('./plinko');
 const createTickets = require('./tickets');
 const startAdmin = require('./admin');
 const createShooter = require('./shooter');
+const shop = require('./shop');
 
 const PORT = Number(process.env.PORT) || 3000;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
@@ -452,6 +453,8 @@ function kill(id, killerId, how, cause) {
     recordScore(victim);
     if (victim.account) accounts.stat(victim.account, s => { s.deaths++; });
     const head = victim.body[0];
+    // Todes-Effekt aus dem Shop (#9): alle sehen ihn
+    if (victim.cos && victim.cos.death && head) broadcast({ type: 'deathfx', fx: victim.cos.death, x: head.x, y: head.y });
     send(victim, {
         type: 'died',
         by: killer ? killer.name : null,
@@ -849,6 +852,8 @@ async function handle(c, data) {
             c.guest = !c.account;
             c.color = cleanColor(data.color) || pickColor();
             if (c.account) accounts.setColor(c.account, c.color);
+            // Shop (#9): was andere von einem sehen
+            c.cos = c.account ? shop.visible(accounts.get(c.account).equipped) : null;
             spawn(c);
             players.set(c.id, c);
             send(c, { type: 'joined', name: c.name, guest: c.guest });
@@ -912,6 +917,8 @@ async function handle(c, data) {
             const line = {
                 name: u ? u.name : c.name,
                 color: c.color || (u && u.color) || '#cccccc',
+                // Namensfarbe aus dem Shop (#9)
+                nc: u && u.equipped && u.equipped.name ? u.equipped.name : undefined,
                 guest: !u,
                 text,
                 ts: now
@@ -1011,6 +1018,27 @@ async function handle(c, data) {
             if (!allow('board:' + c.id, 30, 60e3)) return;
             const list = accounts.board(cat, game, cat === 'coins' ? 'all' : period, key => pendingWins.has(key) ? pendingWins.get(key).amount : 0);
             send(c, { type: 'board', cat, game, period, list });
+            return;
+        }
+
+        // --- Shop (#9) ---
+
+        case 'shopBuy':
+        case 'shopEquip': {
+            if (!c.account) return send(c, { type: 'shopError', error: 'Accounts only' });
+            const err = data.type === 'shopBuy'
+                ? accounts.buy(c.account, String(data.id))
+                : accounts.equip(c.account, String(data.cat), data.id === null ? null : String(data.id));
+            if (err) return send(c, { type: 'shopError', error: err });
+            if (data.type === 'shopBuy') {
+                const it = shop.BY_ID[data.id];
+                accounts.earn(c.account, 'shop', -it.price);
+                if (it.price >= 15000) feed(`🛒 ${accounts.get(c.account).name} bought ${it.icon} ${it.name}`, 'good', c.id);
+            }
+            // Auf dem Feld sofort sichtbar
+            if (players.has(c.id)) c.cos = shop.visible(accounts.get(c.account).equipped);
+            sendAccount(c);
+            send(c, { type: 'shopOk', id: data.id || null, cat: data.cat || null, bought: data.type === 'shopBuy' });
             return;
         }
 
@@ -1256,6 +1284,7 @@ wss.on('connection', (ws, req) => {
         durations: DURATION,
         palette: PALETTE,
         slots: { symbols: slots.SYMBOLS, bets: slots.BETS, twoCherry: slots.TWO_CHERRY },
+        shop: { cats: shop.CATS, items: shop.ITEMS },
         slots2: { pays: slots2.PAYS, scatterPays: slots2.SCATTER_PAYS, buyCost: slots2.BUY_COST, freeSpins: slots2.FREE_SPINS, retrigger: slots2.RETRIGGER, maxWin: slots2.MAX_WIN, rtp: slots2.RTP },
         wheel: casino.WHEEL,
         cross: casino.crossTable(),
@@ -1827,6 +1856,7 @@ function broadcastState(now) {
             kills: p.kills,
             score: scoreOf(p),
             color: p.color,
+            sk: p.cos || undefined,
             name: p.name,
             guest: p.guest,
             frozen: !!p.frozen || !!paused,
