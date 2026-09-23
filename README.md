@@ -596,6 +596,51 @@ geht eine Zeile in den Feed, wie ueblich erst nach der Landung. Wer den
 Screen mitten im Fall verlaesst, bekommt die Anzeige sofort verbucht
 (gerechnet hat der Server ohnehin schon).
 
+## 🔫 Arena: Aufbau seit 4.0
+
+**Welt-Umschalter** oben unter dem Logo: 🐍 Snake (gruen) oder 🔫 Arena
+(pink). Im Arena-Modus (`body.world-arena`) verschwinden Snake-Feld,
+Seitenleisten und Legende, Hub und Raid fliessen als Vollseite statt als
+Overlay. Waehrend einer Snake-Runde bzw. im Raid laesst sich nicht wechseln.
+„Enter the arena“ im Games-Tab und ✕ im Hub schalten ebenfalls um.
+
+**Hub-Tabs:** Play (Modus-Karten: Extraction aktiv, PvP und Zombies folgen)
+· Inventory (Unter-Tabs Equip / List / Salvage, merkt sich den letzten) ·
+Cases · Shop · Profile. Im Kopf steht das Level (Klick = Profil).
+
+### 🎖️ Leveling (`arena-level.js`)
+
+Wunsch Max: etwas zum Grinden, „extrem competitive und schwer zu leveln“.
+
+- **XP** (`L.XP`): Spieler-Kill 90 (+10 je Level, das der Gegner hoeher
+  ist), Todesstoss Boss 1.200, Boss-Schaden anteilig 500, Extraction 150 +
+  15 je Item, Kiste 6, 20 je Minute im Raid (auch beim Tod). Veteran-Skill
+  +5 %/Rang. Der Browser bekommt je Gutschrift `arXp` (Einblendung, Level-Up
+  gross), ab jedem zehnten Level eine Feed-Zeile.
+- **Kurve:** `xpNeed(L) = 250 · L^1,85`. Level 10 ≈ 53.500 XP (grob 80
+  gute Raids), 20 ≈ 416k, 50 ≈ 5,9 Mio, Maximum 100. Nachsehen:
+  `node arena-level.js`.
+- **Stat-Punkte:** 2 je Level, je Stat hoechstens 50: Vitality (+4 HP),
+  Defense (−0,6 % Schaden, gedeckelt 30 %), Carry weight (+1
+  Rucksackplatz je 3), Agility (+0,4 % Tempo), Power (+0,6 % Schaden),
+  Dexterity (+0,5 % Feuerrate), Recovery (+0,06 HP/s), Luck (+0,6 %
+  Chance auf ein Extra-Item aus Kisten).
+- **Skill Tree:** 1 Punkt je Level, 3 Aeste (Assault, Survival, Tactics) mit
+  je 10 Knoten, 59 Raenge insgesamt, Voraussetzungen und Mindest-Level
+  (12–50). Wirkung in `bonuses()`, angewandt in `gearStats()` bzw. an den
+  Stellen im Raid (Crit, Executioner, Rampage, Last stand, Second wind,
+  Adrenaline, Fireproof, Boss hunter, Extractor, Ghost, Grenadier, Looter,
+  Scrapper im Hub).
+- **Verteilen:** im Profil vormerken, „Save points“ schickt
+  `arProg {op:'apply', stats, skills}`; der Server prueft die komplette
+  Verteilung (`validate`: nur erhoehen, Voraussetzungen, Level, Punkte).
+- **Reset:** alles zurueck, 50.000 Coins + 2.500 Scrap, jedes Mal ×1,5
+  (`arProg {op:'reset'}`).
+- Gespeichert am Lager: `u.arena.prog = { xp, stats, skills, resets }`.
+- **Leaderboard:** Kategorie „Arena level“ (`alevel`, nur All time, nach XP).
+- **Admin:** im Arena-Tab „Arena XP“ setzen (`op: 'xp'`); ausgegebene
+  Punkte ueber dem neuen Level werden dabei zurueckgesetzt.
+
 ## 🔫 Arena: Extraction-Raids (seit 23.09.2026)
 
 Ersetzt die drei Arenen (Free / 100 / 1k je Leben, Kopfgeld-Escrow) von
@@ -945,6 +990,10 @@ gehoert in denselben Commit wie die Aenderung.
 Aenderung = naechste Hauptzahl (2.x → 3.0). Stand 23.09.2026 abends: 3.0
 (neuer Name, Domain, Menue).
 
+
+**💡 Suggest an improvement** (seit 4.0): Knopf unter den Patch Notes, oeffnet
+das Support-Fenster mit „💡 Suggestion: “ im Betreff. Landet als normales
+Ticket im Admin (nur Konten).
 ## Name und Adresse
 
 Seit 23.09.2026 heisst das Spiel **Kek-Game** (vorher „Snake and Gamba“).

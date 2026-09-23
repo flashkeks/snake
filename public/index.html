@@ -2690,6 +2690,365 @@ body.touch .sh-touchbtn {
     cursor: pointer;
 }
 
+/* Welt-Umschalter oben: Snake (gruen) oder Arena (pink), Arena als Vollseite */
+#world-switch {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin: -6px 0 6px;
+}
+
+#world-switch button {
+    padding: 7px 22px;
+    border-radius: 999px;
+    font-weight: 900;
+    letter-spacing: .03em;
+    background: rgba(255,255,255,.05);
+    border: 2px solid rgba(255,255,255,.15);
+    color: #cfd8e3;
+}
+
+#world-switch [data-world="snake"].on {
+    background: #00ff88;
+    border-color: #00ff88;
+    color: #03140b;
+    box-shadow: 0 0 18px rgba(0,255,136,.5);
+}
+
+#world-switch [data-world="arena"].on {
+    background: #ff5bd6;
+    border-color: #ff5bd6;
+    color: #22031a;
+    box-shadow: 0 0 18px rgba(255,91,214,.5);
+}
+
+body.world-arena #left,
+body.world-arena #side,
+body.world-arena #game,
+body.world-arena #hud,
+body.world-arena #pad {
+    display: none !important;
+}
+
+body.world-arena #main {
+    flex: 1;
+    align-items: stretch;
+}
+
+body.world-arena #stage {
+    min-height: calc(100vh - 130px);
+}
+
+body.world-arena #score,
+body.world-arena #effects,
+body.world-arena #controls,
+body.world-arena #countdown {
+    display: none !important;
+}
+
+/* Im Arena-Modus fliessen Hub und Raid normal in der Seite statt als Overlay */
+body.world-arena #arenahub,
+body.world-arena #shooter {
+    position: relative;
+    inset: auto;
+    background: transparent;
+    backdrop-filter: none;
+    padding: 0;
+    overflow: visible;
+}
+
+body.world-arena #arenahub .card {
+    width: min(1400px, 100%);
+    max-height: none;
+}
+
+body.world-arena h1 {
+    color: #ff5bd6;
+    text-shadow: 0 0 18px rgba(255,91,214,.5);
+}
+
+.hub-lv {
+    color: #ffd23f;
+    cursor: pointer;
+}
+
+.hub-sub {
+    margin-bottom: 12px;
+}
+
+/* Vorschlags-Knopf unter den Patch Notes */
+.suggest-btn {
+    width: 100%;
+    margin-top: 10px;
+    background: rgba(255,210,63,.12);
+    border: 1px solid rgba(255,210,63,.5);
+    color: #ffd23f;
+}
+
+/* Modi im Play-Tab */
+.modes {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.mode {
+    position: relative;
+    padding: 12px;
+    border-radius: 12px;
+    border: 2px solid rgba(255,255,255,.1);
+    background: rgba(255,255,255,.03);
+}
+
+.mode b {
+    display: block;
+    font-size: 17px;
+}
+
+.mode small {
+    opacity: .75;
+}
+
+.mode.on {
+    border-color: #ff5bd6;
+    background: rgba(255,91,214,.1);
+    box-shadow: 0 0 18px rgba(255,91,214,.25);
+}
+
+.mode.soon {
+    opacity: .5;
+}
+
+.mode i {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    font-style: normal;
+    font-size: 11px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.12);
+}
+
+@media (max-width: 700px) {
+    .modes {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Profil: Level, Stats, Skill Tree */
+.prof-top {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 18px;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.prof-lv {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 30% 30%, #ffe27a, #b8860b);
+    color: #2a1a00;
+    font-weight: 900;
+    box-shadow: 0 0 30px rgba(255,210,63,.45);
+}
+
+.prof-lv b {
+    font-size: 36px;
+    line-height: 1;
+}
+
+.prof-xp {
+    height: 16px;
+    border-radius: 8px;
+    background: rgba(255,255,255,.08);
+    overflow: hidden;
+    margin: 6px 0;
+}
+
+.prof-xp i {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, #ffd23f, #ff9f1c);
+}
+
+.prof-rec {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    font-size: 13px;
+    opacity: .9;
+}
+
+.prof-grid {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) 2.4fr;
+    gap: 16px;
+}
+
+.prof-box {
+    background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 12px;
+    padding: 12px;
+}
+
+.prof-box h4 {
+    margin: 0 0 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.stat-row {
+    display: grid;
+    grid-template-columns: 26px 1fr auto auto;
+    gap: 8px;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255,255,255,.05);
+}
+
+.stat-row small {
+    display: block;
+    opacity: .65;
+    font-size: 11px;
+}
+
+.stat-row .pend {
+    color: #7dffb0;
+}
+
+.stat-row button {
+    padding: 2px 10px;
+}
+
+.trees {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.tree h5 {
+    margin: 0 0 8px;
+    text-align: center;
+    font-size: 15px;
+}
+
+.tree-row {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+}
+
+.skill {
+    width: 108px;
+    padding: 6px 4px;
+    border-radius: 10px;
+    background: rgba(255,255,255,.04);
+    border: 2px solid rgba(255,255,255,.12);
+    text-align: center;
+    font-size: 11px;
+    color: #cfd8e3;
+    cursor: pointer;
+    position: relative;
+}
+
+.skill .ic {
+    font-size: 22px;
+    display: block;
+}
+
+.skill b {
+    display: block;
+    font-size: 12px;
+}
+
+.skill .rk {
+    font-weight: 900;
+}
+
+.skill.locked {
+    opacity: .38;
+    cursor: not-allowed;
+}
+
+.skill.can {
+    border-color: var(--tc);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--tc) 40%, transparent);
+}
+
+.skill.has {
+    background: color-mix(in srgb, var(--tc) 22%, transparent);
+    border-color: var(--tc);
+}
+
+.skill.max {
+    background: color-mix(in srgb, var(--tc) 38%, transparent);
+}
+
+.skill .pend {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: #7dffb0;
+    color: #03140b;
+    border-radius: 999px;
+    padding: 0 6px;
+    font-weight: 900;
+}
+
+.prof-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 12px;
+}
+
+@media (max-width: 900px) {
+    .prof-grid, .trees {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* XP im Raid */
+.xp-pop {
+    position: fixed;
+    left: 50%;
+    top: 22%;
+    transform: translateX(-50%);
+    color: #ffd23f;
+    font-weight: 900;
+    font-size: 20px;
+    text-shadow: 0 0 10px rgba(0,0,0,.8);
+    pointer-events: none;
+    z-index: 50;
+    animation: xpPop 1.6s ease-out forwards;
+}
+
+.xp-pop.up {
+    font-size: 34px;
+    color: #fff;
+    text-shadow: 0 0 20px #ffd23f;
+}
+
+@keyframes xpPop {
+    0% { opacity: 0; transform: translate(-50%, 10px) scale(.8); }
+    15% { opacity: 1; transform: translate(-50%, 0) scale(1.05); }
+    80% { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%, -30px); }
+}
+
 /* Drag & Drop: passende Ziele leuchten, das unter der Maus staerker */
 [draggable="true"] {
     cursor: grab;
@@ -5004,6 +5363,10 @@ body.touch input, body.touch textarea {
 <body>
 
 <h1><img class="logo" src="img/logo.png" alt=""> Kek-Game</h1>
+<div id="world-switch">
+    <button type="button" data-world="snake" class="on">🐍 Snake</button>
+    <button type="button" data-world="arena">🔫 Arena</button>
+</div>
 <div id="status">Connecting...</div>
 
 <div id="layout">
@@ -5216,15 +5579,15 @@ body.touch input, body.touch textarea {
                         <div class="cs-title" style="color:#ff5bd6;text-shadow:0 0 16px rgba(255,91,214,.5)">🔫 Arena</div>
                         <span class="coins">🪙 <span id="hub-coins">–</span></span>
                         <span class="coins" style="color:#cfd8e3">⚙️ <span id="hub-scrap">–</span></span>
+                        <span class="coins hub-lv" id="hub-lv" data-hubtab="profile" title="Your arena level">🎖️ –</span>
                         <button type="button" class="s2-icon" id="hub-back" title="Back">✕</button>
                     </div>
                     <div class="cs-tabs" id="hub-tabs">
                         <button type="button" data-hubtab="play">🪂 Play</button>
-                        <button type="button" data-hubtab="equip">🎒 Equip</button>
-                        <button type="button" data-hubtab="inv">📦 Inventory</button>
-                        <button type="button" data-hubtab="salvage">♻️ Salvage</button>
+                        <button type="button" data-hubtab="equip" data-group="inv">🎒 Inventory</button>
                         <button type="button" data-hubtab="cases">🎁 Cases</button>
                         <button type="button" data-hubtab="shop">🛒 Shop</button>
+                        <button type="button" data-hubtab="profile">🎖️ Profile</button>
                     </div>
                     <div id="hub-body"></div>
                     <div class="msg" id="hub-msg"></div>
@@ -5524,6 +5887,7 @@ body.touch input, body.touch textarea {
                     <option value="casino">🎰 Casino net</option>
                     <option value="events">🎪 Event wins</option>
                     <option value="arena">🔫 Arena kills</option>
+                    <option value="alevel">🎖️ Arena level</option>
                 </select>
                 <select id="hall-game" title="Game" hidden>
                     <option value="starlight">🌟 Starlight</option>
@@ -5553,6 +5917,8 @@ body.touch input, body.touch textarea {
         <div class="panel" id="patchnotes">
             <h2>📝 Patch notes</h2>
             <div id="pn-list"></div>
+            <button type="button" id="suggest-btn" class="suggest-btn">💡 Suggest an improvement</button>
+            <div class="msg" id="suggest-msg"></div>
         </div>
     </div>
 </div>
@@ -5693,6 +6059,7 @@ ws.onmessage = event => {
         case 'shFlash': onShFlash(data); break;
         case 'shPong': shRtt = shRtt * .7 + (performance.now() - data.t) * .3; break;
         case 'arHub': onArHub(data); break;
+        case 'arXp': onArXp(data); break;
         case 'arError': showMsg('hub-msg', data.error, 'err'); break;
         case 'shopOk': onShopOk(data); break;
         case 'shopRot': onShopRot(data.rot); break;
@@ -8656,6 +9023,8 @@ const sfx = {
 // weitergerechnet. Der Server schickt nur, was in der Naehe ist.
 
 let arenaCat = null;        // Katalog aus welcome (Waffen, Mods, Cases, Shop, Stufen)
+let lvlCat = null;          // Leveling-Katalog (Stats, Skills) aus welcome
+let profDraft = null;       // noch nicht gespeicherte Punkte { stats, skills }
 let hub = null;             // letzter Stand aus arHub
 let hubTab = 'play';
 let hubSel = null;          // ausgewaehltes Item (uid)
@@ -8856,10 +9225,36 @@ function setBonusText(items) {
 
 // ---------- Hub ----------
 
+// ---------- Welt: Snake oder Arena (Umschalter oben) ----------
+let world = 'snake';
+function setWorld(w) {
+    if (w === world) return;
+    if (w === 'arena' && joined) return showMsg('play-msg', 'Leave the snake game first', 'err');
+    if (w === 'snake' && sh) return;
+    world = w;
+    document.body.classList.toggle('world-arena', w === 'arena');
+    document.querySelectorAll('#world-switch [data-world]').forEach(b => b.classList.toggle('on', b.dataset.world === w));
+    if (w === 'arena') hubOpen();
+    else showScreen('menu');
+}
+$('world-switch').onclick = e => {
+    const b = e.target.closest('[data-world]');
+    if (b && !hubCaseBusy) setWorld(b.dataset.world);
+};
+
 function hubOpen(tab) {
     unlockAudio();
     sfxInit();
-    if (!me) return showMsg('sh-menu-msg', 'Log in to use the arena', 'err');
+    if (!me) {
+        showScreen('arenahub');
+        $('hub-body').innerHTML = '<div class="big-note">🔒 Log in to use the arena<br><small>Switch to 🐍 Snake and log in or sign up there.</small></div>';
+        return;
+    }
+    if (world !== 'arena') {
+        world = 'arena';
+        document.body.classList.add('world-arena');
+        document.querySelectorAll('#world-switch [data-world]').forEach(b => b.classList.toggle('on', b.dataset.world === 'arena'));
+    }
     if (tab) hubTab = tab;
     showScreen('arenahub');
     hubDraw();
@@ -8868,6 +9263,15 @@ function hubOpen(tab) {
 
 function onArHub(d) {
     hub = d;
+    if (d.progSaved) {
+        profDraft = null;
+        showMsg('hub-msg', 'Points saved', 'ok');
+        sfx.fanfare && sfx.fanfare('small');
+    }
+    if (d.progReset) {
+        profDraft = null;
+        showMsg('hub-msg', 'All points reset – spend them again', 'ok');
+    }
     if (d.coins !== undefined && me) me.coins = d.coins;
     if (d.caseItem) hubCaseAnim(d.caseItem, d.reel);
     if (d.got) showMsg('hub-msg', `Bought ${d.got.n > 1 ? d.got.n + '× ' : ''}${d.got.name}`, 'ok');
@@ -9007,6 +9411,136 @@ $('hub-body').addEventListener('dragend', () => {
     dndClear($('hub-body'));
 });
 
+// ---------- Profil: Level, Stat-Punkte, Skill Tree ----------
+function profState() {
+    const pr = hub.prog;
+    if (!profDraft) profDraft = { stats: { ...pr.stats }, skills: { ...pr.skills } };
+    const sum = o => Object.values(o).reduce((s, n) => s + n, 0);
+    const statFree = (pr.level - 1) * lvlCat.statPer - sum(profDraft.stats);
+    const skillFree = (pr.level - 1) - sum(profDraft.skills);
+    const changed = JSON.stringify(profDraft.stats) !== JSON.stringify(pr.stats) || JSON.stringify(profDraft.skills) !== JSON.stringify(pr.skills);
+    return { pr, statFree, skillFree, changed };
+}
+
+function skillState(k, level) {
+    const d = lvlCat.skills[k];
+    const rank = profDraft.skills[k] || 0;
+    const saved = hub.prog.skills[k] || 0;
+    const missing = (d.req || []).filter(([r, n]) => (profDraft.skills[r] || 0) < n);
+    const lvlOk = !d.lvl || level >= d.lvl;
+    return { d, rank, saved, open: lvlOk && !missing.length, missing, lvlOk };
+}
+
+function hubProfile() {
+    if (!lvlCat || !hub.prog) return '<div class="hint">Loading…</div>';
+    const { pr, statFree, skillFree, changed } = profState();
+    const r = pr.record;
+    const pct = pr.need ? Math.min(100, 100 * pr.into / pr.need) : 100;
+    const kd = r.deaths ? (r.kills / r.deaths).toFixed(2) : r.kills;
+    let html = `<div class="prof-top"><div class="prof-lv"><small>LEVEL</small><b>${pr.level}</b></div><div>` +
+        `<b style="font-size:18px">${esc(me.name)}</b> <span class="hint">· ${pr.xp.toLocaleString('en-US')} XP total</span>` +
+        `<div class="prof-xp"><i style="width:${pct}%"></i></div>` +
+        `<div class="hint">${pr.need ? `${pr.into.toLocaleString('en-US')} / ${pr.need.toLocaleString('en-US')} XP to level ${pr.level + 1}` : 'Max level!'} · ` +
+        `XP: kill ${lvlCat.xp.kill}, boss ${lvlCat.xp.boss}, extraction ${lvlCat.xp.extract} + ${lvlCat.xp.extractItem}/item, ${lvlCat.xp.minute}/min in raid, crate ${lvlCat.xp.crate}</div>` +
+        `<div class="prof-rec"><span>🪂 ${r.raids} raids</span><span>🚁 ${r.extracts} extracted</span><span>🗡️ ${r.kills} kills</span><span>💀 ${r.deaths} deaths</span>` +
+        `<span>K/D ${kd}</span><span>👑 ${r.bossKills} bosses</span>${r.npcKills ? `<span>👾 ${r.npcKills} enemies</span>` : ''}` +
+        `<span>🏆 best: ${esc(arenaCat.tiers[r.bestTier] ? arenaCat.tiers[r.bestTier].name : '–')}</span></div></div></div>`;
+    // Stats
+    html += '<div class="prof-grid"><div class="prof-box">' +
+        `<h4><span>📊 Stats</span><span class="${statFree ? 'pend' : 'hint'}">${statFree} point${statFree === 1 ? '' : 's'} free</span></h4>`;
+    for (const [k, s] of Object.entries(lvlCat.stats)) {
+        const v = profDraft.stats[k] || 0, saved = pr.stats[k] || 0;
+        const eff = Math.round(v * s.per * 100) / 100;
+        html += `<div class="stat-row"><span>${s.icon}</span><div><b>${s.name}</b> <span class="${v > saved ? 'pend' : ''}">${v}${v > saved ? ` (+${v - saved})` : ''}</span>` +
+            `<small>${s.desc}${v ? ` · now ${k === 'carry' ? Math.floor(v / 3) : eff} ${s.unit}` : ''}</small></div>` +
+            `<button type="button" class="ghost" data-stat="${k}" data-d="-1" ${v <= saved ? 'disabled' : ''}>−</button>` +
+            `<button type="button" data-stat="${k}" data-d="1" ${statFree <= 0 || v >= lvlCat.statMax ? 'disabled' : ''}>+</button></div>`;
+    }
+    html += '</div><div class="prof-box">' +
+        `<h4><span>🌳 Skill tree</span><span class="${skillFree ? 'pend' : 'hint'}">${skillFree} skill point${skillFree === 1 ? '' : 's'} free</span></h4>` +
+        '<div class="hint" style="margin-bottom:8px">Click a skill to add a rank, right-click to take back an unsaved rank. Gold numbers = level needed.</div><div class="trees">';
+    for (const [tk, t] of Object.entries(lvlCat.trees)) {
+        html += `<div class="tree" style="--tc:${t.color}"><h5 style="color:${t.color}">${t.name}</h5>`;
+        const rows = {};
+        for (const [k, d] of Object.entries(lvlCat.skills)) if (d.tree === tk) (rows[d.row] = rows[d.row] || []).push(k);
+        for (const row of Object.keys(rows).sort()) {
+            html += '<div class="tree-row">' + rows[row].map(k => {
+                const s = skillState(k, pr.level);
+                const cls = s.rank >= s.d.max ? 'has max' : s.rank ? 'has' : s.open && skillFree > 0 ? 'can' : !s.open ? 'locked' : '';
+                const need = !s.lvlOk ? `Lv ${s.d.lvl}` : s.missing.map(([r, n]) => `${lvlCat.skills[r].name} ${n}`).join(', ');
+                return `<div class="skill ${cls}" data-skill="${k}" title="${esc(s.d.desc)}${need ? ' · needs ' + esc(need) : ''}">` +
+                    (s.rank > s.saved ? `<span class="pend">+${s.rank - s.saved}</span>` : '') +
+                    `<span class="ic">${s.d.icon}</span><b>${esc(s.d.name)}</b><span class="rk">${s.rank}/${s.d.max}</span>` +
+                    (s.d.lvl ? ` <span style="color:#ffd23f">Lv${s.d.lvl}</span>` : '') + `<div>${esc(s.d.desc)}</div></div>`;
+            }).join('') + '</div>';
+        }
+        html += '</div>';
+    }
+    const cost = pr.resetCost;
+    html += '</div></div></div><div class="prof-actions">' +
+        `<button type="button" class="gold" data-prof="apply" ${changed ? '' : 'disabled'}>✔ Save points</button>` +
+        `<button type="button" class="ghost" data-prof="discard" ${changed ? '' : 'disabled'}>Discard</button>` +
+        `<span style="flex:1"></span><span class="hint">Reset everything: 🪙 ${cost.coins.toLocaleString('en-US')} + ⚙️ ${cost.scrap.toLocaleString('en-US')} (gets 50% pricier each time)</span>` +
+        `<button type="button" class="danger" data-prof="reset">↺ Reset stats & skills</button></div>`;
+    return html;
+}
+
+function profClick(t, ds, e) {
+    const { pr, statFree, skillFree } = profState();
+    if (ds.stat) {
+        const k = ds.stat, d = Number(ds.d);
+        const v = profDraft.stats[k] || 0;
+        if (d > 0 && statFree > 0 && v < lvlCat.statMax) profDraft.stats[k] = v + 1;
+        if (d < 0 && v > (pr.stats[k] || 0)) profDraft.stats[k] = v - 1;
+        if (!profDraft.stats[k]) delete profDraft.stats[k];
+        return hubDraw();
+    }
+    if (ds.skill) {
+        const s = skillState(ds.skill, pr.level);
+        if (s.rank < s.d.max && s.open && skillFree > 0) {
+            profDraft.skills[ds.skill] = s.rank + 1;
+            beep(880, 0.05, 0.04);
+        }
+        return hubDraw();
+    }
+    if (ds.prof === 'apply') return wsSend({ type: 'arProg', op: 'apply', stats: profDraft.stats, skills: profDraft.skills });
+    if (ds.prof === 'discard') {
+        profDraft = null;
+        return hubDraw();
+    }
+    if (ds.prof === 'reset') {
+        const c = pr.resetCost;
+        if (confirm(`Reset ALL stat points and skills?\nCosts ${c.coins.toLocaleString('en-US')} coins and ${c.scrap.toLocaleString('en-US')} scrap. You get every point back to spend again.`)) wsSend({ type: 'arProg', op: 'reset' });
+    }
+}
+
+// Rechtsklick: ungespeicherten Skill-Rang zuruecknehmen
+$('hub-body').addEventListener('contextmenu', e => {
+    const t = e.target.closest('.skill[data-skill]');
+    if (!t || hubTab !== 'profile' || !profDraft) return;
+    e.preventDefault();
+    const k = t.dataset.skill, saved = hub.prog.skills[k] || 0, rank = profDraft.skills[k] || 0;
+    if (rank <= saved) return;
+    // nicht unter Voraussetzung anderer (ungespeicherter) Skills fallen lassen
+    const next = rank - 1;
+    const needed = Object.entries(lvlCat.skills).some(([o, d]) => (profDraft.skills[o] || 0) > 0 && (d.req || []).some(([r, n]) => r === k && next < n));
+    if (needed) return showMsg('hub-msg', 'Another skill needs this rank', 'err');
+    if (next) profDraft.skills[k] = next;
+    else delete profDraft.skills[k];
+    hubDraw();
+});
+
+// XP im Raid: kleine Einblendung, Level-Up gross
+function onArXp(d) {
+    const el = document.createElement('div');
+    el.className = 'xp-pop' + (d.up ? ' up' : '');
+    el.textContent = d.up ? `⭐ LEVEL ${d.level}!` : `+${d.n.toLocaleString('en-US')} XP · ${d.reason}`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1700);
+    if (d.up) fanfare('gold');
+    if (hub && hub.prog) hub.prog.level = Math.max(hub.prog.level, d.level);
+}
+
 // Verbrauchsgut im Lager zu Stapeln zusammenfassen
 function hubStacks(list) {
     const out = [], stacks = {};
@@ -9026,7 +9560,9 @@ const hubSort = (a, b) => tierIdx(b.tier) - tierIdx(a.tier) || (b.score || 0) - 
 
 function hubDraw() {
     if (!arenaCat) return;
-    document.querySelectorAll('#hub-tabs [data-hubtab]').forEach(b => b.classList.toggle('on', b.dataset.hubtab === hubTab));
+    const invGroup = ['equip', 'inv', 'salvage'].includes(hubTab);
+    document.querySelectorAll('#hub-tabs [data-hubtab]').forEach(b => b.classList.toggle('on', b.dataset.hubtab === hubTab || (invGroup && b.dataset.group === 'inv')));
+    if (hub && hub.prog) $('hub-lv').textContent = `🎖️ Lv ${hub.prog.level}`;
     $('hub-coins').textContent = me ? me.coins.toLocaleString('en-US') : '–';
     $('hub-scrap').textContent = hub ? hub.scrap.toLocaleString('en-US') : '–';
     itTip.hidden = true;
@@ -9039,11 +9575,17 @@ function hubDraw() {
     const filters = `<div class="cr-diffs">${HUB_FILTERS.map(([k, n]) => `<button type="button" data-filter="${k}" class="${hubFilter === k ? 'on' : ''}">${n}</button>`).join('')}</div>`;
     let html = '';
     if (hubTab === 'play') {
-        html = hubLoadout() +
+        html = `<div class="modes">` +
+            `<div class="mode on"><b>🪂 Extraction</b><small>Loot, bosses, extract alive. Everything you take in is at risk.</small></div>` +
+            `<div class="mode soon"><b>⚔️ PvP arena</b><small>1v1 · 2v2 · 3v3 lobbies, no item loss</small><i>soon</i></div>` +
+            `<div class="mode soon"><b>🧟 Zombies</b><small>Survive the waves, up to 4 players, no item loss</small><i>soon</i></div></div>` +
+            hubLoadout() +
             `<div class="hub-play"><button type="button" class="gold" id="hub-deploy">🪂 Deploy into the raid</button>` +
             `<div class="hint">${shRoomCount ? `● ${shRoomCount} in the raid right now · ` : ''}Everything you take in is at risk. Get to a 🚁 extraction zone and stand in it for 6 s to keep your loot. ` +
             `If you die or leave, the killer gets it all. Hide in buildings, bushes and smoke – nobody outside sees you until you shoot.</div></div>` +
             (hubLast ? `<div class="raid-result ${hubLast.result}">${hubLast.html}</div>` : '');
+    } else if (hubTab === 'profile') {
+        html = hubProfile();
     } else if (hubTab === 'equip') {
         html = hubLoadout() + (hubPick ? hubPicker() : hubStash(filters));
         setTimeout(() => $('hub-body').querySelectorAll('.it[data-uid]').forEach(x => { x.draggable = true; }), 0);
@@ -9087,6 +9629,11 @@ function hubDraw() {
             `<h3>Gear</h3><div class="cases">${coins.filter(o => o.kind === 'util' || o.kind === 'pack').map(card).join('')}</div>` +
             `<h3>For scrap</h3><div class="cases">${arenaCat.shop.filter(o => o.currency === 'scrap').map(card).join('')}</div>` +
             `<div class="hint">Armor, bigger backpacks, rarer weapons and special consumables only come from cases and crates.</div>`;
+    }
+    if (['equip', 'inv', 'salvage'].includes(hubTab)) {
+        hubInvLast = hubTab;
+        html = `<div class="cr-diffs hub-sub">${[['equip', '🎒 Equip'], ['inv', '📋 List'], ['salvage', '♻️ Salvage']].map(([k, n]) =>
+            `<button type="button" data-hubsub="${k}" class="${hubTab === k ? 'on' : ''}">${n}</button>`).join('')}</div>` + html;
     }
     $('hub-body').innerHTML = html;
 }
@@ -9139,9 +9686,12 @@ function hubCaseAnim(item, reel) {
 $('hub-tabs').addEventListener('click', e => {
     const b = e.target.closest('[data-hubtab]');
     if (!b || hubCaseBusy) return;
-    hubTab = b.dataset.hubtab;
+    // Inventory merkt sich den Unter-Tab (Equip, List, Salvage)
+    hubTab = b.dataset.group === 'inv' ? (['equip', 'inv', 'salvage'].includes(hubTab) ? hubTab : hubInvLast) : b.dataset.hubtab;
     hubDraw();
 });
+$('hub-lv').onclick = () => { if (!hubCaseBusy) { hubTab = 'profile'; hubDraw(); } };
+let hubInvLast = 'equip';
 
 function hubSetUtil(i, base, n) {
     wsSend({ type: 'arEquip', slot: 'util' + i, base: base || null, n });
@@ -9159,9 +9709,14 @@ function hubSalvage(uids) {
 }
 
 $('hub-body').addEventListener('click', e => {
-    const t = e.target.closest('button, .it[data-uid], .it-row[data-uid], .lo-slot[data-slot]');
+    const t = e.target.closest('button, .it[data-uid], .it-row[data-uid], .lo-slot[data-slot], .skill[data-skill]');
     if (!t || hubCaseBusy || t.disabled) return;
     const ds = t.dataset;
+    if (ds.hubsub) {
+        hubTab = ds.hubsub;
+        return hubDraw();
+    }
+    if (hubTab === 'profile') return profClick(t, ds, e);
     if (t.id === 'hub-deploy') return wsSend({ type: 'shJoin' });
     if (t.id === 'hub-salvage-picked') return hubSalvage([...hubMulti]);
     if (ds.salvtier) return hubSalvage(hub.inv.filter(x => x.tier === ds.salvtier && x.kind !== 'util' && !hubEquippedAs(x.uid)).map(x => x.uid));
@@ -10456,7 +11011,7 @@ function shDrawPlayer(c, p, x, y, a, mine, now, my) {
     c.fillStyle = '#fff';
     c.font = 'bold 14px system-ui';
     c.textAlign = 'center';
-    c.fillText(p.n, 0, -m.r - 24);
+    c.fillText(p.lv ? `${p.n} · Lv ${p.lv}` : p.n, 0, -m.r - 24);
     if (!mine && p.wt && p.wt !== 'common') {
         c.fillStyle = TIER_COLOR[p.wt];
         c.font = 'bold 11px system-ui';
@@ -10753,7 +11308,7 @@ shCanvas.addEventListener('touchend', shTouchEnd);
 shCanvas.addEventListener('touchcancel', shTouchEnd);
 
 $('sh-open').onclick = () => hubOpen();
-$('hub-back').onclick = () => { if (!hubCaseBusy) showScreen('menu'); };
+$('hub-back').onclick = () => { if (!hubCaseBusy) setWorld('snake'); };
 $('sh-leave').onclick = () => {
     if (confirm('Leave the raid? You lose everything you carry – like dying.')) wsSend({ type: 'shLeave' });
 };
@@ -11253,6 +11808,7 @@ function buildCasino(d) {
     if (d.shop) initShop(d.shop);
     if (d.achievements) achCatalog = d.achievements;
     if (d.arenaItems) arenaCat = d.arenaItems;
+    if (d.arenaLevel) lvlCat = d.arenaLevel;
     onLobby(d.lobby || lobbyNow);
     drawDailyWheel(0);
     crBuildDiffs();
@@ -12067,6 +12623,19 @@ $('sp-list').onclick = e => {
 };
 $('sp-back').onclick = () => { spOpen = null; spShow('list'); spDrawList(); };
 $('sp-new-btn').onclick = () => { spShow('new'); $('sp-subject').focus(); };
+// Vorschlag (Button unter den Patch Notes): Ticket mit vorbelegtem Betreff
+$('suggest-btn').onclick = () => {
+    if (!me) return showMsg('suggest-msg', 'Log in to send a suggestion', 'err');
+    if (joined) return showMsg('suggest-msg', 'Finish your round first', 'err');
+    spOpen = null;
+    showScreen('support');
+    spShow('new');
+    $('sp-subject').value = '💡 Suggestion: ';
+    $('sp-text').value = '';
+    $('sp-text').placeholder = 'What should we add or improve?';
+    $('sp-subject').focus();
+    wsSend({ type: 'tickets' });
+};
 $('sp-new-cancel').onclick = () => spShow('list');
 $('sp-new').onsubmit = e => {
     e.preventDefault();
@@ -12134,18 +12703,18 @@ function hallBroadcast() {
 
 function hallRequest() {
     if (hallBroadcast()) return drawHall();
-    wsSend({ type: 'board', cat: hallSel.cat, game: hallSel.game, period: hallSel.cat === 'coins' ? 'all' : hallSel.period });
+    wsSend({ type: 'board', cat: hallSel.cat, game: hallSel.game, period: hallSel.cat === 'coins' || hallSel.cat === 'alevel' ? 'all' : hallSel.period });
 }
 
 function hallChanged() {
-    // Coins gibt es nur als "All time"
-    if (hallSel.cat === 'coins') hallSel.period = 'all';
+    // Coins und Arena-Level gibt es nur als "All time"
+    if (hallSel.cat === 'coins' || hallSel.cat === 'alevel') hallSel.period = 'all';
     $('hall-cat').value = hallSel.cat;
     $('hall-game').value = hallSel.game;
     $('hall-game').hidden = hallSel.cat !== 'bestx';
     document.querySelectorAll('#hall-tabs button').forEach(x => {
         x.classList.toggle('on', x.dataset.period === hallSel.period);
-        x.disabled = hallSel.cat === 'coins' && x.dataset.period !== 'all';
+        x.disabled = (hallSel.cat === 'coins' || hallSel.cat === 'alevel') && x.dataset.period !== 'all';
     });
     try { localStorage.setItem('hallSel', JSON.stringify(hallSel)); } catch (e) {}
     hallList = null;
@@ -12164,7 +12733,7 @@ setInterval(() => { if (!hallBroadcast() && ws.readyState === WebSocket.OPEN) ha
 
 function onBoard(d) {
     if (d.cat !== hallSel.cat || (d.cat === 'bestx' && d.game !== hallSel.game)) return;
-    if (d.cat !== 'coins' && d.period !== hallSel.period) return;
+    if (d.cat !== 'coins' && d.cat !== 'alevel' && d.period !== hallSel.period) return;
     hallList = d.list;
     drawHall();
 }
@@ -12178,10 +12747,10 @@ function drawHall() {
         $('hall').innerHTML = '<tr><td style="opacity:.5">Loading…</td></tr>';
         return;
     }
-    const fmt = v => cat === 'bestx' ? `×${v}` : `${icon} ${cat === 'casino' && v > 0 ? '+' : ''}${Number(v).toLocaleString('en-US')}`;
+    const fmt = (v, s) => cat === 'alevel' ? `Lv ${s.lv} · ${Number(v).toLocaleString('en-US')} XP` : cat === 'bestx' ? `×${v}` : `${icon} ${cat === 'casino' && v > 0 ? '+' : ''}${Number(v).toLocaleString('en-US')}`;
     $('hall').innerHTML = list.map((s, i) =>
         `<tr><td class="name">${medals[i] || (i + 1) + '.'} ${esc(s.name)}${ttTag(s.tt)}</td>` +
-        `<td class="num">${fmt(s.value)}</td></tr>`
+        `<td class="num">${fmt(s.value, s)}</td></tr>`
     ).join('') || '<tr><td style="opacity:.5">Nothing yet</td></tr>';
 }
 hallChanged();

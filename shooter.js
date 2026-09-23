@@ -235,6 +235,7 @@ function starterPistol() {
 }
 
 const GEAR = ['primary', 'secondary', ...I.SLOTS, 'backpack'];
+const L = require('./arena-level');
 
 module.exports = function createArena(h) {
     // h: { accounts, send, feed, refresh(c), changed() }
@@ -284,7 +285,41 @@ module.exports = function createArena(h) {
             a.v = 3;
             h.accounts.touch();
         }
+        // Leveling (4.0): XP, Stat-Punkte, Skills
+        if (!a.prog) {
+            a.prog = L.fresh();
+            h.accounts.touch();
+        }
         return a;
+    }
+
+    // Fortschritt fuer den Browser (Profil)
+    function progView(c, a) {
+        const pr = a.prog;
+        const lv = L.levelOf(pr.xp);
+        const pts = L.pointsOf(pr);
+        const s = (h.accounts.get(c.account).stats) || {};
+        return {
+            xp: pr.xp, level: lv.level, into: lv.into, need: lv.need, stats: pr.stats, skills: pr.skills, resets: pr.resets || 0,
+            statFree: pts.statFree, skillFree: pts.skillFree, resetCost: L.resetCost(pr.resets),
+            record: {
+                raids: s.raids || 0, extracts: s.arenaExtracts || 0, kills: s.shooterKills || 0, deaths: s.shooterDeaths || 0,
+                bossKills: s.bossKills || 0, npcKills: s.npcKills || 0, bestTier: s.bestTier || 0, bestScore: s.bestScore2 || 0
+            }
+        };
+    }
+
+    // XP gutschreiben; n schon fertig gerechnet (ohne Veteran-Bonus)
+    function award(p, n, reason) {
+        if (!p.account || !(n > 0)) return;
+        const a = st(p.c);
+        const before = L.levelOf(a.prog.xp).level;
+        const got = Math.round(n * (p.b ? p.b.xp : 1));
+        a.prog.xp += got;
+        const after = L.levelOf(a.prog.xp).level;
+        h.accounts.touch();
+        h.send(p.c, { type: 'arXp', n: got, reason, level: after, up: after > before });
+        if (after > before && after % 10 === 0) h.feed(`⭐ ${p.name} reached arena level ${after}!`, 'gold');
     }
 
     function count(a, base) {
@@ -297,7 +332,7 @@ module.exports = function createArena(h) {
         const u = h.accounts.get(c.account);
         h.send(c, {
             type: 'arHub', inv: a.inv.map(it => ({ ...it, sv: I.salvageValue(it) })), loadout: a.loadout,
-            scrap: a.scrap, coins: u.coins, inRaid: players.has(c.id), ...extra
+            scrap: a.scrap, coins: u.coins, inRaid: players.has(c.id), prog: progView(c, a), ...extra
         });
     }
 
@@ -388,11 +423,42 @@ module.exports = function createArena(h) {
             }
             return sendHub(c, { caseItem: { ...item, sv: I.salvageValue(item) }, reel });
         }
+        if (d.type === 'arProg') {
+            const pr = a.prog;
+            if (d.op === 'apply') {
+                const stats = {}, skills = {};
+                for (const [k, n] of Object.entries(d.stats || {})) stats[k] = Math.floor(Number(n));
+                for (const [k, n] of Object.entries(d.skills || {})) skills[k] = Math.floor(Number(n));
+                const err = L.validate(pr, stats, skills);
+                if (err) return h.send(c, { type: 'arError', error: err });
+                pr.stats = Object.fromEntries(Object.entries(stats).filter(([, n]) => n > 0));
+                pr.skills = Object.fromEntries(Object.entries(skills).filter(([, n]) => n > 0));
+                h.accounts.touch();
+                return sendHub(c, { progSaved: true });
+            }
+            if (d.op === 'reset') {
+                const cost = L.resetCost(pr.resets);
+                const u = h.accounts.get(c.account);
+                if (u.coins < cost.coins) return h.send(c, { type: 'arError', error: `A reset costs ${cost.coins.toLocaleString('en-US')} coins` });
+                if (a.scrap < cost.scrap) return h.send(c, { type: 'arError', error: `A reset costs ${cost.scrap.toLocaleString('en-US')} scrap` });
+                if (!Object.keys(pr.stats).length && !Object.keys(pr.skills).length) return h.send(c, { type: 'arError', error: 'Nothing to reset' });
+                h.accounts.addCoins(c.account, -cost.coins);
+                h.accounts.earn(c.account, 'shooter', -cost.coins);
+                a.scrap -= cost.scrap;
+                pr.stats = {};
+                pr.skills = {};
+                pr.resets = (pr.resets || 0) + 1;
+                h.accounts.touch();
+                h.refresh(c);
+                return sendHub(c, { progReset: true });
+            }
+            return;
+        }
         if (d.type === 'arSalvage') {
             const uids = new Set((Array.isArray(d.uids) ? d.uids : []).slice(0, 300).map(String));
             const out = a.inv.filter(it => uids.has(it.uid));
             if (!out.length) return;
-            const scrap = out.reduce((s, it) => s + I.salvageValue(it), 0);
+            const scrap = Math.round(out.reduce((s, it) => s + I.salvageValue(it), 0) * L.bonuses(a.prog).scrap);
             a.inv = a.inv.filter(it => !uids.has(it.uid));
             fixLoadout(a);
             a.scrap += scrap;
@@ -459,6 +525,20 @@ module.exports = function createArena(h) {
         p.phantom = s.phantom;
         p.sets = s.sets;
         p.packMax = p.gear.backpack ? I.PACKS[p.gear.backpack.base].cap : I.BASE_PACK;
+        // Level: Stats und Skills (4.0)
+        const b = p.b;
+        if (b) {
+            const mh = Math.round((100 + s.hp + b.hp) * b.hpMul);
+            p.hp = p.maxHp ? Math.min(mh, Math.max(1, p.hp / p.maxHp * mh)) : mh;
+            p.maxHp = mh;
+            p.speedMul *= b.speed;
+            p.regen += b.regen;
+            p.dmgMul *= b.dmg;
+            p.rateMul *= b.rate;
+            p.taken *= b.taken;
+            p.healMul *= b.heal;
+            p.packMax += b.pack;
+        }
     }
 
     function join(c, name, color) {
@@ -497,7 +577,8 @@ module.exports = function createArena(h) {
             pack: [], kills: 0, zone: null, smoke: null,
             hp: 0, maxHp: 0, speedMul: 1, regen: 0, thorns: 0, dodge: 0, dmgMul: 1, rateMul: 1, taken: 1, healMul: 1, homing: 0, phantom: false,
             burn: null, slowUntil: 0, slow: 0, lastHurt: 0, healUntil: 0, healRate: 0, stimUntil: 0, stim: 0,
-            extractAt: null, joinedAt: now, protect: now + 3000 / SPEED
+            extractAt: null, joinedAt: now, protect: now + 3000 / SPEED,
+            b: L.bonuses(a.prog), level: L.levelOf(a.prog.xp).level, windUsed: false, lastUsed: false, adrenCd: 0, rampUntil: 0
         };
         gearStats(p);
         players.set(c.id, p);
@@ -573,7 +654,11 @@ module.exports = function createArena(h) {
         players.delete(p.id);
         const loot = lootOf(p);
         let rest = loot;
+        award(p, L.XP.minute * Math.floor((Date.now() - p.joinedAt) / 60000), 'time in raid');
         if (killer && players.has(killer.id)) {
+            award(killer, L.XP.kill + 10 * Math.max(0, (p.level || 1) - (killer.level || 1)), 'kill');
+            if (killer.b.bloodlust) killer.hp = Math.min(killer.maxHp, killer.hp + killer.b.bloodlust);
+            if (killer.b.rampage) killer.rampUntil = Date.now() + 4000 / SPEED;
             rest = pickUp(killer, loot);
             killer.kills++;
             const got = loot.filter(it => !rest.includes(it));
@@ -612,6 +697,7 @@ module.exports = function createArena(h) {
         fixLoadout(a);
         h.accounts.stat(p.account, s => { s.arenaExtracts = (s.arenaExtracts || 0) + 1; });
         if (!silent) {
+            award(p, L.XP.extract + L.XP.extractItem * p.pack.length + L.XP.minute * Math.floor((Date.now() - p.joinedAt) / 60000), 'extracted');
             h.send(p.c, { type: 'shLeft', result: 'extracted', items: p.pack.map(brief), scrap: r.scrap });
             const best = p.pack.reduce((b, it) => !b || (it.score || 0) > (b.score || 0) ? it : b, null);
             if (best && I.TIER_IDX[best.tier] >= 4) h.feed(`🚁 ${p.name} extracted with a ${I.TIERS[I.TIER_IDX[best.tier]].name} ${best.name}`, 'gold');
@@ -734,8 +820,9 @@ module.exports = function createArena(h) {
         let got = [];
         if (best.cr) {
             best.cr.readyAt = now + CRATE_RESPAWN;
-            const n = 1 + Math.floor(Math.random() * 2);
+            const n = 1 + Math.floor(Math.random() * 2) + (Math.random() < p.b.loot ? 1 : 0);
             got = Array.from({ length: n }, () => I.generate('crate'));
+            award(p, L.XP.crate, 'crate');
         } else {
             got = best.b.items;
             bags.splice(bags.indexOf(best.b), 1);
@@ -750,7 +837,7 @@ module.exports = function createArena(h) {
 
     function useUtil(p, si, tx, ty, now) {
         const u = p.util[si];
-        if (!u || now - p.lastUse < 600 / SPEED) return;
+        if (!u || now - p.lastUse < 600 * p.b.utilCd / SPEED) return;
         const def = I.UTILS[u.base];
         if (def.use === 'heal') {
             if (def.full) {
@@ -826,6 +913,7 @@ module.exports = function createArena(h) {
     // Explosion mit Abfall nach aussen; walls = Waende schirmen ab
     function blast(g, x, y, r, dmg, now, walls, how) {
         const owner = players.get(g.owner) || null;
+        if (owner && how !== 'fire') dmg *= owner.b.expl;
         fxAt(x, y, { type: 'shBoom', x: Math.round(x), y: Math.round(y), r, nuke: !!g.def.nuke, hole: how === 'blackhole' });
         for (const q of near(x, y, r + R)) {
             if (walls && !clear(x, y, q.x, q.y)) continue;
@@ -926,7 +1014,7 @@ module.exports = function createArena(h) {
     function canSee(v, t, now) {
         if (v === t) return true;
         if (Math.hypot(v.x - t.x, v.y - t.y) < SEE_NEAR) return true;
-        if (now - t.lastShot < REVEAL_MS) return true;
+        if (now - t.lastShot < REVEAL_MS * t.b.reveal) return true;
         if (stillHidden(t, now)) return false;
         if (t.smoke !== null && v.smoke !== t.smoke) return false;
         if (t.zone && v.zone !== t.zone) return false;
@@ -941,6 +1029,8 @@ module.exports = function createArena(h) {
         w.dmg *= p.dmgMul;
         w.ms /= p.rateMul;
         w.homing += p.homing;
+        w.crit = (w.crit || 0) + p.b.crit;
+        if (now < p.rampUntil) w.ms /= 1.25;
         if (now - p.lastShot < w.ms / SPEED) return;
         p.lastShot = now;
         if (w.beam) return railBeam(p, w, now);
@@ -1001,11 +1091,32 @@ module.exports = function createArena(h) {
             if (attacker) h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: 0, dodge: true });
             return false;
         }
+        if (attacker && attacker.b && attacker.b.exec && v.hp < v.maxHp * 0.3) dmg *= 1 + attacker.b.exec;
+        if (opts.how === 'fire') dmg *= v.b.fire;
+        if (v.b.iron && v.hp < v.maxHp / 2) dmg *= 0.85;
         dmg *= v.taken;
         v.hp -= dmg;
         v.lastHurt = now;
         v.extractAt = null;
-        const killed = v.hp <= 0 || (opts.execute && v.hp <= v.maxHp * opts.execute);
+        let killed = v.hp <= 0 || (opts.execute && v.hp <= v.maxHp * opts.execute);
+        // Last stand: einmal je Raid bleibt man mit 1 HP stehen
+        if (killed && v.b.last && !v.lastUsed) {
+            v.lastUsed = true;
+            v.hp = 1;
+            v.protect = now + 2000 / SPEED;
+            killed = false;
+            h.send(v.c, { type: 'shEvent', text: '🛐 Last stand!', kind: 'self' });
+        }
+        if (!killed && v.b.wind && !v.windUsed && v.hp < v.maxHp * 0.2) {
+            v.windUsed = true;
+            v.hp = Math.min(v.maxHp, v.hp + v.maxHp * 0.4);
+            h.send(v.c, { type: 'shEvent', text: '🌬️ Second wind!', kind: 'self' });
+        }
+        if (!killed && v.b.adren && now > v.adrenCd && !opts.dot) {
+            v.adrenCd = now + 15000 / SPEED;
+            v.stim = Math.max(now < v.stimUntil ? v.stim : 0, 0.3);
+            v.stimUntil = now + 3000 / SPEED;
+        }
         // Schaden ueber Zeit (Brennen, Feuer) meldet sich nur beim Getroffenen als Rand
         if (attacker && (!opts.dot || killed)) h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: Math.round(dmg), kill: killed, crit: !!opts.crit });
         if (!opts.dot && (dmg >= 1 || killed)) h.send(v.c, { type: 'shHurt', dmg: Math.round(dmg) });
@@ -1020,7 +1131,7 @@ module.exports = function createArena(h) {
         const w = b.w;
         let dmg = w.dmg;
         const crit = w.crit && Math.random() < w.crit;
-        if (crit) dmg *= 2;
+        if (crit) dmg *= shooter ? shooter.b.critMul : 2;
         const killed = damage(v, shooter, dmg, now, b.x, b.y, { crit, execute: w.execute, how: w.how });
         if (shooter && w.vamp) shooter.hp = Math.min(shooter.maxHp, shooter.hp + dmg * w.vamp);
         if (!killed && players.has(v.id)) {
@@ -1047,7 +1158,7 @@ module.exports = function createArena(h) {
         const shooter = players.get(b.owner);
         for (const q of near(b.x, b.y, r + R)) {
             if (q.id === b.owner || q.id === skipId) continue;
-            damage(q, shooter, w.dmg * w.explode, now, q.x, q.y, { how: 'explosion' });
+            damage(q, shooter, w.dmg * w.explode * (shooter ? shooter.b.expl : 1), now, q.x, q.y, { how: 'explosion' });
         }
         if (boss && b.owner !== 'boss' && Math.hypot(boss.x - b.x, boss.y - b.y) < r + BOSS_R) hurtBoss(shooter, w.dmg * w.explode, now, boss.x, boss.y);
     }
@@ -1065,7 +1176,7 @@ module.exports = function createArena(h) {
         const hp = 5000 + 2500 * players.size;
         boss = {
             x: s.x, y: s.y, a: 0, hp, maxHp: hp, tx: s.x, ty: s.y, stuck: 0, born: now,
-            nextShot: now + 1500, nextRing: now + 6000, nextSlam: now + 8000, slamAt: 0
+            nextShot: now + 1500, nextRing: now + 6000, nextSlam: now + 8000, slamAt: 0, dmgBy: new Map()
         };
         announce(`👑 The ${BOSS_NAME} is roaming the map – kill it for Sovereign loot!`, 'boss');
     }
@@ -1078,7 +1189,9 @@ module.exports = function createArena(h) {
 
     function hurtBoss(attacker, dmg, now, x, y, crit) {
         if (!boss || dmg <= 0) return;
+        if (attacker && attacker.b) dmg *= attacker.b.hunt;
         boss.hp -= dmg;
+        if (attacker && attacker.account) boss.dmgBy.set(attacker.id, (boss.dmgBy.get(attacker.id) || 0) + Math.min(dmg, boss.hp + dmg));
         const dead = boss.hp <= 0;
         if (attacker && players.has(attacker.id)) h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: Math.round(dmg), kill: dead, crit: !!crit });
         if (dead) bossDies(attacker && players.has(attacker.id) ? attacker : null);
@@ -1101,6 +1214,13 @@ module.exports = function createArena(h) {
         for (const q of players.values()) h.send(q.c, { type: 'shKill', ...line });
         announce(`👑 ${killer ? killer.name + ' killed' : 'Down goes'} the ${BOSS_NAME}! 3 items dropped`, 'boss');
         if (killer && killer.account) h.accounts.stat(killer.account, s => { s.bossKills = (s.bossKills || 0) + 1; });
+        // XP: Todesstoss, dazu Anteil nach Schaden fuer alle, die mitgemacht haben
+        if (killer) award(killer, L.XP.boss, 'boss');
+        const total = [...b.dmgBy.values()].reduce((s, n) => s + n, 0);
+        for (const [id, n] of b.dmgBy) {
+            const q = players.get(id);
+            if (q && total > 0) award(q, L.XP.bossHelp * n / total, 'boss damage');
+        }
     }
 
     function bossBullet(a, now) {
@@ -1126,7 +1246,7 @@ module.exports = function createArena(h) {
             if (now < q.protect) continue;
             const d = Math.hypot(q.x - b.x, q.y - b.y);
             if (d >= td) continue;
-            const hidden = d > SEE_NEAR && now - q.lastShot >= REVEAL_MS && (q.zone || q.smoke !== null || stillHidden(q, now));
+            const hidden = d > SEE_NEAR && now - q.lastShot >= REVEAL_MS * q.b.reveal && (q.zone || q.smoke !== null || stillHidden(q, now));
             if (!hidden && clear(b.x, b.y, q.x, q.y)) {
                 tgt = q;
                 td = d;
@@ -1240,7 +1360,7 @@ module.exports = function createArena(h) {
             }
             if (now < p.healUntil) p.hp = Math.min(p.maxHp, p.hp + p.healRate * dt);
             // Alle regenerieren langsam; Ruestung (Mod, Medic-Set) legt drauf
-            if (now - p.lastHurt > REGEN_DELAY / SPEED) p.hp = Math.min(p.maxHp, p.hp + (REGEN_BASE + p.regen) * dt);
+            if (now - p.lastHurt > p.b.regenDelay / SPEED) p.hp = Math.min(p.maxHp, p.hp + (REGEN_BASE + p.regen) * dt);
             else if (p.regen && now - p.lastHurt > 3000 / SPEED) p.hp = Math.min(p.maxHp, p.hp + p.regen * dt);
             const sp = MOVE * p.speedMul * (now < p.slowUntil ? 1 - p.slow : 1) * (now < p.stimUntil ? 1 + p.stim : 1);
             const ox = p.x, oy = p.y;
@@ -1255,7 +1375,7 @@ module.exports = function createArena(h) {
             // Extraction: lange genug in einer Zone stehen
             const zone = MAP.extracts.find(e => Math.hypot(e.x - p.x, e.y - p.y) < EXTRACT_R);
             if (!zone) p.extractAt = null;
-            else if (!p.extractAt) p.extractAt = now + EXTRACT_MS / SPEED;
+            else if (!p.extractAt) p.extractAt = now + p.b.extractMs / SPEED;
             else if (now >= p.extractAt) extract(p);
         }
 
@@ -1315,7 +1435,7 @@ module.exports = function createArena(h) {
                     b.hits.add('boss');
                     const shooter = players.get(b.owner) || null;
                     const crit = b.w.crit && Math.random() < b.w.crit;
-                    hurtBoss(shooter, b.w.dmg * (crit ? 2 : 1), now, b.x, b.y, crit);
+                    hurtBoss(shooter, b.w.dmg * (crit ? (shooter ? shooter.b.critMul : 2) : 1), now, b.x, b.y, crit);
                     if (boss && b.w.hole) bulletHole(b, now);
                     if (b.w.explode) explode(b, now, null);
                     if (b.pierce > 0) b.pierce--;
@@ -1343,12 +1463,12 @@ module.exports = function createArena(h) {
                     spd: Math.round(p.speedMul * (now < p.slowUntil ? 1 - p.slow : 1) * (now < p.stimUntil ? 1 + p.stim : 1) * 100) / 100,
                     ex: p.extractAt ? Math.max(0, p.extractAt - now) : null,
                     burn: !!p.burn || !!p.inFire, heal: now < p.healUntil, pr: now < p.protect,
-                    hid: (!!(p.zone || p.smoke !== null) && now - p.lastShot >= REVEAL_MS) || stillHidden(p, now)
+                    hid: (!!(p.zone || p.smoke !== null) && now - p.lastShot >= REVEAL_MS * p.b.reveal) || stillHidden(p, now)
                 },
                 players: plist.filter(q => q === p || (inView(q.x, q.y) && canSee(p, q, now))).map(q => {
                     const qw = q.gear[q.slot] || q.gear.primary;
                     return {
-                        id: q.id, n: q.name, c: q.color,
+                        id: q.id, n: q.name, c: q.color, lv: q.level,
                         x: Math.round(q.x * 10) / 10, y: Math.round(q.y * 10) / 10, a: Math.round(q.a * 100) / 100,
                         hp: Math.max(0, Math.round(q.hp)), mh: q.maxHp, w: qw.base, wt: qw.tier, wn: qw.name,
                         ar: q.gear.vest ? I.ARMORS[q.gear.vest.base].set : null, hm: q.gear.helmet ? I.ARMORS[q.gear.helmet.base].set : null,

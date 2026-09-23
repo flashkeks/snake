@@ -21,6 +21,7 @@ const startAdmin = require('./admin');
 const createShooter = require('./shooter');
 const shop = require('./shop');
 const arenaItems = require('./arena-items');
+const arenaLevel = require('./arena-level');
 const luck = require('./luck');
 
 // Cosmetic Shop: aktuelle Rotation mit Restzeit (der Browser rechnet selbst weiter)
@@ -403,7 +404,7 @@ let lastTop = '';
 const pendingWins = new Map();  // Konto -> { amount, feed, timer, onReveal }
 
 // Leaderboard (#8): Kategorien und Spiele mit sinnvollem Multi
-const BOARD_CATS = ['score', 'coins', 'kills', 'bigwin', 'bestx', 'casino', 'events', 'arena'];
+const BOARD_CATS = ['score', 'coins', 'kills', 'bigwin', 'bestx', 'casino', 'events', 'arena', 'alevel'];
 const BOARD_X_GAMES = ['starlight', 'slots', 'plinko', 'crossy', 'roulette', 'blackjack', 'poker'];
 
 function hideWin(key, amount, feedLine, ms, onReveal) {
@@ -1045,7 +1046,7 @@ async function handle(c, data) {
             if (!BOARD_CATS.includes(cat) || !['day', 'week', 'all'].includes(period)) return;
             if (cat === 'bestx' && !BOARD_X_GAMES.includes(game)) return;
             if (!allow('board:' + c.id, 30, 60e3)) return;
-            const list = accounts.board(cat, game, cat === 'coins' ? 'all' : period, key => pendingWins.has(key) ? pendingWins.get(key).amount : 0);
+            const list = accounts.board(cat, game, cat === 'coins' || cat === 'alevel' ? 'all' : period, key => pendingWins.has(key) ? pendingWins.get(key).amount : 0);
             send(c, { type: 'board', cat, game, period, list });
             return;
         }
@@ -1100,6 +1101,7 @@ async function handle(c, data) {
         case 'arCase':
         case 'arSalvage':
         case 'arEquip':
+        case 'arProg':
             shooter.hubAction(c, data);
             return;
 
@@ -1367,6 +1369,7 @@ wss.on('connection', (ws, req) => {
         shop: { cats: shop.CATS, items: shop.ITEMS, rarities: shop.RARITIES, rot: shopRot() },
         achievements: achievements.catalog(),
         arenaItems: arenaItems.catalog(),
+        arenaLevel: arenaLevel.catalog(),
         slots2: { pays: slots2.PAYS, scatterPays: slots2.SCATTER_PAYS, buyCost: slots2.BUY_COST, freeSpins: slots2.FREE_SPINS, retrigger: slots2.RETRIGGER, maxWin: slots2.MAX_WIN, rtp: slots2.RTP },
         wheel: casino.WHEEL,
         cross: casino.crossTable(),

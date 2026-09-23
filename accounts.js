@@ -9,6 +9,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { berlinDay } = require('./casino');
 const shop = require('./shop');
+const arenaLevel = require('./arena-level');
 const ach = require('./achievements');
 const arenaItems = require('./arena-items');
 const luck = require('./luck');
@@ -494,7 +495,7 @@ module.exports = function createAccounts(dataDir) {
             const a = u.arena || { inv: [], loadout: {}, scrap: 0 };
             return {
                 inventory: u.inventory || [], equipped: u.equipped || {}, rig: u.rig || {},
-                arena: { inv: a.inv.map(it => ({ ...it, sv: arenaItems.salvageValue(it) })), loadout: a.loadout, scrap: a.scrap }
+                arena: { inv: a.inv.map(it => ({ ...it, sv: arenaItems.salvageValue(it) })), loadout: a.loadout, scrap: a.scrap, prog: a.prog || null, level: a.prog ? arenaLevel.levelOf(a.prog.xp).level : 1 }
             };
         },
 
@@ -590,6 +591,15 @@ module.exports = function createAccounts(dataDir) {
                 a.scrap = v;
             } else if (op === 'clear') {
                 a.inv = [];
+            } else if (op === 'xp') {
+                // Arena-Level (4.0): Gesamt-XP setzen; Punkte ueber dem neuen Level verfallen
+                const v = Math.floor(Number(d.set));
+                if (!Number.isFinite(v) || v < 0 || v > 1e10) return 'bad amount';
+                a.prog = a.prog || arenaLevel.fresh();
+                a.prog.xp = v;
+                const pts = arenaLevel.pointsOf(a.prog);
+                if (pts.statFree < 0) a.prog.stats = {};
+                if (pts.skillFree < 0) a.prog.skills = {};
             } else return 'unknown op';
             // Loadout zeigt nie auf Geloeschtes
             const l = a.loadout || {};
@@ -675,6 +685,13 @@ module.exports = function createAccounts(dataDir) {
                     casino: casinoNet(s), events: s.eventWins, arena: s.shooterKills
                 }[cat] || 0;
             };
+            // Arena-Level (4.0): nach Gesamt-XP, nur "All time"
+            if (cat === 'alevel') {
+                return Object.values(db.users)
+                    .map(u => ({ name: u.name, value: (u.arena && u.arena.prog && u.arena.prog.xp) || 0, tt: ach.titleOf(u) || undefined }))
+                    .filter(e => e.value > 0).sort((a, b) => b.value - a.value).slice(0, 10)
+                    .map(e => ({ ...e, lv: arenaLevel.levelOf(e.value).level }));
+            }
             // Score, Groesster Gewinn und Bester Multi: jede Runde ein eigener
             // Eintrag, man kann mehrfach auf dem Board stehen (Max). Alte Staende
             // ohne Listen stehen mit ihrem Bestwert drin.

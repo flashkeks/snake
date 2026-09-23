@@ -1,5 +1,18 @@
 [
   {
+    "version": "4.0",
+    "date": "23.09.2026",
+    "items": [
+      "Snake / Arena switch at the top – the arena is now its own full page",
+      "Arena levels: earn XP from kills, bosses, extractions, crates and time in raid",
+      "Every level: 2 stat points (HP, defense, carry weight, speed, damage, fire rate, regen, luck) and 1 skill point",
+      "Skill tree with 30 skills in Assault, Survival and Tactics – resetting costs a lot of coins and scrap",
+      "New Profile tab with your level, record and build; Inventory now holds Equip, List and Salvage",
+      "Leaderboard: new Arena level category",
+      "💡 Suggest an improvement – button under the patch notes, goes straight to us as a ticket"
+    ]
+  },
+  {
     "version": "3.6",
     "date": "23.09.2026",
     "items": [
