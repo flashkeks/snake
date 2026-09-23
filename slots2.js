@@ -58,6 +58,9 @@ const ORBS = [
 // bei 96x Preis sind das ~99 %.
 const BUY_COST = 96;
 
+// Rueckzahlung laut Simulation (siehe oben), wird im Spiel in der Info angezeigt
+const RTP = 99.5;
+
 function pick(list) {
     let r = Math.random() * list.reduce((s, [, w]) => s + w, 0);
     for (const [v, w] of list) {
@@ -195,7 +198,7 @@ function spin(bet, buy) {
 }
 
 module.exports = {
-    COLS, ROWS, PAYS, SCATTER_PAYS, FREE_SPINS, RETRIGGER, BUY_COST, MAX_WIN,
+    COLS, ROWS, PAYS, SCATTER_PAYS, FREE_SPINS, RETRIGGER, BUY_COST, MAX_WIN, RTP,
     WEIGHTS, SCATTER_W, ORB_W,
     spin, play
 };

@@ -88,8 +88,11 @@ Bis 22.09.2026 lief das Spiel im Calibre-Container von Michaffs unter
 - **Spawn:** mit Abstand zur Wand und zu anderen Koepfen, 2 s Geist-Schutz.
 - **Tempo:** Server-Tick 60 ms. Normal ein Schritt je 2 Ticks, Turbo je Tick,
   Schnecke je 3.
-- **Laenge:** hoechstens 5000 (`MAX_LEN`). Koerper gehen kompakt ueber die
-  Leitung: Startpunkt + ein Richtungsbuchstabe je Segment (`U D L R`).
+- **Laenge und Score sind unbegrenzt** (seit 23.09.2026, vorher bei 5000
+  gedeckelt). Gezeichnet werden hoechstens 5000 Felder (`MAX_BODY`), alles
+  darueber zaehlt nur fuer Laenge, Score, Kill-Bonus und Cashout. Koerper
+  gehen kompakt ueber die Leitung: Startpunkt + ein Richtungsbuchstabe je
+  Segment (`U D L R`). `state` meldet in `len` die echte Laenge.
 - **Effekt-Timer ruhen**, solange man eingefroren ist (Muenzwurf, Duell,
   Mini-Event). Die eigenen Effekte stehen als Balken mit Restzeit oben links
   im Feld.
@@ -217,7 +220,11 @@ Princess / Gates of Olympus:
 - **Bonus kaufen** fuer 96 × Einsatz.
 - Hoechstens **100.000 ×** Einsatz je Spin (Bonus eingerechnet) — rein
   rechnerisch moeglich, in Millionen Simulationen nie erreicht (hoechster
-  Treffer ~10.000 ×).
+  Treffer ~10.000 ×). Steht als goldener Hinweis „MAX WIN 100,000ד neben dem
+  Titel, die Info (ℹ️) nennt dazu die Rueckzahlung (`RTP` in `slots2.js`,
+  per `welcome` an den Browser).
+- **Leertaste = Spin**, bei Budget Starlight und bei Slots (nicht waehrend
+  einer Animation und nicht beim Tippen im Einsatzfeld).
 
 | Symbol | 8–9 | 10–11 | 12+ |
 |---|---|---|---|
@@ -336,7 +343,9 @@ auf dem Feld sind:
 - Dann **Double or Nothing** fuer jeden, der etwas gewonnen hat: 50/50 per
   Muenzwurf, 15 s Bedenkzeit, ohne Antwort wird behalten. Wer noch ueberlegt
   oder wirft, bleibt eingefroren und ist fuer die anderen ein durchsichtiger
-  Geist. Wer ablehnt oder fertig geworfen hat, spielt sofort weiter.
+  Geist. Wer ablehnt oder fertig geworfen hat, bekommt **3 s Countdown und
+  bleibt so lange eingefroren** (laeuft die Event-Pause noch, ab deren Ende).
+  Bis 23.09.2026 fuhr man sofort los, waehrend der Countdown noch lief.
 - Alle anderen: 3 s Countdown, dann geht es weiter.
 - **Danach 3 s Geist-Schutz** fuer alle (nach dem Countdown bzw. nach dem
   eigenen Double or Nothing): keine Kollision mit anderen Schlangen. Die Wand
@@ -428,6 +437,8 @@ API (alles JSON): `GET /api/overview`, `GET /api/users`,
 
 Nur lokal, nie auf `edge` setzen:
 
+- `SNAKE_TEST=1` schaltet dazu `testGrow {n}` frei (eigene Schlange waechst um
+  n, z. B. um Score > 5000 zu pruefen).
 - `SNAKE_TEST=1` schaltet die Nachrichten `testEvent {kind}` (startet sofort
   ein Quiz-Event: `flags`, `trivia`, `geo`, `estimate`) und
   `testTable {result}` (naechste Roulette-Zahl am Tisch) frei.

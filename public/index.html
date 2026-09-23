@@ -2648,6 +2648,31 @@ button:disabled {
     font-weight: 800;
 }
 
+/* ---------- Budget Starlight: Max-Win-Hinweis ---------- */
+
+.s2-maxwin {
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: .06em;
+    padding: 3px 9px;
+    border-radius: 10px;
+    color: #2a1a00;
+    background: linear-gradient(90deg, #ffd23f, #ff9ad5, #ffd23f);
+    background-size: 200% 100%;
+    animation: goldShine 3s linear infinite;
+    white-space: nowrap;
+    box-shadow: 0 0 12px rgba(255, 210, 63, .45);
+}
+
+/* Hinweis direkt neben dem Titel, Rest rueckt nach rechts */
+#slots2 .s2-title {
+    margin-right: 4px;
+}
+
+#slots2 .s2-maxwin {
+    margin-right: auto;
+}
+
 /* ---------- Support-Tickets ---------- */
 
 #support .card {
@@ -2989,6 +3014,7 @@ button:disabled {
                 <div class="card">
                     <div class="s2-head">
                         <div class="s2-title">🌟 Budget Starlight</div>
+                        <span class="s2-maxwin" id="s2-maxwin">MAX WIN 100,000×</span>
                         <span class="coins">🪙 <span id="s2-coins">0</span></span>
                         <button type="button" class="s2-icon" id="s2-sound" title="Sound on/off">🔊</button>
                         <button type="button" class="s2-icon" id="s2-info" title="Paytable">ℹ️</button>
@@ -3005,7 +3031,7 @@ button:disabled {
                         <div class="s2-grid" id="s2-grid"></div>
                         <div class="s2-pay hidden" id="s2-pay"></div>
                     </div>
-                    <div class="s2-log" id="s2-log">8+ of a kind anywhere pay · 🔮 multiply · 4+ ⭐ = free spins</div>
+                    <div class="s2-log" id="s2-log">8+ of a kind anywhere pay · 🔮 multiply · 4+ ⭐ = free spins · Space = spin</div>
                     <div class="s2-bar">
                         <div class="s2-bet">
                             <small>BET</small>
@@ -3268,7 +3294,7 @@ ws.onmessage = event => {
         case 'resume': onResume(data.in); break;
         case 'offer': onOffer(data); break;
         case 'offerResult': onOfferResult(data); break;
-        case 'offerDone': onOfferDone(); break;
+        case 'offerDone': onOfferDone(data.countdown); break;
     }
 };
 
@@ -3466,6 +3492,21 @@ document.addEventListener('keydown', e => {
         e.preventDefault();
         chatInput.focus();
         return;
+    }
+
+    // Leertaste = Spin an den Automaten (im Menue, nicht im Spiel).
+    // Fokus vom Knopf nehmen, sonst loest der Browser beim Loslassen noch einen Klick aus.
+    if (e.code === 'Space' && !joined) {
+        const s2 = !$('slots2').classList.contains('hidden');
+        const s1 = !$('slots').classList.contains('hidden');
+        if (s2 || s1) {
+            e.preventDefault();
+            if (document.activeElement && document.activeElement.tagName === 'BUTTON') document.activeElement.blur();
+            if (e.repeat) return;
+            if (s2) s2Start(false);
+            else if (!$('spin-btn').disabled) $('spin-btn').click();
+            return;
+        }
     }
 
     if (!joined) return;
@@ -4862,14 +4903,15 @@ function onOfferResult(d) {
     }, 2650);
 }
 
-function onOfferDone() {
+// Der Server haelt einen noch `ms` eingefroren; der Countdown zeigt genau das
+function onOfferDone(ms) {
     // Short pause so you can read the result, then back into the game
     const wait = $('offer-msg').textContent && $('offer-msg').textContent !== 'Flipping…' ? 900 : 0;
     setTimeout(() => {
         offerOpen = false;
         if (joined) {
             showScreen(null);
-            countdown(1);
+            countdown(Math.max(1, Math.ceil(((ms || 3000) - wait) / 1000)));
         }
     }, wait);
 }
@@ -4944,7 +4986,9 @@ function buildSlots2(info) {
         `<p>Pays × bet for 8+ of a kind anywhere. Winners pop, new symbols tumble in.<br>` +
         `🔮 orbs (×2–×500) multiply the win when a tumble ends with a win.<br>` +
         `4+ ⭐ = ${info.freeSpins} free spins. In free spins every orb adds to a multiplier that stays for the whole bonus. 3+ ⭐ = +${info.retrigger} spins.<br>` +
-        `Max win ${info.maxWin}× bet. Tap to close.</p>`;
+        `<b>Max win: up to ${info.maxWin.toLocaleString('en-US')}× your bet</b> · <b>RTP ${info.rtp} %</b> (long-run payout, simulated over millions of spins).<br>` +
+        `Buy bonus: ${info.buyCost}× bet. Tap to close.</p>`;
+    $('s2-maxwin').textContent = `MAX WIN ${info.maxWin.toLocaleString('en-US')}×`;
     s2RenderGrid(Array.from({ length: 6 }, () => Array.from({ length: 5 }, () => Object.keys(pays)[Math.floor(Math.random() * 8)])), true);
     s2Refresh();
 }
@@ -5978,7 +6022,7 @@ function updatePanels() {
     const mine = players.find(p => p.id === myId);
 
     $('score').textContent = mine
-        ? `Score: ${mine.score} | Length: ${mine.body.length} | Kills: ${mine.kills} | Players: ${players.length}`
+        ? `Score: ${mine.score} | Length: ${mine.len ?? mine.body.length} | Kills: ${mine.kills} | Players: ${players.length}`
         : `Players: ${players.length}`;
     $('hud-score').textContent = mine ? `Score ${mine.score}` : '';
 
@@ -6281,7 +6325,7 @@ function gambleReel(data) {
         pickNear: () => optionTile(res.good ? (bad[0] || res) : rare[Math.floor(Math.random() * rare.length)]),
         result: () => {
             if (res.key === 'death') return ['💀 BUSTED', false];
-            const after = Math.min(5000, Math.max(1, Math.round(data.len * (res.key === 'half' ? 0.5 : Number(res.key.slice(1))))));
+            const after = Math.min(1e9, Math.max(1, Math.round(data.len * (res.key === 'half' ? 0.5 : Number(res.key.slice(1))))));
             const text = `${res.icon} ${res.label} → length ${after}`;
             return [text, res.rarity === 'gold' || res.rarity === 'mythic' ? 'gold' : !!res.good];
         }

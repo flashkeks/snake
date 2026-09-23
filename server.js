@@ -75,7 +75,10 @@ const EVERY = { fast: 1, normal: 2, slow: 3 };
 const START_LEN = 6;
 // Obergrenze. Koerper gehen kompakt ueber die Leitung (Kopf + Richtungsbuchstaben),
 // 5000 Segmente sind damit rund 5 KB je Schlange und Tick.
-const MAX_LEN = 5000;
+// Laenge (und damit Score) ist unbegrenzt; gezeichnet werden hoechstens
+// MAX_BODY Felder, sonst verstopft eine Riesenschlange Arena und Leitung.
+const MAX_BODY = 5000;
+const MAX_LEN = 1e9;
 const DUEL_MS = 4500;
 const GAMBLE_MS = 4500;
 const BOX_MS = 1600;
@@ -297,7 +300,7 @@ function spawn(player) {
 
 function setLen(p, n) {
     p.len = Math.min(MAX_LEN, Math.max(1, Math.round(n)));
-    p.body = p.body.slice(0, p.len);
+    p.body = p.body.slice(0, Math.min(p.len, MAX_BODY));
 }
 
 function grow(p, n) {
@@ -419,7 +422,7 @@ function kill(id, killerId, how, cause) {
 
     if (killer) {
         // Killer waechst um die halbe Laenge des Opfers (aufgerundet)
-        grow(killer, Math.ceil(victim.body.length / 2));
+        grow(killer, Math.ceil(victim.len / 2));
         killer.kills++;
         killer.streak++;
         if (killer.account) accounts.stat(killer.account, s => { s.kills++; });
@@ -514,6 +517,15 @@ function resolveFreezes() {
         const f = freezes[i];
         if (f.ends > now) continue;
         freezes.splice(i, 1);
+
+        if (f.kind === 'offer') {
+            const p = players.get(f.pid);
+            if (!p || p.frozen !== f) continue;
+            p.frozen = null;
+            resumeFx(p, f.started);
+            p.fx.ghost = Math.max(p.fx.ghost || 0, now + DURATION.afterEvent);
+            continue;
+        }
 
         if (f.kind === 'duel') {
             const winner = players.get(f.winner);
@@ -637,7 +649,7 @@ function applyBox(id, p, o) {
             p.x = pos.x;
             p.y = pos.y;
             p.body.unshift({ x: pos.x, y: pos.y });
-            p.body = p.body.slice(0, p.len);
+            p.body = p.body.slice(0, Math.min(p.len, MAX_BODY));
             p.fx.ghost = Math.max(p.fx.ghost || 0, now + 1000);
             break;
         }
@@ -1005,6 +1017,13 @@ async function handle(c, data) {
             if (c.cross && c.cross.step > 0) crossCash(c, false);
             return;
 
+        // Nur fuer lokale Tests (SNAKE_TEST=1): Schlange wachsen lassen
+        case 'testGrow': {
+            const p = players.get(c.id);
+            if (process.env.SNAKE_TEST === '1' && p) grow(p, Number(data.n) || 0);
+            return;
+        }
+
         case 'eventAction':
             if (events.active()) events.handle(c, data);
             return;
@@ -1109,7 +1128,7 @@ wss.on('connection', (ws, req) => {
         durations: DURATION,
         palette: PALETTE,
         slots: { symbols: slots.SYMBOLS, bets: slots.BETS, twoCherry: slots.TWO_CHERRY },
-        slots2: { pays: slots2.PAYS, scatterPays: slots2.SCATTER_PAYS, buyCost: slots2.BUY_COST, freeSpins: slots2.FREE_SPINS, retrigger: slots2.RETRIGGER, maxWin: slots2.MAX_WIN },
+        slots2: { pays: slots2.PAYS, scatterPays: slots2.SCATTER_PAYS, buyCost: slots2.BUY_COST, freeSpins: slots2.FREE_SPINS, retrigger: slots2.RETRIGGER, maxWin: slots2.MAX_WIN, rtp: slots2.RTP },
         wheel: casino.WHEEL,
         cross: casino.crossTable(),
         lobby: tables.lobby()
@@ -1277,7 +1296,7 @@ const events = createEvents({
             const r = (done.rewards || {})[m.id];
             const p = players.get(m.id);
             if (!p || !r || (r.coins <= 0 && r.length <= 0)) continue;
-            const f = { kind: 'offer', coins: r.coins, length: r.length, started: now + 3000, ends: Infinity };
+            const f = { kind: 'offer', pid: p.id, coins: r.coins, length: r.length, started: now + 3000, ends: Infinity };
             freeze(p, f);
             send(p, { type: 'offer', coins: r.coins, length: r.length, ms: OFFER_MS });
             setTimeout(() => {
@@ -1365,12 +1384,18 @@ function crossClose(c) {
     accounts.addCoins(c.account, g.bet);
 }
 
+// Entscheidung gefallen: noch 3 s eingefroren mit Countdown, dann geht es los
+// (bis 23.09.2026 fuhr man sofort weiter, waehrend der Countdown noch lief).
+// Laeuft die globale Event-Pause noch, zaehlt der Countdown ab deren Ende.
+const OFFER_COUNTDOWN = 3000;
+
 function endOffer(p, f) {
-    if (p.frozen !== f) return;
-    p.frozen = null;
-    resumeFx(p, f.started);
-    p.fx.ghost = Math.max(p.fx.ghost || 0, Date.now() + DURATION.afterEvent);
-    send(p, { type: 'offerDone' });
+    if (p.frozen !== f || f.releasing) return;
+    const now = Date.now();
+    f.releasing = true;
+    f.ends = Math.max(now, (paused && paused.resumeAt) || 0) + OFFER_COUNTDOWN;
+    freezes.push(f);
+    send(p, { type: 'offerDone', countdown: f.ends - now });
 }
 
 function answerOffer(p, accept) {
@@ -1418,6 +1443,8 @@ function unpause(now) {
     // Effekt-Timer, Duelle und Muenzwuerfe um die Pause verlaengern
     for (const p of players.values()) resumeFx(p, paused.started);
     for (const f of freezes) {
+        // Das Angebot rechnet seinen Countdown schon ab Pausenende
+        if (f.kind === 'offer') continue;
         f.started += dur;
         f.ends += dur;
     }
@@ -1487,7 +1514,7 @@ function gameTick() {
             y: player.y
         });
 
-        player.body = player.body.slice(0, player.len);
+        player.body = player.body.slice(0, Math.min(player.len, MAX_BODY));
     }
 
     const ghost = new Set();
@@ -1649,7 +1676,7 @@ function broadcastState(now) {
             x: p.x,
             y: p.y,
             runs: encodeBody(p.body),
-            len: p.body.length,
+            len: p.len,
             kills: p.kills,
             score: scoreOf(p),
             color: p.color,
@@ -1657,7 +1684,7 @@ function broadcastState(now) {
             guest: p.guest,
             frozen: !!p.frozen || !!paused,
             gambling: !!(p.frozen && (p.frozen.kind === 'gamble' || p.frozen.kind === 'offer')),
-            deciding: !!(p.frozen && p.frozen.kind === 'offer'),
+            deciding: !!(p.frozen && p.frozen.kind === 'offer' && !p.frozen.releasing),
             cashout: p.cashout ? Math.min(1, (now - p.cashout) / CASHOUT_MS) : 0,
             fx: fxLeft(p)
         }))
