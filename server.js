@@ -20,6 +20,7 @@ const createTickets = require('./tickets');
 const startAdmin = require('./admin');
 const createShooter = require('./shooter');
 const shop = require('./shop');
+const arenaItems = require('./arena-items');
 const achievements = require('./achievements');
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -1002,24 +1003,16 @@ async function handle(c, data) {
             tables.create(c, data);
             return;
 
-        // --- Shooter-Arena (#7) ---
+        // --- Arena: Raid (Extraction) ---
 
         case 'shJoin': {
+            if (!c.account) return send(c, { type: 'shError', error: 'Log in to raid' });
             if (c.joined) return send(c, { type: 'shError', error: 'Leave the snake field first' });
             if (c.cross) return send(c, { type: 'shError', error: 'Finish your Crossy Road run first' });
+            const u = accounts.get(c.account);
+            if (!u) return;
             tables.leave(c);
-            let name;
-            if (c.account) {
-                const u = accounts.get(c.account);
-                if (!u) return;
-                name = u.name;
-            } else {
-                name = cleanText(data.name, 16);
-                if (!name) return send(c, { type: 'shError', error: 'Enter a name (or log in)' });
-                if (accounts.exists(name)) return send(c, { type: 'shError', error: 'That name belongs to an account. Log in or pick another name' });
-            }
-            const u = c.account ? accounts.get(c.account) : null;
-            const err = shooter.join(c, name, cleanColor(data.color) || (u && u.color) || null, String(data.room || 'free'));
+            const err = shooter.join(c, u.name, cleanColor(data.color) || u.color || null);
             if (err) send(c, { type: 'shError', error: err });
             return;
         }
@@ -1078,13 +1071,20 @@ async function handle(c, data) {
             shooter.input(c, data);
             return;
 
-        // Einsatz-Arenen (#12): Case kaufen, nach Geldmangel weiterspielen
-        case 'shCase':
-            shooter.buyCase(c);
+        // Arena-Hub (Extraction): Lager, Kaufen, Cases, Salvage, Loadout
+        case 'arHub':
+        case 'arBuy':
+        case 'arCase':
+        case 'arSalvage':
+        case 'arEquip':
+            shooter.hubAction(c, data);
             return;
 
-        case 'shRetry':
-            shooter.retry(c);
+        // Im Raid: Waffe wechseln, Medkit, Kiste/Beutel oeffnen
+        case 'shSlot':
+        case 'shMed':
+        case 'shInteract':
+            shooter.action(c, data);
             return;
 
         // Laufzeit messen, damit der Browser seine Vorhersage abgleichen kann
@@ -1103,6 +1103,17 @@ async function handle(c, data) {
         case 'tableAction':
             tables.handle(c, data);
             return;
+
+        // Nur fuer lokale Tests (SNAKE_TEST=1): Raid-Figur versetzen
+        case 'shTp': {
+            const p = shooter._players.get(c.id);
+            if (process.env.SNAKE_TEST === '1' && p) {
+                p.x = Number(data.x) || p.x;
+                p.y = Number(data.y) || p.y;
+                p.protect = 0;
+            }
+            return;
+        }
 
         // Nur fuer lokale Tests (SNAKE_TEST=1): naechste Roulette-Zahl vorgeben
         case 'testTable':
@@ -1316,6 +1327,7 @@ wss.on('connection', (ws, req) => {
         slots: { symbols: slots.SYMBOLS, bets: slots.BETS, twoCherry: slots.TWO_CHERRY },
         shop: { cats: shop.CATS, items: shop.ITEMS },
         achievements: achievements.catalog(),
+        arenaItems: arenaItems.catalog(),
         slots2: { pays: slots2.PAYS, scatterPays: slots2.SCATTER_PAYS, buyCost: slots2.BUY_COST, freeSpins: slots2.FREE_SPINS, retrigger: slots2.RETRIGGER, maxWin: slots2.MAX_WIN, rtp: slots2.RTP },
         wheel: casino.WHEEL,
         cross: casino.crossTable(),

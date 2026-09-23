@@ -39,7 +39,10 @@ const LIST = [
     // Arena
     { id: 'arena_kill', icon: '🔫', name: 'Trigger happy', desc: 'Get a kill in the arena', check: (u, s) => (s.shooterKills || 0) >= 1 },
     { id: 'arena_kills_50', icon: '🎯', name: 'Gunslinger', desc: '50 kills in the arena', title: 'Gunslinger', check: (u, s) => (s.shooterKills || 0) >= 50 },
-    { id: 'arena_bounty', icon: '🏴‍☠️', name: 'Bounty hunter', desc: 'Claim a 1,000 bounty', title: 'Bounty Hunter', check: (u, s) => (s.arenaBigBounty || 0) >= 1 },
+    { id: 'arena_extract', icon: '🚁', name: 'Survivor', desc: 'Extract from a raid', title: 'Survivor', check: (u, s) => (s.arenaExtracts || 0) >= 1 },
+    { id: 'arena_extract_25', icon: '🏴‍☠️', name: 'Raider', desc: 'Extract 25 times', title: 'Raider', check: (u, s) => (s.arenaExtracts || 0) >= 25 },
+    { id: 'arena_legendary', icon: '🌟', name: 'Loot goblin', desc: 'Own a Legendary item (1 in 5,000)', title: 'Loot Goblin', check: (u, s) => (s.bestOdds || 0) >= 5000 },
+    { id: 'arena_ultra', icon: '✦', name: 'One in a million', desc: 'Own a one-in-a-million item', title: 'Chosen One', check: (u, s) => (s.bestOdds || 0) >= 1000000 },
 
     // Drumherum
     { id: 'first_ticket', icon: '💬', name: 'Feedback', desc: 'Open your first support ticket', check: (u, s) => (s.ticketsCreated || 0) >= 1 },

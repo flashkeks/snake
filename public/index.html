@@ -2284,34 +2284,20 @@ button:disabled {
     grid-column: 1 / -1;
 }
 
-.sh-rooms {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
-}
-
-.sh-rooms button {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    font-size: 15px;
-    padding: 6px 12px;
+#sh-open {
+    font-size: 17px;
+    padding: 9px;
     background: #ff5bd6;
     color: #fff;
-    line-height: 1.15;
 }
 
-.sh-rooms button small {
-    font-size: 11px;
-    font-weight: 600;
-    opacity: .85;
+.menu-sect.arena #sh-open {
+    grid-column: 1 / -1;
 }
 
-/* ---------- Shooter-Arena ---------- */
+/* ---------- Arena: Raid ---------- */
 
-/* Arena im Vollbild ueber allem, das Spielfeld-Fenster ist dafuer zu klein */
-#shooter {
+#shooter, #arenahub {
     position: fixed;
     inset: 0;
     z-index: 60;
@@ -2325,21 +2311,10 @@ button:disabled {
     box-shadow: 0 0 50px rgba(255,91,214,.3);
 }
 
-.sh-main {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 150px;
-    gap: 10px;
-}
-
-.sh-view {
-    position: relative;
-    min-width: 0;
-}
-
 #sh-canvas {
     display: block;
     width: 100%;
-    height: min(calc(100vh - 150px), max(62vw, 55vh));
+    height: min(calc(100vh - 150px), max(56vw, 55vh));
     min-width: 0;
     min-height: 260px;
     border-radius: 8px;
@@ -2350,30 +2325,246 @@ button:disabled {
     background: #070a0f;
 }
 
-#sh-retry {
-    position: absolute;
-    left: 50%;
-    top: calc(50% + 50px);
-    transform: translateX(-50%);
+#sh-stats {
+    font-weight: 800;
+    color: #ffd23f;
+    margin-right: auto;
+}
+
+.sh-touchbtn {
+    display: none;
     font-size: 18px;
+    padding: 4px 10px;
 }
 
-#sh-case {
-    font-size: 14px;
-    padding: 6px 12px;
+body.touch .sh-touchbtn {
+    display: inline-block;
 }
 
-.sh-caseview {
+/* ---------- Arena: Hub ---------- */
+
+#arenahub .card {
+    width: min(1100px, 100%);
+    border-color: #ff5bd6;
+    box-shadow: 0 0 50px rgba(255,91,214,.3);
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+}
+
+.loadout {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+
+.lo-slot small {
+    display: block;
+    font-size: 11px;
+    font-weight: 800;
+    opacity: .7;
+    margin-bottom: 3px;
+}
+
+.it {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 6px;
+    border-radius: 10px;
+    background: rgba(255,255,255,.04);
+    border: 2px solid var(--tc, rgba(255,255,255,.15));
+    text-align: center;
+    cursor: pointer;
+    min-height: 92px;
+    justify-content: center;
+}
+
+.it.empty, .it.meds {
+    cursor: default;
+    opacity: .75;
+    font-size: 13px;
+}
+
+.it.meds button {
+    padding: 2px 10px;
+    margin: 4px 2px 0;
+}
+
+.it.sel {
+    box-shadow: 0 0 0 3px #fff;
+}
+
+.it b {
+    font-size: 13px;
+    line-height: 1.15;
+}
+
+.it-ico {
+    font-size: 30px;
+    line-height: 1.1;
+}
+
+.it-tier {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--tc, #cfd8e3);
+}
+
+.mods {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    justify-content: center;
+}
+
+.mod {
+    font-size: 11px;
+    font-weight: 800;
+    padding: 0 4px;
+    border-radius: 6px;
+    background: rgba(255,255,255,.08);
+}
+
+.eq-tag {
     position: absolute;
-    left: 10%;
-    right: 10%;
-    top: 30%;
+    top: 4px;
+    right: 4px;
+    font-size: 10px;
+    font-weight: 900;
+    padding: 0 5px;
+    border-radius: 6px;
+    background: #ff5bd6;
+    color: #fff;
+}
+
+.tier-common { --tc: #cfd8e3; }
+.tier-uncommon { --tc: #7dffb0; }
+.tier-rare { --tc: #3da5ff; }
+.tier-epic { --tc: #b884ff; }
+.tier-legendary { --tc: #ffd23f; }
+.tier-mythic { --tc: #ff5b5b; }
+.tier-ultra {
+    --tc: #fff;
+    animation: dailyGlow .8s ease-in-out infinite alternate;
+    background: linear-gradient(135deg, rgba(255,91,214,.2), rgba(61,165,255,.2), rgba(255,210,63,.2));
+}
+
+span.tier-common, span.tier-uncommon, span.tier-rare, span.tier-epic, span.tier-legendary, span.tier-mythic, span.tier-ultra {
+    color: var(--tc);
+    font-weight: 700;
+}
+
+.inv-bar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin: 10px 0 6px;
+}
+
+.inv-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 10px;
+}
+
+.inv-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+    gap: 6px;
+    align-content: start;
+    max-height: 420px;
+    overflow-y: auto;
+}
+
+.inv-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.it-stats {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    font-weight: 800;
+}
+
+.it-mods {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.it-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.hub-play {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin: 14px 0;
+}
+
+#hub-deploy {
+    font-size: 22px;
+    padding: 12px 34px;
+}
+
+.raid-result {
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.raid-result.ok { background: rgba(0,255,136,.1); border: 1px solid #00ff88; }
+.raid-result.dead { background: rgba(255,77,77,.1); border: 1px solid #ff4d4d; }
+
+.cases {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 10px;
+}
+
+.case-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px;
+    border-radius: 12px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,91,214,.3);
+    text-align: center;
+}
+
+.case-card small {
+    font-size: 12px;
+    opacity: .75;
+}
+
+.case-card button {
+    margin-top: auto;
+    width: 100%;
+}
+
+.case-view {
+    position: relative;
     height: 150px;
+    margin: 12px 0;
     overflow: hidden;
     border-radius: 12px;
     background: rgba(8,10,16,.94);
     border: 2px solid #ffd23f;
-    box-shadow: 0 0 40px rgba(255,210,63,.4);
 }
 
 .sh-strip {
@@ -2386,28 +2577,32 @@ button:disabled {
 
 .sh-item {
     flex: none;
-    width: 90px;
-    height: 90px;
+    width: 100px;
+    height: 110px;
     margin-right: 6px;
     border-radius: 10px;
     background: linear-gradient(160deg, #26304a, #151b2a);
+    border-bottom: 4px solid var(--tc, #cfd8e3);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    font-size: 40px;
+    font-size: 36px;
+    text-align: center;
 }
 
 .sh-item small {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 800;
+    padding: 0 3px;
+    color: var(--tc);
 }
 
 .sh-pointer {
     position: absolute;
     left: 50%;
     top: 0;
-    bottom: 36px;
+    bottom: 0;
     width: 3px;
     background: #ffd23f;
     transform: translateX(-50%);
@@ -2415,41 +2610,20 @@ button:disabled {
     box-shadow: 0 0 10px #ffd23f;
 }
 
-.sh-caseres {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 8px;
-    text-align: center;
-    font-weight: 700;
+#hub-caseres {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    max-width: 360px;
+    margin: 0 auto 10px;
 }
 
-.rar-common { color: #cfd8e3; }
-.rar-rare { color: #3da5ff; }
-.rar-epic { color: #a970ff; }
-.rar-legendary { color: #ffd23f; }
-
-#sh-stats {
-    font-weight: 800;
-    color: #ffd23f;
-    margin-right: auto;
-}
-
-.sh-board td {
-    padding: 2px 4px;
-    font-size: 13px;
-}
-
-.sh-board .me {
-    font-weight: 800;
-}
-
-@media (max-width: 700px) {
-    .sh-main {
-        grid-template-columns: 1fr;
+@media (max-width: 800px) {
+    .loadout {
+        grid-template-columns: repeat(2, 1fr);
     }
-    .sh-board {
-        display: none;
+    .inv-main {
+        grid-template-columns: 1fr;
     }
 }
 
@@ -4038,12 +4212,8 @@ body.touch input, body.touch textarea {
                         </div>
                         <div class="menu-sect arena">
                             <h3>🔫 Arena</h3>
-                            <div class="gamba-list">Top-down shooter · bounties in the stake arenas</div>
-                            <div class="sh-rooms">
-                                <button type="button" data-shroom="free">Free<small>empty</small></button>
-                                <button type="button" data-shroom="s100">🪙 100/life<small>empty</small></button>
-                                <button type="button" data-shroom="s1000">🪙 1k/life<small>empty</small></button>
-                            </div>
+                            <div class="gamba-list">Extraction shooter · loot, cases, weapons with crazy effects</div>
+                            <button type="button" id="sh-open">Enter the arena →</button>
                             <div class="gamba-live" id="sh-live"></div>
                             <div class="msg" id="sh-menu-msg"></div>
                         </div>
@@ -4120,33 +4290,39 @@ body.touch input, body.touch textarea {
                 </div>
             </div>
 
-            <!-- Shooter-Arena (#7, Einsaetze #12) -->
+            <!-- Arena: Raid -->
             <div id="shooter" class="overlay hidden">
                 <div class="card">
                     <div class="s2-head">
-                        <div class="cs-title" id="sh-title" style="color:#ff5bd6;text-shadow:0 0 16px rgba(255,91,214,.5)">🔫 Arena</div>
+                        <div class="cs-title" style="color:#ff5bd6;text-shadow:0 0 16px rgba(255,91,214,.5)">🔫 Raid</div>
                         <span id="sh-stats"></span>
-                        <button type="button" class="gold" id="sh-case" hidden title="Random gear for this life (E)">🎁 Case</button>
-                        <span class="coins">🪙 <span id="sh-coins">–</span></span>
-                        <button type="button" class="s2-icon" id="sh-leave" title="Leave the arena">✕</button>
+                        <button type="button" class="ghost sh-touchbtn" id="sh-swap" title="Switch weapon (1/2, wheel)">🔄</button>
+                        <button type="button" class="ghost sh-touchbtn" id="sh-med" title="Medkit (Q)">💉</button>
+                        <button type="button" class="ghost sh-touchbtn" id="sh-use" title="Open crate / take bag (F)">✋</button>
+                        <button type="button" class="s2-icon" id="sh-leave" title="Leave (you lose everything)">✕</button>
                     </div>
-                    <div class="sh-main">
-                        <div class="sh-view">
-                            <canvas id="sh-canvas"></canvas>
-                            <button type="button" class="gold" id="sh-retry" hidden>Try again</button>
-                            <div class="sh-caseview" id="sh-caseview" hidden>
-                                <div class="sh-pointer"></div>
-                                <div class="sh-strip" id="sh-strip"></div>
-                                <div class="sh-caseres" id="sh-caseres"></div>
-                            </div>
-                        </div>
-                        <div class="sh-side">
-                            <h3 style="margin:0 0 4px">Players</h3>
-                            <table class="sh-board"><tbody id="sh-board"></tbody></table>
-                            <div class="hint" style="margin-top:8px">WASD move · mouse aim · click/Space shoot<br>E = case (stake arenas)<br>touch: left stick move, right stick aim + fire</div>
-                        </div>
+                    <canvas id="sh-canvas"></canvas>
+                    <div class="hint" style="text-align:center">WASD move · mouse aim · click shoot · 1/2 or wheel switch · Q medkit · F loot · 🚁 stand in an extraction zone for 6 s</div>
+                </div>
+            </div>
+
+            <!-- Arena: Hub -->
+            <div id="arenahub" class="overlay hidden">
+                <div class="card">
+                    <div class="s2-head">
+                        <div class="cs-title" style="color:#ff5bd6;text-shadow:0 0 16px rgba(255,91,214,.5)">🔫 Arena</div>
+                        <span class="coins">🪙 <span id="hub-coins">–</span></span>
+                        <span class="coins" style="color:#cfd8e3">⚙️ <span id="hub-scrap">–</span></span>
+                        <button type="button" class="s2-icon" id="hub-back" title="Back">✕</button>
                     </div>
-                    <div class="msg" id="sh-msg"></div>
+                    <div class="cs-tabs" id="hub-tabs">
+                        <button type="button" data-hubtab="play">🪂 Play</button>
+                        <button type="button" data-hubtab="equip">🎒 Equipment</button>
+                        <button type="button" data-hubtab="cases">🎁 Cases</button>
+                        <button type="button" data-hubtab="shop">🛒 Shop</button>
+                    </div>
+                    <div id="hub-body"></div>
+                    <div class="msg" id="hub-msg"></div>
                 </div>
             </div>
 
@@ -4591,20 +4767,22 @@ ws.onmessage = event => {
         case 'event': onEvent(data); break;
         case 'mg': onMgFrame(data); break;
         case 'sh': onSh(data); break;
+        case 'shRooms': onShRooms(data.rooms); break;
+        case 'shHit': onShHit(data); break;
+        case 'shHurt': onShHurt(data); break;
+        case 'shLoot': onShLoot(data); break;
+        case 'shBoom': case 'shZap': onShFx(data); break;
+        case 'shPong': shRtt = shRtt * .7 + (performance.now() - data.t) * .3; break;
+        case 'arHub': onArHub(data); break;
+        case 'arError': showMsg('hub-msg', data.error, 'err'); break;
         case 'shopOk': onShopOk(data); break;
         case 'shopError': showMsg('shop-msg', data.error, 'err'); break;
         case 'deathfx': onDeathFx(data); break;
         case 'achievement': onAchievement(data); break;
-        case 'shRooms': onShRooms(data.rooms); break;
-        case 'shHit': onShHit(data); break;
-        case 'shHurt': onShHurt(data); break;
-        case 'shCase': onShCase(data); break;
-        case 'shPickup': beep(900, 0.08, 0.05); break;
-        case 'shPong': shRtt = shRtt * .7 + (performance.now() - data.t) * .3; break;
         case 'shJoined': onShJoined(data); break;
         case 'shLeft': onShLeft(data); break;
         case 'shKill': onShKill(data); break;
-        case 'shError': showMsg(sh ? 'sh-msg' : 'sh-menu-msg', data.error, 'err'); break;
+        case 'shError': showMsg($('arenahub').classList.contains('hidden') ? 'sh-menu-msg' : 'hub-msg', data.error, 'err'); break;
         case 'table': onTable(data); break;
         case 'tableLeft': onTableLeft(); break;
         case 'tableError': showMsg('ev-msg', data.error, 'err'); showMsg('casino-msg', data.error, 'err'); showMsg('pkl-msg', data.error, 'err'); break;
@@ -4649,7 +4827,7 @@ function showMsg(id, text, kind) {
 // ---------- Screens ----------
 
 function showScreen(name) {
-    ['menu', 'casino', 'daily', 'cross', 'plinko', 'pokerlobby', 'shooter', 'shop', 'support', 'slots', 'slots2', 'konto', 'event', 'offer'].forEach(s => $(s).classList.toggle('hidden', s !== name));
+    ['menu', 'casino', 'daily', 'cross', 'plinko', 'pokerlobby', 'shooter', 'arenahub', 'shop', 'support', 'slots', 'slots2', 'konto', 'event', 'offer'].forEach(s => $(s).classList.toggle('hidden', s !== name));
 }
 
 function backToMenu(resultHtml) {
@@ -4673,7 +4851,7 @@ function setToken(t) {
 
 function setMe(user) {
     me = user;
-    if ($('sh-coins')) $('sh-coins').textContent = me ? me.coins : '–';
+    if ($('hub-coins')) $('hub-coins').textContent = me ? me.coins.toLocaleString('en-US') : '–';
     $('auth-box').style.display = me ? 'none' : '';
     $('me-box').style.display = me ? '' : 'none';
     $('guest-name').style.display = me ? 'none' : '';
@@ -7338,65 +7516,285 @@ const sfx = {
     }
 };
 
-// ---------- Shooter-Arena (#7, Einsaetze #12) ----------
-// Eigene Figur: sofort lokal bewegt (gleiche Waende, gleiches Tempo wie der
-// Server) und nur sanft an den Server angeglichen. Andere: 50 ms verzoegert
-// zwischen zwei Staenden interpoliert. Kugeln: mit Geschwindigkeit
-// weitergerechnet. Kamera folgt der eigenen Figur, Minimap oben links.
+// ---------- Arena: Hub und Raid (Extraction) ----------
+// Hub: Play, Equipment (Lager + Loadout + Salvage), Cases, Shop.
+// Raid: eigene Figur wird vorausberechnet und sanft an den Server angeglichen,
+// andere 50 ms verzoegert interpoliert, Kugeln mit Geschwindigkeit
+// weitergerechnet. Der Server schickt nur, was in der Naehe ist.
 
-let sh = null;              // { id, room, fee, casePrice, map, weapons } in der Arena
-let shSnaps = [];           // [{ recv, ...Zustand }]
+let arenaCat = null;        // Katalog aus welcome (Waffen, Mods, Cases, Shop, Stufen)
+let hub = null;             // letzter Stand aus arHub
+let hubTab = 'play';
+let hubSel = null;          // ausgewaehltes Item (uid)
+let hubFilter = 'all';
+let hubLast = null;         // Ergebnis des letzten Raids
+let sh = null;              // { id, map, packMax } im Raid
+let shSnaps = [];
 const shKeys = new Set();
 const shIn = { mx: 0, my: 0, a: 0, f: false };
 let shSeq = 0;
 let shSent = '';
 let shLastSend = 0;
 let shFeed = [];
-let shRooms = [];
-let shPred = null;          // { x, y, sp } vorausberechnete eigene Position
-let shHist = [];            // [{ t, x, y }] eigene Positionen der letzten Sekunde
+let shPred = null;
+let shHist = [];
 let shRtt = 80;
-let shMarks = [];           // Treffer-Markierungen { x, y, dmg, kill, t }
+let shMarks = [];
+let shFx = [];              // Explosionen und Blitze { kind, t, ... }
 let shHurtAt = 0;
 let shFlashAt = 0;
 let shLastLocalShot = 0;
-let shMouse = null;         // Mausposition in CSS-Pixeln im Canvas
+let shMouse = null;
 let shCam = { x: 0, y: 0, s: 1 };
 let shLastFrame = 0;
 let shPingTimer = null;
+let shToast = null;         // { text, t }
 const shTouch = { move: null, aim: null };
 const SH_INTERP = 50;
-const SH_ITEM_ICON = { smg: '🔫', rifle: '🪖', shotgun: '💥', sniper: '🎯', deagle: '✨', armor: '🛡️', pistol: '🔫' };
-const SH_ITEM_NAME = { smg: 'SMG', rifle: 'Rifle', shotgun: 'Shotgun', sniper: 'Sniper', deagle: 'Golden Deagle', armor: 'Armor +50', pistol: 'Pistol' };
+const TIER_COLOR = { common: '#cfd8e3', uncommon: '#7dffb0', rare: '#3da5ff', epic: '#b884ff', legendary: '#ffd23f', mythic: '#ff5b5b', ultra: '#ffffff' };
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];
 
-function shJoin(room) {
+function tierName(t) {
+    const x = arenaCat && arenaCat.tiers.find(y => y.id === t);
+    return x ? x.name : t;
+}
+
+function itemIcon(it) {
+    if (!arenaCat || !it) return '❔';
+    if (it.kind === 'med' || it.k === 'med') return '💉';
+    const base = it.base || it.b;
+    return (arenaCat.weapons[base] || arenaCat.armors[base] || {}).icon || '❔';
+}
+
+function modDefs(it) {
+    return it.kind === 'armor' ? arenaCat.armorMods : arenaCat.weaponMods;
+}
+
+function oddsText(o) {
+    return o > 1 ? `1 in ${o.toLocaleString('en-US')}` : '';
+}
+
+// Karte im Lager
+function itemCard(it, opts = {}) {
+    const mods = (it.mods || []).map(m => {
+        const d = modDefs(it)[m.id];
+        return `<span class="mod" title="${esc(d.desc[m.lvl - 1])}">${d.icon}${d.max > 1 ? ' ' + ROMAN[m.lvl] : ''}</span>`;
+    }).join('');
+    return `<div class="it tier-${it.tier} ${opts.sel ? 'sel' : ''} ${opts.eq ? 'eq' : ''}" data-uid="${esc(it.uid)}">` +
+        `<span class="it-ico">${itemIcon(it)}</span><b>${esc(it.name)}</b>` +
+        `<small class="it-tier">${tierName(it.tier)}${it.odds > 1 ? ' · ' + oddsText(it.odds) : ''}</small>` +
+        (mods ? `<div class="mods">${mods}</div>` : '') +
+        (opts.eq ? `<span class="eq-tag">${opts.eq}</span>` : '') + '</div>';
+}
+
+// Werte und Effekte eines Items im Detail
+function itemDetail(it) {
+    let stats = '';
+    if (it.kind === 'weapon') {
+        const b = arenaCat.weapons[it.base];
+        const L = id => ((it.mods || []).find(m => m.id === id) || {}).lvl || 0;
+        const dmg = b.dmg * (1 + L('sharp') * 0.12), rate = 1000 / (b.ms / (1 + L('rapid') * 0.1)), pel = b.pellets + L('multishot');
+        stats = `<div class="it-stats"><span>💥 ${Math.round(dmg)}${pel > 1 ? ' × ' + pel : ''}</span><span>⚡ ${rate.toFixed(1)}/s</span>` +
+            `<span>📏 ${Math.round(b.speed * b.life * (1 + L('velocity') * 0.25) * (1 + L('velocity') * 0.15))}</span></div>`;
+    } else if (it.kind === 'armor') {
+        const a = arenaCat.armors[it.base];
+        const L = id => ((it.mods || []).find(m => m.id === id) || {}).lvl || 0;
+        stats = `<div class="it-stats"><span>❤️ +${a.hp + L('plating') * 15} HP</span><span>👟 ${Math.round(a.speed * (1 + L('swift') * 0.06) * 100)}% speed</span></div>`;
+    } else {
+        stats = `<div class="it-stats"><span>💉 heals ${arenaCat.medkitHeal} HP over 2 s (Q)</span></div>`;
+    }
+    const mods = (it.mods || []).map(m => {
+        const d = modDefs(it)[m.id];
+        return `<li>${d.icon} <b>${d.name}${d.max > 1 ? ' ' + ROMAN[m.lvl] : ''}</b> – ${esc(d.desc[m.lvl - 1])}</li>`;
+    }).join('');
+    return stats + (mods ? `<ul class="it-mods">${mods}</ul>` : '<div class="hint">No special effects</div>');
+}
+
+// ---------- Hub ----------
+
+function hubOpen(tab) {
     unlockAudio();
     sfxInit();
-    showMsg('sh-menu-msg', '');
-    wsSend({ type: 'shJoin', name: $('guest-name').value.trim(), room });
+    if (!me) return showMsg('sh-menu-msg', 'Log in to use the arena', 'err');
+    if (tab) hubTab = tab;
+    showScreen('arenahub');
+    hubDraw();
+    wsSend({ type: 'arHub' });
 }
 
-function onShRooms(rooms) {
-    shRooms = rooms;
-    for (const r of rooms) {
-        const el = document.querySelector(`[data-shroom="${r.id}"] small`);
-        if (el) el.textContent = r.players.length ? `${r.players.length} playing` : 'empty';
-    }
-    const n = rooms.reduce((s, r) => s + r.players.length, 0);
-    $('sh-live').textContent = n ? `● ${n} in the arena` : '';
+function onArHub(d) {
+    hub = d;
+    if (d.coins !== undefined && me) me.coins = d.coins;
+    if (d.caseItem) hubCaseAnim(d.caseItem, d.reel);
+    if (d.got) showMsg('hub-msg', `Bought ${d.got.name}`, 'ok');
+    if (d.salvaged) showMsg('hub-msg', `Salvaged ${d.salvaged.count} item${d.salvaged.count > 1 ? 's' : ''} for ${d.salvaged.scrap} scrap`, 'ok');
+    if (!d.caseItem) hubDraw();
 }
+
+function hubEquippedAs(uid) {
+    const l = hub.loadout;
+    return l.primary === uid ? 'Primary' : l.secondary === uid ? 'Secondary' : l.armor === uid ? 'Armor' : '';
+}
+
+function hubDraw() {
+    if (!arenaCat) return;
+    document.querySelectorAll('#hub-tabs [data-hubtab]').forEach(b => b.classList.toggle('on', b.dataset.hubtab === hubTab));
+    $('hub-coins').textContent = me ? me.coins.toLocaleString('en-US') : '–';
+    $('hub-scrap').textContent = hub ? hub.scrap.toLocaleString('en-US') : '–';
+    if (!hub) {
+        $('hub-body').innerHTML = '<div class="hint">Loading…</div>';
+        return;
+    }
+    const inv = hub.inv, l = hub.loadout;
+    const byUid = uid => inv.find(x => x.uid === uid);
+    const meds = inv.filter(x => x.kind === 'med').length;
+    const slotCard = (label, uid, fallback) => {
+        const it = uid && byUid(uid);
+        return `<div class="lo-slot"><small>${label}</small>${it ? itemCard(it) : `<div class="it empty">${fallback}</div>`}</div>`;
+    };
+    const loadout = `<div class="loadout">` +
+        slotCard('1 · Primary', l.primary, '🔫 Starter pistol<br><small>free, never lost</small>') +
+        slotCard('2 · Secondary', l.secondary, 'empty') +
+        slotCard('Armor', l.armor, 'none') +
+        `<div class="lo-slot"><small>Q · Medkits (${meds} in stash)</small><div class="it meds"><span>💉 <b>${l.meds}</b> / 3</span>` +
+        `<div><button type="button" class="ghost" data-meds="-1">−</button><button type="button" class="ghost" data-meds="1">+</button></div></div></div></div>`;
+
+    let html = '';
+    if (hubTab === 'play') {
+        const inRaid = shRoomCount;
+        html = loadout +
+            `<div class="hub-play"><button type="button" class="gold" id="hub-deploy">🪂 Deploy into the raid</button>` +
+            `<div class="hint">${inRaid ? `● ${inRaid} in the raid right now · ` : ''}Everything you take in is at risk. Get to a 🚁 extraction zone and stand in it for 6 s to keep your loot. ` +
+            `If you die or leave, the killer gets it all.</div></div>` +
+            (hubLast ? `<div class="raid-result ${hubLast.result}">${hubLast.html}</div>` : '');
+    } else if (hubTab === 'equip') {
+        const filters = [['all', 'All'], ['weapon', 'Weapons'], ['armor', 'Armor'], ['med', 'Medkits']];
+        const order = arenaCat.tiers.map(t => t.id);
+        const list = inv.filter(x => hubFilter === 'all' || x.kind === hubFilter)
+            .sort((a, b) => order.indexOf(b.tier) - order.indexOf(a.tier) || b.odds - a.odds);
+        const sel = hubSel && byUid(hubSel);
+        const commons = inv.filter(x => x.tier === 'common' && x.kind !== 'med' && !hubEquippedAs(x.uid));
+        html = loadout +
+            `<div class="inv-bar"><div class="cr-diffs">${filters.map(([k, n]) => `<button type="button" data-filter="${k}" class="${hubFilter === k ? 'on' : ''}">${n}</button>`).join('')}</div>` +
+            `<span class="hint">${inv.length} / ${arenaCat.invMax}</span>` +
+            (commons.length ? `<button type="button" class="ghost" id="hub-salvage-commons">♻️ Salvage ${commons.length} commons</button>` : '') + '</div>' +
+            `<div class="inv-main"><div class="inv-grid">${list.map(it => itemCard(it, { sel: it.uid === hubSel, eq: hubEquippedAs(it.uid) })).join('') || '<div class="hint">Your stash is empty. Buy something in the shop or open a case.</div>'}</div>` +
+            `<div class="inv-detail">${sel ? itemCard(sel) + itemDetail(sel) + hubActions(sel) : '<div class="hint">Click an item to see its effects.</div>'}</div></div>`;
+    } else if (hubTab === 'cases') {
+        html = `<div class="cases">${Object.entries(arenaCat.cases).map(([k, c]) =>
+            `<div class="case-card"><span class="it-ico">${c.icon}</span><b>${esc(c.name)}</b>` +
+            `<small>${{ standard: 'Weapons and armor, often with effects', elite: 'Way more effects, rare bases like Minigun, Launcher, Golden Deagle', scrap: 'Cheap case, paid with scrap' }[k] || ''}</small>` +
+            `<button type="button" class="gold" data-case="${k}">${c.currency === 'scrap' ? '⚙️' : '🪙'} ${c.price.toLocaleString('en-US')}</button></div>`).join('')}</div>` +
+            `<div class="case-view" id="hub-caseview" hidden><div class="sh-pointer"></div><div class="sh-strip" id="hub-strip"></div></div>` +
+            `<div id="hub-caseres"></div>` +
+            `<div class="hint">Rarity is honest: “1 in X” means only every X-th standard case pull is at least that rare. Effects have levels, every level is exponentially rarer.</div>`;
+    } else if (hubTab === 'shop') {
+        const offer = o => {
+            const name = o.kind === 'gen' ? 'Weapon with a random effect' : o.kind === 'med' ? 'Medkit' : (arenaCat.weapons[o.base] || arenaCat.armors[o.base]).name;
+            const icon = o.kind === 'gen' ? '🎲' : o.kind === 'med' ? '💉' : (arenaCat.weapons[o.base] || arenaCat.armors[o.base]).icon;
+            return `<div class="case-card"><span class="it-ico">${icon}</span><b>${esc(name)}</b>` +
+                `<button type="button" class="${o.currency === 'scrap' ? 'ghost' : 'gold'}" data-buy="${o.id}">${o.currency === 'scrap' ? '⚙️' : '🪙'} ${o.price.toLocaleString('en-US')}</button></div>`;
+        };
+        html = `<h3>For coins</h3><div class="cases">${arenaCat.shop.filter(o => o.currency === 'coins').map(offer).join('')}</div>` +
+            `<h3>For scrap</h3><div class="cases">${arenaCat.shop.filter(o => o.currency === 'scrap').map(offer).join('')}</div>` +
+            `<div class="hint">Shop items have no effects – those come from cases and crates in the raid. Salvage what you do not need for ⚙️ scrap.</div>`;
+    }
+    $('hub-body').innerHTML = html;
+}
+
+function hubActions(it) {
+    const val = it.kind === 'med' ? 3 : null;
+    const eq = hubEquippedAs(it.uid);
+    let b = '';
+    if (it.kind === 'weapon') {
+        b += `<button type="button" data-equip="primary" data-uid="${it.uid}">Equip as primary (1)</button>`;
+        b += `<button type="button" class="ghost" data-equip="secondary" data-uid="${it.uid}">Equip as secondary (2)</button>`;
+    } else if (it.kind === 'armor') {
+        b += `<button type="button" data-equip="armor" data-uid="${it.uid}">Equip armor</button>`;
+    }
+    if (eq) b += `<button type="button" class="ghost" data-unequip="${eq.toLowerCase()}">Take off</button>`;
+    b += `<button type="button" class="danger" data-salvage="${it.uid}">♻️ Salvage${val ? ` (+${val})` : ''}</button>`;
+    return `<div class="it-actions">${b}</div>`;
+}
+
+let hubCaseBusy = false;
+function hubCaseAnim(item, reel) {
+    hubTab = 'cases';
+    hubDraw();
+    hubCaseBusy = true;
+    const view = $('hub-caseview'), strip = $('hub-strip');
+    view.hidden = false;
+    strip.innerHTML = reel.map(r => `<div class="sh-item tier-${r.t}">${itemIcon(r)}<small>${esc(r.n)}</small></div>`).join('');
+    strip.style.transition = 'none';
+    strip.style.transform = 'translateX(0)';
+    void strip.offsetWidth;
+    const w = 106, target = 29 * w - (view.clientWidth / 2 - w / 2) + (Math.random() - .5) * 60;
+    strip.style.transition = 'transform 4s cubic-bezier(.12,.8,.2,1)';
+    strip.style.transform = `translateX(${-target}px)`;
+    sfx.spin();
+    setTimeout(() => {
+        hubCaseBusy = false;
+        $('hub-caseres').innerHTML = itemCard(item) + itemDetail(item);
+        const order = arenaCat.tiers.map(t => t.id);
+        sfx.fanfare(order.indexOf(item.tier) >= 3 ? 'big' : 'end');
+        $('hub-scrap').textContent = hub.scrap.toLocaleString('en-US');
+        $('hub-coins').textContent = me ? me.coins.toLocaleString('en-US') : '–';
+    }, 4100);
+}
+
+$('hub-tabs').addEventListener('click', e => {
+    const b = e.target.closest('[data-hubtab]');
+    if (!b || hubCaseBusy) return;
+    hubTab = b.dataset.hubtab;
+    hubDraw();
+});
+
+$('hub-body').addEventListener('click', e => {
+    const t = e.target.closest('button, .it[data-uid]');
+    if (!t || hubCaseBusy) return;
+    const ds = t.dataset;
+    if (t.id === 'hub-deploy') return wsSend({ type: 'shJoin' });
+    if (t.id === 'hub-salvage-commons') {
+        const uids = hub.inv.filter(x => x.tier === 'common' && x.kind !== 'med' && !hubEquippedAs(x.uid)).map(x => x.uid);
+        if (confirm(`Salvage ${uids.length} common items?`)) wsSend({ type: 'arSalvage', uids });
+        return;
+    }
+    if (ds.filter) { hubFilter = ds.filter; return hubDraw(); }
+    if (ds.meds) return wsSend({ type: 'arEquip', slot: 'meds', n: hub.loadout.meds + Number(ds.meds) });
+    if (ds.equip) return wsSend({ type: 'arEquip', slot: ds.equip, uid: ds.uid });
+    if (ds.unequip) return wsSend({ type: 'arEquip', slot: ds.unequip, uid: null });
+    if (ds.salvage) {
+        const it = hub.inv.find(x => x.uid === ds.salvage);
+        const order = arenaCat.tiers.map(x => x.id);
+        if (it && order.indexOf(it.tier) >= 2 && !confirm(`Salvage ${it.name} (${tierName(it.tier)})?`)) return;
+        hubSel = null;
+        return wsSend({ type: 'arSalvage', uids: [ds.salvage] });
+    }
+    if (ds.case) return wsSend({ type: 'arCase', id: ds.case });
+    if (ds.buy) return wsSend({ type: 'arBuy', id: ds.buy });
+    if (ds.uid) {
+        hubSel = ds.uid;
+        if (hubTab !== 'equip') hubTab = 'equip';
+        hubDraw();
+    }
+});
+
+let shRoomCount = 0;
+function onShRooms(rooms) {
+    shRoomCount = rooms.reduce((s, r) => s + r.players.length, 0);
+    $('sh-live').textContent = shRoomCount ? `● ${shRoomCount} in the raid` : '';
+}
+
+// ---------- Raid ----------
 
 function onShJoined(d) {
-    sh = { id: d.id, room: d.room, fee: d.fee, casePrice: d.casePrice, map: d.map, weapons: d.weapons };
+    sh = { id: d.id, map: d.map, packMax: d.packMax };
     shSnaps = [];
     shPred = null;
     shHist = [];
     shMarks = [];
+    shFx = [];
     shFeed = (d.feed || []).map(f => ({ ...f, at: 0 }));
-    $('sh-title').textContent = d.fee ? `🔫 Arena · ${d.fee.toLocaleString('en-US')} per life` : '🔫 Arena · Free';
-    $('sh-case').hidden = !d.fee;
-    $('sh-case').textContent = `🎁 Case · ${d.casePrice}`;
-    showMsg('sh-msg', d.fee ? `Every life costs ${d.fee}. Kill someone to take their bounty – leave alive to get yours back.` : '');
     showScreen('shooter');
     document.body.classList.add('shooting');
     clearInterval(shPingTimer);
@@ -7411,11 +7809,14 @@ function onShLeft(d) {
     document.body.classList.remove('shooting');
     shKeys.clear();
     shIn.f = false;
-    if (!$('shooter').classList.contains('hidden')) {
-        showScreen('menu');
-        $('menu-result').innerHTML = `<div class="result ${d.coins ? 'cash' : ''}">🔫 Arena: ${d.kills} kills · ${d.deaths} deaths` +
-            `${d.coins ? ` · +${d.coins} coins` : ''}${d.refund ? ` · bounty back: ${d.refund}` : ''}</div>`;
+    const list = items => (items || []).map(it => `<span class="tier-${it.t}">${itemIcon(it)} ${esc(it.n)}</span>`).join(' · ') || 'nothing';
+    if (d.result === 'extracted') {
+        hubLast = { result: 'ok', html: `🚁 <b>Extracted!</b> Loot: ${list(d.items)}${d.scrap ? ` · stash full, ${d.scrap} scrap instead` : ''}` };
+        sfx.fanfare('big');
+    } else {
+        hubLast = { result: 'dead', html: `💀 <b>${d.result === 'left' ? 'You left the raid' : 'You died'}${d.by ? ` – killed by ${esc(d.by)}` : ''}.</b> Lost: ${list(d.lost)}` };
     }
+    hubOpen('play');
 }
 
 function onSh(d) {
@@ -7428,43 +7829,31 @@ function onSh(d) {
 function onShKill(k) {
     shFeed.push({ ...k, at: performance.now() });
     if (shFeed.length > 6) shFeed.shift();
-    const me = shMeServer();
-    if (me && k.killer === me.n) sfx.fanfare(k.coins >= 1000 ? 'big' : 'end');
 }
 
 function onShHit(d) {
     shMarks.push({ ...d, t: performance.now() });
-    if (shMarks.length > 20) shMarks.shift();
-    sTone(d.kill ? 1500 : 2200, { dur: d.kill ? .18 : .05, type: 'square', vol: d.kill ? .07 : .04, rev: 0 });
+    if (shMarks.length > 30) shMarks.shift();
+    if (d.dodge) return;
+    sTone(d.kill ? 1500 : d.crit ? 2600 : 2200, { dur: d.kill ? .18 : .05, type: 'square', vol: d.kill ? .07 : .04, rev: 0 });
 }
 
-function onShHurt(d) {
+function onShHurt() {
     shHurtAt = performance.now();
     sTone(140, { dur: .15, vol: .18, slide: 70, rev: .05 });
 }
 
-function onShCase(d) {
-    // Band mit Zufalls-Items, das Ergebnis landet unter dem Zeiger
-    const pool = ['smg', 'rifle', 'armor', 'shotgun', 'sniper', 'deagle'];
-    const n = 36, win = 30;
-    const items = Array.from({ length: n }, (_, i) => i === win ? d.item : pool[Math.floor(Math.random() * pool.length)]);
-    const strip = $('sh-strip');
-    strip.innerHTML = items.map(it => `<div class="sh-item">${SH_ITEM_ICON[it]}<small>${SH_ITEM_NAME[it]}</small></div>`).join('');
-    $('sh-caseview').hidden = false;
-    $('sh-caseres').textContent = '';
-    strip.style.transition = 'none';
-    strip.style.transform = 'translateX(0)';
-    void strip.offsetWidth;
-    const itemW = 96;
-    const target = win * itemW - ($('sh-caseview').clientWidth / 2 - itemW / 2) + (Math.random() - 0.5) * 60;
-    strip.style.transition = 'transform 3.2s cubic-bezier(.12,.8,.2,1)';
-    strip.style.transform = `translateX(${-target}px)`;
-    sfx.spin();
-    setTimeout(() => {
-        $('sh-caseres').innerHTML = `<b class="rar-${d.rarity}">${SH_ITEM_ICON[d.item]} ${SH_ITEM_NAME[d.item]}</b> · ${d.rarity}${d.later ? ' · for your next life' : ''}`;
-        sfx.fanfare(d.rarity === 'legendary' || d.rarity === 'epic' ? 'big' : 'end');
-        setTimeout(() => { $('sh-caseview').hidden = true; }, 2200);
-    }, 3300);
+function onShLoot(d) {
+    const names = d.items.map(it => `${itemIcon(it)} ${it.n}`).join(', ');
+    shToast = { text: d.items.length ? `${d.from ? `Looted ${d.from}: ` : '+ '}${names}${d.full ? ' · backpack full!' : ''}` : (d.full ? 'Backpack full!' : 'Empty'), t: performance.now() };
+    beep(900, 0.08, 0.05);
+}
+
+function onShFx(d) {
+    shFx.push({ ...d, t: performance.now() });
+    if (shFx.length > 30) shFx.shift();
+    if (d.type === 'shBoom') sNoise({ dur: .4, vol: .25, type: 'lowpass', f: 1200, f2: 100, rev: .2, a: .002 });
+    if (d.type === 'shZap') sTone(1800, { dur: .12, type: 'sawtooth', vol: .05, slide: 400, rev: .1 });
 }
 
 function shMeServer() {
@@ -7472,46 +7861,41 @@ function shMeServer() {
     return s && sh ? s.players.find(p => p.id === sh.id) : null;
 }
 
-// ---------- Vorhersage der eigenen Bewegung ----------
-
 function shBlocked(x, y, r) {
     const m = sh.map;
     if (x < r || y < r || x > m.w - r || y > m.h - r) return true;
-    return m.walls.some(([rx, ry, rw, rh]) => {
+    for (const [rx, ry, rw, rh] of m.walls) {
+        if (x + r < rx || x - r > rx + rw || y + r < ry || y - r > ry + rh) continue;
         const cx = Math.max(rx, Math.min(x, rx + rw)), cy = Math.max(ry, Math.min(y, ry + rh));
-        return (x - cx) ** 2 + (y - cy) ** 2 < r * r;
-    });
+        if ((x - cx) ** 2 + (y - cy) ** 2 < r * r) return true;
+    }
+    return false;
 }
 
 function shPredict(dt) {
+    const s = shSnaps[shSnaps.length - 1];
     const me = shMeServer();
-    if (!me) return;
-    if (me.dead || me.br) {
-        shPred = null;
-        return;
-    }
-    // Neu gespawnt oder erster Stand: auf den Server setzen
-    if (!shPred || shPred.sp !== me.sp) {
-        shPred = { x: me.x, y: me.y, sp: me.sp };
+    if (!me || !s) return;
+    if (!shPred) {
+        shPred = { x: me.x, y: me.y };
         shHist = [];
     }
-    const m = sh.map;
-    const nx = shPred.x + shIn.mx * m.move * dt;
+    const m = sh.map, sp = m.move * (s.me.spd || 1);
+    const nx = shPred.x + shIn.mx * sp * dt;
     if (!shBlocked(nx, shPred.y, m.r)) shPred.x = nx;
-    const ny = shPred.y + shIn.my * m.move * dt;
+    const ny = shPred.y + shIn.my * sp * dt;
     if (!shBlocked(shPred.x, ny, m.r)) shPred.y = ny;
     const now = performance.now();
     shHist.push({ t: now, x: shPred.x, y: shPred.y });
     while (shHist.length && now - shHist[0].t > 1500) shHist.shift();
 }
 
-// Server-Stand ist ~eine Laufzeit alt: mit der eigenen Position von damals
-// vergleichen. Beim Laufen kleine Abweichungen (Tick-Timing) ignorieren,
-// sonst zuckt die Figur; im Stand sanft ganz angleichen; grosse sofort.
+// Server-Stand mit der eigenen Position von vor einer Laufzeit vergleichen;
+// beim Laufen Totzone, im Stand ganz angleichen, grosse Abweichung sofort
 function shReconcile(d) {
     if (!sh || !shPred) return;
     const me = d.players.find(p => p.id === sh.id);
-    if (!me || me.dead || me.sp !== shPred.sp) return;
+    if (!me) return;
     const t = performance.now() - shRtt - 35;
     let past = shHist[0];
     for (const h of shHist) {
@@ -7535,7 +7919,6 @@ function shReconcile(d) {
     }
 }
 
-// Andere Spieler: Stand um (jetzt - 50 ms) zwischen zwei Nachrichten
 function shOthers() {
     const t = performance.now() - SH_INTERP;
     let a = shSnaps[0], b = shSnaps[shSnaps.length - 1];
@@ -7550,7 +7933,7 @@ function shOthers() {
     const prev = new Map(a.players.map(p => [p.id, p]));
     return b.players.map(p => {
         const q = prev.get(p.id);
-        if (!q || q.dead !== p.dead || q.sp !== p.sp) return p;
+        if (!q || Math.hypot(p.x - q.x, p.y - q.y) > 100) return p;
         let da = p.a - q.a;
         if (da > Math.PI) da -= Math.PI * 2;
         if (da < -Math.PI) da += Math.PI * 2;
@@ -7558,7 +7941,20 @@ function shOthers() {
     });
 }
 
-// ---------- Zeichnen ----------
+// Naechste Kiste/Beutel in Reichweite (fuer den F-Hinweis)
+function shNearLoot(s) {
+    if (!shPred) return null;
+    let best = null, bd = 75;
+    for (const [id, x, y, ready] of s.crates) {
+        const d = Math.hypot(x - shPred.x, y - shPred.y);
+        if (ready && d < bd) { best = { kind: 'crate', x, y }; bd = d; }
+    }
+    for (const [id, x, y, n] of s.bags) {
+        const d = Math.hypot(x - shPred.x, y - shPred.y);
+        if (d < bd) { best = { kind: 'bag', x, y, n }; bd = d; }
+    }
+    return best;
+}
 
 function shFrame() {
     if (!sh) return;
@@ -7566,7 +7962,6 @@ function shFrame() {
     const now = performance.now();
     const dt = Math.min(0.05, (now - shLastFrame) / 1000);
     shLastFrame = now;
-    // Erst Eingaben lesen (und schicken), dann im selben Frame bewegen
     shSendInput();
     shPredict(dt);
     shAim();
@@ -7574,7 +7969,6 @@ function shFrame() {
 
     const cv = $('sh-canvas');
     if (!cv || !shSnaps.length) return;
-    // Canvas in echter Pixelgroesse
     const r = cv.getBoundingClientRect();
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const cw = Math.round(r.width * dpr), ch = Math.round(r.height * dpr);
@@ -7586,99 +7980,153 @@ function shFrame() {
     const m = sh.map;
     const latest = shSnaps[shSnaps.length - 1];
     const others = shOthers();
-    const meS = latest.players.find(p => p.id === sh.id);
+    const my = latest.me;
 
-    // Kamera: ~1100 Einheiten breit (auf dem Handy 750), folgt der eigenen Figur
-    const viewW = r.width < 700 ? 750 : 1100;
+    const viewW = r.width < 700 ? 800 : 1200;
     const s = cw / viewW;
     const viewH = ch / s;
-    const focus = shPred || meS || { x: m.w / 2, y: m.h / 2 };
+    const focus = shPred || { x: m.w / 2, y: m.h / 2 };
     const clamp = (v, lo, hi) => lo > hi ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, v));
     let camX = clamp(focus.x, viewW / 2, m.w - viewW / 2);
     let camY = clamp(focus.y, viewH / 2, m.h - viewH / 2);
-    // Kleiner Wackler, wenn man getroffen wird
     const hurt = Math.max(0, 1 - (now - shHurtAt) / 250);
     camX += (Math.random() - .5) * 8 * hurt;
     camY += (Math.random() - .5) * 8 * hurt;
     shCam = { x: camX - viewW / 2, y: camY - viewH / 2, s };
+    const vis = (x, y, pad) => x > shCam.x - pad && x < shCam.x + viewW + pad && y > shCam.y - pad && y < shCam.y + viewH + pad;
 
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.fillStyle = '#070a0f';
     c.fillRect(0, 0, cw, ch);
     c.setTransform(s, 0, 0, s, -shCam.x * s, -shCam.y * s);
 
-    // Boden mit Gitter
-    c.fillStyle = '#10161f';
+    // Boden mit Gitter (nur sichtbarer Teil)
+    c.fillStyle = '#11181f';
     c.fillRect(0, 0, m.w, m.h);
-    c.strokeStyle = 'rgba(255,255,255,.05)';
+    c.strokeStyle = 'rgba(255,255,255,.045)';
     c.lineWidth = 1;
     c.beginPath();
-    for (let x = 0; x <= m.w; x += 50) { c.moveTo(x, 0); c.lineTo(x, m.h); }
-    for (let y = 0; y <= m.h; y += 50) { c.moveTo(0, y); c.lineTo(m.w, y); }
+    for (let x = Math.floor(shCam.x / 50) * 50; x <= shCam.x + viewW; x += 50) { c.moveTo(x, shCam.y); c.lineTo(x, shCam.y + viewH); }
+    for (let y = Math.floor(shCam.y / 50) * 50; y <= shCam.y + viewH; y += 50) { c.moveTo(shCam.x, y); c.lineTo(shCam.x + viewW, y); }
     c.stroke();
+    // Extraction-Zonen
+    for (const e of m.extracts) {
+        if (!vis(e.x, e.y, 200)) continue;
+        const pulse = .5 + .5 * Math.sin(now / 300);
+        c.fillStyle = `rgba(0,255,136,${.08 + .06 * pulse})`;
+        c.beginPath();
+        c.arc(e.x, e.y, m.extractR, 0, Math.PI * 2);
+        c.fill();
+        c.strokeStyle = '#00ff88';
+        c.lineWidth = 3;
+        c.setLineDash([12, 8]);
+        c.stroke();
+        c.setLineDash([]);
+        drawEmojiC(c, '🚁', e.x, e.y, 44);
+    }
+    // Waende
     for (const [x, y, w, h] of m.walls) {
+        if (!vis(x, y, Math.max(w, h))) continue;
         c.fillStyle = 'rgba(0,0,0,.35)';
         c.fillRect(x + 6, y + 6, w, h);
-        c.fillStyle = '#3a4658';
+        c.fillStyle = w < 90 && h < 90 ? '#5a4632' : '#3a4658';
         c.fillRect(x, y, w, h);
-        c.fillStyle = '#51627c';
-        c.fillRect(x, y, w, 6);
+        c.fillStyle = w < 90 && h < 90 ? '#6f5840' : '#51627c';
+        c.fillRect(x, y, w, 5);
     }
     c.strokeStyle = '#ff5bd6';
-    c.lineWidth = 6;
-    c.strokeRect(3, 3, m.w - 6, m.h - 6);
+    c.lineWidth = 8;
+    c.strokeRect(4, 4, m.w - 8, m.h - 8);
+    // Kisten und Beutel
+    for (const [, x, y, ready] of latest.crates) {
+        c.globalAlpha = ready ? 1 : .25;
+        drawEmojiC(c, '📦', x, y, 38);
+    }
+    c.globalAlpha = 1;
+    for (const [, x, y, n] of latest.bags) {
+        drawEmojiC(c, '💰', x, y + Math.sin(now / 250) * 3, 36);
+        c.fillStyle = '#ffd23f';
+        c.font = 'bold 13px system-ui';
+        c.textAlign = 'center';
+        c.fillText(`${n}`, x + 18, y - 16);
+    }
 
-    // Pickups
-    c.textAlign = 'center';
-    c.textBaseline = 'middle';
-    c.font = '30px system-ui';
-    for (const [x, y, icon] of latest.pickups) c.fillText(icon, x, y + Math.sin(now / 250 + x) * 3);
-
-    // Kugeln: mit Geschwindigkeit weiterrechnen; eigene etwas voraus, fremde passend zur Verzoegerung
+    // Kugeln (Farbe nach Effekt)
     const age = (now - latest.recv) / 1000;
-    for (const [, x, y, vx, vy, owner] of latest.bullets) {
+    for (const [, x, y, vx, vy, owner, fx] of latest.bullets) {
         const t = owner === sh.id ? age + shRtt / 2000 : Math.max(0, age - SH_INTERP / 1000);
         const bx = x + vx * t, by = y + vy * t;
         const sp = Math.hypot(vx, vy) || 1;
-        c.strokeStyle = owner === sh.id ? 'rgba(255,246,194,.95)' : 'rgba(255,140,140,.95)';
-        c.lineWidth = 4;
+        c.strokeStyle = fx & 8 ? '#c78bff' : fx & 1 ? '#ff9b3d' : fx & 2 ? '#ff5b5b' : fx & 4 ? '#8fe9ff' : fx & 16 ? '#7dffb0' : owner === sh.id ? 'rgba(255,246,194,.95)' : 'rgba(255,170,170,.95)';
+        c.lineWidth = fx ? 5 : 4;
         c.beginPath();
-        c.moveTo(bx - vx / sp * 16, by - vy / sp * 16);
+        c.moveTo(bx - vx / sp * 18, by - vy / sp * 18);
         c.lineTo(bx, by);
         c.stroke();
     }
 
     // Spieler
     for (const p of others) {
-        if (p.dead || p.br) continue;
         const mine = p.id === sh.id;
         const x = mine && shPred ? shPred.x : p.x;
         const y = mine && shPred ? shPred.y : p.y;
-        const a = mine ? shIn.a : p.a;
-        shDrawPlayer(c, p, x, y, a, mine, now);
+        shDrawPlayer(c, p, x, y, mine ? shIn.a : p.a, mine, now, my);
     }
 
-    // Treffer-Markierungen und Schadenszahlen
+    // Explosionen, Blitze
+    shFx = shFx.filter(f => now - f.t < 500);
+    for (const f of shFx) {
+        const k = (now - f.t) / 500;
+        if (f.type === 'shBoom') {
+            c.fillStyle = `rgba(255,150,40,${.5 * (1 - k)})`;
+            c.beginPath();
+            c.arc(f.x, f.y, f.r * (0.4 + k * 0.6), 0, Math.PI * 2);
+            c.fill();
+            c.strokeStyle = `rgba(255,220,120,${1 - k})`;
+            c.lineWidth = 4;
+            c.stroke();
+        } else if (f.type === 'shZap') {
+            c.strokeStyle = `rgba(200,140,255,${1 - k})`;
+            c.lineWidth = 3;
+            c.beginPath();
+            for (let i = 1; i < f.pts.length; i++) {
+                const [x0, y0] = f.pts[0], [x1, y1] = f.pts[i];
+                c.moveTo(x0, y0);
+                for (let j = 1; j < 6; j++) c.lineTo(x0 + (x1 - x0) * j / 6 + (Math.random() - .5) * 20, y0 + (y1 - y0) * j / 6 + (Math.random() - .5) * 20);
+                c.lineTo(x1, y1);
+            }
+            c.stroke();
+        }
+    }
+
+    // Treffer
     shMarks = shMarks.filter(mk => now - mk.t < 700);
+    c.textAlign = 'center';
     for (const mk of shMarks) {
         const k = (now - mk.t) / 700;
         c.globalAlpha = 1 - k;
-        c.strokeStyle = mk.kill ? '#ff4d4d' : '#fff';
-        c.lineWidth = 3;
-        const z = 9;
-        c.beginPath();
-        c.moveTo(mk.x - z, mk.y - z); c.lineTo(mk.x - 3, mk.y - 3);
-        c.moveTo(mk.x + z, mk.y - z); c.lineTo(mk.x + 3, mk.y - 3);
-        c.moveTo(mk.x - z, mk.y + z); c.lineTo(mk.x - 3, mk.y + 3);
-        c.moveTo(mk.x + z, mk.y + z); c.lineTo(mk.x + 3, mk.y + 3);
-        c.stroke();
-        c.fillStyle = mk.kill ? '#ff4d4d' : '#ffd23f';
-        c.font = `bold ${mk.kill ? 26 : 20}px system-ui`;
-        c.fillText(mk.kill ? `💀 ${mk.dmg}` : mk.dmg, mk.x + 16, mk.y - 18 - k * 30);
+        if (mk.dodge) {
+            c.fillStyle = '#8fe9ff';
+            c.font = 'bold 16px system-ui';
+            c.fillText('dodge', mk.x, mk.y - 20 - k * 30);
+        } else {
+            c.strokeStyle = mk.kill ? '#ff4d4d' : '#fff';
+            c.lineWidth = 3;
+            const z = 9;
+            c.beginPath();
+            c.moveTo(mk.x - z, mk.y - z); c.lineTo(mk.x - 3, mk.y - 3);
+            c.moveTo(mk.x + z, mk.y - z); c.lineTo(mk.x + 3, mk.y - 3);
+            c.moveTo(mk.x - z, mk.y + z); c.lineTo(mk.x - 3, mk.y + 3);
+            c.moveTo(mk.x + z, mk.y + z); c.lineTo(mk.x + 3, mk.y + 3);
+            c.stroke();
+            c.fillStyle = mk.kill ? '#ff4d4d' : mk.crit ? '#ff9b3d' : '#ffd23f';
+            c.font = `bold ${mk.kill || mk.crit ? 24 : 18}px system-ui`;
+            c.fillText(mk.kill ? `💀 ${mk.dmg}` : mk.crit ? `${mk.dmg}!` : mk.dmg, mk.x + 16, mk.y - 18 - k * 30);
+        }
         c.globalAlpha = 1;
     }
 
-    // Fadenkreuz an der Maus
+    // Fadenkreuz
     if (shMouse && !shTouch.aim) {
         const wx = shCam.x + shMouse.x * dpr / s, wy = shCam.y + shMouse.y * dpr / s;
         c.strokeStyle = '#fff';
@@ -7695,7 +8143,6 @@ function shFrame() {
     // ---- Bildschirm-Ebene ----
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
     const W = r.width, H = r.height;
-    // Roter Rand bei Treffer
     if (hurt > 0) {
         const g = c.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .3, W / 2, H / 2, Math.max(W, H) * .7);
         g.addColorStop(0, 'rgba(255,0,0,0)');
@@ -7705,48 +8152,90 @@ function shFrame() {
     }
     shMinimap(c, latest, W, H);
 
-    // Kill-Feed oben rechts
+    // Kill-Feed
     c.textAlign = 'right';
     c.textBaseline = 'middle';
-    c.font = 'bold 14px system-ui';
-    shFeed.filter(f => !f.at || now - f.at < 6000).slice(-5).forEach((f, i) => {
-        const text = `${f.killer} ${SH_ITEM_ICON[f.weapon] || '🔫'} ${f.victim}${f.coins ? ` +${f.coins.toLocaleString('en-US')}🪙` : ''}`;
+    c.font = 'bold 13px system-ui';
+    shFeed.filter(f => !f.at || now - f.at < 7000).slice(-5).forEach((f, i) => {
+        const how = f.how === 'left' ? '🏃 left' : f.how === 'fire' ? '🔥' : f.how === 'explosion' ? '💣' : '🔫';
+        const text = f.killer ? `${f.killer} ${how} ${f.victim}${f.loot ? ` · ${f.loot} items` : ''}` : `${f.victim} ${how}`;
         const w = c.measureText(text).width + 16;
         c.fillStyle = 'rgba(0,0,0,.6)';
-        c.fillRect(W - 12 - w, 12 + i * 26, w, 22);
-        c.fillStyle = '#fff';
-        c.fillText(text, W - 20, 23 + i * 26);
+        c.fillRect(W - 12 - w, 12 + i * 24, w, 21);
+        c.fillStyle = f.tier ? TIER_COLOR[f.tier] : '#fff';
+        c.fillText(text, W - 20, 23 + i * 24);
     });
 
-    // HUD unten: HP, Waffe, Kopfgeld
-    if (meS && !meS.dead && !meS.br) {
-        const bw = Math.min(260, W * .4);
+    // HUD unten: HP, Slots, Medkits, Rucksack
+    const bw = Math.min(240, W * .35);
+    c.fillStyle = 'rgba(0,0,0,.6)';
+    c.fillRect(12, H - 46, bw + 8, 34);
+    c.fillStyle = my.hp > my.mh / 2 ? '#00d67a' : my.hp > my.mh / 4 ? '#ffd23f' : '#f43f5e';
+    c.fillRect(16, H - 42, bw * my.hp / my.mh, 26);
+    c.fillStyle = '#fff';
+    c.textAlign = 'left';
+    c.font = 'bold 14px system-ui';
+    c.fillText(`❤️ ${my.hp} / ${my.mh}${my.burn ? ' 🔥' : ''}${my.heal ? ' 💉' : ''}${my.spd < .8 ? ' ❄️' : ''}`, 22, H - 29);
+    let x0 = bw + 32;
+    for (const [k, key] of [['primary', '1'], ['secondary', '2']]) {
+        const it = my.gear[k];
+        if (!it) continue;
+        const on = my.slot === k;
+        const label = `${key} ${itemIcon(it)} ${it.n}`;
+        c.font = `bold ${on ? 14 : 12}px system-ui`;
+        const w = c.measureText(label).width + 16;
+        c.fillStyle = on ? 'rgba(255,255,255,.18)' : 'rgba(0,0,0,.55)';
+        c.fillRect(x0, H - 46, w, 34);
+        c.fillStyle = TIER_COLOR[it.t] || '#fff';
+        c.fillText(label, x0 + 8, H - 29);
+        x0 += w + 6;
+    }
+    c.fillStyle = '#fff';
+    c.font = 'bold 13px system-ui';
+    c.fillText(`Q 💉 ${my.meds}   🎒 ${my.pack}/${sh.packMax}`, x0 + 6, H - 29);
+
+    // Hinweise: Loot in Reichweite, Extraction
+    c.textAlign = 'center';
+    const loot = shNearLoot(latest);
+    if (loot) {
+        c.font = 'bold 18px system-ui';
+        const t = loot.kind === 'crate' ? 'F · open crate' : `F · take bag (${loot.n} items)`;
+        const w = c.measureText(t).width + 24;
+        c.fillStyle = 'rgba(0,0,0,.65)';
+        c.fillRect(W / 2 - w / 2, H - 100, w, 32);
+        c.fillStyle = '#ffd23f';
+        c.fillText(t, W / 2, H - 83);
+    }
+    if (my.ex !== null && my.ex !== undefined) {
+        const k = 1 - my.ex / 6000;
         c.fillStyle = 'rgba(0,0,0,.6)';
-        c.fillRect(12, H - 46, bw + 8, 34);
-        c.fillStyle = meS.hp > meS.mh / 2 ? '#00d67a' : meS.hp > meS.mh / 4 ? '#ffd23f' : '#f43f5e';
-        c.fillRect(16, H - 42, bw * meS.hp / meS.mh, 26);
+        c.fillRect(W / 2 - 160, 60, 320, 30);
+        c.fillStyle = '#00ff88';
+        c.fillRect(W / 2 - 156, 64, 312 * Math.max(0, Math.min(1, k)), 22);
         c.fillStyle = '#fff';
-        c.textAlign = 'left';
         c.font = 'bold 15px system-ui';
-        c.fillText(`❤️ ${meS.hp}${meS.mh > 100 ? ' 🛡️' : ''}`, 22, H - 29);
-        c.fillText(`${SH_ITEM_ICON[meS.w] || '🔫'} ${SH_ITEM_NAME[meS.w] || meS.w}${meS.b ? `   🎯 bounty ${meS.b.toLocaleString('en-US')}` : ''}`, bw + 34, H - 29);
+        c.fillText(`🚁 Extracting… ${Math.ceil(my.ex / 1000)} s`, W / 2, 76);
     }
-    // Tot / kein Geld
-    if (meS && (meS.dead || meS.br)) {
-        c.fillStyle = 'rgba(0,0,0,.5)';
-        c.fillRect(0, 0, W, H);
-        c.fillStyle = '#fff';
-        c.textAlign = 'center';
-        c.font = `bold ${Math.round(Math.min(40, W / 16))}px system-ui`;
-        c.fillText(meS.br ? `💸 Not enough coins for a life (${sh.fee})` : `💀 Respawn in ${Math.ceil(meS.rs / 1000)}${sh.fee ? ` · costs ${sh.fee}` : ''}`, W / 2, H / 2);
+    if (shToast && now - shToast.t < 3500) {
+        c.globalAlpha = Math.min(1, (3500 - (now - shToast.t)) / 500);
+        c.font = 'bold 16px system-ui';
+        const w = Math.min(W - 40, c.measureText(shToast.text).width + 24);
+        c.fillStyle = 'rgba(20,16,4,.85)';
+        c.fillRect(W / 2 - w / 2, 108, w, 30);
+        c.fillStyle = '#ffd23f';
+        c.fillText(shToast.text, W / 2, 124, W - 60);
+        c.globalAlpha = 1;
     }
-    $('sh-retry').hidden = !(meS && meS.br);
+    if (my.pr) {
+        c.fillStyle = '#8fe9ff';
+        c.font = 'bold 15px system-ui';
+        c.fillText('🛡️ spawn protection', W / 2, 40);
+    }
 
     // Touch-Sticks
     for (const st of [shTouch.move, shTouch.aim]) {
         if (!st) continue;
-        const rr = cv.getBoundingClientRect();
-        const bx = st.x0 - rr.left, by = st.y0 - rr.top;
+        const bx = st.x0 - r.left, by = st.y0 - r.top;
         c.strokeStyle = 'rgba(255,255,255,.35)';
         c.lineWidth = 3;
         c.beginPath();
@@ -7758,15 +8247,16 @@ function shFrame() {
         c.arc(bx + Math.cos(ang) * len, by + Math.sin(ang) * len, 22, 0, Math.PI * 2);
         c.fill();
     }
-
-    if (meS) $('sh-stats').textContent = `${meS.k} kills · ${meS.d} deaths`;
-    $('sh-board').innerHTML = [...latest.players].sort((x, y) => y.k - x.k || x.d - y.d).map(p =>
-        `<tr class="${p.id === sh.id ? 'me' : ''}"><td><span class="dot" style="background:${esc(p.c)}"></span>${esc(p.n)}</td><td style="text-align:right">${p.k}</td><td style="text-align:right;opacity:.7">${p.d}</td>${sh.fee ? `<td style="text-align:right;color:#ffd23f">${p.b ? p.b.toLocaleString('en-US') : ''}</td>` : ''}</tr>`).join('');
+    $('sh-stats').textContent = `🎒 ${my.pack}/${sh.packMax}`;
 }
 
-function shDrawPlayer(c, p, x, y, a, mine, now) {
+// Emoji auf einem beliebigen Canvas (Sprite-Cache aus dem Snake-Teil)
+function drawEmojiC(c, ch, x, y, size) {
+    c.drawImage(emojiSprite(ch), x - size / 2, y - size / 2, size, size);
+}
+
+function shDrawPlayer(c, p, x, y, a, mine, now, my) {
     const m = sh.map;
-    const w = sh.weapons[p.w] || sh.weapons.pistol;
     c.save();
     c.translate(x, y);
     c.globalAlpha = p.pr ? .5 + .3 * Math.sin(now / 80) : 1;
@@ -7774,12 +8264,10 @@ function shDrawPlayer(c, p, x, y, a, mine, now) {
     c.beginPath();
     c.arc(4, 5, m.r, 0, Math.PI * 2);
     c.fill();
-    // Lauf, Laenge je Waffe
     c.rotate(a);
-    const len = { sniper: 38, rifle: 32, shotgun: 28, smg: 24, deagle: 26 }[p.w] || 24;
-    c.fillStyle = p.w === 'deagle' ? '#ffd23f' : '#ccd3e0';
-    c.fillRect(8, -5, len, 10);
-    // Muendungsfeuer bei eigenen Schuessen
+    const len = { sniper: 38, rifle: 32, shotgun: 28, smg: 24, deagle: 26, minigun: 34, launcher: 36 }[p.w] || 24;
+    c.fillStyle = TIER_COLOR[p.wt] && p.wt !== 'common' ? TIER_COLOR[p.wt] : '#ccd3e0';
+    c.fillRect(8, -5, len, p.w === 'launcher' || p.w === 'minigun' ? 12 : 10);
     if (mine && now - shFlashAt < 60) {
         c.fillStyle = '#fff3b0';
         c.beginPath();
@@ -7794,15 +8282,16 @@ function shDrawPlayer(c, p, x, y, a, mine, now) {
     c.lineWidth = mine ? 4 : 2;
     c.strokeStyle = mine ? '#fff' : 'rgba(0,0,0,.6)';
     c.stroke();
-    if (p.mh > 100) {
-        c.strokeStyle = '#3da5ff';
+    if (p.ar) {
+        c.strokeStyle = { light: '#9aa5b1', medium: '#3da5ff', heavy: '#ffd23f' }[p.ar];
         c.lineWidth = 3;
         c.beginPath();
         c.arc(0, 0, m.r + 5, 0, Math.PI * 2);
         c.stroke();
     }
+    if (p.burn) drawEmojiC(c, '🔥', 12, -12, 18);
+    if (p.slow) drawEmojiC(c, '❄️', -12, -12, 16);
     c.globalAlpha = 1;
-    // HP-Balken und Name (eigener Balken steht unten im HUD)
     if (!mine) {
         c.fillStyle = 'rgba(0,0,0,.6)';
         c.fillRect(-24, -m.r - 14, 48, 6);
@@ -7812,37 +8301,44 @@ function shDrawPlayer(c, p, x, y, a, mine, now) {
     c.fillStyle = '#fff';
     c.font = 'bold 14px system-ui';
     c.textAlign = 'center';
-    c.fillText(p.n + (p.b && !mine ? ` 🎯${p.b >= 1000 ? (p.b / 1000) + 'k' : p.b}` : ''), 0, -m.r - 24);
+    c.fillText(p.n, 0, -m.r - 24);
+    if (!mine && p.wt && p.wt !== 'common') {
+        c.fillStyle = TIER_COLOR[p.wt];
+        c.font = 'bold 11px system-ui';
+        c.fillText(p.wn, 0, m.r + 16);
+    }
     c.restore();
 }
 
 function shMinimap(c, latest, W, H) {
     const m = sh.map;
-    const mw = Math.min(180, W * .28), mh = mw * m.h / m.w;
+    const mw = Math.min(200, W * .3), mh = mw * m.h / m.w;
     const x0 = 10, y0 = 10, k = mw / m.w;
-    c.fillStyle = 'rgba(0,0,0,.55)';
+    c.fillStyle = 'rgba(0,0,0,.6)';
     c.fillRect(x0, y0, mw, mh);
-    c.fillStyle = 'rgba(120,140,170,.7)';
+    c.fillStyle = 'rgba(120,140,170,.6)';
     for (const [x, y, w, h] of m.walls) c.fillRect(x0 + x * k, y0 + y * k, Math.max(1, w * k), Math.max(1, h * k));
+    for (const e of m.extracts) {
+        c.fillStyle = '#00ff88';
+        c.beginPath();
+        c.arc(x0 + e.x * k, y0 + e.y * k, 4, 0, Math.PI * 2);
+        c.fill();
+    }
     for (const p of latest.players) {
-        if (p.dead || p.br) continue;
         const mine = p.id === sh.id;
         const px = mine && shPred ? shPred.x : p.x, py = mine && shPred ? shPred.y : p.y;
-        c.fillStyle = mine ? '#fff' : p.c;
+        c.fillStyle = mine ? '#fff' : '#ff4d4d';
         c.beginPath();
         c.arc(x0 + px * k, y0 + py * k, mine ? 3.5 : 2.5, 0, Math.PI * 2);
         c.fill();
     }
-    // Sichtfenster
     c.strokeStyle = 'rgba(255,255,255,.5)';
     c.lineWidth = 1;
-    const vw = (c.canvas.width / shCam.s), vh = (c.canvas.height / shCam.s);
-    c.strokeRect(x0 + shCam.x * k, y0 + shCam.y * k, vw * k, vh * k);
+    c.strokeRect(x0 + shCam.x * k, y0 + shCam.y * k, (c.canvas.width / shCam.s) * k, (c.canvas.height / shCam.s) * k);
 }
 
 // ---------- Eingaben ----------
 
-// Zielwinkel von der (vorausberechneten) eigenen Position zur Maus
 function shAim() {
     if (shTouch.aim || !shMouse || !shPred) return;
     const cv = $('sh-canvas');
@@ -7851,15 +8347,14 @@ function shAim() {
     shIn.a = Math.atan2(wy - shPred.y, wx - shPred.x);
 }
 
-// Eigene Schuesse sofort fuehlen: Muendungsfeuer und Ton im Waffentakt
 function shLocalFire(now) {
-    const me = shMeServer();
-    if (!shIn.f || !me || me.dead || me.br) return;
-    const w = sh.weapons[me.w] || sh.weapons.pistol;
-    if (now - shLastLocalShot < w.ms) return;
+    const s = shSnaps[shSnaps.length - 1];
+    if (!shIn.f || !s) return;
+    if (now - shLastLocalShot < s.me.ms) return;
     shLastLocalShot = now;
     shFlashAt = now;
-    sNoise({ dur: .06, vol: me.w === 'sniper' ? .22 : .12, type: 'highpass', f: me.w === 'shotgun' ? 800 : 2000, rev: .05, a: .001 });
+    const b = (s.me.gear[s.me.slot] || s.me.gear.primary || {}).b;
+    sNoise({ dur: .06, vol: b === 'sniper' || b === 'launcher' ? .22 : .1, type: 'highpass', f: b === 'shotgun' ? 800 : 2000, rev: .05, a: .001 });
 }
 
 function shSendInput() {
@@ -7879,7 +8374,6 @@ function shSendInput() {
     shIn.my = Math.round(my * 100) / 100;
     const key = `${shIn.mx},${shIn.my},${shIn.a.toFixed(2)},${shIn.f}`;
     const now = performance.now();
-    // Bewegung und Feuer sofort, reines Zielen hoechstens 30/s, sonst alle 250 ms
     const moveKey = `${shIn.mx},${shIn.my},${shIn.f}`;
     const urgent = moveKey !== shSent.split('|')[0];
     if ((key !== shSent.split('|')[1] && (urgent || now - shLastSend > 33)) || now - shLastSend > 250) {
@@ -7900,7 +8394,11 @@ document.addEventListener('keydown', e => {
         e.preventDefault();
         shIn.f = true;
     }
-    if (k === 'e' && sh.fee && !e.repeat) wsSend({ type: 'shCase' });
+    if (e.repeat) return;
+    if (k === '1') wsSend({ type: 'shSlot', slot: 'primary' });
+    if (k === '2') wsSend({ type: 'shSlot', slot: 'secondary' });
+    if (k === 'q') wsSend({ type: 'shMed' });
+    if (k === 'f' || k === 'e') wsSend({ type: 'shInteract' });
 });
 document.addEventListener('keyup', e => {
     if (!sh) return;
@@ -7919,8 +8417,13 @@ shCanvas.addEventListener('mouseleave', () => { shMouse = null; });
 shCanvas.addEventListener('mousedown', e => { if (sh) { shMousePos(e); shAim(); shIn.f = true; e.preventDefault(); } });
 document.addEventListener('mouseup', () => { if (sh) shIn.f = false; });
 shCanvas.addEventListener('contextmenu', e => { if (sh) e.preventDefault(); });
+shCanvas.addEventListener('wheel', e => {
+    if (!sh) return;
+    e.preventDefault();
+    const s = shSnaps[shSnaps.length - 1];
+    if (s) wsSend({ type: 'shSlot', slot: s.me.slot === 'primary' ? 'secondary' : 'primary' });
+}, { passive: false });
 
-// Touch: zwei Sticks. Links laufen, rechts zielen (Richtung vom Startpunkt) und feuern
 shCanvas.addEventListener('touchstart', e => {
     if (!sh) return;
     e.preventDefault();
@@ -7935,9 +8438,7 @@ shCanvas.addEventListener('touchmove', e => {
     if (!sh) return;
     e.preventDefault();
     for (const t of e.changedTouches) {
-        for (const st of [shTouch.move, shTouch.aim]) {
-            if (st && t.identifier === st.id) Object.assign(st, { x: t.clientX, y: t.clientY });
-        }
+        for (const st of [shTouch.move, shTouch.aim]) if (st && t.identifier === st.id) Object.assign(st, { x: t.clientX, y: t.clientY });
         const a = shTouch.aim;
         if (a && t.identifier === a.id) {
             const dx = a.x - a.x0, dy = a.y - a.y0;
@@ -7960,10 +8461,17 @@ const shTouchEnd = e => {
 shCanvas.addEventListener('touchend', shTouchEnd);
 shCanvas.addEventListener('touchcancel', shTouchEnd);
 
-document.querySelectorAll('[data-shroom]').forEach(b => b.onclick = () => shJoin(b.dataset.shroom));
-$('sh-leave').onclick = () => wsSend({ type: 'shLeave' });
-$('sh-case').onclick = () => wsSend({ type: 'shCase' });
-$('sh-retry').onclick = () => wsSend({ type: 'shRetry' });
+$('sh-open').onclick = () => hubOpen();
+$('hub-back').onclick = () => { if (!hubCaseBusy) showScreen('menu'); };
+$('sh-leave').onclick = () => {
+    if (confirm('Leave the raid? You lose everything you carry – like dying.')) wsSend({ type: 'shLeave' });
+};
+$('sh-med').onclick = () => wsSend({ type: 'shMed' });
+$('sh-use').onclick = () => wsSend({ type: 'shInteract' });
+$('sh-swap').onclick = () => {
+    const s = shSnaps[shSnaps.length - 1];
+    if (s) wsSend({ type: 'shSlot', slot: s.me.slot === 'primary' ? 'secondary' : 'primary' });
+};
 
 // ---------- Shop (#9): Kosmetik ----------
 // Katalog kommt mit `welcome` (shop.cats, shop.items). Gekauftes und
@@ -8303,6 +8811,7 @@ function buildCasino(d) {
     casinoInfo = { wheel: d.wheel, cross: d.cross, plinko: d.plinko };
     if (d.shop) initShop(d.shop);
     if (d.achievements) achCatalog = d.achievements;
+    if (d.arenaItems) arenaCat = d.arenaItems;
     onLobby(d.lobby || lobbyNow);
     drawDailyWheel(0);
     crBuildDiffs();

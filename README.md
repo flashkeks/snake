@@ -8,7 +8,7 @@
 - **🎰 Gamba (Casino):** Daily Wheel, Slots, Budget Starlight, Crossy Road, Plinko
   und dauerhafte Tische fuer Blackjack, Roulette und Poker (Spieler gegen
   Spieler), an denen man sieht, wer gerade mitspielt.
-- **🔫 Arena:** Top-down-Shooter, jeder gegen jeden (seit 23.09.2026).
+- **🔫 Arena:** Extraction-Shooter mit Loadout, Cases, Waffen mit Effekten, Salvage und Extraction-Zonen (seit 23.09.2026).
 
 Konten, Coins und Bestenliste gelten fuer beides. Ein Node-Prozess
 (`server.js`, nur `ws` als Abhaengigkeit) liefert die Seite aus und spricht
@@ -28,7 +28,8 @@ Live: **`snake.flashkeks.com`** auf `edge` (Netcup).
 | `events.js` | Events im Snake (Flag Quiz, Trivia, Where is it?, Guess the number und die Map-Events): Ablauf, Punkte, Belohnung |
 | `achievements.js` | Achievements (#3): Katalog, Pruefungen, Titel |
 | `shop.js` | Shop (#9): Katalog, was andere von einem sehen |
-| `shooter.js` | Arena (#7, #12): drei Arenen, Bewegung, Kugeln, Treffer, Waffen, Pickups, Kopfgeld-Escrow, Cases, Anti-Farming |
+| `shooter.js` | Arena: Hub (Shop, Cases, Salvage, Loadout) und Raid (Map, Kisten, Beutel, Extraction, Kampf mit Effekten) |
+| `arena-items.js` | Arena-Items: Waffen, Ruestungen, Mods, Erzeugung je Quelle, kalibrierte Seltenheit, Salvage-Wert |
 | `minigames.js` | Map-Events (#6): Labyrinth, Coin Rush, Last Snake Standing – Map-Bau, Schritte, Kollisionen, Punkte |
 | `tables.js` | Casino-Tische Blackjack (mit Sidebets) und Roulette: Runden, Einsaetze, Auszahlung; haengt auch Poker als dritten Tisch ein |
 | `poker.js` | Poker (Texas Hold'em No-Limit, Spieler gegen Spieler): Sitze, Blinds, Setzrunden, Side-Pots, Handbewertung, Showdown |
@@ -180,8 +181,8 @@ Beispiele: First blood, 100 Kills, 10er-Streak (`stats.bestStreak`), Score
 Tage am Stueck (`u.dailyStreak`, `stats.dailyBestStreak`), Starlight 1000×
 und Max Win (100.000×), Plinko ×1000, Crossy Hardcore bis zum Ziel
 (`stats.crossyHardcoreWins`), Poker-Pot 10k, 100 Blackjack-Haende, 1000
-Casino-Runden, 1 Mio Coins, Arena-Kill/50 Kills/1000er-Kopfgeld
-(`stats.arenaBigBounty`), erstes Ticket (`stats.ticketsCreated`), Shop-Kauf,
+Casino-Runden, 1 Mio Coins, Arena-Kill/50 Kills, Extraction 1×/25×
+(`stats.arenaExtracts`), Legendary-/One-in-a-million-Item (`stats.bestOdds`), erstes Ticket (`stats.ticketsCreated`), Shop-Kauf,
 alle Skins.
 
 ### 🛒 Shop (Issue #9)
@@ -545,69 +546,103 @@ geht eine Zeile in den Feed, wie ueblich erst nach der Landung. Wer den
 Screen mitten im Fall verlaesst, bekommt die Anzeige sofort verbucht
 (gerechnet hat der Server ohnehin schon).
 
-## 🔫 Arena (Shooter, Issues #7 und #12)
+## 🔫 Arena: Extraction-Raids (seit 23.09.2026)
 
-Hauptmenue → Bereich „Arena“, drei Arenen zur Wahl (Konto oder Gastname;
-Einsatz-Arenen nur mit Konto). Top-down, jeder gegen jeden, bis 16 Spieler
-je Arena, Vollbild. Wer in einer Arena ist, ist nicht auf dem Snake-Feld und
-an keinem Tisch (und umgekehrt).
+Ersetzt die drei Arenen (Free / 100 / 1k je Leben, Kopfgeld-Escrow) von
+#7/#12. Idee von Max: Loadout bauen, rein in eine grosse Map, Beute machen,
+an einem Extraction-Punkt raus – wie Arc Raiders. **Nur mit Konto.**
 
-| Arena | Einsatz | Kill bringt |
+Hauptmenue → Bereich „Arena“ → **Enter the arena** oeffnet den Hub mit vier
+Tabs:
+
+| Tab | Inhalt |
+|---|---|
+| 🪂 Play | Loadout-Ueberblick, **Deploy**, Ergebnis des letzten Raids |
+| 🎒 Equipment | Lager (max. 60), Filter, Detailansicht mit Werten und Effekten, Ausruesten, Salvage einzeln oder „alle Commons“ |
+| 🎁 Cases | Standard (1000 Coins), Elite (10.000 Coins), Scrap-Case (60 Scrap); CS-Band mit 34 Feldern, Treffer auf Feld 29 |
+| 🛒 Shop | Grundwaffen und Ruestungen ohne Effekte, Medkits (Coins); Medkit und „Waffe mit Zufallseffekt“ fuer Scrap |
+
+### Items (`arena-items.js`)
+
+- **Waffen:** Pistol, SMG, Shotgun, Rifle, Sniper (Shop), dazu nur aus Cases
+  und Kisten Golden Deagle, Minigun, Launcher (explodiert immer).
+- **Ruestungen:** Light vest +25 HP, Plate carrier +50 HP (−5 % Tempo),
+  Juggernaut +100 HP (−13 % Tempo).
+- **Medkit:** heilt 50 HP ueber 2 s (Taste Q), hoechstens 3 im Raid.
+- **Effekte (Mods) mit Stufen**, jede Stufe exponentiell seltener (`decay`):
+  Waffen – Sharp, Rapid, Velocity, Critical, **Multishot I–IV**, Piercing,
+  Ricochet, Incendiary, Frost, Vampire, Explosive, Homing, Tesla,
+  Executioner; Ruestung – Plating, Swift, Regeneration, Thorns, Dodge. Die
+  Beschreibungen kommen mit dem Katalog in den Browser (`welcome.arenaItems`).
+- **Anzahl Effekte** haengt an der Quelle: Kiste im Raid < Scrap-Case <
+  Standard-Case < Elite-Case (Elite hat immer mindestens einen, bis zu sechs).
+- **„1 in X“ ist ehrlich kalibriert:** fuer jedes Item wird die
+  Wahrscheinlichkeit berechnet, aus einem Standard-Case etwas mindestens so
+  Seltenes zu ziehen (gleiche Mods auf mindestens dieser Stufe), und ueber eine
+  Monte-Carlo-Tabelle (`CALIBRATION`, 4 Mio Ziehungen,
+  `node arena-items.js calibrate`) in „nur jede X-te Ziehung ist so selten“
+  umgerechnet. Daraus die Stufe:
+
+| Stufe | ab 1 in | Anteil im Standard-Case |
 |---|---|---|
-| Free | nichts | 50 Coins, nur an anderen Konten von anderer IP, derselbe Gegner hoechstens 3× je 10 min (Anti-Farming, die Coins entstehen aus dem Nichts) |
-| 🪙 100/life | 100 je Leben | das ganze Kopfgeld des Opfers (100) |
-| 🪙 1k/life | 1000 je Leben | das ganze Kopfgeld des Opfers (1000) |
+| Common | – | ~59 % |
+| Uncommon | 3 | ~36 % |
+| Rare | 20 | ~4,6 % |
+| Epic | 200 | ~0,5 % |
+| Legendary | 5.000 | ~0,02 % |
+| Mythic | 100.000 | ~0,001 % |
+| ✦ One in a million | 1.000.000 | — |
 
-**Einsaetze (#12, seit 23.09.2026):** Beim Spawn zieht der Server den
-Einsatz vom Konto und haelt ihn als **Kopfgeld** (Escrow, `p.bounty`). Wer
-einen killt, bekommt dessen Kopfgeld komplett, kein Hausanteil – die
-Einsatz-Arenen sind also ein Nullsummenspiel zwischen den Spielern.
-- **Lebend gehen oder Verbindung weg:** Kopfgeld zurueck, das Leben gilt als
-  nicht verloren. Tot gehen: nichts zurueck (ist ja schon beim Killer).
-- **Kein Geld fuer das naechste Leben:** man bleibt drin, sieht zu, „Try
-  again“ versucht es erneut.
-- **Server-Neustart** (SIGTERM): `shooter.refundAll()` bucht alle offenen
-  Kopfgelder zurueck.
-- **Cases** (🎁 im Kopf oder Taste E, nur Einsatz-Arenen): Preis = 1/4 des
-  Einsatzes (25 bzw. 250), CS-artiges Band, Ergebnis gilt fuer dieses Leben
-  (tot gekauft: fuers naechste). Die Case-Preise sind die Coin-Senke.
+  Nachrechnen: `node arena-items.js 200000` (Verteilung je Quelle).
+- **Salvage** gibt Scrap nach Stufe und Basis (`salvageValue`); Scrap zahlt
+  den Scrap-Case und die Scrap-Angebote im Shop.
 
-| Case-Item | Chance | Wirkung |
-|---|---|---|
-| SMG | 28 % | 11 Schuss/s, 10 Schaden, streut |
-| Rifle | 24 % | ~7/s, 22 Schaden, schnell |
-| Armor | 18 % | +50 HP (150 max) |
-| Shotgun | 16 % | 6 Kugeln im Faecher je 15, kurze Reichweite |
-| Sniper | 10 % | 95 Schaden, 1,1 s Pause, sehr schnelle Kugel |
-| Golden Deagle | 4 % | 55 Schaden, ~2,6/s (geht in den Feed) |
+### Raid (`shooter.js`)
 
-Standard ist die Pistole (20 Schaden, ~4/s). Pickups auf der Map (alle
-6–12 s, hoechstens 4): 🩹 +50 HP, 🔫 SMG, 💥 Shotgun, 🛡️ Armor. Tod → 3 s,
-neu an freiem Platz, 2 s unverwundbar. Ausruestung ist mit dem Tod weg.
+- **Map** 4000 × 2800, fest aus Seed 1337: 16 Gebaeude mit Tueren, 90
+  Hindernisse (Kisten, Mauern), 44 Loot-Kisten, 4 Extraction-Zonen in den
+  Ecken. Beim Bau per Flood-Fill geprueft: alle Kisten und Zonen erreichbar.
+- **Rein:** Loadout-Items verlassen das Lager und sind im Raid. Ohne
+  Primaerwaffe gibt es die **Starter-Pistole** (gratis, geht nie verloren).
+  Spawn weit weg von Zonen und anderen Spielern, 3 s Schutz. Bis 24 Spieler.
+- **Kisten 📦** (Taste F): 1–3 Items aus der Quelle `crate`, danach 150 s zu.
+  Rucksack fasst 20.
+- **Tod:** Der Killer bekommt **alles** – Loadout und Rucksack –, soweit sein
+  Rucksack reicht; der Rest faellt als 💰-Beutel (5 min, Taste F). Ohne Killer
+  (Verlassen, Verbindung weg) faellt alles als Beutel.
+- **Verlassen oder Verbindung weg = Tod**, Beute bleibt liegen (Entscheidung
+  Max).
+- **Extraction:** 6 s in einer 🚁-Zone stehen (Fortschrittsbalken; raus aus
+  der Zone setzt zurueck). Danach landen Loadout und Rucksack im Lager; was
+  ueber 60 hinausgeht, wird automatisch zu Scrap.
+- **Server-Neustart** (SIGTERM): `shooter.refundAll()` extrahiert alle still,
+  niemand verliert etwas.
+- **Effekte im Kampf:** Crit, Vampir-Heilung, Brennen (Schaden je Sekunde),
+  Frost (verlangsamt), Tesla (Blitz auf 2 Gegner in der Naehe, `shZap`),
+  Explosion (Flaechenschaden, `shBoom`), Homing und Ricochet in der
+  Kugel-Schleife, Execute unter x % HP; Ruestung: Dodge, Thorns, Regeneration.
+- Der Server schickt je Spieler nur, was in Sichtweite ist (`VIEW` 1400):
+  Spieler, Kugeln, Kisten, Beutel.
 
-**Steuerung** (ueberarbeitet am 23.09.2026, „bissl arsch“ laut Max):
-- WASD/Pfeile laufen, Maus zielt (eigenes Fadenkreuz), Klick oder
-  Leertaste schiesst, E = Case. Touch: zwei Sticks, links laufen, rechts
-  zielen (Richtung vom Startpunkt) und feuern.
-- **Eigene Bewegung wird im Browser vorausberechnet** (gleiche Waende,
-  gleiches Tempo, `map.move`) und nur sanft an den Server angeglichen: der
-  Server-Stand wird mit der eigenen Position von vor einer Laufzeit
-  verglichen (`shPing`/`shPong` misst sie); beim Laufen gilt eine Totzone von
-  14 Einheiten, im Stand wird ganz angeglichen, ab 90 sofort. Getestet ueber
-  einen Proxy mit 80 ms RTT: keine Rueckspruenge, Endposition 1 Einheit
-  neben dem Server.
-- **Kamera** folgt der eigenen Figur (~1100 Einheiten breit, Handy 750),
-  Minimap oben links mit Sichtfenster.
-- Andere Spieler 50 ms verzoegert interpoliert; **Kugeln** kommen mit
-  Geschwindigkeit (`[id, x, y, vx, vy, owner]`) und werden weitergerechnet.
-- **Feedback:** Muendungsfeuer und Ton sofort beim eigenen Schuss,
-  Hitmarker und Schadenszahl (`shHit`), roter Rand und Wackler bei Treffern
-  (`shHurt`), Kopfgeld ueber den Gegnern.
-- Server: 33-ms-Takt, Zustand 30/s, Kugeln in Teilschritten gegen Tunneln.
+**Steuerung:** WASD/Pfeile laufen, Maus zielt, Klick/Leertaste schiesst,
+1/2 oder Mausrad wechselt die Waffe, Q Medkit, F (oder E) Kiste/Beutel.
+Touch: zwei Sticks wie bisher, dazu Knoepfe 🔄 💉 ✋ im Kopf. Minimap oben
+links mit Waenden, Zonen und Sichtfenster.
 
-Statistik: `stats.games.arena` je Leben in einer Einsatz-Arena (Einsatz,
-erbeutete Kopfgelder), zaehlt nicht zur Casino-Bilanz; `shooterKills`,
-`shooterDeaths`, `casesOpened`, `earned.shooter` (netto).
+Netzcode wie zuvor: eigene Bewegung wird vorausberechnet und mit Totzone
+(14 Einheiten) an den Server-Stand von vor einer Laufzeit angeglichen, andere
+50 ms verzoegert interpoliert, Kugeln mit Geschwindigkeit weitergerechnet.
+Kugelfarbe zeigt den Effekt, Waffen mit Stufe ab Uncommon sind in Stufenfarbe
+und tragen ihren Namen unter der Figur.
+
+**Speicher:** `u.arena = { inv: [...], loadout: { primary, secondary, armor,
+meds }, scrap }`. Statistik: `raids`, `arenaExtracts`, `shooterKills`,
+`shooterDeaths`, `casesOpened`, `bestOdds` (seltenstes je besessenes Item),
+`earned.shooter` (Coins fuer Cases und Shop, negativ). Die Bestenliste
+„Arena kills“ zaehlt weiter ueber `periods.arenaKills`.
+
+**Test-Hook** (nur `SNAKE_TEST=1`): `shTp {x, y}` versetzt die eigene Figur
+und hebt den Spawnschutz auf.
 
 ## Mini-Events (Snake)
 
@@ -780,6 +815,7 @@ API (alles JSON): `GET /api/overview`, `GET /api/users`,
 
 Nur lokal, nie auf `edge` setzen:
 
+- `SNAKE_TEST=1` schaltet dazu `shTp {x, y}` frei (Raid-Figur versetzen).
 - `SNAKE_TEST=1` schaltet dazu `testGrow {n}` frei (eigene Schlange waechst um
   n, z. B. um Score > 5000 zu pruefen).
 - `SNAKE_TEST=1` schaltet die Nachrichten `testEvent {kind}` (startet sofort
@@ -806,13 +842,13 @@ Client → Server: `register`, `login`, `resume {token}`, `logout`,
 `tableAction` (`bet`/`clear` beim Roulette, `bet`/`pp`/`t3`/`clear`/`move`
 beim Blackjack, `sit {seat?}`/`stand`/`move` (`fold`, `check`,
 `call`, `raise {to}`, `allin`) beim Poker), `pokerCreate {buyIn, seats, name}`, `daily`, `dailyDone`, `crossStart {bet, diff}`, `crossStep`,
-`crossCash`, `plinko {bet, risk}`, `board {cat, game, period}`, `me`, `shJoin {name, room}`,
-`shInput {mx, my, a, f, s}`, `shCase`, `shRetry`, `shPing {t}`, `shLeave`, `shopBuy {id}`, `shopEquip {cat, id|null}`, `setTitle {id|null}`, `tickets`, `ticketNew {subject, text}`, `ticketReply {id, text}`,
+`crossCash`, `plinko {bet, risk}`, `board {cat, game, period}`, `me`, `shJoin`,
+`shInput {mx, my, a, f, s}`, `shSlot {slot}`, `shMed`, `shInteract`, `shPing {t}`, `shLeave`, `arHub`, `arBuy {id}`, `arCase {id}`, `arSalvage {uids}`, `arEquip {slot, uid|null, n}`, `shopBuy {id}`, `shopEquip {cat, id|null}`, `setTitle {id|null}`, `tickets`, `ticketNew {subject, text}`, `ticketReply {id, text}`,
 `ticketRead {id}`.
 
 Server → Client: `welcome`, `mg` (Schritt im Map-Event), `sh`, `shJoined`
 (mit Map und Waffen), `shLeft` (Bilanz, Rueckgabe), `shKill`, `shHit`, `shHurt`,
-`shCase`, `shPickup`, `shPong`, `shRooms`, `shError`, `shopOk`, `shopError`, `deathfx`, `achievement`, `auth`, `authError`, `authExpired`, `account`,
+`shLoot`, `shBoom`, `shZap`, `shPong`, `shRooms`, `shError`, `arHub`, `arError`, `shopOk`, `shopError`, `deathfx`, `achievement`, `auth`, `authError`, `authExpired`, `account`,
 `joined`, `joinError`, `left`, `died` (`cause`, `by`, `byId`, `at`), `swapfx`, `cashedout`, `cashoutCancel`, `state`
 (alle 60 ms, mit `arena` und `paused`), `duel`, `gamble`, `box`, `jackpot`,
 `feed` (mit `who` und `big` fuer den Sound), `chat`, `chatlog`, `highscores`, `board`,

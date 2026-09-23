@@ -177,6 +177,15 @@ module.exports = function createAccounts(dataDir) {
         save,
         onUnlock: null,
         checkAch,
+        touch,
+
+        // Arena (Extraction): Lager, Loadout, Scrap je Konto
+        arena(key) {
+            const u = db.users[key];
+            if (!u) return null;
+            if (!u.arena) u.arena = { inv: [], loadout: { primary: null, secondary: null, armor: null, meds: 0 }, scrap: 0 };
+            return u.arena;
+        },
         titleOf: key => ach.titleOf(db.users[key]),
 
         // Titel anlegen (Achievement-Id mit Titel) oder ablegen (null)
