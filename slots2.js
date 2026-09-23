@@ -36,7 +36,7 @@ const SCATTER_PAYS = { 4: 3, 5: 5, 6: 100 };
 // Symbol-Gewichte je Modus (wie getrennte Walzensaetze): in beiden Modi viele
 // kleine Suessigkeiten, also oft kleine Tumble-Gewinne. Kugeln sind im
 // Basisspiel selten (~5 % der Spins zeigen eine), im Bonus kommen sie staendig.
-// Abgestimmt per Simulation (24.09.2026, je 1,6 Mio Basis-Spins und 100.000
+// Abgestimmt per Simulation (23.09.2026, je 1,6 Mio Basis-Spins und 100.000
 // gekaufte Boni): Basis ~65,8 % + Bonus ~33,7 % (jeder ~280. Spin, Ø ~95x)
 // = ~99,5 % Rueckzahlung. Der Scatter ist extrem empfindlich: 1,72 gibt
 // 99,2 %, 1,735 schon ~100,5 %. Unter ~1 Mio Spins schwankt die Quote um

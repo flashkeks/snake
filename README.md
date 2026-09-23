@@ -229,7 +229,7 @@ Princess / Gates of Olympus:
 
 Basisspiel und Freispiele haben **eigene Symbol-Gewichte** (wie getrennte
 Walzensaetze), beide mit vielen kleinen Suessigkeiten; Multis sind im
-Basisspiel selten, im Bonus staendig. Abgestimmt per Simulation (24.09.2026,
+Basisspiel selten, im Bonus staendig. Abgestimmt per Simulation (23.09.2026,
 je 1,6 Mio Basis-Spins und 100.000 gekaufte Boni): **~99,5 %** Rueckzahlung
 (Basis ~65,8 %, Freispiele ~33,7 %), Treffer bei ~47 % der Spins, Freispiele
 etwa jeder 280. Spin, gekaufter Bonus im Mittel ~95 × Einsatz (Kauf zahlt
