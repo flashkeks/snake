@@ -13,6 +13,8 @@ function validBet(n) {
     return Number.isInteger(n) && n >= 1 && n <= MAX_BET;
 }
 const createEvents = require('./events');
+const createTables = require('./tables');
+const casino = require('./casino');
 
 const PORT = Number(process.env.PORT) || 3000;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
@@ -36,7 +38,10 @@ const server = http.createServer((req, res) => {
         const types = {
             '.html': 'text/html; charset=utf-8',
             '.js': 'application/javascript',
-            '.css': 'text/css'
+            '.css': 'text/css',
+            '.png': 'image/png',
+            '.svg': 'image/svg+xml',
+            '.json': 'application/json'
         };
 
         res.writeHead(200, {
@@ -752,6 +757,8 @@ async function handle(c, data) {
 
         case 'logout':
             if (c.joined) return send(c, { type: 'authError', error: 'Leave the game first' });
+            if (c.cross) return send(c, { type: 'authError', error: 'Finish your Crossy Road run first' });
+            tables.leave(c);
             accounts.logout(data.token);
             c.account = null;
             send(c, { type: 'auth', token: null, user: null });
@@ -781,6 +788,7 @@ async function handle(c, data) {
 
         case 'join': {
             if (c.joined) return;
+            tables.leave(c);
             let name;
             if (c.account) {
                 const u = accounts.get(c.account);
@@ -877,8 +885,84 @@ async function handle(c, data) {
         case 'testEvent':
             if (process.env.SNAKE_TEST === '1' && !events.active()) {
                 startEvent(data.kind);
-                if (data.result !== undefined && events.active()) events._state().forceResult = data.result;
             }
+            return;
+
+        // --- Casino: Tische (Blackjack, Roulette) ---
+
+        case 'tableJoin':
+            if (c.joined) return send(c, { type: 'tableError', error: 'Leave the snake field first' });
+            tables.join(c, String(data.kind));
+            return;
+
+        case 'tableLeave':
+            tables.leave(c);
+            return;
+
+        case 'tableAction':
+            tables.handle(c, data);
+            return;
+
+        // Nur fuer lokale Tests (SNAKE_TEST=1): naechste Roulette-Zahl vorgeben
+        case 'testTable':
+            if (process.env.SNAKE_TEST === '1') tables._tables().roulette.forceResult = Number(data.result);
+            return;
+
+        // --- Casino: Daily Wheel ---
+
+        case 'daily': {
+            if (!c.account) return send(c, { type: 'dailyError', error: 'Accounts only' });
+            if (!accounts.claimDaily(c.account)) return send(c, { type: 'dailyError', error: 'Already spun today – come back tomorrow' });
+            const r = casino.spinWheel();
+            const u = accounts.get(c.account);
+            const balance = accounts.addCoins(c.account, r.value);
+            send(c, { type: 'daily', index: r.index, value: r.value, balance, user: accounts.publicUser(u) });
+            // Erst nach dem Dreh (~7 s) in Bestenliste und Feed
+            const line = r.value >= 10000 ? [`🎡 ${u.name} hit ${r.value} coins on the Daily Wheel!`, 'gold', c.id] : null;
+            hideWin(c.account, r.value, line, 12000);
+            return;
+        }
+
+        case 'dailyDone':
+            if (c.account) revealWin(c.account);
+            return;
+
+        // --- Casino: Crossy Road ---
+
+        case 'crossStart': {
+            if (!c.account) return send(c, { type: 'crossError', error: 'Accounts only' });
+            if (c.cross) return;
+            const bet = Number(data.bet);
+            const diff = String(data.diff);
+            if (!validBet(bet) || !casino.DIFFS[diff]) return send(c, { type: 'crossError', error: 'Invalid bet' });
+            const u = accounts.get(c.account);
+            if (!u || u.coins < bet) return send(c, { type: 'crossError', error: 'Not enough coins' });
+            const balance = accounts.addCoins(c.account, -bet);
+            c.cross = { bet, diff, step: 0, last: 0 };
+            accounts.stat(c.account, s => { s.spins++; });
+            send(c, { type: 'cross', state: 'run', step: 0, bet, diff, balance });
+            return;
+        }
+
+        case 'crossStep': {
+            const g = c.cross;
+            if (!g) return;
+            const now = Date.now();
+            if (now - g.last < 250) return;
+            g.last = now;
+            const d = casino.DIFFS[g.diff];
+            if (Math.random() < d.p) {
+                c.cross = null;
+                return send(c, { type: 'cross', state: 'dead', step: g.step + 1, bet: g.bet, diff: g.diff, balance: accounts.get(c.account).coins });
+            }
+            g.step++;
+            if (g.step >= d.lanes) return crossCash(c, true);
+            send(c, { type: 'cross', state: 'run', step: g.step, bet: g.bet, diff: g.diff, mult: casino.crossMult(g.diff, g.step) });
+            return;
+        }
+
+        case 'crossCash':
+            if (c.cross && c.cross.step > 0) crossCash(c, false);
             return;
 
         case 'eventAction':
@@ -985,7 +1069,10 @@ wss.on('connection', (ws, req) => {
         durations: DURATION,
         palette: PALETTE,
         slots: { symbols: slots.SYMBOLS, bets: slots.BETS, twoCherry: slots.TWO_CHERRY },
-        slots2: { pays: slots2.PAYS, scatterPays: slots2.SCATTER_PAYS, buyCost: slots2.BUY_COST, freeSpins: slots2.FREE_SPINS, retrigger: slots2.RETRIGGER, maxWin: slots2.MAX_WIN }
+        slots2: { pays: slots2.PAYS, scatterPays: slots2.SCATTER_PAYS, buyCost: slots2.BUY_COST, freeSpins: slots2.FREE_SPINS, retrigger: slots2.RETRIGGER, maxWin: slots2.MAX_WIN },
+        wheel: casino.WHEEL,
+        cross: casino.crossTable(),
+        lobby: tables.lobby()
     });
     send(c, { type: 'highscores', top: topNow() });
     send(c, { type: 'chatlog', list: chatLog });
@@ -1002,6 +1089,8 @@ wss.on('connection', (ws, req) => {
     });
 
     ws.on('close', () => {
+        tables.leave(c);
+        crossClose(c);
         if (c.account) revealWin(c.account);
         clients.delete(id);
         const p = players.get(id);
@@ -1161,6 +1250,39 @@ const events = createEvents({
 
 const OFFER_MS = 15000;
 
+// ---------- Casino ----------
+
+const tables = createTables({
+    accounts,
+    send,
+    feed,
+    onChange: () => broadcast({ type: 'lobby', lobby: tables.lobby() })
+});
+
+function crossCash(c, auto) {
+    const g = c.cross;
+    c.cross = null;
+    const mult = casino.crossMult(g.diff, g.step);
+    const win = Math.floor(g.bet * mult);
+    const balance = accounts.addCoins(c.account, win);
+    accounts.stat(c.account, s => { s.biggestWin = Math.max(s.biggestWin, win); });
+    send(c, { type: 'cross', state: 'cashed', auto, step: g.step, bet: g.bet, diff: g.diff, mult, win, balance });
+    if (mult >= 20 && win >= 1000) {
+        const u = accounts.get(c.account);
+        feed(`🐔 ${u.name} crossed ${g.step} lanes on ${casino.DIFFS[g.diff].label}: ${win} coins (${mult}x)`, 'gold', c.id);
+    }
+}
+
+// Verbindung weg mitten im Lauf: was schon geschafft ist, wird ausgezahlt,
+// ohne einen Schritt gibt es den Einsatz zurueck
+function crossClose(c) {
+    const g = c.cross;
+    if (!g) return;
+    if (g.step > 0) return crossCash(c, true);
+    c.cross = null;
+    accounts.addCoins(c.account, g.bet);
+}
+
 function endOffer(p, f) {
     if (p.frozen !== f) return;
     p.frozen = null;
@@ -1231,6 +1353,7 @@ function gameTick() {
     const now = Date.now();
 
     events.tick();
+    tables.tick();
 
     if (paused) {
         if (paused.resumeAt && now >= paused.resumeAt) unpause(now);

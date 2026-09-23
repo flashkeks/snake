@@ -1,35 +1,33 @@
-// Mini events: triggered by the big 3x3 event item. The whole game freezes,
-// everyone who was on the field plays one round, then the game continues.
+// Mini-Events: ausgeloest von der grossen 3x3-Event-Kiste. Das ganze Spiel
+// friert ein, alle, die auf dem Feld waren, spielen ein Quiz, dann geht es weiter.
 //
-// Two kinds:
-//   gamble  - bet your own coins (Roulette, Blackjack). Accounts only.
-//   reward  - flat coins for playing well (Flag Quiz). Guests play too,
-//             they just get length instead of coins.
+// Vier Arten, alle "reward": Punkte fuer gutes Spiel, daraus Coins (Konten)
+// und Laenge (alle). Gluecksspiel gibt es hier nicht mehr – Blackjack und
+// Roulette sind seit 23.09.2026 Dauertische im Casino (tables.js).
 //
-// The server is the only source of truth: it deals, spins and pays out.
-// Every change is broadcast as one `event` message with the full public state.
+//   flags     Flagge sehen, Land waehlen (4 Antworten)
+//   trivia    Allgemeinwissen, 4 Antworten
+//   geo       "Where is ...?" – auf die Weltkarte klicken, Punkte nach Entfernung
+//   estimate  Zahl schaetzen (Hoehe, Laenge, Jahr ...), Punkte nach Abweichung
+//
+// Der Server ist die einzige Wahrheit. Jede Aenderung geht als eine
+// `event`-Nachricht mit dem ganzen oeffentlichen Zustand an alle.
 
 const FLAGS = require('./flags');
-
-// Vorschlaege fuer die Chips; gesetzt werden darf jeder ganze Betrag ab 1
-const BETS = [10, 25, 50, 100, 250, 500, 1000];
-const MAX_BET = 1000000;
-const validBet = n => Number.isInteger(n) && n >= 1 && n <= MAX_BET;
+const TRIVIA = require('./trivia');
+const PLACES = require('./places');
+const ESTIMATES = require('./estimates');
 
 const KINDS = {
-    flags: { title: '🏳️ Flag Quiz', type: 'reward' },
-    roulette: { title: '🎡 Roulette', type: 'gamble' },
-    blackjack: { title: '🃏 Blackjack', type: 'gamble' }
+    flags: { title: '🏳️ Flag Quiz', rounds: 6, ask: 9000, reveal: 2500 },
+    trivia: { title: '🧠 Trivia', rounds: 6, ask: 12000, reveal: 3000 },
+    geo: { title: '🌍 Where is it?', rounds: 5, ask: 15000, reveal: 5000 },
+    estimate: { title: '📏 Guess the number', rounds: 5, ask: 15000, reveal: 5000 }
 };
-
-const RED = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
 
 // Zeitraffer nur fuer lokale Tests (SNAKE_EVENT_SPEED=10 macht alles zehnmal schneller)
 const SPEED = Number(process.env.SNAKE_EVENT_SPEED) || 1;
-
-const FLAG_ROUNDS = 6;
-const FLAG_MS = 9000;
-const REVEAL_MS = 2500;
+const MAX_PTS = 200;
 
 function shuffle(a) {
     for (let i = a.length - 1; i > 0; i--) {
@@ -39,65 +37,28 @@ function shuffle(a) {
     return a;
 }
 
-// ---------- Blackjack helpers ----------
-
-function newShoe() {
-    const suits = ['♠', '♥', '♦', '♣'];
-    const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-    const shoe = [];
-    for (let d = 0; d < 6; d++) for (const s of suits) for (const r of ranks) shoe.push(r + s);
-    return shuffle(shoe);
+// Grosskreis-Entfernung in km
+function distanceKm(a, b) {
+    const R = 6371;
+    const rad = x => x * Math.PI / 180;
+    const dLat = rad(b.lat - a.lat), dLon = rad(b.lon - a.lon);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
-function handValue(cards) {
-    let total = 0, aces = 0;
-    for (const c of cards) {
-        const r = c.slice(0, -1);
-        if (r === 'A') {
-            aces++;
-            total += 11;
-        } else if ('JQK'.includes(r) || r === '10') {
-            total += 10;
-        } else {
-            total += Number(r);
-        }
-    }
-    while (total > 21 && aces > 0) {
-        total -= 10;
-        aces--;
-    }
-    return { total, soft: aces > 0 };
+// 0 km = 200, 500 km ~ 143, 1500 km ~ 74, 3000 km ~ 27
+function geoPoints(km) {
+    return Math.round(MAX_PTS * Math.exp(-km / 1500));
 }
 
-function isBlackjack(cards) {
-    return cards.length === 2 && handValue(cards).total === 21;
+// Verhaeltnis: exakt = 200, Faktor 1,5 daneben ~ 126, Faktor 3 = 0.
+// Mit tol (Jahreszahlen): linear bis zur absoluten Toleranz.
+function estimatePoints(q, guess) {
+    if (q.tol) return Math.round(MAX_PTS * Math.max(0, 1 - Math.abs(guess - q.a) / q.tol));
+    if (guess <= 0) return 0;
+    const e = Math.abs(Math.log(guess / q.a));
+    return Math.round(MAX_PTS * Math.max(0, 1 - e / Math.log(3)));
 }
-
-// ---------- Roulette helpers ----------
-
-function rouletteColor(n) {
-    return n === 0 ? 'green' : RED.has(n) ? 'red' : 'black';
-}
-
-// Returns the payout multiplier (stake included) or 0
-function rouletteWin(bet, n) {
-    switch (bet.type) {
-        case 'red': return n !== 0 && RED.has(n) ? 2 : 0;
-        case 'black': return n !== 0 && !RED.has(n) ? 2 : 0;
-        case 'even': return n !== 0 && n % 2 === 0 ? 2 : 0;
-        case 'odd': return n % 2 === 1 ? 2 : 0;
-        case 'low': return n >= 1 && n <= 18 ? 2 : 0;
-        case 'high': return n >= 19 ? 2 : 0;
-        case 'number': return bet.n === n ? 36 : 0;
-        // Dutzend 1 = 1-12, 2 = 13-24, 3 = 25-36
-        case 'dozen': return n !== 0 && Math.ceil(n / 12) === bet.n ? 3 : 0;
-        // Spalte 1 = 1, 4, ... 34; Spalte 3 = 3, 6, ... 36 (die "2 to 1"-Felder am Board)
-        case 'column': return n !== 0 && ((n - 1) % 3) + 1 === bet.n ? 3 : 0;
-    }
-    return 0;
-}
-
-const ROULETTE_TYPES = new Set(['red', 'black', 'even', 'odd', 'low', 'high', 'number', 'dozen', 'column']);
 
 module.exports = function createEvents(h) {
     // h: { accounts, broadcast, feed, send, grow, onEnd }
@@ -106,6 +67,7 @@ module.exports = function createEvents(h) {
     function phase(name, ms) {
         ev.phase = name;
         ev.phaseEnds = ms ? Date.now() + ms / SPEED : null;
+        ev.phaseTotal = ms || null;
     }
 
     function participant(c) {
@@ -122,98 +84,147 @@ module.exports = function createEvents(h) {
 
     function push() {
         if (!ev) return;
-        const base = {
+        h.broadcast({
             type: 'event',
             kind: ev.kind,
             title: KINDS[ev.kind].title,
-            eventType: KINDS[ev.kind].type,
+            eventType: 'reward',
             phase: ev.phase,
             left: ev.phaseEnds ? Math.max(0, ev.phaseEnds - Date.now()) : null,
+            total: ev.phaseTotal,
             members: [...ev.members.keys()],
             board: board(),
-            bets: BETS,
-            podium: ev.phase === 'awards' ? ev.podium : null
-        };
-        h.broadcast({ ...base, data: publicData() });
+            podium: ev.phase === 'awards' ? ev.podium : null,
+            data: publicData()
+        });
     }
 
     function publicData() {
-        if (ev.kind === 'flags') {
-            const q = ev.q;
-            return {
-                round: ev.round,
-                total: FLAG_ROUNDS,
-                flag: q ? q.code : null,
-                options: q ? q.options : [],
-                answered: q ? [...q.answers.keys()] : [],
-                correct: ev.phase === 'reveal' || ev.phase === 'results' ? (q ? q.correct : null) : null,
-                right: ev.phase === 'reveal' && q ? [...q.answers].filter(([, a]) => a.choice === q.correct).map(([id]) => id) : [],
-                rewards: ev.rewards || null
-            };
+        const q = ev.q;
+        const reveal = ev.phase === 'reveal';
+        const out = {
+            round: ev.round,
+            total: KINDS[ev.kind].rounds,
+            answered: q ? [...q.answers.keys()] : [],
+            rewards: ev.rewards || null
+        };
+        if (!q) return out;
+        if (ev.kind === 'flags' || ev.kind === 'trivia') {
+            Object.assign(out, {
+                flag: q.flag || null,
+                question: q.text || null,
+                options: q.options,
+                correct: reveal ? q.correct : null,
+                right: reveal ? [...q.answers].filter(([, a]) => a.choice === q.correct).map(([id]) => id) : []
+            });
         }
-        if (ev.kind === 'roulette') {
-            return {
-                bets: ev.bets,
-                result: ev.phase === 'spinning' || ev.phase === 'results' ? ev.result : null,
-                color: ev.result === null ? null : rouletteColor(ev.result)
-            };
+        if (ev.kind === 'geo') {
+            Object.assign(out, {
+                place: q.place.name,
+                hint: q.place.hint,
+                target: reveal ? { lat: q.place.lat, lon: q.place.lon } : null,
+                guesses: reveal ? guessList(q, a => ({ lat: a.lat, lon: a.lon, km: Math.round(a.km) })) : []
+            });
         }
-        if (ev.kind === 'blackjack') {
-            const hands = {};
-            for (const [id, seat] of ev.hands) hands[id] = seat;
-            return {
-                hands,
-                dealer: ev.dealer.hidden
-                    ? { cards: [ev.dealer.cards[0], '??'], total: null }
-                    : { cards: ev.dealer.cards, total: ev.dealer.cards.length ? handValue(ev.dealer.cards).total : null }
-            };
+        if (ev.kind === 'estimate') {
+            Object.assign(out, {
+                question: q.item.q,
+                unit: q.item.unit,
+                answer: reveal ? q.item.a : null,
+                guesses: reveal ? guessList(q, a => ({ value: a.value, closest: !!a.closest })) : []
+            });
         }
-        return {};
+        return out;
     }
 
-    // ---------- Start / End ----------
+    function guessList(q, fields) {
+        return [...q.answers].map(([id, a]) => {
+            const m = ev.members.get(id);
+            return { id, name: m.name, color: m.color, pts: a.pts, ...fields(a) };
+        }).sort((x, y) => y.pts - x.pts);
+    }
+
+    // ---------- Start / Ende ----------
 
     function start(players, forced) {
         if (ev || !players.length) return false;
-        const kind = KINDS[forced] ? forced : ['flags', 'roulette', 'blackjack'][Math.floor(Math.random() * 3)];
+        const kind = KINDS[forced] ? forced : shuffle(Object.keys(KINDS))[0];
         ev = {
             kind,
             members: new Map(players.map(p => [p.id, { id: p.id, name: p.name, color: p.color, guest: !p.account, account: p.account, player: p }])),
             score: new Map(),
-            started: Date.now()
+            started: Date.now(),
+            round: 0,
+            q: null,
+            pool: shuffle([...{ flags: FLAGS, trivia: TRIVIA, geo: PLACES, estimate: ESTIMATES }[kind]])
         };
-
-        if (kind === 'flags') {
-            ev.round = 0;
-            ev.pool = shuffle([...FLAGS]);
-            ev.q = null;
-        }
-        if (kind === 'roulette') {
-            ev.bets = [];
-            ev.result = null;
-        }
-        if (kind === 'blackjack') {
-            ev.shoe = newShoe();
-            ev.hands = new Map();
-            ev.dealer = { cards: [], hidden: true };
-        }
-
         phase('intro', 4000);
         h.feed(`🎪 EVENT: ${KINDS[kind].title}!`, 'gold', null, true);
         push();
         return true;
     }
 
-    // Gewinne je Mitglied: Coins (bei Roulette/Blackjack der Reingewinn) und Laenge.
-    // Daraus werden Podium und das Double-or-Nothing-Angebot.
-    function awards() {
-        if (!ev.rewards) {
-            ev.rewards = {};
-            for (const m of ev.members.values()) {
-                const net = ev.score.get(m.id) || 0;
-                ev.rewards[m.id] = { coins: m.account ? Math.max(0, net) : 0, length: 0 };
+    function nextQuestion() {
+        ev.round++;
+        const k = ev.kind;
+        const item = ev.pool.pop();
+        const q = { answers: new Map(), asked: Date.now() };
+        if (k === 'flags') {
+            const wrong = shuffle(FLAGS.filter(f => f.code !== item.code)).slice(0, 3);
+            const options = shuffle([item, ...wrong]);
+            q.flag = item.code;
+            q.options = options.map(o => o.name);
+            q.correct = options.indexOf(item);
+        } else if (k === 'trivia') {
+            q.text = item.q;
+            q.options = shuffle([item.a, ...item.w]);
+            q.correct = q.options.indexOf(item.a);
+        } else if (k === 'geo') {
+            q.place = item;
+        } else {
+            q.item = item;
+        }
+        ev.q = q;
+        phase('question', KINDS[k].ask);
+    }
+
+    function reveal() {
+        const q = ev.q;
+        // Schaetzen: wer am naechsten dran ist, bekommt 50 extra
+        if (ev.kind === 'estimate' && q.answers.size) {
+            const best = Math.min(...[...q.answers.values()].map(a => Math.abs(a.value - q.item.a)));
+            for (const [id, a] of q.answers) {
+                if (Math.abs(a.value - q.item.a) === best && a.pts > 0) {
+                    a.pts += 50;
+                    a.closest = true;
+                    ev.score.set(id, (ev.score.get(id) || 0) + 50);
+                }
             }
         }
+        phase('reveal', KINDS[ev.kind].reveal);
+    }
+
+    // Coins fuer Konten, Laenge fuer alle. Der Beste bekommt 50 extra.
+    function results() {
+        const rows = board();
+        ev.rewards = {};
+        rows.forEach((r, i) => {
+            const m = ev.members.get(r.id);
+            let coins = Math.floor(r.value / 10) + (i === 0 && r.value > 0 ? 50 : 0);
+            const length = Math.floor(r.value / 40);
+            if (m.account && coins > 0) h.accounts.addCoins(m.account, coins);
+            else coins = 0;
+            if (length > 0) h.grow(m.player, length);
+            ev.rewards[r.id] = { coins, length };
+            if (m.account) h.send(m.player, { type: 'account', user: h.accounts.publicUser(h.accounts.get(m.account)) });
+        });
+        if (rows[0] && rows[0].value > 0) h.feed(`${KINDS[ev.kind].title}: ${rows[0].name} wins with ${rows[0].value} points`, 'good');
+        ev.q = null;
+        phase('results', 8000);
+    }
+
+    // Podium der Top 3; daraus kommt danach Double or Nothing (server.js)
+    function awards() {
         ev.podium = board().slice(0, 3).map(r => ({ ...r, ...(ev.rewards[r.id] || { coins: 0, length: 0 }) }));
         phase('awards', 5000);
     }
@@ -225,337 +236,63 @@ module.exports = function createEvents(h) {
         h.onEnd(done);
     }
 
-    // ---------- Flag Quiz ----------
-
-    function nextFlag() {
-        ev.round++;
-        const right = ev.pool.pop();
-        const wrong = shuffle(FLAGS.filter(f => f.code !== right.code)).slice(0, 3);
-        const options = shuffle([right, ...wrong]);
-        ev.q = {
-            code: right.code,
-            options: options.map(o => o.name),
-            correct: options.indexOf(right),
-            answers: new Map(),
-            asked: Date.now()
-        };
-        phase('question', FLAG_MS);
-    }
-
-    function flagsResults() {
-        const rows = board();
-        ev.rewards = {};
-        rows.forEach((r, i) => {
-            const m = ev.members.get(r.id);
-            // Coins for accounts, length for everyone. Winner gets a bonus.
-            let coins = Math.floor(r.value / 10) + (i === 0 && r.value > 0 ? 50 : 0);
-            const length = Math.floor(r.value / 40);
-            if (m.account && coins > 0) h.accounts.addCoins(m.account, coins);
-            else coins = 0;
-            if (length > 0) h.grow(m.player, length);
-            ev.rewards[r.id] = { coins, length };
-            if (m.account) h.send(m.player, { type: 'account', user: h.accounts.publicUser(h.accounts.get(m.account)) });
-        });
-        if (rows[0] && rows[0].value > 0) h.feed(`🏳️ ${rows[0].name} wins the Flag Quiz with ${rows[0].value} points`, 'good');
-        phase('results', 8000);
-    }
-
-    // ---------- Roulette ----------
-
-    function rouletteResults() {
-        const net = new Map();
-        for (const b of ev.bets) {
-            const m = ev.members.get(b.id);
-            const mult = rouletteWin(b, ev.result);
-            const win = b.amount * mult;
-            if (win > 0 && m && m.account) h.accounts.addCoins(m.account, win);
-            b.win = win;
-            net.set(b.id, (net.get(b.id) || 0) + win - b.amount);
-        }
-        for (const [id, v] of net) ev.score.set(id, v);
-        for (const m of ev.members.values()) {
-            if (m.account) h.send(m.player, { type: 'account', user: h.accounts.publicUser(h.accounts.get(m.account)) });
-        }
-        const best = [...net].sort((a, b) => b[1] - a[1])[0];
-        if (best && best[1] >= 500) h.feed(`🎡 ${ev.members.get(best[0]).name} wins ${best[1]} coins at Roulette`, 'gold');
-        phase('results', 8000);
-    }
-
-    // ---------- Blackjack ----------
-
-    function draw() {
-        if (!ev.shoe.length) ev.shoe = newShoe();
-        return ev.shoe.pop();
-    }
-
-    function cardValue(c) {
-        const r = c.slice(0, -1);
-        return r === 'A' ? 11 : 'JQK'.includes(r) || r === '10' ? 10 : Number(r);
-    }
-
-    function newHand(bet, cards, split) {
-        const hd = { bet, cards, split: !!split, doubled: false, done: false, result: null, net: 0, total: handValue(cards).total };
-        if (!split && isBlackjack(cards)) hd.done = true;
-        if (hd.total >= 21) hd.done = true;
-        return hd;
-    }
-
-    // Naechste offene Hand eines Spielers; fertig, wenn keine mehr offen ist
-    function bjAdvance(seat) {
-        while (seat.active < seat.hands.length && seat.hands[seat.active].done) seat.active++;
-        seat.done = seat.active >= seat.hands.length;
-    }
-
-    function bjDeal() {
-        if (!ev.hands.size) {
-            ev.score.clear();
-            phase('results', 5000);
-            return;
-        }
-        for (const seat of ev.hands.values()) {
-            seat.hands = [newHand(seat.bet, [draw(), draw()])];
-            seat.active = 0;
-            bjAdvance(seat);
-        }
-        ev.dealer.cards = [draw(), draw()];
-        ev.dealer.hidden = true;
-        phase('playing', 30000);
-        bjMaybeDealer();
-    }
-
-    function bjMaybeDealer() {
-        if ([...ev.hands.values()].every(seat => seat.done)) {
-            phase('dealer', null);
-            ev.dealer.hidden = false;
-            ev.nextStep = Date.now() + 1000 / SPEED;
-        }
-    }
-
-    function bjDealerStep() {
-        const v = handValue(ev.dealer.cards);
-        const anyAlive = [...ev.hands.values()].some(seat => seat.hands.some(hd => hd.total <= 21 && !(isBlackjack(hd.cards) && !hd.split)));
-        // Dealer zieht bis 17, bleibt bei Soft 17 stehen. Sind alle raus, zieht er nicht.
-        if (anyAlive && v.total < 17) {
-            ev.dealer.cards.push(draw());
-            ev.nextStep = Date.now() + 1000 / SPEED;
-            return;
-        }
-        bjResults();
-    }
-
-    function bjResults() {
-        const d = handValue(ev.dealer.cards).total;
-        const dealerBj = isBlackjack(ev.dealer.cards);
-        for (const [id, seat] of ev.hands) {
-            const m = ev.members.get(id);
-            let net = 0;
-            for (const hd of seat.hands) {
-                const p = hd.total;
-                const bj = isBlackjack(hd.cards) && !hd.split;
-                let pay = 0;
-                if (p > 21) hd.result = 'bust';
-                else if (bj && !dealerBj) { hd.result = 'blackjack'; pay = Math.floor(hd.bet * 2.5); }
-                else if (dealerBj && !bj) hd.result = 'lose';
-                else if (d > 21 || p > d) { hd.result = 'win'; pay = hd.bet * 2; }
-                else if (p === d) { hd.result = 'push'; pay = hd.bet; }
-                else hd.result = 'lose';
-                if (pay > 0 && m && m.account) h.accounts.addCoins(m.account, pay);
-                hd.net = pay - hd.bet;
-                net += hd.net;
-            }
-            seat.net = net;
-            ev.score.set(id, net);
-            if (m && m.account) h.send(m.player, { type: 'account', user: h.accounts.publicUser(h.accounts.get(m.account)) });
-        }
-        phase('results', 8000);
-    }
-
-    // ---------- Phase machine ----------
+    // ---------- Ablauf ----------
 
     function tick() {
-        if (!ev) return;
-        const now = Date.now();
-
-        if (ev.phase === 'dealer') {
-            if (now >= ev.nextStep) {
-                bjDealerStep();
-                push();
-            }
-            return;
-        }
-
-        if (!ev.phaseEnds || now < ev.phaseEnds) return;
-
-        if (ev.phase === 'results') {
-            awards();
-            return push();
-        }
+        if (!ev || !ev.phaseEnds || Date.now() < ev.phaseEnds) return;
         if (ev.phase === 'awards') return end();
-
-        if (ev.kind === 'flags') {
-            if (ev.phase === 'intro' || ev.phase === 'reveal') {
-                if (ev.round >= FLAG_ROUNDS) flagsResults();
-                else nextFlag();
-            } else if (ev.phase === 'question') {
-                phase('reveal', REVEAL_MS);
-            }
+        if (ev.phase === 'results') awards();
+        else if (ev.phase === 'question') reveal();
+        else if (ev.phase === 'intro' || ev.phase === 'reveal') {
+            if (ev.round >= KINDS[ev.kind].rounds) results();
+            else nextQuestion();
         }
-
-        if (ev.kind === 'roulette') {
-            if (ev.phase === 'intro') phase('betting', 20000);
-            else if (ev.phase === 'betting') {
-                // forceResult setzt nur der Test-Hook (SNAKE_TEST=1)
-                ev.result = ev.forceResult !== undefined ? ev.forceResult : Math.floor(Math.random() * 37);
-                phase('spinning', 6500);
-            } else if (ev.phase === 'spinning') rouletteResults();
-        }
-
-        if (ev.kind === 'blackjack') {
-            if (ev.phase === 'intro') phase('betting', 15000);
-            else if (ev.phase === 'betting') bjDeal();
-            else if (ev.phase === 'playing') {
-                // Time is up: everyone still playing stands
-                for (const seat of ev.hands.values()) {
-                    for (const hd of seat.hands) hd.done = true;
-                    bjAdvance(seat);
-                }
-                bjMaybeDealer();
-            }
-        }
-
         push();
     }
 
-    // ---------- Actions from players ----------
-
-    function refreshAccount(c) {
-        h.send(c, { type: 'account', user: h.accounts.publicUser(h.accounts.get(c.account)) });
-    }
+    // ---------- Antworten ----------
 
     function handle(c, data) {
         const m = participant(c);
         if (!m) return h.send(c, { type: 'eventError', error: 'You were not on the field when the event started' });
+        const q = ev.q;
+        if (ev.phase !== 'question' || !q || q.answers.has(c.id)) return;
+        const ms = Date.now() - q.asked;
+        const ask = KINDS[ev.kind].ask / SPEED;
+        let pts = 0;
 
-        if (ev.kind === 'flags') {
-            if (ev.phase !== 'question' || ev.q.answers.has(c.id)) return;
+        if (ev.kind === 'flags' || ev.kind === 'trivia') {
             const choice = Number(data.choice);
-            if (!(choice >= 0 && choice < 4)) return;
-            const ms = Date.now() - ev.q.asked;
-            ev.q.answers.set(c.id, { choice, ms });
-            if (choice === ev.q.correct) {
-                // Faster answers score more: 100 + up to 100 time bonus
-                const pts = 100 + Math.round(100 * Math.max(0, FLAG_MS / SPEED - ms) / (FLAG_MS / SPEED));
-                ev.score.set(c.id, (ev.score.get(c.id) || 0) + pts);
-            }
-            // Everybody answered: reveal right away
-            if (ev.q.answers.size >= ev.members.size) phase('reveal', REVEAL_MS);
-            return push();
+            if (!(Number.isInteger(choice) && choice >= 0 && choice < 4)) return;
+            // Schnellere Antworten bringen mehr: 100 + bis zu 100 Tempobonus
+            if (choice === q.correct) pts = 100 + Math.round(100 * Math.max(0, ask - ms) / ask);
+            q.answers.set(c.id, { choice, ms, pts });
+        } else if (ev.kind === 'geo') {
+            const lat = Number(data.lat), lon = Number(data.lon);
+            if (!(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)) return;
+            const km = distanceKm({ lat, lon }, q.place);
+            pts = geoPoints(km);
+            q.answers.set(c.id, { lat, lon, km, pts });
+        } else {
+            const value = Number(data.value);
+            if (!Number.isFinite(value) || value < 0 || value > 1e12) return;
+            pts = estimatePoints(q.item, value);
+            q.answers.set(c.id, { value, pts });
         }
+        if (pts) ev.score.set(c.id, (ev.score.get(c.id) || 0) + pts);
 
-        if (!c.account) return h.send(c, { type: 'eventError', error: 'Log in to bet coins' });
-        const u = h.accounts.get(c.account);
-        if (!u) return;
-
-        if (ev.kind === 'roulette') {
-            if (ev.phase !== 'betting') return;
-            if (data.clear) {
-                const mine = ev.bets.filter(b => b.id === c.id);
-                const refund = mine.reduce((s, b) => s + b.amount, 0);
-                if (refund) h.accounts.addCoins(c.account, refund);
-                ev.bets = ev.bets.filter(b => b.id !== c.id);
-                refreshAccount(c);
-                return push();
-            }
-            const bet = data.bet || {};
-            const amount = Number(bet.amount);
-            if (!ROULETTE_TYPES.has(bet.type) || !validBet(amount)) return;
-            const n = Number(bet.n);
-            if (bet.type === 'number' && !(Number.isInteger(n) && n >= 0 && n <= 36)) return;
-            if ((bet.type === 'dozen' || bet.type === 'column') && !(n >= 1 && n <= 3)) return;
-            if (ev.bets.filter(b => b.id === c.id).length >= 12) return h.send(c, { type: 'eventError', error: 'Max 12 bets' });
-            if (u.coins < amount) return h.send(c, { type: 'eventError', error: 'Not enough coins' });
-            h.accounts.addCoins(c.account, -amount);
-            ev.bets.push({ id: c.id, name: m.name, color: m.color, type: bet.type, n: ['number', 'dozen', 'column'].includes(bet.type) ? n : null, amount });
-            refreshAccount(c);
-            return push();
-        }
-
-        if (ev.kind === 'blackjack') {
-            if (ev.phase === 'betting') {
-                const amount = Number(data.bet);
-                const old = ev.hands.get(c.id);
-                if (data.clear) {
-                    if (old) h.accounts.addCoins(c.account, old.bet);
-                    ev.hands.delete(c.id);
-                    refreshAccount(c);
-                    return push();
-                }
-                if (!validBet(amount)) return;
-                if (u.coins + (old ? old.bet : 0) < amount) return h.send(c, { type: 'eventError', error: 'Not enough coins' });
-                if (old) h.accounts.addCoins(c.account, old.bet);
-                h.accounts.addCoins(c.account, -amount);
-                ev.hands.set(c.id, { bet: amount, hands: [], active: 0, done: false, net: 0 });
-                refreshAccount(c);
-                return push();
-            }
-            if (ev.phase === 'playing') {
-                const seat = ev.hands.get(c.id);
-                if (!seat || seat.done) return;
-                const hd = seat.hands[seat.active];
-                if (data.move === 'hit') {
-                    hd.cards.push(draw());
-                } else if (data.move === 'stand') {
-                    hd.done = true;
-                } else if (data.move === 'double') {
-                    if (hd.cards.length !== 2 || u.coins < hd.bet) return;
-                    h.accounts.addCoins(c.account, -hd.bet);
-                    hd.bet *= 2;
-                    hd.doubled = true;
-                    hd.cards.push(draw());
-                    hd.done = true;
-                } else if (data.move === 'split') {
-                    // Einmal teilen, zwei Karten gleichen Werts, gleicher Einsatz nochmal
-                    if (seat.hands.length !== 1 || hd.cards.length !== 2 || cardValue(hd.cards[0]) !== cardValue(hd.cards[1]) || u.coins < hd.bet) return;
-                    h.accounts.addCoins(c.account, -hd.bet);
-                    const aces = hd.cards[0].startsWith('A');
-                    const a = newHand(hd.bet, [hd.cards[0], draw()], true);
-                    const b = newHand(hd.bet, [hd.cards[1], draw()], true);
-                    // Geteilte Asse bekommen nur je eine Karte
-                    if (aces) a.done = b.done = true;
-                    seat.hands = [a, b];
-                    seat.active = 0;
-                } else return;
-                const cur = seat.hands[seat.active];
-                if (cur) {
-                    cur.total = handValue(cur.cards).total;
-                    if (cur.total >= 21) cur.done = true;
-                }
-                bjAdvance(seat);
-                refreshAccount(c);
-                bjMaybeDealer();
-                return push();
-            }
-        }
-    }
-
-    // A participant left the game: an open blackjack hand stands automatically
-    function leave(id) {
-        if (!ev) return;
-        const seat = ev.hands && ev.hands.get(id);
-        if (seat && ev.phase === 'playing') {
-            for (const hd of seat.hands) hd.done = true;
-            bjAdvance(seat);
-            bjMaybeDealer();
-        }
+        // Alle haben geantwortet: gleich aufloesen
+        if (q.answers.size >= ev.members.size) reveal();
+        push();
     }
 
     return {
         start,
         tick,
         handle,
-        leave,
+        leave() {},     // Quiz-Events brauchen beim Gehen nichts aufzuraeumen
         active: () => !!ev,
-        // Nur fuer Tests: interner Zustand (z. B. um einen Kartenstapel vorzugeben)
+        // Nur fuer Tests: interner Zustand
         _state: () => ev,
         push,
         isMember: id => !!(ev && ev.members.has(id))
@@ -563,5 +300,6 @@ module.exports = function createEvents(h) {
 };
 
 module.exports.KINDS = KINDS;
-module.exports.handValue = handValue;
-module.exports.rouletteWin = rouletteWin;
+module.exports.distanceKm = distanceKm;
+module.exports.geoPoints = geoPoints;
+module.exports.estimatePoints = estimatePoints;

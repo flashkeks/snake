@@ -7,6 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { berlinDay } = require('./casino');
 
 const START_COINS = 100;
 const SESSION_DAYS = 30;
@@ -82,7 +83,7 @@ module.exports = function createAccounts(dataDir) {
     }
 
     function publicUser(u) {
-        return { name: u.name, coins: u.coins, color: u.color || null, stats: u.stats };
+        return { name: u.name, coins: u.coins, color: u.color || null, stats: u.stats, dailyReady: u.daily !== berlinDay() };
     }
 
     function createSession(key) {
@@ -200,6 +201,16 @@ module.exports = function createAccounts(dataDir) {
             u.coins = Math.max(0, Math.floor(u.coins + n));
             touch();
             return u.coins;
+        },
+
+        // Daily Wheel: einmal pro Kalendertag (Europe/Berlin). true = darf drehen
+        claimDaily(key) {
+            const u = db.users[key];
+            const day = berlinDay();
+            if (!u || u.daily === day) return false;
+            u.daily = day;
+            touch();
+            return true;
         },
 
         stat(key, fn) {

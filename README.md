@@ -1,10 +1,18 @@
-# 🍪 Kek Minigames
+# 🐶 Snake and Gamba
 
-Derzeit ein Spiel: Multiplayer-Snake im Browser, mit Kopf-an-Kopf-Duellen im
-CS:GO-Case-Opening-Stil, Mystery-Boxen, Double or Nothing, Konten, Coins,
-Cashout und einem Slot-Automaten. Ein Node-Prozess (`server.js`, nur `ws` als
-Abhaengigkeit) liefert die Seite aus und spricht per WebSocket mit den
-Browsern.
+(bis 23.09.2026 „Kek Minigames“.) Zwei Bereiche:
+
+- **🐍 Snake:** Multiplayer-Snake im Browser, mit Kopf-an-Kopf-Duellen im
+  CS:GO-Case-Opening-Stil, Mystery-Boxen, Double or Nothing, Cashout und
+  Quiz-Events (Flaggen, Trivia, Weltkarte, Schaetzen).
+- **🎰 Gamba (Casino):** Daily Wheel, Slots, Budget Starlight, Crossy Road und
+  dauerhafte Tische fuer Blackjack und Roulette, an denen man sieht, wer
+  gerade mitspielt.
+
+Konten, Coins und Bestenliste gelten fuer beides. Ein Node-Prozess
+(`server.js`, nur `ws` als Abhaengigkeit) liefert die Seite aus und spricht
+per WebSocket mit den Browsern. Logo und Favicon: der Hund von Max
+(`public/img/`).
 
 Live: **`snake.flashkeks.com`** auf `edge` (Netcup).
 
@@ -16,9 +24,15 @@ Live: **`snake.flashkeks.com`** auf `edge` (Netcup).
 | `accounts.js` | Konten, Sessions, Coins, Statistik (JSON-Datei im Datenordner) |
 | `slots.js` | Slot-Automat „Slots“ (frueher „Kek Slots“); `node slots.js` rechnet die Rueckzahlungsquote aus |
 | `slots2.js` | Tumble-Slot „Budget Starlight“ (frueher „Sweet Kek“, intern weiter `s2`/`spin2`); `node slots2.js N` simuliert grob Rueckzahlung, Bonus-Quote, Bonus-Kauf (zum Abstimmen siehe unten) |
-| `events.js` | Mini-Events (Flag Quiz, Roulette, Blackjack): Ablauf, Einsaetze, Auszahlung |
+| `events.js` | Quiz-Events im Snake (Flag Quiz, Trivia, Where is it?, Guess the number): Ablauf, Punkte, Belohnung |
+| `tables.js` | Casino-Tische Blackjack und Roulette: Runden, Einsaetze, Auszahlung |
+| `casino.js` | Daily Wheel und Crossy Road (Werte, Wahrscheinlichkeiten); `node casino.js` rechnet nach |
 | `flags.js` | Laender fuer das Flag Quiz (ISO-Code + englischer Name) |
+| `trivia.js` | Trivia-Fragen (Frage, richtige Antwort, drei falsche) |
+| `places.js` | Orte fuer „Where is it?“ (Name, Hinweis, Koordinaten) |
+| `estimates.js` | Schaetzfragen (Frage, Zahl, Einheit, bei Jahreszahlen `tol`) |
 | `public/index.html` | der ganze Browser-Teil in einer Datei |
+| `public/img/` | Logo, Favicons, `world.svg` (Landflaechen aus `world-atlas` 110m, equirectangular: x = Laenge + 180, y = 90 − Breite) |
 | `deploy.sh` | auf `edge`: pull, npm bei Bedarf, Syntaxcheck, Dienst neu starten |
 
 ## Betrieb auf edge
@@ -109,7 +123,7 @@ Bis 22.09.2026 lief das Spiel im Calibre-Container von Michaffs unter
 
 ## Slot-Automat
 
-Hauptmenue → „🎰 Slots", nur mit Konto. Drei Walzen, eine Linie, der
+Casino → „🎰 Slots", nur mit Konto. Drei Walzen, eine Linie, der
 Server wuerfelt. Einsatz frei von 1 Coin bis zum Kontostand (Chips 1–1000
 oder eigener Betrag; Server-Grenze 1.000.000, nur ganze Zahlen).
 
@@ -177,7 +191,7 @@ aus Muenze oder Box.
 
 ## Budget Starlight (Tumble-Slot, frueher „Sweet Kek")
 
-Hauptmenue → „🌟 Budget Starlight", nur mit Konto. Nach dem Vorbild von Starlight
+Casino → „🌟 Budget Starlight", nur mit Konto. Nach dem Vorbild von Starlight
 Princess / Gates of Olympus:
 
 - **6 × 5 Raster, gezahlt wird ueberall:** 8 oder mehr gleiche Symbole
@@ -232,11 +246,9 @@ uebrigens *schlechter*, weil sie Symbole verdraengen.
 Der Server wuerfelt den ganzen Spin samt Freispielen auf einmal und schickt
 alle Zwischenraster, je Spin dazu `tw` (Tumble-Gewinn ohne Multi), `orbSum`,
 `multBefore`/`mult` und `scatterWin`; der Browser spielt nur ab. Waehrend der
-Animation wird SPIN zu ⏩ Skip: 5× so schnell, nur fuer den laufenden
-Spin; ein Klick in der Pause zwischen zwei Freispielen gilt fuer den
-naechsten. Alle Wartezeiten, Zaehler und Fluege laufen auf einer virtuellen
-Uhr (`s2Sleep`, `s2Count`, `s2Anims`), damit auch schon laufende sofort
-schneller werden.
+Animation ist SPIN gesperrt. **Skip ist seit 23.09.2026 aus** (Max: „immer
+noch buggy“); der Code dafuer (virtuelle Uhr in `s2Sleep`, `s2Count`,
+`s2Anims`, `s2SkipAt`) ist noch da, nur der Knopf loest ihn nicht mehr aus.
 Der Gewinn wird sofort gutgeschrieben, erscheint aber erst in der
 Bestenliste (und als Gold-Zeile im Feed), wenn der Browser `spin2Done`
 schickt, also nach der Animation. Sonst sieht man direkt nach dem Bonus-Kauf
@@ -247,21 +259,78 @@ muss. Sound komplett per Web Audio synthetisiert (Kompressor + Hall), 🔊
 schaltet ihn ab (merkt sich der Browser). Einsatz wie bei Slots frei, ein Spin je 800 ms. Ab 100× gibt
 es eine Gold-Zeile im Feed.
 
-## Mini-Events
+## Casino (Gamba)
+
+Hauptmenue → „Enter the casino“. Lobby mit sechs Kacheln; die Tisch-Kacheln
+zeigen live, wer gerade dort sitzt (Nachricht `lobby`). Alles ausser den
+Tischen nur mit Konto; an den Tischen duerfen Gaeste zuschauen. Wer im
+Casino ist, ist nicht auf dem Snake-Feld (und umgekehrt: `join` wirft einen
+vom Tisch, `tableJoin` geht nur ohne Schlange).
+
+### Blackjack und Roulette (Dauertische, `tables.js`)
+
+Jeder Tisch dreht Runden, solange jemand daran sitzt; ohne Einsaetze wird
+nicht ausgeteilt bzw. gedreht, dann laeuft einfach die naechste
+Einsatzphase. Alle am Tisch sehen alle Einsaetze und Haende, rechts steht die
+Bilanz jedes Spielers seit er sitzt. ✕ oben rechts = Tisch verlassen. Wer in
+der Einsatzphase geht, bekommt den Einsatz zurueck; spaeter gesetzte Chips
+laufen weiter und werden ausgezahlt, eine offene Blackjack-Hand bleibt
+stehen. Einsaetze frei: Chips 1, 5, 10–1000 oder eigener Betrag.
+
+| Tisch | Ablauf |
+|---|---|
+| 🎡 Roulette | 20 s setzen auf einem echten Board (0 links, 3 × 12, "2:1"-Spalten, Dutzende, Aussenwetten). Rot/Schwarz/Gerade/Ungerade/1–18/19–36 ×2, Dutzend und Spalte ×3, Einzelzahl ×36. Bis 12 Einsaetze je Runde, Chips in Spielerfarbe. Dann 6,5 s rundes europaeisches Rad mit Kugel, 6 s Ergebnis. Oben die letzten 12 Zahlen |
+| 🃏 Blackjack | 15 s Einsatz, dann spielen alle gleichzeitig gegen den Dealer, 30 s Zeit. Hit, Stand, **Double** (nur mit 2 Karten), **Split** (einmal, zwei Karten gleichen Werts; geteilte Asse je eine Karte, 21 nach Split ist kein Blackjack). 6 Decks (neu gemischt unter 60 Karten), Dealer zieht bis 17, Blackjack zahlt 3:2 |
+
+Bis 23.09.2026 waren Blackjack und Roulette Events im Snake; die Logik ist
+unveraendert umgezogen.
+
+### 🎁 Daily Wheel
+
+Einmal pro Kalendertag (Europe/Berlin) pro Konto, Konto-Feld `daily`
+(`YYYY-MM-DD`). 16 Felder, gewuerfelt wird nach Gewicht je Wert:
+
+| Coins | 100 | 250 | 500 | 1000 | 2500 | 5000 | 10000 | 25000 |
+|---|---|---|---|---|---|---|---|---|
+| Gewicht | 30 | 25 | 18 | 12 | 8 | 4,5 | 2 | 0,5 |
+
+Im Mittel ~1050 Coins am Tag. Wie beim Bonus-Kauf erscheint der Gewinn erst
+nach dem Dreh in Bestenliste und Feed (`dailyDone`).
+
+### 🐔 Crossy Road
+
+Nach dem Vorbild „Chicken Road“: Einsatz waehlen, dann Spur fuer Spur ueber
+die Strasse. Jede Spur ueberfaehrt einen mit Wahrscheinlichkeit p, der
+Multiplikator nach k Spuren ist 0,99 / (1 − p)^k – jede Cashout-Strategie
+zahlt also im Mittel 99 %. Cashout jederzeit nach der ersten Spur, am Ziel
+automatisch.
+
+| Stufe | p je Spur | Spuren | hoechstens |
+|---|---|---|---|
+| Easy | 8 % | 24 | ×7,3 |
+| Medium | 14 % | 22 | ×27 |
+| Hard | 22 % | 20 | ×142 |
+| Hardcore | 40 % | 15 | ×2105 |
+
+Der Server wuerfelt jede Spur einzeln erst beim Schritt (`crossStep`, hoechstens
+alle 250 ms). Verbindung weg mitten im Lauf: geschaffte Spuren werden
+ausgezahlt, ohne Schritt gibt es den Einsatz zurueck. Logout mitten im Lauf
+geht nicht.
+
+## Mini-Events (Snake)
 
 Alle 90–180 s (das erste nach 45–75 s) taucht eine **3 × 3 grosse 🎪
 EVENT-Kiste** auf: bunt, pulsierend, mit Ringen, auf der Minimap markiert.
-Wer mit dem Kopf in die Kiste faehrt, startet ein Event fuer alle, die gerade
+Wer mit dem Kopf in die Kiste faehrt, startet ein Quiz fuer alle, die gerade
 auf dem Feld sind:
 
 - Das Spiel friert fuer alle ein, Effekt-Timer, Duelle und Muenzwuerfe ruhen.
   Laufende Cashouts brechen ab.
 - Jeder Teilnehmer sieht das Event mit eigener Event-Rangliste. Wer im Menue
-  ist, spielt nicht mit.
-- Oben im Event steht der eigene Kontostand.
-- Danach 5 s **Podium** mit den Top 3 und was sie bekommen haben.
-- Dann **Double or Nothing** fuer jeden, der etwas gewonnen hat (Coins aus
-  dem Quiz oder Reingewinn aus Roulette/Blackjack, dazu Laenge): 50/50 per
+  oder Casino ist, spielt nicht mit.
+- Am Ende Coins = Punkte / 10 (+50 fuer Platz 1) fuer Konten, Laenge =
+  Punkte / 40 fuer alle, dann 5 s **Podium** mit den Top 3.
+- Dann **Double or Nothing** fuer jeden, der etwas gewonnen hat: 50/50 per
   Muenzwurf, 15 s Bedenkzeit, ohne Antwort wird behalten. Wer noch ueberlegt
   oder wirft, bleibt eingefroren und ist fuer die anderen ein durchsichtiger
   Geist. Wer ablehnt oder fertig geworfen hat, spielt sofort weiter.
@@ -269,25 +338,28 @@ auf dem Feld sind:
 - **Danach 3 s Geist-Schutz** fuer alle (nach dem Countdown bzw. nach dem
   eigenen Double or Nothing): keine Kollision mit anderen Schlangen. Die Wand
   bleibt toedlich.
-- Einsaetze bei Roulette und Blackjack frei: Chips 1, 5, 10–1000 oder eigener
-  Betrag im Feld (Blackjack: „Bet" setzt, ein Chip-Klick setzt sofort).
 
-| Event | Art | Ablauf |
+| Event | Runden | Ablauf und Punkte |
 |---|---|---|
-| 🏳️ Flag Quiz | flat Coins | 6 Flaggen (Bilder von flagcdn.com), je 9 s, 4 Antworten. Richtig = 100 + bis 100 Tempobonus. Danach Coins = Punkte / 10 (+50 fuer Platz 1) fuer Konten, Laenge = Punkte / 40 fuer alle |
-| 🎡 Roulette | Coins setzen | 20 s setzen auf einem echten Board (0 links, 3 × 12, "2:1"-Spalten, Dutzende, Aussenwetten). Rot/Schwarz/Gerade/Ungerade/1–18/19–36 ×2, Dutzend und Spalte ×3, Einzelzahl ×36. Bis 12 Einsaetze, alle Chips liegen in Schlangenfarbe auf dem Board. Dann ein rundes europaeisches Rad mit Kugel (Canvas), die Kugel faellt in die Tasche des Ergebnisses |
-| 🃏 Blackjack | Coins setzen | 15 s Einsatz, dann spielen alle gleichzeitig gegen den Dealer, 30 s Zeit. Hit, Stand, **Double** (nur mit 2 Karten), **Split** (einmal, zwei Karten gleichen Werts; geteilte Asse bekommen je eine Karte, 21 nach Split ist kein Blackjack). 6 Decks, Dealer zieht bis 17, Blackjack zahlt 3:2. Tisch: Dealer oben, die anderen klein in der Mitte, die eigene Hand gross unten, Karten fliegen ein, die verdeckte Dealerkarte dreht sich um |
+| 🏳️ Flag Quiz | 6 × 9 s | Flagge (flagcdn.com), 4 Laender. Richtig = 100 + bis 100 Tempobonus |
+| 🧠 Trivia | 6 × 12 s | Allgemeinwissen aus `trivia.js`, 4 Antworten, Punkte wie beim Flag Quiz |
+| 🌍 Where is it? | 5 × 15 s | Stadt oder Wahrzeichen aus `places.js`, Klick auf die Weltkarte. Punkte = 200 × e^(−km/1500): 0 km 200, 500 km ~143, 1500 km ~74. Aufloesung zeigt alle Tipps mit Linie zum Ziel und km |
+| 📏 Guess the number | 5 × 15 s | Zahl aus `estimates.js` schaetzen (Hoehe, Laenge, Gewicht, Jahr …). 200 bei exakt, 0 ab Faktor 3 daneben (log. Verhaeltnis); Jahreszahlen linear bis `tol` Jahre. Wer am naechsten dran ist, +50 |
 
-Gaeste koennen beim Flag Quiz mitspielen (bekommen nur Laenge), bei Roulette
-und Blackjack nur zuschauen.
+Haben alle geantwortet, wird sofort aufgeloest. Gaeste spielen mit
+(bekommen nur Laenge). Beim Pflegen der Fragen: nur Dinge, die sich nicht
+aendern, und Antworten, die man belegen kann.
 
 ## Drumherum
 
-- **Hauptmenue** vor jeder Runde: Login/Registrierung, Farbwahl (zwoelf
-  Vorgaben oder frei; zu dunkel lehnt der Server ab), Spielen, Automat.
-  Ergebnis der letzten Runde (Tod oder Cashout) steht oben.
+- **Hauptmenue** vor jeder Runde: Login/Registrierung, links 🐍 Snake
+  (Farbwahl – zwoelf Vorgaben oder frei, zu dunkel lehnt der Server ab –
+  und Play), rechts 🎰 Gamba mit Live-Anzeige der Tische und dem Weg ins
+  Casino. Ergebnis der letzten Runde (Tod oder Cashout) steht oben.
 - **Layout:** links die eigenen Box-Walzen und der Feed, Mitte das Feld,
-  rechts Rangliste, Bestenliste, Chat. Unter 1180 px Breite untereinander.
+  rechts Rangliste, Bestenliste, Chat. Seit 23.09.2026 groesser: Feld bis
+  1000 px (Canvas intern 1000 × 1000), Seitenleisten 320/340 px, groessere
+  Schrift. Unter 1320 px Breite untereinander.
 - **Bestenliste** (nur Konten): bester Score, meiste Coins, meiste Kills.
 - **Chat:** 200 Zeichen, eine Nachricht je 600 ms, die letzten 50 bekommt
   jeder beim Verbinden. Gaeste erst, wenn sie im Spiel sind.
@@ -305,24 +377,33 @@ und Blackjack nur zuschauen.
 
 Nur lokal, nie auf `edge` setzen:
 
-- `SNAKE_TEST=1` schaltet die Nachricht `testEvent {kind}` frei, die sofort
-  ein Event startet.
-- `SNAKE_EVENT_SPEED=5` laesst alle Event-Phasen fuenfmal schneller laufen.
-- `testEvent {kind, result}` mit `result` erzwingt beim Roulette die Zahl
-  (fuer Screenshots des Angebots).
+- `SNAKE_TEST=1` schaltet die Nachrichten `testEvent {kind}` (startet sofort
+  ein Quiz-Event: `flags`, `trivia`, `geo`, `estimate`) und
+  `testTable {result}` (naechste Roulette-Zahl am Tisch) frei.
+- `SNAKE_EVENT_SPEED=5` laesst alle Event- und Tisch-Phasen fuenfmal schneller
+  laufen.
+- Zwei Browser-Tests (Playwright) muessen getrennte Kontexte nehmen
+  (`browser.newContext()`), sonst teilen sie sich den Login-Token im
+  localStorage.
 
 ## Protokoll (WebSocket)
 
 Client → Server: `register`, `login`, `resume {token}`, `logout`,
 `changePassword`, `deleteAccount`, `join {name?, color}`, `leave`,
-`direction`, `cashout {on}`, `chat`, `spin {bet}`, `spin2 {bet, buy}`, `spin2Done`, `eventAction`
-(`choice` beim Quiz, `bet`/`clear` beim Roulette, `bet`/`clear`/`move` beim
-Blackjack).
+`direction`, `cashout {on}`, `chat`, `spin {bet}`, `spin2 {bet, buy}`, `spin2Done`,
+`eventAction` (`choice` bei Flaggen/Trivia, `lat`/`lon` bei Where is it?,
+`value` bei Guess the number), `tableJoin {kind}`, `tableLeave`,
+`tableAction` (`bet`/`clear` beim Roulette, `bet`/`clear`/`move` beim
+Blackjack), `daily`, `dailyDone`, `crossStart {bet, diff}`, `crossStep`,
+`crossCash`.
 
 Server → Client: `welcome`, `auth`, `authError`, `authExpired`, `account`,
 `joined`, `joinError`, `left`, `died` (`cause`, `by`, `byId`, `at`), `swapfx`, `cashedout`, `cashoutCancel`, `state`
 (alle 60 ms, mit `arena` und `paused`), `duel`, `gamble`, `box`, `jackpot`,
 `feed` (mit `who` und `big` fuer den Sound), `chat`, `chatlog`, `highscores`,
-`spin`, `spinError`, `spin2`, `spin2Error`, `event`, `eventEnd`, `eventError`, `resume`.
+`spin`, `spinError`, `spin2`, `spin2Error`, `event`, `eventEnd`, `eventError`, `resume`,
+`table` (Tisch-Zustand, nur an die am Tisch, mit `you`), `tableLeft`,
+`tableError`, `lobby`, `daily`, `dailyError`, `cross` (`state`: run, dead,
+cashed), `crossError`. `welcome` bringt dazu `wheel`, `cross` und `lobby`.
 
 Die Oberflaeche ist seit 23.09.2026 englisch, diese Doku bleibt deutsch.

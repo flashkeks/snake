@@ -3,8 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Kek Minigames</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐍</text></svg>">
+<title>Snake and Gamba</title>
+<link rel="icon" type="image/png" sizes="64x64" href="img/favicon-64.png">
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 
 <style>
 * {
@@ -34,13 +36,25 @@ body {
 }
 
 h1 {
-    margin: 20px 0 5px;
+    margin: 12px 0 2px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 34px;
     text-shadow: 0 0 20px rgba(0,255,140,.35);
+}
+
+h1 .logo {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: 3px solid #00ff88;
+    box-shadow: 0 0 18px rgba(0,255,140,.5);
 }
 
 #status {
     opacity: .7;
-    margin-bottom: 15px;
+    margin-bottom: 10px;
 }
 
 #layout {
@@ -62,12 +76,12 @@ h1 {
     position: relative;
 }
 
-canvas {
+#game {
     display: block;
-    width: min(calc(100vw - 640px), 700px, calc(100vh - 150px));
-    height: min(calc(100vw - 640px), 700px, calc(100vh - 150px));
-    min-width: 300px;
-    min-height: 300px;
+    width: min(calc(100vw - 740px), 1000px, calc(100vh - 130px));
+    height: min(calc(100vw - 740px), 1000px, calc(100vh - 130px));
+    min-width: 560px;
+    min-height: 560px;
     image-rendering: pixelated;
     border: 2px solid rgba(0,255,140,.35);
     border-radius: 8px;
@@ -103,16 +117,16 @@ canvas {
 /* ---------- Seitenleiste: Live-Rangliste, Bestenliste, Chat ---------- */
 
 #side, #left {
-    width: 300px;
-    flex: 0 0 300px;
+    width: 340px;
+    flex: 0 0 340px;
     display: flex;
     flex-direction: column;
     gap: 12px;
 }
 
 #left {
-    width: 260px;
-    flex-basis: 260px;
+    width: 320px;
+    flex-basis: 320px;
 }
 
 #boxes {
@@ -137,7 +151,7 @@ canvas {
 
 .panel h2 {
     margin: 0 0 8px;
-    font-size: 13px;
+    font-size: 15px;
     letter-spacing: .12em;
     text-transform: uppercase;
     color: rgba(0,255,140,.8);
@@ -146,7 +160,7 @@ canvas {
 .panel table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 13px;
+    font-size: 15px;
 }
 
 .panel td {
@@ -181,13 +195,13 @@ canvas {
 #chat {
     display: flex;
     flex-direction: column;
-    height: 320px;
+    height: 420px;
 }
 
 #chat-log {
     flex: 1;
     overflow-y: auto;
-    font-size: 13px;
+    font-size: 15px;
     line-height: 1.4;
     padding-right: 4px;
     word-wrap: break-word;
@@ -234,7 +248,7 @@ button {
     cursor: pointer;
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1320px) {
     #layout {
         flex-direction: column;
         align-items: center;
@@ -244,15 +258,15 @@ button {
         order: -1;
     }
 
-    canvas {
-        width: min(92vw, 700px);
-        height: min(92vw, 700px);
+    #game {
+        width: min(92vw, 1000px, calc(100vh - 130px));
+        height: min(92vw, 1000px, calc(100vh - 130px));
         min-width: 0;
         min-height: 0;
     }
 
     #side, #left {
-        width: min(92vw, 700px);
+        width: min(92vw, 1000px);
         flex-basis: auto;
     }
 }
@@ -287,7 +301,8 @@ button {
     flex-direction: column;
     gap: 12px;
     align-items: stretch;
-    width: min(380px, 100%);
+    width: min(460px, 100%);
+    font-size: 16px;
     padding: 20px 22px;
     border: 2px solid rgba(0,255,140,.4);
     border-radius: 12px;
@@ -804,8 +819,8 @@ button:disabled {
 }
 
 #wheel {
-    width: 230px;
-    height: 230px;
+    width: 300px;
+    height: 300px;
 }
 
 .wheel-result {
@@ -2122,12 +2137,517 @@ button:disabled {
 @keyframes swapHue {
     50% { color: #56e8ff; }
 }
+
+/* ---------- Hauptmenue: Snake links, Gamba rechts ---------- */
+
+#menu .card {
+    width: min(720px, 100%);
+}
+
+#menu .card h2 {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 26px;
+}
+
+.menu-logo {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid #00ff88;
+}
+
+.menu-sects {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.menu-sect {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(0,255,140,.25);
+    background: rgba(0,255,140,.04);
+}
+
+.menu-sect h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.menu-sect.gamba {
+    border-color: rgba(255,210,63,.4);
+    background: rgba(255,210,63,.05);
+}
+
+.gamba-list {
+    font-size: 15px;
+    line-height: 1.7;
+    opacity: .9;
+}
+
+.gamba-live {
+    font-size: 13px;
+    color: #ffd23f;
+    min-height: 1.2em;
+}
+
+#casino-btn {
+    margin-top: auto;
+    font-size: 18px;
+    padding: 10px;
+}
+
+@media (max-width: 700px) {
+    .menu-sects {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ---------- Casino-Lobby ---------- */
+
+#casino .card, #daily .card, #cross .card {
+    width: min(760px, 100%);
+    border-color: #ffd23f;
+    box-shadow: 0 0 50px rgba(255, 210, 63, .3);
+}
+
+.cs-title {
+    font-size: 24px;
+    font-weight: 900;
+    margin-right: auto;
+    color: #ffd23f;
+    text-shadow: 0 0 16px rgba(255,210,63,.5);
+}
+
+.cs-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.cs-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 16px 10px;
+    color: #fff;
+    background: linear-gradient(160deg, rgba(255,210,63,.14), rgba(255,91,214,.08));
+    border: 1px solid rgba(255,210,63,.35);
+    border-radius: 12px;
+    transition: transform .15s, box-shadow .15s;
+}
+
+.cs-tile:hover:not(:disabled) {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 0 24px rgba(255,210,63,.35);
+}
+
+.cs-tile .ico {
+    font-size: 44px;
+    line-height: 1.1;
+}
+
+.cs-tile b {
+    font-size: 17px;
+}
+
+.cs-tile small {
+    font-size: 12px;
+    font-weight: 600;
+    opacity: .75;
+    text-align: center;
+}
+
+.cs-tile .cs-who.busy {
+    color: #7dffb0;
+    opacity: 1;
+}
+
+.cs-tile.daily.ready {
+    animation: dailyGlow 1.2s ease-in-out infinite alternate;
+    border-color: #7dffb0;
+}
+
+@keyframes dailyGlow {
+    to { box-shadow: 0 0 28px rgba(125,255,176,.55); }
+}
+
+@media (max-width: 700px) {
+    .cs-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* ---------- Daily Wheel ---------- */
+
+.dw-wrap {
+    position: relative;
+    align-self: center;
+    width: min(460px, 100%, calc(100vh - 330px));
+    aspect-ratio: 1;
+}
+
+#dw-canvas {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    image-rendering: auto;
+}
+
+.dw-pointer {
+    position: absolute;
+    left: 50%;
+    top: -6px;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 16px solid transparent;
+    border-right: 16px solid transparent;
+    border-top: 34px solid #ffd23f;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,.7));
+}
+
+.dw-win {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 44px;
+    font-weight: 900;
+    color: #ffd23f;
+    text-shadow: 0 0 24px #ff5bd6, 0 3px 6px #000;
+    pointer-events: none;
+    opacity: 0;
+}
+
+.dw-win.show {
+    opacity: 1;
+    animation: pop .6s ease-out;
+}
+
+#dw-spin {
+    font-size: 22px;
+    padding: 10px;
+}
+
+/* ---------- Crossy Road ---------- */
+
+.cr-road {
+    position: relative;
+    height: 300px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-radius: 12px;
+    background: #2b2f36;
+    border: 2px solid #444a55;
+    white-space: nowrap;
+    scroll-behavior: smooth;
+}
+
+.cr-track {
+    position: relative;
+    display: flex;
+    height: 100%;
+}
+
+.cr-side {
+    flex: none;
+    width: 110px;
+    height: 100%;
+    background: repeating-linear-gradient(0deg, #6b7280 0 36px, #5b616d 36px 40px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+    color: rgba(255,255,255,.6);
+}
+
+.cr-side.goal {
+    background: repeating-linear-gradient(45deg, #1d6b3a 0 20px, #16532d 20px 40px);
+    color: #fff;
+}
+
+.cr-lane {
+    position: relative;
+    flex: none;
+    width: 100px;
+    height: 100%;
+    background: #30343b;
+    border-right: 3px dashed rgba(255,255,255,.35);
+    overflow: hidden;
+}
+
+.cr-lane.next {
+    background: #363b44;
+}
+
+.cr-hole {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 76px;
+    height: 76px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: 900;
+    color: #ffd23f;
+    background: radial-gradient(circle, #4b5160 0 55%, #3a3f4b 56% 100%);
+    border: 3px solid #5c6373;
+    box-shadow: inset 0 0 10px rgba(0,0,0,.6);
+    z-index: 1;
+}
+
+.cr-lane.done .cr-hole {
+    background: radial-gradient(circle, #d4a514, #8a6a00);
+    border-color: #ffd23f;
+    color: #fff;
+    text-shadow: 0 1px 2px #000;
+    box-shadow: 0 0 16px rgba(255,210,63,.6);
+}
+
+.cr-lane.next .cr-hole {
+    border-color: #7dffb0;
+    animation: holePulse .8s ease-in-out infinite alternate;
+}
+
+@keyframes holePulse {
+    to { box-shadow: 0 0 18px rgba(125,255,176,.6), inset 0 0 10px rgba(0,0,0,.6); }
+}
+
+/* Autos fahren die Spuren herunter; gestoppt, sobald das Huhn drueber ist */
+.cr-car {
+    position: absolute;
+    left: 50%;
+    top: -80px;
+    font-size: 54px;
+    transform: translateX(-50%) rotate(90deg);
+    animation: carDrive linear infinite;
+    z-index: 2;
+    pointer-events: none;
+}
+
+@keyframes carDrive {
+    to { top: 330px; }
+}
+
+.cr-lane.done .cr-car {
+    display: none;
+}
+
+.cr-barrier {
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    top: 14px;
+    height: 12px;
+    border-radius: 3px;
+    background: repeating-linear-gradient(45deg, #e11d48 0 10px, #fff 10px 20px);
+    z-index: 3;
+    display: none;
+}
+
+.cr-lane.done .cr-barrier {
+    display: block;
+}
+
+.cr-chicken {
+    position: absolute;
+    top: 50%;
+    left: 55px;
+    font-size: 56px;
+    transform: translate(-50%, -50%);
+    transition: left .28s ease-out;
+    z-index: 5;
+    filter: drop-shadow(0 4px 4px rgba(0,0,0,.5));
+}
+
+.cr-chicken.hop {
+    animation: chickenHop .28s ease-out;
+}
+
+@keyframes chickenHop {
+    50% { transform: translate(-50%, -85%) scale(1.15); }
+}
+
+.cr-chicken.dead {
+    animation: chickenSplat .5s ease-out forwards;
+}
+
+@keyframes chickenSplat {
+    to { transform: translate(-50%, -50%) scale(1.4, .35) rotate(15deg); opacity: .85; }
+}
+
+/* Das Auto, das einen erwischt */
+.cr-killer {
+    position: absolute;
+    top: -90px;
+    font-size: 64px;
+    transform: translateX(-50%) rotate(90deg);
+    z-index: 6;
+    animation: killerDrive .45s ease-in forwards;
+}
+
+@keyframes killerDrive {
+    to { top: 360px; }
+}
+
+.cr-diffs {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.cr-diffs button {
+    background: rgba(255,255,255,.06);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.2);
+    font-size: 14px;
+}
+
+.cr-diffs button.on {
+    background: #ffd23f;
+    color: #2a1a00;
+}
+
+#cr-go {
+    min-width: 120px;
+    height: 42px;
+    font-size: 19px;
+}
+
+#cr-cash {
+    height: 42px;
+    font-size: 16px;
+    background: #7dffb0;
+}
+
+#cr-cash:disabled {
+    background: rgba(125,255,176,.25);
+}
+
+/* ---------- Events: Trivia, Weltkarte, Schaetzen ---------- */
+
+.quiz-q {
+    font-size: 22px;
+    font-weight: 800;
+    text-align: center;
+    padding: 18px 10px;
+    line-height: 1.35;
+}
+
+.geo-map {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 2;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #0b3a5c;
+    cursor: crosshair;
+    border: 2px solid rgba(255,255,255,.2);
+}
+
+.geo-map img, .geo-map svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.geo-map.locked {
+    cursor: default;
+}
+
+.est-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+}
+
+.est-row input {
+    width: 220px;
+    font-size: 22px;
+    font-weight: 800;
+    text-align: center;
+}
+
+.est-unit {
+    font-size: 18px;
+    font-weight: 800;
+    opacity: .8;
+}
+
+.est-answer {
+    text-align: center;
+    font-size: 34px;
+    font-weight: 900;
+    color: #7dffb0;
+    text-shadow: 0 0 16px rgba(125,255,176,.5);
+}
+
+.guess-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-width: 480px;
+    margin: 8px auto 0;
+    width: 100%;
+}
+
+.guess-list div {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(255,255,255,.05);
+    font-size: 15px;
+}
+
+.guess-list .mine {
+    outline: 1px solid #00ff88;
+}
+
+.rl-history {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    flex-wrap: wrap;
+    font-size: 13px;
+    align-items: center;
+}
+
+.rl-history span {
+    min-width: 28px;
+    padding: 3px 6px;
+    border-radius: 6px;
+    text-align: center;
+    font-weight: 800;
+}
 </style>
 </head>
 
 <body>
 
-<h1>🍪 Kek Minigames</h1>
+<h1><img class="logo" src="img/logo.png" alt=""> Snake and Gamba</h1>
 <div id="status">Connecting...</div>
 
 <div id="layout">
@@ -2144,7 +2664,7 @@ button:disabled {
 
     <div id="main">
         <div id="stage">
-            <canvas id="game" width="800" height="800"></canvas>
+            <canvas id="game" width="1000" height="1000"></canvas>
 
             <div id="hud" class="hidden">
                 <button id="leave-btn" type="button">🚪 Leave</button>
@@ -2155,7 +2675,7 @@ button:disabled {
             <!-- Hauptmenue -->
             <div id="menu" class="overlay">
                 <div class="card">
-                    <h2>🐍 Snake</h2>
+                    <h2><img class="menu-logo" src="img/logo.png" alt=""> Snake and Gamba</h2>
 
                     <div id="menu-result"></div>
 
@@ -2181,15 +2701,20 @@ button:disabled {
                         <button type="button" class="ghost" id="konto-btn" style="font-size:13px;padding:5px 10px">Account</button>
                     </div>
 
-                    <h3>Play</h3>
-                    <input id="guest-name" maxlength="16" placeholder="Name (as guest)" autocomplete="off">
-                    <div id="colors"></div>
-                    <button type="button" id="play-btn">▶ Play</button>
-                    <div class="msg" id="play-msg"></div>
-
-                    <div class="row">
-                        <button type="button" class="gold" id="slots-btn">🎰 Slots</button>
-                        <button type="button" class="gold" id="slots2-btn">🌟 Budget Starlight</button>
+                    <div class="menu-sects">
+                        <div class="menu-sect">
+                            <h3>🐍 Snake</h3>
+                            <input id="guest-name" maxlength="16" placeholder="Name (as guest)" autocomplete="off">
+                            <div id="colors"></div>
+                            <button type="button" id="play-btn">▶ Play</button>
+                            <div class="msg" id="play-msg"></div>
+                        </div>
+                        <div class="menu-sect gamba">
+                            <h3>🎰 Gamba</h3>
+                            <div class="gamba-list">🎁 Daily Wheel<br>🎰 Slots · 🌟 Budget Starlight<br>🐔 Crossy Road<br>🃏 Blackjack · 🎡 Roulette</div>
+                            <div class="gamba-live" id="gamba-live"></div>
+                            <button type="button" class="gold" id="casino-btn">Enter the casino →</button>
+                        </div>
                     </div>
 
                     <div class="hint" id="menu-hint">
@@ -2197,6 +2722,68 @@ button:disabled {
                         Hold Space for 5 s to cash out your score as coins. You keep going straight meanwhile.<br>
                         The wall kills. Big 🎪 boxes start a mini event for everyone.
                     </div>
+                </div>
+            </div>
+
+            <!-- Casino-Lobby -->
+            <div id="casino" class="overlay hidden">
+                <div class="card">
+                    <div class="s2-head">
+                        <div class="cs-title">🎰 Gamba</div>
+                        <span class="coins">🪙 <span id="cs-coins">0</span></span>
+                        <button type="button" class="s2-icon" id="casino-back" title="Back to menu">✕</button>
+                    </div>
+                    <div class="cs-grid">
+                        <button type="button" class="cs-tile daily" id="daily-btn"><span class="ico">🎁</span><b>Daily Wheel</b><small id="daily-state">Free spin every day</small></button>
+                        <button type="button" class="cs-tile" id="slots-btn"><span class="ico">🎰</span><b>Slots</b><small>Classic three reels</small></button>
+                        <button type="button" class="cs-tile" id="slots2-btn"><span class="ico">🌟</span><b>Budget Starlight</b><small>Tumbles · multipliers · free spins</small></button>
+                        <button type="button" class="cs-tile" id="cross-btn"><span class="ico">🐔</span><b>Crossy Road</b><small>Cross lanes, cash out in time</small></button>
+                        <button type="button" class="cs-tile" data-table="blackjack"><span class="ico">🃏</span><b>Blackjack</b><small class="cs-who" id="who-blackjack">Table is empty</small></button>
+                        <button type="button" class="cs-tile" data-table="roulette"><span class="ico">🎡</span><b>Roulette</b><small class="cs-who" id="who-roulette">Table is empty</small></button>
+                    </div>
+                    <div class="msg" id="casino-msg"></div>
+                </div>
+            </div>
+
+            <!-- Daily Wheel -->
+            <div id="daily" class="overlay hidden">
+                <div class="card">
+                    <div class="s2-head">
+                        <div class="cs-title">🎁 Daily Wheel</div>
+                        <span class="coins">🪙 <span id="dw-coins">0</span></span>
+                        <button type="button" class="s2-icon" id="dw-back" title="Back">✕</button>
+                    </div>
+                    <div class="dw-wrap">
+                        <canvas id="dw-canvas" width="560" height="560"></canvas>
+                        <div class="dw-pointer"></div>
+                        <div class="dw-win" id="dw-win"></div>
+                    </div>
+                    <button type="button" class="gold" id="dw-spin">SPIN</button>
+                    <div class="msg" id="dw-msg"></div>
+                </div>
+            </div>
+
+            <!-- Crossy Road -->
+            <div id="cross" class="overlay hidden">
+                <div class="card">
+                    <div class="s2-head">
+                        <div class="cs-title">🐔 Crossy Road</div>
+                        <span class="coins">🪙 <span id="cr-coins">0</span></span>
+                        <button type="button" class="s2-icon" id="cr-back" title="Back">✕</button>
+                    </div>
+                    <div class="cr-road" id="cr-road"></div>
+                    <div class="cr-diffs" id="cr-diffs"></div>
+                    <div class="s2-bar">
+                        <div class="s2-bet">
+                            <small>BET</small>
+                            <button type="button" class="ghost" id="cr-minus">−</button>
+                            <input id="cr-bet" type="number" min="1" step="1" value="10">
+                            <button type="button" class="ghost" id="cr-plus">+</button>
+                        </div>
+                        <button type="button" class="gold" id="cr-go">START</button>
+                        <button type="button" id="cr-cash" disabled>CASH OUT</button>
+                    </div>
+                    <div class="msg" id="cr-msg"></div>
                 </div>
             </div>
 
@@ -2295,6 +2882,7 @@ button:disabled {
                         <span class="ev-title" id="ev-title"></span>
                         <span class="ev-coins" id="ev-coins"></span>
                         <span class="ev-timer" id="ev-timer"></span>
+                        <button type="button" class="s2-icon" id="ev-leave" title="Leave the table" style="display:none">✕</button>
                     </div>
                     <div class="ev-bar"><div id="ev-bar"></div></div>
                     <div class="chips" id="ev-chips" style="display:none"></div>
@@ -2424,6 +3012,7 @@ ws.onmessage = event => {
             slotInfo = data.slots;
             buildSlots();
             buildSlots2(data.slots2);
+            buildCasino(data);
             break;
         case 'auth':
             setToken(data.token);
@@ -2484,6 +3073,14 @@ ws.onmessage = event => {
         case 'spin2': s2Run(data); break;
         case 'spin2Error': s2Error(data.error); break;
         case 'event': onEvent(data); break;
+        case 'table': onTable(data); break;
+        case 'tableLeft': onTableLeft(); break;
+        case 'tableError': showMsg('ev-msg', data.error, 'err'); showMsg('casino-msg', data.error, 'err'); break;
+        case 'lobby': onLobby(data.lobby); break;
+        case 'daily': onDaily(data); break;
+        case 'dailyError': dwSpinning = false; showMsg('dw-msg', data.error, 'err'); casinoRefresh(); break;
+        case 'cross': onCross(data); break;
+        case 'crossError': showMsg('cr-msg', data.error, 'err'); break;
         case 'eventEnd': onEventEnd(); break;
         case 'eventError': showMsg('ev-msg', data.error, 'err'); break;
         case 'resume': onResume(data.in); break;
@@ -2510,7 +3107,7 @@ function showMsg(id, text, kind) {
 // ---------- Screens ----------
 
 function showScreen(name) {
-    ['menu', 'slots', 'slots2', 'konto', 'event', 'offer'].forEach(s => $(s).classList.toggle('hidden', s !== name));
+    ['menu', 'casino', 'daily', 'cross', 'slots', 'slots2', 'konto', 'event', 'offer'].forEach(s => $(s).classList.toggle('hidden', s !== name));
 }
 
 function backToMenu(resultHtml) {
@@ -2548,6 +3145,7 @@ function setMe(user) {
         if (me.color && !myColor) pickColor(me.color);
         drawStats();
     }
+    if (casinoInfo) casinoRefresh();
 }
 
 // ---------- Hauptmenue: Login / Registrieren ----------
@@ -2629,7 +3227,7 @@ $('slots-btn').onclick = () => {
     if (!me) return;
     showScreen('slots');
 };
-$('slots-back').onclick = () => showScreen('menu');
+$('slots-back').onclick = () => { casinoRefresh(); showScreen('casino'); };
 
 $('konto-btn').onclick = () => {
     showMsg('konto-msg', '');
@@ -3344,11 +3942,49 @@ let evSpun = false;
 let seenCards = new Set();   // cards already shown, only new ones get the deal animation
 let wheelFinal = null;       // final wheel state, so results can show the wheel standing still
 
-function evMember() {
-    return ev && ev.members.includes(myId);
+// Eigene ID: im Event die Spieler-ID, am Casino-Tisch die ID aus der Tisch-Nachricht
+function evMe() {
+    return ev && ev.table ? ev.you : myId;
 }
 
+function evMember() {
+    return ev && ev.members.includes(evMe());
+}
+
+// Aktionen gehen je nach Modus an das Event oder an den Tisch
+function evSend(obj) {
+    wsSend({ type: ev && ev.table ? 'tableAction' : 'eventAction', ...obj });
+}
+
+// Casino-Tisch: gleiche Oberflaeche wie die Events, nur dauerhaft
+function onTable(d) {
+    d.table = true;
+    const firstSpin = d.kind === 'roulette' && d.phase === 'spinning' && !(ev && ev.table && ev.phase === 'spinning');
+    if (!ev || !ev.table || ev.phase !== d.phase) {
+        if (d.phase === 'betting') {
+            seenCards = new Set();
+            wheelFinal = null;
+        }
+    }
+    ev = d;
+    evReceived = performance.now();
+    $('ev-leave').style.display = '';
+    showScreen('event');
+    renderEvent();
+    if (firstSpin) spinWheel(d.data.result);
+}
+
+function onTableLeft() {
+    if (ev && ev.table) ev = null;
+    $('ev-leave').style.display = 'none';
+    if (!$('event').classList.contains('hidden')) showScreen('casino');
+}
+
+$('ev-leave').onclick = () => wsSend({ type: 'tableLeave' });
+
 function onEvent(d) {
+    // Am Casino-Tisch laeuft kein Event mit (man ist nicht auf dem Feld)
+    if (ev && ev.table) return;
     const firstSpin = d.kind === 'roulette' && d.phase === 'spinning' && !evSpun;
     if (!ev || d.data.round !== evRound) {
         evAnswer = null;
@@ -3379,6 +4015,7 @@ function onEvent(d) {
 }
 
 function onEventEnd() {
+    if (ev && ev.table) return;
     ev = null;
     if (!$('event').classList.contains('hidden')) showScreen(joined ? null : 'menu');
 }
@@ -3425,11 +4062,12 @@ setInterval(() => {
     }
     const left = Math.max(0, ev.left - (performance.now() - evReceived));
     $('ev-timer').textContent = Math.ceil(left / 1000) + 's';
-    const total = { intro: 4000, question: 9000, reveal: 2500, betting: ev.kind === 'roulette' ? 20000 : 15000, playing: 30000, spinning: 6500, results: 8000, awards: 5000 }[ev.phase] || 10000;
+    const total = ev.total || { betting: ev.kind === 'roulette' ? 20000 : 15000, playing: 30000, spinning: 6500, results: ev.table ? 6000 : 8000 }[ev.phase] || 10000;
     $('ev-bar').style.width = (100 * left / total) + '%';
 }, 100);
 
 const PHASE_NAME = {
+    waiting: 'Waiting for players',
     intro: 'Get ready', question: 'Question', reveal: 'Answer', betting: 'Place your bets',
     spinning: 'No more bets', playing: 'Your move', dealer: 'Dealer plays', results: 'Results', awards: 'Winners'
 };
@@ -3464,28 +4102,36 @@ function renderEvent() {
     $('ev-title').textContent = `${d.title} · ${PHASE_NAME[d.phase] || d.phase}`;
 
     $('ev-board').innerHTML = d.board.map((r, i) =>
-        `<tr class="${r.id === myId ? 'me' : ''}"><td>${['🥇', '🥈', '🥉'][i] || (i + 1) + '.'}</td>` +
+        `<tr class="${r.id === evMe() ? 'me' : ''}"><td>${['🥇', '🥈', '🥉'][i] || (i + 1) + '.'}</td>` +
         `<td><span class="dot" style="background:${esc(r.color)}"></span>${esc(r.name)}${r.guest ? ' <span style="opacity:.5">(guest)</span>' : ''}</td>` +
         `<td style="text-align:right">${d.eventType === 'gamble' && r.value > 0 ? '+' : ''}${r.value}</td></tr>`
     ).join('');
 
     const main = $('ev-main');
     const member = evMember();
-    document.querySelector('#event .ev-body').classList.toggle('wide', d.kind === 'roulette' && d.phase !== 'intro' && d.phase !== 'awards');
+    document.querySelector('#event .ev-body').classList.toggle('wide', (d.kind === 'roulette' || d.kind === 'geo') && d.phase !== 'intro' && d.phase !== 'awards');
+    document.querySelector('#event .ev-body h3').textContent = d.table ? 'At the table (this session)' : 'Event board';
 
     if (d.phase === 'intro') {
         const text = {
-            flags: `${d.data.total} flags. Pick the right country, faster answers score more.<br>Coins for everyone with an account, length for everyone.`,
-            roulette: 'One round of roulette with everyone on the field.<br>Put your chips on the board.',
-            blackjack: 'Everyone plays against the dealer at the same time.<br>Hit, stand, double or split.'
-        }[d.kind];
+            flags: `${d.data.total} flags. Pick the right country, faster answers score more.`,
+            trivia: `${d.data.total} questions. Pick the right answer, faster answers score more.`,
+            geo: `${d.data.total} places. Click on the world map where you think they are.<br>The closer, the more points.`,
+            estimate: `${d.data.total} questions. Type a number – the closer, the more points.<br>Closest guess gets +50.`
+        }[d.kind] + '<br><span style="opacity:.7;font-size:15px">Coins for everyone with an account, length for everyone.</span>';
         main.innerHTML = `<div class="big-note">${text}</div>`;
         if (!member) main.innerHTML += '<div class="hint">You are watching. Only players on the field when the box was opened can play.</div>';
         return;
     }
 
+    if (d.phase === 'waiting') {
+        main.innerHTML = '<div class="big-note">Waiting…</div>';
+        return;
+    }
     if (d.phase === 'awards') return renderPodium(main, d);
-    if (d.kind === 'flags') return renderFlags(main, d, member);
+    if (d.kind === 'flags' || d.kind === 'trivia') return renderFlags(main, d, member);
+    if (d.kind === 'geo') return renderGeo(main, d, member);
+    if (d.kind === 'estimate') return renderEstimate(main, d, member);
     if (d.kind === 'roulette') return renderRoulette(main, d, member);
     if (d.kind === 'blackjack') return renderBlackjack(main, d, member);
 }
@@ -3495,7 +4141,7 @@ function renderEvent() {
 function renderPodium(main, d) {
     const p = d.podium || [];
     const gain = r => [r.coins > 0 ? `+${r.coins} coins` : null, r.length > 0 ? `+${r.length} length` : null].filter(Boolean).join('<br>') || '–';
-    const place = (r, i) => r ? `<div class="place p${i + 1}"><div class="name" style="color:${esc(r.color)}">${esc(r.name)}${r.id === myId ? ' (you)' : ''}</div>` +
+    const place = (r, i) => r ? `<div class="place p${i + 1}"><div class="name" style="color:${esc(r.color)}">${esc(r.name)}${r.id === evMe() ? ' (you)' : ''}</div>` +
         `<div class="gain">${gain(r)}</div><div class="block">${['🥇', '🥈', '🥉'][i]}</div></div>` : '';
     main.innerHTML = '<div class="podium">' + place(p[1], 1) + place(p[0], 0) + place(p[2], 2) + '</div>';
 }
@@ -3505,19 +4151,19 @@ function renderPodium(main, d) {
 function renderFlags(main, d, member) {
     const q = d.data;
     if (d.phase === 'results') {
-        const r = q.rewards && q.rewards[myId];
+        const r = q.rewards && q.rewards[evMe()];
         main.innerHTML = `<div class="big-note">🏁 Quiz over!</div>` +
             (r ? `<div class="result cash">+${r.coins} coins · +${r.length} length</div>` : '');
         return;
     }
-    if (!q.flag) {
+    if (!q.flag && !q.question) {
         main.innerHTML = '';
         return;
     }
-    const answered = q.answered.includes(myId);
+    const answered = q.answered.includes(evMe());
     main.innerHTML =
-        `<div class="hint">Flag ${q.round} / ${q.total} · ${q.answered.length} answered</div>` +
-        `<img class="flag-img" src="https://flagcdn.com/w320/${esc(q.flag)}.png" alt="flag">` +
+        `<div class="hint">${d.kind === 'flags' ? 'Flag' : 'Question'} ${q.round} / ${q.total} · ${q.answered.length} answered</div>` +
+        (q.flag ? `<img class="flag-img" src="https://flagcdn.com/w320/${esc(q.flag)}.png" alt="flag">` : `<div class="quiz-q">${esc(q.question)}</div>`) +
         '<div class="choices">' + q.options.map((o, i) => {
             let cls = '';
             if (q.correct !== null) cls = i === q.correct ? 'right' : i === evAnswer ? 'wrong' : '';
@@ -3526,6 +4172,105 @@ function renderFlags(main, d, member) {
             return `<button type="button" class="${cls}" data-ev="flag" data-i="${i}" ${dis}>${esc(o)}</button>`;
         }).join('') + '</div>' +
         (d.phase === 'reveal' ? `<div class="msg ok">${q.right.length} got it right</div>` : '');
+}
+
+// --- Where is it? (Weltkarte, equirectangular: x = lon + 180, y = 90 - lat) ---
+
+let geoPick = null;
+
+function quizResults(main, d) {
+    const r = d.data.rewards && d.data.rewards[evMe()];
+    main.innerHTML = `<div class="big-note">🏁 Quiz over!</div>` +
+        (r ? `<div class="result cash">+${r.coins} coins · +${r.length} length</div>` : '');
+}
+
+function renderGeo(main, d, member) {
+    const q = d.data;
+    if (d.phase === 'results') return quizResults(main, d);
+    if (!q.place) {
+        main.innerHTML = '';
+        return;
+    }
+    if (d.phase === 'question' && q.round !== geoPick?.round) geoPick = null;
+    const reveal = d.phase === 'reveal';
+    const answered = q.answered.includes(evMe());
+    const pin = (lat, lon, color, r) => `<circle cx="${lon + 180}" cy="${90 - lat}" r="${r}" fill="${esc(color)}" stroke="#fff" stroke-width=".6"/>`;
+    let marks = '';
+    if (reveal && q.target) {
+        const tx = q.target.lon + 180, ty = 90 - q.target.lat;
+        for (const g of q.guesses) {
+            marks += `<line x1="${g.lon + 180}" y1="${90 - g.lat}" x2="${tx}" y2="${ty}" stroke="${esc(g.color)}" stroke-width=".7" stroke-dasharray="2 1.5"/>`;
+            marks += pin(g.lat, g.lon, g.color, 2.2);
+            marks += `<text x="${g.lon + 180 + 3}" y="${90 - g.lat - 3}" font-size="5" font-weight="700" fill="#fff" stroke="#000" stroke-width=".4" paint-order="stroke">${esc(g.name)}</text>`;
+        }
+        marks += `<text x="${tx}" y="${ty + 3}" font-size="11" text-anchor="middle">⭐</text>`;
+    } else if (geoPick) {
+        marks = pin(geoPick.lat, geoPick.lon, '#00ff88', 2.6);
+    }
+    const locked = !member || answered || d.phase !== 'question';
+    main.innerHTML =
+        `<div class="hint">Place ${q.round} / ${q.total} · ${q.answered.length} answered</div>` +
+        `<div class="quiz-q" style="padding:8px">Where is <span style="color:#ffd23f">${esc(q.place)}</span>? <span style="opacity:.6;font-size:16px">(${esc(q.hint)})</span></div>` +
+        `<div class="geo-map ${locked ? 'locked' : ''}" id="geo-map"><img src="img/world.svg" alt="">` +
+        `<svg viewBox="0 0 360 180" preserveAspectRatio="none">${marks}</svg></div>` +
+        (reveal ? '<div class="guess-list">' + q.guesses.map(g =>
+            `<div class="${g.id === evMe() ? 'mine' : ''}"><span><span class="dot" style="background:${esc(g.color)}"></span>${esc(g.name)}</span><span>${g.km.toLocaleString('en-US')} km · +${g.pts}</span></div>`).join('') + '</div>'
+            : (answered ? '<div class="msg ok">Locked in – waiting for the others</div>' : member ? '<div class="hint" style="text-align:center">Click on the map</div>' : ''));
+    if (!locked) {
+        $('geo-map').onclick = e => {
+            const r = e.currentTarget.getBoundingClientRect();
+            const lon = (e.clientX - r.left) / r.width * 360 - 180;
+            const lat = 90 - (e.clientY - r.top) / r.height * 180;
+            geoPick = { lat, lon, round: q.round };
+            evSend({ lat, lon });
+            beep(700, 0.06, 0.05);
+            renderEvent();
+        };
+    }
+}
+
+// --- Guess the number ---
+
+let estRound = 0;
+
+function renderEstimate(main, d, member) {
+    const q = d.data;
+    if (d.phase === 'results') return quizResults(main, d);
+    if (!q.question) {
+        main.innerHTML = '';
+        return;
+    }
+    const answered = q.answered.includes(evMe());
+    const fmt = v => Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 });
+    if (d.phase === 'reveal') {
+        main.innerHTML = `<div class="hint">Question ${q.round} / ${q.total}</div><div class="quiz-q" style="padding:8px">${esc(q.question)}</div>` +
+            `<div class="est-answer">${fmt(q.answer)} ${esc(q.unit)}</div>` +
+            '<div class="guess-list">' + q.guesses.map(g =>
+                `<div class="${g.id === evMe() ? 'mine' : ''}"><span><span class="dot" style="background:${esc(g.color)}"></span>${esc(g.name)}${g.closest ? ' ⭐' : ''}</span><span>${fmt(g.value)} · +${g.pts}</span></div>`).join('') + '</div>';
+        return;
+    }
+    // Eingabefeld nur neu bauen, wenn die Frage wechselt – sonst geht getippter Text verloren
+    if (estRound === q.round && $('est-input') && !answered) {
+        $('est-count').textContent = `${q.answered.length} answered`;
+        return;
+    }
+    estRound = q.round;
+    main.innerHTML = `<div class="hint">Question ${q.round} / ${q.total} · <span id="est-count">${q.answered.length} answered</span></div>` +
+        `<div class="quiz-q">${esc(q.question)}</div>` +
+        (answered ? '<div class="msg ok">Locked in – waiting for the others</div>'
+            : member ? `<form class="est-row" id="est-form"><input id="est-input" type="number" step="any" min="0" placeholder="your guess" autocomplete="off"><span class="est-unit">${esc(q.unit)}</span><button type="submit">Lock in</button></form>`
+            : '<div class="hint">You are watching</div>');
+    if ($('est-form')) {
+        $('est-input').focus();
+        $('est-form').onsubmit = e => {
+            e.preventDefault();
+            const v = Number($('est-input').value);
+            if (!(v >= 0) || $('est-input').value === '') return;
+            evSend({ value: v });
+            beep(700, 0.06, 0.05);
+            estRound = -1;
+        };
+    }
 }
 
 // --- Roulette ---
@@ -3576,7 +4321,7 @@ function renderRoulette(main, d, member) {
     const bets = d.data.bets;
     const result = d.phase === 'results' ? d.data.result : null;
     const can = member && me && d.phase === 'betting';
-    const mine = bets.filter(b => b.id === myId);
+    const mine = bets.filter(b => b.id === evMe());
 
     const cells = boardCells().map(c => {
         const here = bets.filter(b => b.type === c.t && (b.n === null ? c.n === null : b.n === c.n));
@@ -3599,14 +4344,20 @@ function renderRoulette(main, d, member) {
     }
 
     const myTotal = mine.reduce((s, b) => s + b.amount, 0);
-    const net = d.board.find(r => r.id === myId);
+    const net = d.board.find(r => r.id === evMe());
     let bottom = '';
     if (d.phase === 'betting' && mine.length) {
         bottom = `<div class="row" style="margin-top:6px"><span class="hint" style="align-self:center">Your chips on the table: ${myTotal}</span>` +
             `<button type="button" class="ghost" data-ev="rlclear">Take back</button></div>`;
     }
-    if (d.phase === 'results' && mine.length && net) {
-        bottom = `<div class="result ${net.value >= 0 ? 'cash' : 'dead'}">${net.value >= 0 ? '+' : ''}${net.value} coins</div>`;
+    // Am Tisch zaehlt die Runde, im Event die ganze Bilanz
+    const netVal = d.table ? mine.reduce((sum, b) => sum + (b.win || 0) - b.amount, 0) : net ? net.value : 0;
+    if (d.phase === 'results' && mine.length) {
+        bottom = `<div class="result ${netVal >= 0 ? 'cash' : 'dead'}">${netVal >= 0 ? '+' : ''}${netVal} coins</div>`;
+    }
+    if (d.table && d.data.history && d.data.history.length) {
+        top = '<div class="rl-history"><span style="opacity:.6">Last:</span>' + d.data.history.map(n =>
+            `<span style="background:${COLOR_HEX[rlColor(n)]}">${n}</span>`).join('') + '</div>' + top;
     }
 
     // Keep the spinning wheel alive while chips update
@@ -3616,7 +4367,7 @@ function renderRoulette(main, d, member) {
 
     if (d.phase === 'results') {
         drawWheel(wheelFinal || { wheel: 0, ball: -Math.PI / 2, ballR: 0.62 });
-        if (net && net.value > 0) fanfare(net.value >= 500 ? 'gold' : true);
+        if (netVal > 0) fanfare(netVal >= 500 ? 'gold' : true);
     }
 }
 
@@ -3773,14 +4524,14 @@ function resultTag(hd) {
 
 function renderBlackjack(main, d, member) {
     const seats = d.data.hands;
-    const mine = seats[myId];
+    const mine = seats[evMe()];
     const names = Object.fromEntries(d.board.map(r => [r.id, r]));
 
     if (d.phase === 'betting') {
         const can = member && me;
         main.innerHTML = '<div class="bj">' +
             '<div class="bj-row"><span class="bj-label">🎩 Dealer</span><div class="cards"></div></div>' +
-            '<div class="bj-others">' + Object.entries(seats).filter(([id]) => id !== myId).map(([id, s]) =>
+            '<div class="bj-others">' + Object.entries(seats).filter(([id]) => id !== evMe()).map(([id, s]) =>
                 `<div class="bj-other"><b style="color:${esc(names[id] ? names[id].color : '#fff')}">${esc(names[id] ? names[id].name : '?')}</b><br>bet ${s.bet}</div>`).join('') + '</div>' +
             '<div class="bj-row">' + (can
                 ? `<span class="bj-label">${mine ? 'Your bet: ' + mine.bet : 'Pick a chip above (or type a custom amount and press Bet)'}</span>` +
@@ -3797,7 +4548,7 @@ function renderBlackjack(main, d, member) {
         `<div class="cards">${dealer.cards.map((c, i) => cardHtml(c, 'dealer:' + i + ':')).join('')}</div></div>`;
 
     // Everybody else small in the middle
-    html += '<div class="bj-others">' + Object.entries(seats).filter(([id]) => id !== myId).map(([id, s]) => {
+    html += '<div class="bj-others">' + Object.entries(seats).filter(([id]) => id !== evMe()).map(([id, s]) => {
         const n = names[id];
         return `<div class="bj-other"><b style="color:${esc(n ? n.color : '#fff')}">${esc(n ? n.name : '?')}</b>` +
             s.hands.map((hd, hi) => `<div class="cards">${hd.cards.map((c, ci) => cardHtml(c, `${id}:${hi}:${ci}:`)).join('')}</div>` +
@@ -3808,7 +4559,7 @@ function renderBlackjack(main, d, member) {
     if (mine) {
         html += '<div class="bj-me">' + mine.hands.map((hd, hi) =>
             `<div class="bj-hand2 ${d.phase === 'playing' && !mine.done && hi === mine.active && mine.hands.length > 1 ? 'active' : ''}">` +
-            `<div class="cards">${hd.cards.map((c, ci) => cardHtml(c, `${myId}:${hi}:${ci}:`)).join('')}</div>` +
+            `<div class="cards">${hd.cards.map((c, ci) => cardHtml(c, `${evMe()}:${hi}:${ci}:`)).join('')}</div>` +
             `<span class="bj-label">You · ${hd.total}${hd.doubled ? ' · doubled' : ''} · bet ${hd.bet}</span>${resultTag(hd)}</div>`).join('') + '</div>';
 
         if (d.phase === 'playing' && !mine.done) {
@@ -3848,29 +4599,29 @@ $('event').addEventListener('click', e => {
     const t = b.dataset.ev;
     if (t === 'flag') {
         evAnswer = Number(b.dataset.i);
-        wsSend({ type: 'eventAction', choice: evAnswer });
+        evSend({ choice: evAnswer });
         renderEvent();
     } else if (t === 'chip') {
         evChip = Number(b.dataset.v);
         if ($('ev-custom')) $('ev-custom').value = '';
-        if (ev.kind === 'blackjack') wsSend({ type: 'eventAction', bet: evChip });
+        if (ev.kind === 'blackjack') evSend({ bet: evChip });
         renderEvent();
     } else if (t === 'bjplace') {
-        wsSend({ type: 'eventAction', bet: evChip });
+        evSend({ bet: evChip });
     } else if (t === 'rl') {
         const bet = { type: b.dataset.t, amount: evChip };
         if (b.dataset.n !== undefined) bet.n = Number(b.dataset.n);
-        wsSend({ type: 'eventAction', bet });
+        evSend({ bet });
         beep(500, 0.05, 0.05);
     } else if (t === 'rlclear') {
-        wsSend({ type: 'eventAction', clear: true });
+        evSend({ clear: true });
     } else if (t === 'bjbet') {
         evChip = Number(b.dataset.v);
-        wsSend({ type: 'eventAction', bet: evChip });
+        evSend({ bet: evChip });
     } else if (t === 'bjclear') {
-        wsSend({ type: 'eventAction', clear: true });
+        evSend({ clear: true });
     } else if (t === 'bj') {
-        wsSend({ type: 'eventAction', move: b.dataset.m });
+        evSend({ move: b.dataset.m });
     }
 });
 
@@ -4278,8 +5029,9 @@ async function s2Run(d) {
     s2Idx = 0;
     s2SkipAt = -1;
     s2SetSpeed(1);
-    $('s2-spin').textContent = '⏩ Skip';
-    $('s2-spin').disabled = false;
+    // Skip ist aus (Max, 23.09.2026: "immer noch buggy") – der Knopf bleibt gesperrt
+    $('s2-spin').textContent = 'SPINNING…';
+    $('s2-spin').disabled = true;
     $('s2-buy').disabled = true;
     $('s2-minus').disabled = $('s2-plus').disabled = $('s2-custom').disabled = true;
     $('s2-pay').classList.add('hidden');
@@ -4396,11 +5148,7 @@ function s2Start(buy) {
 }
 
 $('s2-spin').onclick = () => {
-    if (s2Busy) {
-        s2SkipAt = s2Idx;
-        s2SetSpeed(5);
-        return;
-    }
+    if (s2Busy) return;
     s2Start(false);
 };
 $('s2-buy').onclick = () => s2Start(true);
@@ -4422,7 +5170,7 @@ $('s2-sound').onclick = () => {
     $('s2-sound').textContent = sfxMuted ? '🔇' : '🔊';
     if (!sfxMuted) { sfxInit(); sfx.click(); }
 };
-$('s2-back').onclick = () => { if (!s2Busy) showScreen('menu'); };
+$('s2-back').onclick = () => { if (!s2Busy) { casinoRefresh(); showScreen('casino'); } };
 $('slots2-btn').onclick = () => {
     if (!me) return;
     s2Refresh();
@@ -4629,6 +5377,332 @@ const sfx = {
         }
     }
 };
+
+// ---------- Casino: Lobby ----------
+
+let casinoInfo = null;      // { wheel, cross } aus welcome
+let lobbyNow = { blackjack: [], roulette: [] };
+
+function buildCasino(d) {
+    casinoInfo = { wheel: d.wheel, cross: d.cross };
+    onLobby(d.lobby || lobbyNow);
+    drawDailyWheel(0);
+    crBuildDiffs();
+    crBuildRoad();
+}
+
+function onLobby(l) {
+    lobbyNow = l;
+    for (const k of ['blackjack', 'roulette']) {
+        const names = l[k] || [];
+        const el = $('who-' + k);
+        el.textContent = names.length ? `${names.length} playing: ${names.slice(0, 3).join(', ')}${names.length > 3 ? '…' : ''}` : 'Table is empty';
+        el.classList.toggle('busy', names.length > 0);
+    }
+    const busy = ['blackjack', 'roulette'].filter(k => (l[k] || []).length).map(k => `${(l[k] || []).length} at ${k === 'blackjack' ? '🃏' : '🎡'}`);
+    $('gamba-live').textContent = busy.length ? '● Live: ' + busy.join(' · ') : '';
+}
+
+function casinoRefresh() {
+    const acc = !!me;
+    for (const id of ['daily-btn', 'slots-btn', 'slots2-btn', 'cross-btn']) {
+        $(id).disabled = !acc;
+        $(id).title = acc ? '' : 'Accounts only';
+    }
+    const ready = acc && me.dailyReady;
+    $('daily-btn').classList.toggle('ready', !!ready);
+    $('daily-state').textContent = !acc ? 'Accounts only' : ready ? 'Free spin ready!' : 'Come back tomorrow';
+    if (acc) {
+        $('cs-coins').textContent = me.coins;
+        if (!dwSpinning) $('dw-coins').textContent = me.coins;
+        if (!crRun) $('cr-coins').textContent = me.coins;
+    }
+    $('dw-spin').disabled = !ready || dwSpinning;
+    $('dw-spin').textContent = dwSpinning ? '…' : ready ? 'SPIN' : 'Come back tomorrow';
+}
+
+$('casino-btn').onclick = () => {
+    unlockAudio();
+    casinoRefresh();
+    showScreen('casino');
+};
+$('casino-back').onclick = () => showScreen('menu');
+document.querySelectorAll('[data-table]').forEach(b => b.onclick = () => {
+    unlockAudio();
+    wsSend({ type: 'tableJoin', kind: b.dataset.table });
+});
+$('daily-btn').onclick = () => {
+    casinoRefresh();
+    showScreen('daily');
+};
+$('dw-back').onclick = () => { if (!dwSpinning) showScreen('casino'); };
+$('cross-btn').onclick = () => {
+    casinoRefresh();
+    showScreen('cross');
+    crBuildRoad();
+};
+$('cr-back').onclick = () => { if (!crRun) showScreen('casino'); };
+
+// ---------- Casino: Daily Wheel ----------
+
+let dwSpinning = false;
+const DW_COLORS = ['#ff5bd6', '#3da5ff', '#ffd23f', '#00d67a', '#a970ff', '#ff8a3d', '#22d3ee', '#f43f5e'];
+
+function drawDailyWheel(angle) {
+    const cv = $('dw-canvas');
+    if (!cv || !casinoInfo) return;
+    const c = cv.getContext('2d');
+    const W = cv.width, R = W / 2;
+    const segs = casinoInfo.wheel;
+    const seg = Math.PI * 2 / segs.length;
+    c.clearRect(0, 0, W, W);
+    c.save();
+    c.translate(R, R);
+    // Rand mit Lichtern
+    c.fillStyle = '#3b2505';
+    c.beginPath();
+    c.arc(0, 0, R - 2, 0, Math.PI * 2);
+    c.fill();
+    c.rotate(angle);
+    segs.forEach((v, i) => {
+        const a0 = -Math.PI / 2 + i * seg - seg / 2;
+        c.fillStyle = v >= 10000 ? '#111' : DW_COLORS[i % DW_COLORS.length];
+        c.beginPath();
+        c.moveTo(0, 0);
+        c.arc(0, 0, R * 0.88, a0, a0 + seg);
+        c.closePath();
+        c.fill();
+        c.strokeStyle = 'rgba(255,255,255,.7)';
+        c.lineWidth = 2;
+        c.stroke();
+        c.save();
+        c.rotate(a0 + seg / 2);
+        c.textAlign = 'right';
+        c.textBaseline = 'middle';
+        c.font = `900 ${Math.round(R * (v >= 10000 ? 0.1 : 0.085))}px system-ui`;
+        c.fillStyle = v >= 10000 ? '#ffd23f' : '#fff';
+        c.strokeStyle = 'rgba(0,0,0,.6)';
+        c.lineWidth = 4;
+        const label = v >= 1000 ? (v / 1000) + 'k' : String(v);
+        c.strokeText(label, R * 0.8, 0);
+        c.fillText(label, R * 0.8, 0);
+        c.restore();
+    });
+    c.restore();
+    // Lichter am Rand
+    for (let i = 0; i < 24; i++) {
+        const a = i / 24 * Math.PI * 2;
+        c.fillStyle = (i + Math.floor(performance.now() / 250)) % 2 ? '#fff6c2' : '#b8860b';
+        c.beginPath();
+        c.arc(R + Math.cos(a) * R * 0.94, R + Math.sin(a) * R * 0.94, R * 0.022, 0, Math.PI * 2);
+        c.fill();
+    }
+    // Nabe
+    const g = c.createRadialGradient(R, R, 0, R, R, R * 0.14);
+    g.addColorStop(0, '#fff6c2');
+    g.addColorStop(1, '#b8860b');
+    c.fillStyle = g;
+    c.beginPath();
+    c.arc(R, R, R * 0.13, 0, Math.PI * 2);
+    c.fill();
+    c.font = `${Math.round(R * 0.12)}px system-ui`;
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillText('🎁', R, R + 2);
+}
+
+$('dw-spin').onclick = () => {
+    if (!me || !me.dailyReady || dwSpinning) return;
+    sfxInit();
+    dwSpinning = true;
+    casinoRefresh();
+    $('dw-win').classList.remove('show');
+    wsSend({ type: 'daily' });
+};
+
+function onDaily(d) {
+    const segs = casinoInfo.wheel;
+    const seg = Math.PI * 2 / segs.length;
+    // Feld d.index unter den Zeiger (oben), plus 6 volle Umdrehungen
+    const end = Math.PI * 12 - d.index * seg + (Math.random() - 0.5) * seg * 0.6;
+    const dur = 6500;
+    const t0 = performance.now();
+    let last = -1;
+    (function step() {
+        const t = Math.min(1, (performance.now() - t0) / dur);
+        const e = 1 - Math.pow(1 - t, 4);
+        const ang = end * e;
+        drawDailyWheel(ang);
+        const k = Math.floor((ang + seg / 2) / seg);
+        if (k !== last) {
+            last = k;
+            sTone(1600, { dur: .03, type: 'triangle', vol: .05 * (1 - t) + .01, rev: 0 });
+        }
+        if (t < 1) return requestAnimationFrame(step);
+        dwSpinning = false;
+        $('dw-win').textContent = `+${d.value.toLocaleString('en-US')}`;
+        $('dw-win').classList.add('show');
+        sfx.fanfare(d.value >= 5000 ? 'big' : 'end');
+        me = d.user;
+        me.coins = d.balance;
+        setMe(me);
+        $('dw-msg').textContent = d.value >= 10000 ? '🎉 JACKPOT!' : 'See you tomorrow!';
+        wsSend({ type: 'dailyDone' });
+        casinoRefresh();
+    })();
+}
+
+// Lichter blinken auch im Stand
+setInterval(() => { if (!dwSpinning && !$('daily').classList.contains('hidden')) drawDailyWheel(0); }, 250);
+
+// ---------- Casino: Crossy Road ----------
+
+let crDiff = 'easy';
+let crBet = 10;
+let crRun = null;       // { step, bet, diff } waehrend eines Laufs
+const CR_BETS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
+const CR_CARS = ['🚗', '🚕', '🚙', '🚌', '🚓', '🚑', '🚚', '🏎️'];
+
+function crBuildDiffs() {
+    $('cr-diffs').innerHTML = Object.entries(casinoInfo.cross).map(([k, d]) =>
+        `<button type="button" data-diff="${k}" class="${k === crDiff ? 'on' : ''}">${d.label} · up to ×${d.mults[d.mults.length - 1].toLocaleString('en-US')}</button>`).join('');
+    $('cr-diffs').querySelectorAll('button').forEach(b => b.onclick = () => {
+        if (crRun) return;
+        crDiff = b.dataset.diff;
+        crBuildDiffs();
+        crBuildRoad();
+    });
+}
+
+function crBuildRoad() {
+    if (!casinoInfo) return;
+    const d = casinoInfo.cross[crDiff];
+    const step = crRun ? crRun.step : 0;
+    let html = '<div class="cr-track"><div class="cr-side">START</div>';
+    d.mults.forEach((m, i) => {
+        const cls = i < step ? 'done' : i === step && crRun ? 'next' : '';
+        // Verkehr: jede Spur eigenes Tempo, ueberfahrene Spuren sind gesperrt
+        const cars = [0, 1].map(k => `<span class="cr-car" style="animation-duration:${(1.6 + ((i * 7 + k * 3) % 10) / 6).toFixed(2)}s;animation-delay:-${((i * 13 + k * 17) % 20) / 10}s">${CR_CARS[(i + k * 3) % CR_CARS.length]}</span>`).join('');
+        html += `<div class="cr-lane ${cls}" data-i="${i}"><div class="cr-barrier"></div>${cars}<div class="cr-hole">×${m}</div></div>`;
+    });
+    html += '<div class="cr-side goal">🏁</div></div><div class="cr-chicken" id="cr-chicken">🐔</div>';
+    $('cr-road').innerHTML = html;
+    crPlaceChicken(step, false);
+}
+
+// Huhn auf Spur k (0 = Gehweg)
+function crPlaceChicken(k, hop) {
+    const ch = $('cr-chicken');
+    if (!ch) return;
+    const x = k === 0 ? 55 : 110 + (k - 1) * 100 + 50;
+    ch.style.left = x + 'px';
+    if (hop) {
+        ch.classList.remove('hop');
+        void ch.offsetWidth;
+        ch.classList.add('hop');
+    }
+    const road = $('cr-road');
+    road.scrollLeft = Math.max(0, x - road.clientWidth / 2);
+}
+
+function crSetBet(v) {
+    crBet = Math.max(1, Math.floor(v) || 1);
+    $('cr-bet').value = crBet;
+}
+
+function crButtons() {
+    const d = casinoInfo.cross[crDiff];
+    $('cr-go').textContent = crRun ? 'GO ➜' : 'START';
+    const can = crRun && crRun.step > 0;
+    $('cr-cash').disabled = !can;
+    $('cr-cash').textContent = can ? `CASH OUT ${Math.floor(crRun.bet * d.mults[crRun.step - 1]).toLocaleString('en-US')}` : 'CASH OUT';
+    $('cr-minus').disabled = $('cr-plus').disabled = $('cr-bet').disabled = !!crRun;
+}
+
+$('cr-minus').onclick = () => crSetBet(CR_BETS.filter(b => b < crBet).pop() || 1);
+$('cr-plus').onclick = () => crSetBet(CR_BETS.find(b => b > crBet) || crBet);
+$('cr-bet').oninput = e => { const v = Math.floor(Number(e.target.value)); if (v >= 1) crBet = v; };
+$('cr-bet').onchange = () => crSetBet(crBet);
+
+let crWait = false;
+$('cr-go').onclick = () => {
+    if (!me || crWait) return;
+    sfxInit();
+    crWait = true;
+    if (!crRun) {
+        if (me.coins < crBet) {
+            crWait = false;
+            return showMsg('cr-msg', 'Not enough coins', 'err');
+        }
+        showMsg('cr-msg', '');
+        wsSend({ type: 'crossStart', bet: crBet, diff: crDiff });
+    } else {
+        wsSend({ type: 'crossStep' });
+    }
+    setTimeout(() => { crWait = false; }, 300);
+};
+$('cr-cash').onclick = () => { if (crRun && crRun.step > 0) wsSend({ type: 'crossCash' }); };
+
+function onCross(d) {
+    if (d.balance !== undefined) {
+        $('cr-coins').textContent = d.balance;
+        if (me) me.coins = d.balance;
+    }
+    if (d.state === 'run') {
+        const fresh = !crRun;
+        crRun = { step: d.step, bet: d.bet, diff: d.diff };
+        if (fresh) {
+            crBuildRoad();
+        } else {
+            const lane = $('cr-road').querySelector(`.cr-lane[data-i="${d.step - 1}"]`);
+            $('cr-road').querySelectorAll('.cr-lane.next').forEach(l => l.classList.remove('next'));
+            if (lane) lane.classList.add('done');
+            const next = $('cr-road').querySelector(`.cr-lane[data-i="${d.step}"]`);
+            if (next) next.classList.add('next');
+            crPlaceChicken(d.step, true);
+            sTone(520 + d.step * 25, { dur: .12, type: 'triangle', vol: .12, slide: 900 + d.step * 30, rev: .2 });
+            sBell(PENTA[Math.min(PENTA.length - 1, 2 + d.step % 8)], .08, .06, .5);
+        }
+        crButtons();
+        return;
+    }
+    if (d.state === 'dead') {
+        // Huhn huepft auf die Spur, dann kommt das Auto
+        crPlaceChicken(d.step, true);
+        const lane = $('cr-road').querySelector(`.cr-lane[data-i="${d.step - 1}"]`);
+        setTimeout(() => {
+            if (lane) {
+                const car = document.createElement('span');
+                car.className = 'cr-killer';
+                car.style.left = '50%';
+                car.textContent = '🚚';
+                lane.appendChild(car);
+            }
+            sNoise({ dur: .35, vol: .35, type: 'lowpass', f: 1800, f2: 150, rev: .2, a: .002 });
+            sTone(160, { dur: .5, vol: .3, slide: 40, rev: .1 });
+            setTimeout(() => {
+                const ch = $('cr-chicken');
+                if (ch) {
+                    ch.textContent = '💥';
+                    ch.classList.add('dead');
+                }
+            }, 180);
+        }, 250);
+        showMsg('cr-msg', `💥 Run over on lane ${d.step} – lost ${d.bet}`, 'err');
+        crRun = null;
+        setTimeout(() => { if (!crRun) { crBuildRoad(); crButtons(); } }, 2200);
+        crButtons();
+        return;
+    }
+    if (d.state === 'cashed') {
+        crRun = null;
+        sfx.fanfare(d.mult >= 10 ? 'big' : 'end');
+        showMsg('cr-msg', `${d.auto ? '🏁 Made it across! ' : '💰 '}+${d.win.toLocaleString('en-US')} coins (×${d.mult})`, 'ok');
+        setTimeout(() => { if (!crRun) { crBuildRoad(); crButtons(); } }, 1800);
+        crButtons();
+        casinoRefresh();
+    }
+}
 
 // ---------- Seitenleisten ----------
 
