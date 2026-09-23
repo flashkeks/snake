@@ -160,6 +160,14 @@ Seit 23.09.2026 in `stats` je Konto:
   Zeitraum) und **Bester Multi** (`topX` je Spiel, je Zeitraum
   `topX[spiel]`), gefuellt in `accounts.game()`. Alte Staende ohne Listen
   stehen mit ihrem Bestwert drin.
+  **Bug bis 3.5, behoben in 3.6:** eine fehlende Liste startete beim ersten
+  neuen Spiel leer, der alte Bestwert (aus der Zeit vor den Listen) fiel
+  damit vom Board (gemeldet: Starlight ×2265 von SINTHSBen weg). Jetzt
+  startet sie mit dem alten Bestwert (`addRun(liste, bestwertVorher, wert)`),
+  und `accounts.js` ergaenzt beim Start jede Liste, der ihr Bestwert fehlt
+  (idempotent, meldet `N Leaderboard-Listen um den alten Bestwert ergaenzt`).
+  Beim Herunterfahren (Deploy) werden noch versteckte Gewinne verbucht und
+  laufende Snake-Runden gezaehlt, bevor gespeichert wird.
 - **Versteckte Gewinne:** Starlight, Plinko und Daily verbuchen ihre Runde
   erst beim Aufloesen (`hideWin(..., onReveal)`), damit Leaderboard und
   Statistik keinen Ausgang vorab verraten.

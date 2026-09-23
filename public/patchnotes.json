@@ -1,5 +1,13 @@
 [
   {
+    "version": "3.6",
+    "date": "23.09.2026",
+    "items": [
+      "Leaderboard fix: old records that dropped off (e.g. big Starlight multis) are back",
+      "Wins and snake runs that are still in progress during a server update now count"
+    ]
+  },
+  {
     "version": "3.5",
     "date": "23.09.2026",
     "items": [

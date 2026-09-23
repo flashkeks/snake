@@ -440,9 +440,9 @@ function recordScore(p) {
     const score = scoreOf(p);
     // Jede Runde zaehlt einzeln (Max): die besten 10 Runden je Konto und Zeitraum,
     // damit man mehrfach auf dem Score-Leaderboard stehen kann
-    const keep = (arr, v) => [...(arr || []), v].sort((a, b) => b - a).slice(0, 10);
-    accounts.stat(p.account, s => { s.bestScore = Math.max(s.bestScore, score); if (score > 0) s.topRuns = keep(s.topRuns, score); });
-    accounts.period(p.account, x => { x.bestScore = Math.max(x.bestScore, score); if (score > 0) x.topRuns = keep(x.topRuns, score); });
+    // Liste zuerst (startet mit dem alten Bestwert, sonst faellt der vom Board), dann Bestwert
+    accounts.stat(p.account, s => { if (score > 0) s.topRuns = accounts.addRun(s.topRuns, s.bestScore, score); s.bestScore = Math.max(s.bestScore, score); });
+    accounts.period(p.account, x => { if (score > 0) x.topRuns = accounts.addRun(x.topRuns, x.bestScore, score); x.bestScore = Math.max(x.bestScore, score); });
 }
 
 // ---------- Tod, Verlassen, Cashout ----------
@@ -1970,6 +1970,11 @@ function broadcastState(now) {
 setInterval(gameTick, TICK);
 
 function shutdown() {
+    // Noch versteckte Gewinne jetzt verbuchen (Statistik/Leaderboard haengen an
+    // onReveal), laufende Snake-Runden als Runde zaehlen – sonst fehlen sie
+    // nach einem Deploy
+    for (const k of [...pendingWins.keys()]) revealWin(k);
+    for (const p of players.values()) recordScore(p);
     tables.shutdown();
     shooter.refundAll();
     accounts.save(true);

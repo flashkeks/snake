@@ -56,6 +56,20 @@ function topTen(arr, v) {
     return [...(arr || []), v].sort((a, b) => b - a).slice(0, 10);
 }
 
+// Wie topTen, aber eine noch fehlende Liste startet mit dem bisherigen
+// Bestwert. Vorher (3.1–3.5) begann sie leer: der alte Rekord (aus der Zeit
+// vor den Listen) fiel beim ersten neuen Spiel vom Leaderboard. best = Wert
+// VOR diesem Spiel.
+function addRun(arr, best, v) {
+    return topTen(withBest(arr || [], best), v);
+}
+
+// Bestwert in die Liste, falls er dort fehlt (Reparatur, s. o.)
+function withBest(arr, best) {
+    if (!(best > 0) || best <= Math.max(0, ...arr)) return arr;
+    return topTen(arr, best);
+}
+
 function weekId(day) {
     // day = YYYY-MM-DD (Berlin); ISO-Woche: Donnerstag der Woche bestimmt das Jahr
     const d = new Date(day + 'T12:00:00Z');
@@ -115,8 +129,33 @@ module.exports = function createAccounts(dataDir) {
         if (e.music === false || (e.music && shop.BY_ID[e.music] && !shop.BY_ID[e.music].free && shop.BY_ID[e.music].price && !(u.inventory || []).includes(e.music))) delete e.music;
     }
 
+    // Reparatur (3.6): Listen, denen der alte Bestwert fehlt, bekommen ihn
+    // zurueck (Bug 3.1–3.5, s. addRun). Idempotent, laeuft bei jedem Start.
+    let repaired = 0;
+    const fix = (obj, listKey, best) => {
+        if (!obj || !Array.isArray(obj[listKey])) return;
+        const before = obj[listKey].length ? Math.max(...obj[listKey]) : 0;
+        obj[listKey] = withBest(obj[listKey], best);
+        if (Math.max(0, ...obj[listKey]) !== before) repaired++;
+    };
+    for (const u of Object.values(db.users)) {
+        const s = u.stats;
+        if (!s) continue;
+        fix(s, 'topRuns', s.bestScore);
+        for (const g of Object.values(s.games || {})) {
+            fix(g, 'topWins', g.bestWin);
+            fix(g, 'topX', g.bestX);
+        }
+        for (const p of Object.values(s.periods || {})) {
+            fix(p, 'topRuns', p.bestScore);
+            fix(p, 'topWins', p.bestWin);
+            for (const [g, x] of Object.entries(p.bestX || {})) if (p.topX) fix(p.topX, g, x);
+        }
+    }
+    if (repaired) console.log(`accounts: ${repaired} Leaderboard-Listen um den alten Bestwert ergaenzt`);
+
     // Neue Datei gleich anlegen, damit das Backup von Anfang an etwas vorfindet
-    let dirty = !fs.existsSync(file);
+    let dirty = !fs.existsSync(file) || repaired > 0;
 
     function save(sync) {
         if (!dirty) return;
@@ -228,6 +267,7 @@ module.exports = function createAccounts(dataDir) {
         },
 
         publicUser,
+        addRun,
 
         async register(name, password) {
             name = String(name || '').trim();
@@ -400,20 +440,21 @@ module.exports = function createAccounts(dataDir) {
                 g.plays++;
                 g.wagered += wager;
                 g.won += win;
+                // Beste 10 Runden fuers Leaderboard (jede Runde ein eigener
+                // Eintrag) – vor dem Bestwert, damit der alte mit reinkommt
+                if (win > 0) g.topWins = addRun(g.topWins, g.bestWin, win);
+                if (x) g.topX = addRun(g.topX, g.bestX, Math.round(x * 100) / 100);
                 g.bestWin = Math.max(g.bestWin, win);
                 if (x) g.bestX = Math.max(g.bestX, Math.round(x * 100) / 100);
-                // Beste 10 Runden fuers Leaderboard (jede Runde ein eigener Eintrag)
-                if (win > 0) g.topWins = topTen(g.topWins, win);
-                if (x) g.topX = topTen(g.topX, Math.round(x * 100) / 100);
             });
             this.period(key, p => {
-                p.bestWin = Math.max(p.bestWin, win);
-                if (x) p.bestX[name] = Math.max(p.bestX[name] || 0, Math.round(x * 100) / 100);
-                if (win > 0) p.topWins = topTen(p.topWins, win);
+                if (win > 0) p.topWins = addRun(p.topWins, p.bestWin, win);
                 if (x) {
                     p.topX = p.topX || {};
-                    p.topX[name] = topTen(p.topX[name], Math.round(x * 100) / 100);
+                    p.topX[name] = addRun(p.topX[name], p.bestX[name] || 0, Math.round(x * 100) / 100);
                 }
+                p.bestWin = Math.max(p.bestWin, win);
+                if (x) p.bestX[name] = Math.max(p.bestX[name] || 0, Math.round(x * 100) / 100);
                 if (!NOT_CASINO.has(name)) p.casinoNet += win - wager;
             });
         },
