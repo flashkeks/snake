@@ -156,6 +156,10 @@ Seit 23.09.2026 in `stats` je Konto:
   10 Runden je Konto, gesamt und je Zeitraum), damit ein Spieler mehrfach
   auf dem Board stehen kann (Wunsch Max). Alte Konten ohne `topRuns` stehen
   mit `bestScore` drin.
+  Seit 3.5 genauso bei **Groesster Gewinn** (`topWins` je Spiel und
+  Zeitraum) und **Bester Multi** (`topX` je Spiel, je Zeitraum
+  `topX[spiel]`), gefuellt in `accounts.game()`. Alte Staende ohne Listen
+  stehen mit ihrem Bestwert drin.
 - **Versteckte Gewinne:** Starlight, Plinko und Daily verbuchen ihre Runde
   erst beim Aufloesen (`hideWin(..., onReveal)`), damit Leaderboard und
   Statistik keinen Ausgang vorab verraten.
@@ -310,7 +314,7 @@ vorkommen.
 | lila | 👻 Geist 6 s, 🧲 Magnet 10 s (zieht Items im Umkreis 7 an), 🫥 Unsichtbar 7 s, 🐢 Zeitlupe fuer alle anderen 3 s |
 | pink | 🔀 Laengentausch mit Zufallsgegner, 💥 Schockwelle (halbiert alle im Umkreis 6), 🧊 Eisblock (friert einen Gegner 3 s ein) |
 | rot | 🤏 Diebstahl (je 3 Laenge von allen) |
-| gold ★ | ⭐ Stern 6 s (unverwundbar, gewinnt jedes Kopf-an-Kopf ohne Walze), 💎 Jackpot +12 |
+| gold ★ | ⭐ Stern 6 s (unverwundbar, gewinnt jedes Kopf-an-Kopf ohne Walze), 💎 Jackpot +50 (bis 3.4: +12) |
 | Nieten | 🐌 Schnecke 4 s, 🔄 Verdreht 6 s, ✂️ Halbiert, 💀 Pech (sofort tot) |
 
 Die Seltenheitsfarben der Kacheln folgen CS:GO: grau, blau, lila, pink, rot,
@@ -457,6 +461,13 @@ Rueckzahlung per Simulation mit 6 Decks: Perfect Pairs ~94 %, 21+3 ~95 %,
 also schlechter als die Haupthand – wie im echten Casino.
 
 ### ♠️ Poker (`poker.js`, Issue #1)
+
+**Darstellung (seit 3.5):** der Tisch wird in Teilen aktualisiert
+(`pkPatch`: Filz, Mitte, je Sitz ein Teil; nur geaenderte Teile werden
+ersetzt). Vorher baute jedes Update den ganzen Tisch neu, dadurch starteten
+Deal- und Glow-Animationen staendig neu (das „komische Blinken“). Neue Karten
+bekommen ihre Animation erst nach dem Einsetzen (`pkAnimate`). Beim Gewinn:
+Banner „YOU WIN“ mit Muenzregen und Fanfare, verloren ein kurzer tiefer Ton.
 
 Texas Hold'em No-Limit, **Spieler gegen Spieler**. Es gibt keinen festen
 Tisch, sondern **Lobbys, die Spieler selbst anlegen** (Wunsch Max,
@@ -828,6 +839,22 @@ Haben alle geantwortet, wird sofort aufgeloest. Gaeste spielen mit
 (bekommen nur Laenge). Beim Pflegen der Fragen: nur Dinge, die sich nicht
 aendern, und Antworten, die man belegen kann.
 
+
+### 🥤 Shell Game (Huetchenspiel, seit 3.5)
+
+Event wie die Quiz-Events (`events.js`, Art `cups`): 5 Runden. Je Runde
+zeigt der Server den Stein unter einem von 3 Bechern (1,8 s), dann folgen
+Tausche (Runde 1: 5 a 560 ms, jede Runde +2 und 70 ms schneller, mindestens
+250 ms), Phase `shuffle`. Danach 6 s tippen (`question`), dann Aufloesung.
+Richtig: 100 + 20 je spaetere Runde + bis 50 Tempobonus. Der Browser spielt
+die Tausche aus `start`/`moves`/`moveMs` selbst ab (Startzeit aus
+`left`/`total`); getippt wird der Platz, nicht der Becher. Die Loesung ist
+aus den gesendeten Zuegen ableitbar – das ist bei einem Huetchenspiel ohnehin
+alles, was man sieht.
+
+**Labyrinth:** seit 3.5 schickt eine Sackgasse (Feld mit nur einem freien
+Nachbarn, Start ausgenommen) zurueck an den Start (`resets` im Frame als
+`r`, der Browser meldet es mit Ton und Kopfzeile).
 ## Drumherum
 
 - **Hauptmenue** vor jeder Runde: Login/Registrierung, links 🐍 Snake

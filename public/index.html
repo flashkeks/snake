@@ -3855,9 +3855,184 @@ span.tier-common, span.tier-uncommon, span.tier-rare, span.tier-epic, span.tier-
     opacity: .45;
 }
 
+/* Huetchenspiel */
+.cups-stage {
+    position: relative;
+    height: 230px;
+    max-width: 520px;
+    margin: 8px auto;
+}
+
+.cups-table {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 18px;
+    height: 36px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, #1f5e3a, #0d2f1c);
+    box-shadow: inset 0 4px 12px rgba(0,0,0,.5);
+}
+
+.cups-stone {
+    position: absolute;
+    bottom: 34px;
+    font-size: 30px;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity .2s;
+    z-index: 0;
+}
+
+.cup {
+    position: absolute;
+    bottom: 30px;
+    width: 96px;
+    height: 112px;
+    margin-left: -48px;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: default;
+    transition: filter .15s;
+}
+
+.cup-body {
+    position: absolute;
+    inset: 0;
+    clip-path: polygon(18% 0, 82% 0, 100% 100%, 0 100%);
+    background: linear-gradient(90deg, #8f1d2c, #e0394f 35%, #ff7a8a 50%, #c92a40 70%, #7a1522);
+    border-radius: 6px;
+}
+
+.cup-body::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 8px;
+    height: 10px;
+    background: rgba(255,255,255,.25);
+}
+
+.cups-stage.pick .cup {
+    cursor: pointer;
+}
+
+.cups-stage.pick .cup:hover {
+    filter: brightness(1.25) drop-shadow(0 0 10px #ffd23f);
+}
+
+.cup.mine {
+    filter: drop-shadow(0 0 10px #3da5ff);
+}
+
+.cup.right {
+    filter: drop-shadow(0 0 14px #00ff88);
+}
+
+.cup.wrong {
+    filter: drop-shadow(0 0 14px #f43f5e) grayscale(.5);
+}
+
+.cup:disabled {
+    opacity: 1;
+}
+
 .pk-seat.won {
     border-color: #ffd23f;
-    animation: dailyGlow .8s ease-in-out infinite alternate;
+    box-shadow: 0 0 22px rgba(255,210,63,.75), inset 0 0 12px rgba(255,210,63,.25);
+    animation: pkWon 1.6s ease-in-out infinite;
+}
+
+@keyframes pkWon {
+    50% { box-shadow: 0 0 34px rgba(255,210,63,.95), inset 0 0 16px rgba(255,210,63,.35); }
+}
+
+.card-p.best {
+    transform: translateY(-4px);
+    box-shadow: 0 0 14px rgba(255,210,63,.9);
+}
+
+.pk-results.won {
+    color: #fff;
+    text-shadow: 0 0 10px rgba(255,210,63,.6);
+}
+
+.pk-results .gold-t {
+    color: #ffd23f;
+    font-weight: 900;
+}
+
+/* Gewinn-Effekt ueber dem Tisch */
+.pk-winfx {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pk-winbanner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 12px 26px;
+    border-radius: 16px;
+    background: rgba(10,12,20,.88);
+    border: 2px solid rgba(255,255,255,.25);
+    animation: pkBanner 2.2s ease-out forwards;
+}
+
+.pk-winfx.me .pk-winbanner {
+    border-color: #ffd23f;
+    box-shadow: 0 0 40px rgba(255,210,63,.6);
+    animation-duration: 3.2s;
+}
+
+.pk-winbanner b {
+    font-size: 22px;
+    letter-spacing: .04em;
+}
+
+.pk-winfx.me .pk-winbanner b {
+    font-size: 34px;
+    color: #ffd23f;
+    text-shadow: 0 0 18px rgba(255,210,63,.8);
+}
+
+.pk-winbanner span {
+    font-size: 20px;
+    font-weight: 900;
+    color: #ffd23f;
+}
+
+.pk-winbanner small {
+    opacity: .8;
+}
+
+@keyframes pkBanner {
+    0% { transform: scale(.4); opacity: 0; }
+    12% { transform: scale(1.12); opacity: 1; }
+    20% { transform: scale(1); }
+    85% { opacity: 1; }
+    100% { opacity: 0; transform: scale(.96); }
+}
+
+.pk-winfx i {
+    position: absolute;
+    top: -30px;
+    font-style: normal;
+    font-size: 22px;
+    animation: pkCoin linear forwards;
+}
+
+@keyframes pkCoin {
+    to { transform: translateY(520px) rotate(540deg); opacity: .2; }
 }
 
 .pk-cards {
@@ -6679,7 +6854,7 @@ const PHASE_NAME = {
     waiting: 'Waiting for players',
     intro: 'Get ready', question: 'Question', reveal: 'Answer', betting: 'Place your bets',
     spinning: 'No more bets', playing: 'Your move', dealer: 'Dealer plays', results: 'Results', awards: 'Winners',
-    play: 'Go!', starting: 'Shuffling', preflop: 'Pre-flop', flop: 'Flop', turn: 'Turn', river: 'River', showdown: 'Showdown'
+    play: 'Go!', starting: 'Shuffling', shuffle: 'Watch closely', preflop: 'Pre-flop', flop: 'Flop', turn: 'Turn', river: 'River', showdown: 'Showdown'
 };
 
 // Einsatz-Leiste fuer Roulette und Blackjack, wie bei Plinko: − Betrag +.
@@ -6760,8 +6935,9 @@ function renderEvent() {
             flags: `${d.data.total} flags. Pick the right country, faster answers score more.`,
             trivia: `${d.data.total} questions. Pick the right answer, faster answers score more.`,
             geo: `${d.data.total} places. Click on the world map where you think they are.<br>The closer, the more points.`,
-            estimate: `${d.data.total} questions. Type a number – the closer, the more points.<br>Closest guess gets +50.`
-        }[d.kind] + `<br><span style="opacity:.8;font-size:15px">🪙 1.5 coins per point + top 3 bonus (750 / 400 / 200)` +
+            estimate: `${d.data.total} questions. Type a number – the closer, the more points.<br>Closest guess gets +50.`,
+            cups: `${d.data.total} rounds. Watch the stone 🪨 – the cups get shuffled, then pick the right one.<br>Every round is faster.`
+        }[d.kind] + `<br><span style="opacity:.8;font-size:15px">🪙 0.5 coins per point + top 3 bonus (250 / 120 / 60)` +
             `${d.data.factor > 1 ? ` · <b>×${d.data.factor}</b> for ${d.members.length} players` : ''}<br>Coins for accounts, length for everyone.</span>`;
         main.innerHTML = `<div class="big-note">${text}</div>`;
         if (!member) main.innerHTML += '<div class="hint">You are watching. Only players on the field when the box was opened can play.</div>';
@@ -6777,6 +6953,7 @@ function renderEvent() {
     if (d.kind === 'flags' || d.kind === 'trivia') return renderFlags(main, d, member);
     if (d.kind === 'geo') return renderGeo(main, d, member);
     if (d.kind === 'estimate') return renderEstimate(main, d, member);
+    if (d.kind === 'cups') return renderCups(main, d, member);
     if (d.kind === 'roulette') return renderRoulette(main, d, member);
     if (d.kind === 'blackjack') return renderBlackjack(main, d, member);
 }
@@ -6819,6 +6996,106 @@ function renderFlags(main, d, member) {
         (d.phase === 'reveal' ? `<div class="msg ok">${q.right.length} got it right</div>` : '');
 }
 
+// --- Huetchenspiel: Stein zeigen, Becher tauschen, tippen ---
+// Der Server schickt Startbecher und alle Tausche; der Browser spielt sie
+// zeitgleich ab (Startzeit aus left/total der Phase).
+const CUP_X = [18, 50, 82];     // Plaetze in % der Buehne
+let cupsAnim = null;            // { round, t0, q }
+
+function cupSlots(q, t) {
+    // Platz je Becher (Becher i steht anfangs auf Platz i), dazu der laufende Tausch
+    const slot = [0, 1, 2];
+    let moving = null;
+    const tm = t - q.showMs;
+    if (tm > 0) {
+        const done = Math.min(q.moves.length, Math.floor(tm / q.moveMs));
+        for (let k = 0; k < done; k++) {
+            const [a, b] = q.moves[k];
+            const ca = slot.indexOf(a), cb = slot.indexOf(b);
+            slot[ca] = b;
+            slot[cb] = a;
+        }
+        if (done < q.moves.length) moving = { k: done, p: (tm - done * q.moveMs) / q.moveMs };
+    }
+    return { slot, moving };
+}
+
+function cupsFrame() {
+    const stage = $('cups-stage');
+    if (!stage || !cupsAnim) return;
+    requestAnimationFrame(cupsFrame);
+    const q = cupsAnim.q;
+    const t = performance.now() - cupsAnim.t0;
+    const { slot, moving } = cupSlots(q, cupsAnim.phase === 'shuffle' ? t : 1e9);
+    const stoneCup = q.start;     // der Stein bleibt unter "seinem" Becher
+    stage.querySelectorAll('.cup').forEach(el => {
+        const cup = Number(el.dataset.cup);
+        let x = CUP_X[slot[cup]], y = 0, z = 1;
+        if (moving) {
+            const [a, b] = q.moves[moving.k];
+            const e = moving.p < .5 ? 2 * moving.p * moving.p : 1 - Math.pow(-2 * moving.p + 2, 2) / 2;
+            if (slot[cup] === a) { x = CUP_X[a] + (CUP_X[b] - CUP_X[a]) * e; y = -Math.sin(Math.PI * moving.p) * 26; z = 3; }
+            if (slot[cup] === b) { x = CUP_X[b] + (CUP_X[a] - CUP_X[b]) * e; y = Math.sin(Math.PI * moving.p) * 14; z = 2; }
+        }
+        // Anfang: Becher mit dem Stein angehoben, Ende (Aufloesung): richtiger Becher hoch
+        let lift = 0;
+        if (cupsAnim.phase === 'shuffle' && t < q.showMs && cup === stoneCup) lift = t < q.showMs - 350 ? 1 : (q.showMs - t) / 350;
+        if (cupsAnim.phase === 'reveal' && cup === stoneCup) lift = 1;
+        el.style.left = x + '%';
+        el.style.transform = `translateY(${y - lift * 70}px)`;
+        el.style.zIndex = z;
+        if (cup === stoneCup) {
+            const st = $('cups-stone');
+            st.style.left = x + '%';
+            st.style.opacity = lift > 0 ? 1 : 0;
+        }
+    });
+}
+
+function renderCups(main, d, member) {
+    const q = d.data;
+    if (d.phase === 'results') return quizResults(main, d);
+    if (!q.moves) {
+        main.innerHTML = '';
+        return;
+    }
+    const left = Math.max(0, d.left || 0);
+    if (!cupsAnim || cupsAnim.round !== q.round) {
+        cupsAnim = { round: q.round, q, phase: d.phase, t0: performance.now() - (d.phase === 'shuffle' ? (d.total || 0) - left : 1e9) };
+        main.innerHTML = `<div class="hint" id="cups-info"></div>` +
+            `<div class="cups-stage" id="cups-stage"><div class="cups-table"></div><div class="cups-stone" id="cups-stone">🪨</div>` +
+            [0, 1, 2].map(i => `<button type="button" class="cup" data-ev="cup" data-cup="${i}"><span class="cup-body"></span></button>`).join('') +
+            `</div><div id="cups-msg"></div>`;
+        requestAnimationFrame(cupsFrame);
+    }
+    cupsAnim.phase = d.phase;
+    cupsAnim.q = q;
+    const stage = $('cups-stage');
+    const { slot } = cupSlots(q, 1e9);
+    const answered = q.answered.includes(evMe());
+    const canPick = member && !answered && d.phase === 'question';
+    stage.classList.toggle('pick', canPick);
+    stage.querySelectorAll('.cup').forEach(el => {
+        const s = slot[Number(el.dataset.cup)];
+        // Tippen meint den Platz, nicht den Becher
+        el.dataset.i = s;
+        el.disabled = !canPick;
+        el.classList.toggle('mine', evAnswer === s);
+        el.classList.toggle('right', q.correct !== null && s === q.correct);
+        el.classList.toggle('wrong', q.correct !== null && evAnswer === s && s !== q.correct);
+    });
+    $('cups-info').textContent = `Round ${q.round} / ${q.total} · ${q.moves.length} swaps · ${q.answered.length} picked`;
+    const msg = d.phase === 'shuffle' ? '👀 Watch the stone…'
+        : d.phase === 'question' ? (answered ? 'Locked in – waiting for the others' : member ? 'Which cup? Click it!' : '')
+        : d.phase === 'reveal' ? `${q.picks.filter(p => p.pts > 0).length} of ${q.picks.length} found it${evAnswer === q.correct ? ' – including you! 🎉' : evAnswer !== null ? ' – not you this time' : ''}` : '';
+    $('cups-msg').innerHTML = msg ? `<div class="msg ${d.phase === 'reveal' && evAnswer !== q.correct ? '' : 'ok'}">${msg}</div>` : '';
+    if (d.phase === 'reveal' && cupsAnim.revealed !== q.round) {
+        cupsAnim.revealed = q.round;
+        if (evAnswer === q.correct) fanfare(true);
+        else if (evAnswer !== null) beep(220, 0.3, 0.05);
+    }
+}
+
 // --- Map-Events (#6): Labyrinth, Coin Rush, Last Snake Standing ---
 // Die Map (Waende, Ziel) kommt einmal mit der Event-Nachricht, die Schlangen
 // je Schritt als `mg`. Gesteuert wird mit den normalen Pfeiltasten/WASD bzw.
@@ -6827,12 +7104,23 @@ function renderFlags(main, d, member) {
 const MG_KINDS = ['maze', 'coinrush', 'tron'];
 let mgFrame = null;
 const MG_RULES = {
-    maze: 'Find the way to the 🏁 goal. Walls just stop you, you can drive through the others.<br>First one there wins, the rest score by how close they got.',
+    maze: 'Find the way to the 🏁 goal. Walls just stop you, you can drive through the others.<br><b>Drive into a dead end and you are sent back to the start!</b><br>First one there wins, the rest score by how close they got.',
     coinrush: 'Collect as many 🪙 coins as you can. Crash into a wall or a snake and you are back after 2 s – your coins stay.',
     tron: 'Everyone leaves a trail that never shrinks. Hit a wall or any trail and you are out.<br>Last snake standing wins.'
 };
 
+let mgResets = 0, mgResetAt = 0;
 function onMgFrame(f) {
+    // Sackgasse: eigene Schlange zurueck am Start -> kurz melden
+    const mine = f.snakes && f.snakes.find(s => s.id === evMe());
+    if (mine && ev && ev.kind === 'maze') {
+        if (mgFrame && mine.r > mgResets) {
+            mgResetAt = performance.now();
+            beep(300, 0.12, 0.06);
+            setTimeout(() => beep(180, 0.25, 0.06), 120);
+        }
+        mgResets = mine.r || 0;
+    }
     mgFrame = f;
     if (ev && MG_KINDS.includes(ev.kind) && !$('event').classList.contains('hidden')) mgDraw();
 }
@@ -6842,7 +7130,7 @@ function renderMinigame(main, d, member) {
     if (d.phase === 'intro') {
         mgFrame = null;
         main.innerHTML = `<div class="big-note">${MG_RULES[d.kind]}<br><span style="opacity:.8;font-size:15px">Steer with the arrow keys / WASD (or the pad on touch). ` +
-            `🪙 1.5 coins per point + top 3 bonus${d.data.factor > 1 ? ` · <b>×${d.data.factor}</b> for ${d.members.length} players` : ''}</span></div>` +
+            `🪙 0.5 coins per point + top 3 bonus${d.data.factor > 1 ? ` · <b>×${d.data.factor}</b> for ${d.members.length} players` : ''}</span></div>` +
             '<canvas id="mg-canvas" class="mg-canvas"></canvas>' +
             (member ? '' : '<div class="hint">You are watching. Only players on the field when the box was opened can play.</div>');
         mgDraw();
@@ -6917,7 +7205,7 @@ function mgDraw() {
     const mine = f.snakes.find(s => s.id === me);
     if ($('mg-top') && mine) {
         $('mg-top').textContent = ev.kind === 'coinrush' ? `🪙 ${mine.k} coins${mine.a ? '' : ' · respawning…'}`
-            : ev.kind === 'maze' ? (mine.f ? `🏁 You made it! (#${f.fin.indexOf(me) + 1})` : 'Find the 🏁')
+            : ev.kind === 'maze' ? (mine.f ? `🏁 You made it! (#${f.fin.indexOf(me) + 1})` : performance.now() - mgResetAt < 1800 ? '🚫 Dead end – back to the start!' : 'Find the 🏁 · avoid dead ends')
             : mine.a ? `⚡ ${f.snakes.filter(s => s.a).length} still alive` : '💥 You are out';
     }
 }
@@ -7364,6 +7652,72 @@ function pkFmt(n) {
     return Number(n).toLocaleString('en-US');
 }
 
+// Poker-Karte ohne Animationsklasse; pkAnimate() setzt sie nur bei neuen Karten
+function pkCard(c, key, extra = '') {
+    const ck = esc(key + '|' + c);
+    if (c === '??') return `<span class="card-p back ${extra}" data-ck="${ck}"></span>`;
+    const red = c.endsWith('♥') || c.endsWith('♦');
+    return `<span class="card-p ${red ? 'red' : ''} ${extra}" data-ck="${ck}">${esc(c)}</span>`;
+}
+
+function pkAnimate(root) {
+    root.querySelectorAll('.card-p[data-ck]').forEach(el => {
+        const s = el.dataset.ck, i = s.lastIndexOf('|');
+        const key = s.slice(0, i), c = s.slice(i + 1);
+        if (seenCards.has(key + c)) return;
+        el.classList.add(seenCards.has(key + '??') ? 'flip' : 'deal');
+        seenCards.add(key + c);
+    });
+}
+
+// Tisch in Teilen aktualisieren: nur Teile, deren HTML sich geaendert hat,
+// werden ersetzt. Sonst starten Glow- und Deal-Animationen bei jedem Update neu
+// (das war das komische Blinken).
+function pkPatch(root, parts) {
+    const want = new Set(parts.map(([id]) => id));
+    root.querySelectorAll(':scope > [data-part]').forEach(el => { if (!want.has(el.dataset.part)) el.remove(); });
+    for (const [id, html] of parts) {
+        const old = root.querySelector(`:scope > [data-part="${id}"]`);
+        if (old && old._html === html) continue;
+        const tpl = document.createElement('template');
+        tpl.innerHTML = html.trim();
+        const el = tpl.content.firstElementChild;
+        el.dataset.part = id;
+        el._html = html;
+        if (old) old.replaceWith(el);
+        else root.appendChild(el);
+    }
+    pkAnimate(root);
+}
+
+// Gewinn: Banner mit Muenzregen und Fanfare, verloren nur ein kurzer Ton
+let pkWinShown = '';
+function pkWinFx(p, my) {
+    const res = (p.results || []).filter(r => r.amount > 0);
+    const key = p.hand + ':' + res.map(r => r.seat + '=' + r.amount).join(',');
+    if (!res.length || key === pkWinShown) return;
+    pkWinShown = key;
+    const mine = res.find(r => r.seat === my);
+    const box = document.createElement('div');
+    box.className = 'pk-winfx' + (mine ? ' me' : '');
+    const who = mine ? 'YOU WIN' : `${esc(res[0].name)} wins`;
+    const amt = mine ? mine.amount : res[0].amount;
+    const hand = (mine || res[0]).hand;
+    box.innerHTML = `<div class="pk-winbanner"><b>${mine ? '🏆 ' : ''}${who}</b><span>🪙 +${pkFmt(amt)}</span>${hand ? `<small>${esc(hand)}</small>` : ''}</div>` +
+        (mine ? Array.from({ length: 26 }, (_, i) => `<i style="left:${Math.round(Math.random() * 100)}%;animation-delay:${(Math.random() * .7).toFixed(2)}s;animation-duration:${(1.2 + Math.random() * .9).toFixed(2)}s">🪙</i>`).join('') : '');
+    const table = $('pk-table');
+    if (!table) return;
+    table.appendChild(box);
+    setTimeout(() => box.remove(), mine ? 3200 : 2200);
+    if (mine) {
+        fanfare('gold');
+        setTimeout(() => sTone(1568, { dur: .5, type: 'triangle', vol: .05, rev: .4 }), 600);
+    } else if (my >= 0 && p.seats[my] && p.seats[my].inHand) {
+        beep(330, 0.18, 0.05);
+        setTimeout(() => beep(247, 0.3, 0.05), 180);
+    } else beep(660, 0.12, 0.04);
+}
+
 function renderPoker(main, d, member) {
     const p = d.data;
     if (!main.querySelector('.pk')) {
@@ -7374,21 +7728,23 @@ function renderPoker(main, d, member) {
     // Eigener Platz immer unten: Sitze so drehen, dass "me" auf Position 0 liegt (my = eigener Sitz, me = Konto)
     const rot = my >= 0 ? my : 0;
     const hand = p.hand;
-    let html = '<div class="pk-felt"></div>';
+    const parts = [['felt', '<div class="pk-felt"></div>']];
+    let html = '';
 
     // Mitte: Board, Pot, Ergebnis
     html += '<div class="pk-center">';
-    html += `<div class="pk-board">${p.board.map((c, i) => cardHtml(c, `pk:${hand}:b${i}:`)).join('')}${'<span class="card-p pk-slot"></span>'.repeat(5 - p.board.length)}</div>`;
+    html += `<div class="pk-board">${p.board.map((c, i) => pkCard(c, `pk:${hand}:b${i}:`)).join('')}${'<span class="card-p pk-slot"></span>'.repeat(5 - p.board.length)}</div>`;
     html += `<div class="pk-pot">${p.pot ? 'Pot 🪙 ' + pkFmt(p.pot) : `Blinds ${p.blinds[0]}/${p.blinds[1]}`}</div>`;
     if (p.results) {
-        html += '<div class="pk-results">' + p.results.filter(r => r.amount > 0).map(r =>
-            `<div><b>${esc(r.name)}</b> wins ${pkFmt(r.amount)}${r.hand ? ' · ' + esc(r.hand) : ''}</div>`).join('') + '</div>';
+        html += '<div class="pk-results won">' + p.results.filter(r => r.amount > 0).map(r =>
+            `<div>🏆 <b>${esc(r.name)}</b> wins <span class="gold-t">🪙 ${pkFmt(r.amount)}</span>${r.hand ? ' · ' + esc(r.hand) : ''}</div>`).join('') + '</div>';
     } else if (d.phase === 'waiting') {
         html += '<div class="pk-results">Waiting for 2 players with chips…</div>';
     } else if (d.phase === 'starting') {
         html += '<div class="pk-results">Next hand starts…</div>';
     }
     html += '</div>';
+    parts.push(['center', html]);
 
     // Sitze
     const winners = new Set((p.results || []).filter(r => r.amount > 0).map(r => r.seat));
@@ -7399,20 +7755,21 @@ function renderPoker(main, d, member) {
         const style = `left:${pos[0]}%;top:${pos[1]}%`;
         if (!s) {
             const canSit = my < 0 && member && me;
-            html += `<div class="pk-seat empty" style="${style}">${canSit ? `<button type="button" data-ev="pksit" data-seat="${i}">Sit here</button>` : '<span>empty</span>'}</div>`;
+            parts.push(['s' + i, `<div class="pk-seat empty" style="${style}">${canSit ? `<button type="button" data-ev="pksit" data-seat="${i}">Sit here</button>` : '<span>empty</span>'}</div>`]);
             return;
         }
         const cls = ['pk-seat', i === p.turn ? 'turn' : '', s.folded ? 'folded' : '', winners.has(i) ? 'won' : '', i === my ? 'me' : ''].join(' ');
-        const cards = s.cards.map((c, k) => cardHtml(c, `pk:${hand}:${i}:${k}:`).replace('card-p', `card-p${bestCards.has(c) ? ' best' : ''}`)).join('');
-        html += `<div class="${cls}" style="${style}">` +
+        const cards = s.cards.map((c, k) => pkCard(c, `pk:${hand}:${i}:${k}:`, bestCards.has(c) ? 'best' : '')).join('');
+        parts.push(['s' + i, `<div class="${cls}" style="${style}">` +
             `<div class="pk-cards">${cards}</div>` +
             `<div class="pk-name"><span class="dot" style="background:${esc(s.color || '#fff')}"></span>${esc(s.name)}${i === p.dealer && s.inHand ? ' <span class="pk-dealer">D</span>' : ''}</div>` +
             `<div class="pk-stack">🪙 ${pkFmt(s.stack)}${s.allIn ? ' · ALL-IN' : ''}</div>` +
             (s.last ? `<div class="pk-last">${esc(s.last)}</div>` : '') +
             (s.bet ? `<div class="pk-bet">${pkFmt(s.bet)}</div>` : '') +
-            '</div>';
+            '</div>']);
     });
-    $('pk-table').innerHTML = html;
+    pkPatch($('pk-table'), parts);
+    if (p.results) pkWinFx(p, my);
 
     // Bedienleiste
     const seat = my >= 0 ? p.seats[my] : null;
@@ -7494,6 +7851,11 @@ $('event').addEventListener('click', e => {
     if (t === 'flag') {
         evAnswer = Number(b.dataset.i);
         evSend({ choice: evAnswer });
+        renderEvent();
+    } else if (t === 'cup') {
+        evAnswer = Number(b.dataset.i);
+        evSend({ choice: evAnswer });
+        beep(700, 0.06, 0.05);
         renderEvent();
     } else if (t === 'chip') {
         evChip = Number(b.dataset.v);

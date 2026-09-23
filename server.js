@@ -161,7 +161,7 @@ const BOX_OUTCOMES = [
     { key: 'ice', icon: '🧊', label: 'Ice block', good: true, rarity: 'pink', weight: 5 },
     { key: 'steal', icon: '🤏', label: 'Heist', good: true, rarity: 'red', weight: 4 },
     { key: 'star', icon: '⭐', label: 'Star', good: true, rarity: 'gold', weight: 3 },
-    { key: 'jackpot', icon: '💎', label: 'Jackpot +12', good: true, rarity: 'gold', weight: 3 },
+    { key: 'jackpot', icon: '💎', label: 'Jackpot +50', good: true, rarity: 'gold', weight: 3 },
     { key: 'slow', icon: '🐌', label: 'Snail', good: false, rarity: 'bad', weight: 9 },
     { key: 'reverse', icon: '🔄', label: 'Reversed', good: false, rarity: 'bad', weight: 7 },
     { key: 'half', icon: '✂️', label: 'Halved', good: false, rarity: 'bad', weight: 6 },
@@ -690,7 +690,7 @@ function applyBox(id, p, o) {
             grow(p, 5);
             break;
         case 'jackpot':
-            grow(p, 12);
+            grow(p, 50);
             break;
         case 'half':
             setLen(p, Math.floor(p.len / 2));

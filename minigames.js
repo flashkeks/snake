@@ -3,7 +3,8 @@
 // steht solange (Event-Pause wie bei den Quiz-Events).
 //
 //   maze      Labyrinth: wer zuerst am Ziel ist. Waende blocken nur, andere
-//             Schlangen faehrt man durch.
+//             Schlangen faehrt man durch. Wer in eine Sackgasse faehrt (Feld
+//             mit nur einem freien Nachbarn), muss zurueck an den Start.
 //   coinrush  Coin Rush: in der Zeit die meisten Muenzen. Crash = 2 s Pause,
 //             dann neu, gesammelte Muenzen bleiben.
 //   tron      Last Snake Standing: jeder zieht eine Spur, die nie kuerzer
@@ -108,6 +109,8 @@ module.exports = function createMinigame(kind, members) {
 
     const snakes = new Map();
     const free = (x, y) => x > 0 && y > 0 && x < W - 1 && y < H - 1 && !wall[y][x];
+    // Sackgasse: nur ein freier Nachbar (Start und Ziel ausgenommen)
+    const deadEnd = (x, y) => !(x === 1 && y === 1) && [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => free(x + dx, y + dy)).length === 1;
 
     function occupied() {
         const set = new Set();
@@ -144,7 +147,7 @@ module.exports = function createMinigame(kind, members) {
             id: m.id, name: m.name, color: m.color,
             body: Array.from({ length: len }, () => [x, y]),
             dir: DIRS[dir], next: DIRS[dir], moved: DIRS[dir],
-            alive: true, respawnAt: 0, coins: 0, finishedAt: null, grow: 0
+            alive: true, respawnAt: 0, coins: 0, finishedAt: null, grow: 0, resets: 0
         });
     });
 
@@ -190,6 +193,11 @@ module.exports = function createMinigame(kind, members) {
                 if (nx === goal.x && ny === goal.y) {
                     s.finishedAt = now;
                     finished.push(s.id);
+                } else if (deadEnd(nx, ny)) {
+                    // Sackgasse: zurueck an den Start (Wunsch Max)
+                    s.body = s.body.map(() => [1, 1]);
+                    s.dir = s.next = s.moved = DIRS.right;
+                    s.resets++;
                 }
             }
             if (finished.length === snakes.size) done = true;
@@ -312,7 +320,7 @@ module.exports = function createMinigame(kind, members) {
             left: Math.max(0, ends - Date.now()),
             snakes: [...snakes.values()].map(s => ({
                 id: s.id, n: s.name, c: s.color, a: s.alive, f: s.finishedAt !== null,
-                b: s.body.flat(), k: s.coins
+                b: s.body.flat(), k: s.coins, r: s.resets
             })),
             coins: coins.flatMap(c => [c.x, c.y]),
             fin: finished

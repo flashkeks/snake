@@ -51,6 +51,11 @@ function newPeriod(id) {
     return { id, bestScore: 0, kills: 0, bestWin: 0, bestX: {}, casinoNet: 0, eventWins: 0, arenaKills: 0 };
 }
 
+// Liste der besten 10 Werte (absteigend) um einen Wert ergaenzen
+function topTen(arr, v) {
+    return [...(arr || []), v].sort((a, b) => b - a).slice(0, 10);
+}
+
 function weekId(day) {
     // day = YYYY-MM-DD (Berlin); ISO-Woche: Donnerstag der Woche bestimmt das Jahr
     const d = new Date(day + 'T12:00:00Z');
@@ -397,10 +402,18 @@ module.exports = function createAccounts(dataDir) {
                 g.won += win;
                 g.bestWin = Math.max(g.bestWin, win);
                 if (x) g.bestX = Math.max(g.bestX, Math.round(x * 100) / 100);
+                // Beste 10 Runden fuers Leaderboard (jede Runde ein eigener Eintrag)
+                if (win > 0) g.topWins = topTen(g.topWins, win);
+                if (x) g.topX = topTen(g.topX, Math.round(x * 100) / 100);
             });
             this.period(key, p => {
                 p.bestWin = Math.max(p.bestWin, win);
                 if (x) p.bestX[name] = Math.max(p.bestX[name] || 0, Math.round(x * 100) / 100);
+                if (win > 0) p.topWins = topTen(p.topWins, win);
+                if (x) {
+                    p.topX = p.topX || {};
+                    p.topX[name] = topTen(p.topX[name], Math.round(x * 100) / 100);
+                }
                 if (!NOT_CASINO.has(name)) p.casinoNet += win - wager;
             });
         },
@@ -621,14 +634,30 @@ module.exports = function createAccounts(dataDir) {
                     casino: casinoNet(s), events: s.eventWins, arena: s.shooterKills
                 }[cat] || 0;
             };
-            // Score: jede Runde ein eigener Eintrag (alte Konten ohne topRuns: bestScore)
-            if (cat === 'score') {
-                return Object.values(db.users).flatMap(u => {
+            // Score, Groesster Gewinn und Bester Multi: jede Runde ein eigener
+            // Eintrag, man kann mehrfach auf dem Board stehen (Max). Alte Staende
+            // ohne Listen stehen mit ihrem Bestwert drin.
+            if (cat === 'score' || cat === 'bigwin' || cat === 'bestx') {
+                const runsOf = u => {
                     const s = u.stats || {};
-                    const src = period === 'all' ? s : ((s.periods || {})[period] || {});
-                    if (period !== 'all' && src.id !== ids[period]) return [];
-                    const runs = src.topRuns || (src.bestScore ? [src.bestScore] : []);
-                    return runs.map(v => ({ name: u.name, value: v, tt: ach.titleOf(u) || undefined }));
+                    if (period !== 'all') {
+                        const p = (s.periods || {})[period];
+                        if (!p || p.id !== ids[period]) return [];
+                        if (cat === 'score') return p.topRuns || [p.bestScore];
+                        if (cat === 'bigwin') return p.topWins || [p.bestWin];
+                        return (p.topX || {})[game] || [(p.bestX || {})[game]];
+                    }
+                    if (cat === 'score') return s.topRuns || [s.bestScore];
+                    const games = s.games || {};
+                    if (cat === 'bestx') return (games[game] || {}).topX || [(games[game] || {}).bestX];
+                    const all = Object.values(games).flatMap(g => g.topWins || [g.bestWin]).filter(v => v > 0);
+                    // biggestWin kommt aus Stellen ohne game(); nur rein, wenn er groesser ist
+                    if ((s.biggestWin || 0) > Math.max(0, ...all)) all.push(s.biggestWin);
+                    return all.sort((a, b) => b - a).slice(0, 10);
+                };
+                return Object.values(db.users).flatMap(u => {
+                    const tt = ach.titleOf(u) || undefined;
+                    return runsOf(u).filter(v => v > 0).map(v => ({ name: u.name, value: v, tt }));
                 }).sort((a, b) => b.value - a.value).slice(0, 10);
             }
             return Object.entries(db.users)

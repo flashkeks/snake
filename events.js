@@ -9,6 +9,8 @@
 //   trivia    Allgemeinwissen, 4 Antworten
 //   geo       "Where is ...?" – auf die Weltkarte klicken, Punkte nach Entfernung
 //   estimate  Zahl schaetzen (Hoehe, Laenge, Jahr ...), Punkte nach Abweichung
+//   cups      Huetchenspiel: Stein unter einem von 3 Bechern, die Becher
+//             werden getauscht, dann tippen. Jede Runde mehr Zuege, schneller
 //   maze, coinrush, tron   Map-Events (#6): alle spielen auf einer eigenen
 //             kleinen Map ein Snake-Minispiel, Logik in minigames.js
 //
@@ -26,6 +28,7 @@ const KINDS = {
     trivia: { title: '🧠 Trivia', rounds: 6, ask: 12000, reveal: 3000 },
     geo: { title: '🌍 Where is it?', rounds: 5, ask: 15000, reveal: 5000 },
     estimate: { title: '📏 Guess the number', rounds: 5, ask: 15000, reveal: 5000 },
+    cups: { title: '🥤 Shell Game', rounds: 5, ask: 6000, reveal: 2800 },
     maze: { title: createMinigame.GAMES.maze.title, minigame: true },
     coinrush: { title: createMinigame.GAMES.coinrush.title, minigame: true },
     tron: { title: createMinigame.GAMES.tron.title, minigame: true }
@@ -153,6 +156,13 @@ module.exports = function createEvents(h) {
                 guesses: reveal ? guessList(q, a => ({ lat: a.lat, lon: a.lon, km: Math.round(a.km) })) : []
             });
         }
+        if (ev.kind === 'cups') {
+            Object.assign(out, {
+                ...q.cups,
+                correct: reveal ? q.correct : null,
+                picks: reveal ? guessList(q, a => ({ choice: a.choice })) : []
+            });
+        }
         if (ev.kind === 'estimate') {
             Object.assign(out, {
                 question: q.item.q,
@@ -183,7 +193,7 @@ module.exports = function createEvents(h) {
             started: Date.now(),
             round: 0,
             q: null,
-            pool: KINDS[kind].minigame ? [] : shuffle([...{ flags: FLAGS, trivia: TRIVIA, geo: PLACES, estimate: ESTIMATES }[kind]])
+            pool: KINDS[kind].minigame || kind === 'cups' ? [] : shuffle([...{ flags: FLAGS, trivia: TRIVIA, geo: PLACES, estimate: ESTIMATES }[kind]])
         };
         if (KINDS[kind].minigame) {
             ev.mg = createMinigame(kind, [...ev.members.values()]);
@@ -212,6 +222,26 @@ module.exports = function createEvents(h) {
             q.correct = q.options.indexOf(item.a);
         } else if (k === 'geo') {
             q.place = item;
+        } else if (k === 'cups') {
+            // Runde 1: 5 Tausche a 560 ms, Runde 5: 13 Tausche a 280 ms
+            const start = Math.floor(Math.random() * 3);
+            const n = 3 + 2 * ev.round;
+            const moveMs = Math.max(250, 560 - 70 * (ev.round - 1));
+            const moves = [];
+            let pos = start;
+            for (let i = 0; i < n; i++) {
+                const a = Math.floor(Math.random() * 3);
+                const b = (a + 1 + Math.floor(Math.random() * 2)) % 3;
+                moves.push([a, b]);
+                if (pos === a) pos = b;
+                else if (pos === b) pos = a;
+            }
+            q.cups = { start, moves, moveMs, showMs: 1800 };
+            q.correct = pos;
+            ev.q = q;
+            // erst zeigen und mischen, dann tippen (tick() schaltet auf 'question')
+            phase('shuffle', q.cups.showMs + n * moveMs + 400);
+            return;
         } else {
             q.item = item;
         }
@@ -320,7 +350,10 @@ module.exports = function createEvents(h) {
             return;
         }
         if (ev.phase === 'results') awards();
-        else if (ev.phase === 'question') reveal();
+        else if (ev.phase === 'shuffle') {
+            ev.q.asked = Date.now();
+            phase('question', KINDS[ev.kind].ask);
+        } else if (ev.phase === 'question') reveal();
         else if (ev.phase === 'intro' || ev.phase === 'reveal') {
             if (ev.round >= KINDS[ev.kind].rounds) results();
             else nextQuestion();
@@ -348,7 +381,13 @@ module.exports = function createEvents(h) {
         const ask = KINDS[ev.kind].ask / SPEED;
         let pts = 0;
 
-        if (ev.kind === 'flags' || ev.kind === 'trivia') {
+        if (ev.kind === 'cups') {
+            const choice = Number(data.choice);
+            if (!(Number.isInteger(choice) && choice >= 0 && choice < 3)) return;
+            // Richtig: 100, spaetere Runden mehr, dazu bis 50 Tempobonus
+            if (choice === q.correct) pts = 100 + 20 * (ev.round - 1) + Math.round(50 * Math.max(0, ask - ms) / ask);
+            q.answers.set(c.id, { choice, ms, pts });
+        } else if (ev.kind === 'flags' || ev.kind === 'trivia') {
             const choice = Number(data.choice);
             if (!(Number.isInteger(choice) && choice >= 0 && choice < 4)) return;
             // Schnellere Antworten bringen mehr: 100 + bis zu 100 Tempobonus
