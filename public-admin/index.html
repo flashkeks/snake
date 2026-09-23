@@ -185,6 +185,7 @@ dialog h2 { margin: 0 0 10px; }
     <div class="row">
         <button type="button" id="d-daily">Reset daily wheel</button>
         <button type="button" id="d-logout">Log out everywhere</button>
+        <button type="button" class="danger" id="d-reset-soft">Reset (keep achievements + cosmetics)…</button>
         <button type="button" class="danger" id="d-reset">Reset EVERYTHING…</button>
         <button type="button" class="danger" id="d-delete">Delete account…</button>
     </div>
@@ -482,11 +483,13 @@ $('d-delete').onclick = async () => {
         msg('d-msg', e.message, 'err');
     }
 };
-$('d-reset').onclick = async () => {
-    const typed = prompt(`Reset ${cur.name} completely?\nCoins back to 100, stats, achievements, title, cosmetics, arena stash, daily and luck are wiped.\nName and password stay. Type the name to confirm:`);
+async function resetUser(soft) {
+    const what = soft ? 'Coins back to 100, stats, arena stash, daily and luck are wiped.\nAchievements, title and cosmetics stay.'
+        : 'Coins back to 100, stats, achievements, title, cosmetics, arena stash, daily and luck are wiped.';
+    const typed = prompt(`Reset ${cur.name}${soft ? '' : ' completely'}?\n${what}\nName and password stay. Type the name to confirm:`);
     if (typed === null) return;
     try {
-        await api(`/api/users/${encodeURIComponent(cur.key)}/reset-all`, { method: 'POST', body: { confirm: typed } });
+        await api(`/api/users/${encodeURIComponent(cur.key)}/${soft ? 'reset-soft' : 'reset-all'}`, { method: 'POST', body: { confirm: typed } });
         msg('d-msg', `${cur.name} was reset`, 'ok');
         await loadUsers();
         cur = users.find(u => u.key === cur.key) || cur;
@@ -496,7 +499,9 @@ $('d-reset').onclick = async () => {
     } catch (e) {
         msg('d-msg', e.message, 'err');
     }
-};
+}
+$('d-reset').onclick = () => resetUser(false);
+$('d-reset-soft').onclick = () => resetUser(true);
 $('d-close').onclick = () => $('dlg').close();
 
 function msg(id, text, kind) {

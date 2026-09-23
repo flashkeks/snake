@@ -195,7 +195,7 @@ module.exports = function startAdmin(h) {
 
             if (m === 'GET' && p === '/api/users') return json(res, 200, { users: h.accounts.adminList() });
 
-            let mm = p.match(/^\/api\/users\/([^/]+)\/(coins|reset-daily|reset-all|logout-all)$/);
+            let mm = p.match(/^\/api\/users\/([^/]+)\/(coins|reset-daily|reset-all|reset-soft|logout-all)$/);
             if (m === 'POST' && mm) {
                 const key = decodeURIComponent(mm[1]);
                 const u = h.accounts.get(key);
@@ -218,12 +218,12 @@ module.exports = function startAdmin(h) {
                     h.pushAccount(key);
                     return json(res, 200, { coins: after });
                 }
-                if (mm[2] === 'reset-all') {
+                if (mm[2] === 'reset-all' || mm[2] === 'reset-soft') {
                     // Doppelte Absicherung wie beim Loeschen: der Name muss mitkommen
                     if (b.confirm !== u.name) return json(res, 400, { error: 'confirm with the exact name' });
                     h.stopPlay(key);
-                    const before = h.accounts.adminResetAll(key);
-                    log(email, 'reset-all', u.name, before);
+                    const before = h.accounts.adminResetAll(key, mm[2] === 'reset-soft');
+                    log(email, mm[2], u.name, before);
                     h.pushAccount(key);
                     return json(res, 200, { ok: true });
                 }

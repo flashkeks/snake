@@ -39,8 +39,10 @@ const MAX_PTS = 200;
 // Top 3, alles mal einem Faktor fuer die Spielerzahl (1 + 0,5 je weiterem
 // Spieler, hoechstens ×3). Zum Vergleich: ein Snake-Cashout brachte bis
 // dahin im Schnitt ~1230 Coins. Laenge wie bisher: Punkte / 40.
-const COINS_PER_POINT = 1.5;
-const PLACE_BONUS = [750, 400, 200];
+// 23.09.2026 (Max: "zu op"): Coins auf ein Drittel, dafuer dreimal so viel Laenge
+const COINS_PER_POINT = 0.5;
+const PLACE_BONUS = [250, 120, 60];
+const POINTS_PER_LENGTH = 12;
 
 function playerFactor(n) {
     return Math.min(3, 1 + 0.5 * Math.max(0, n - 1));
@@ -252,7 +254,7 @@ module.exports = function createEvents(h) {
                 if (won) h.accounts.period(m.account, x => { x.eventWins++; });
             }
             let coins = Math.floor((r.value * COINS_PER_POINT + bonus) * f);
-            const length = Math.floor(r.value / 40);
+            const length = Math.floor(r.value / POINTS_PER_LENGTH);
             if (m.account && coins > 0) {
                 h.accounts.addCoins(m.account, coins);
                 h.accounts.earn(m.account, 'events', coins);

@@ -537,13 +537,15 @@ module.exports = function createAccounts(dataDir) {
         // Alles zuruecksetzen wie ein frisches Konto: Coins, Statistik,
         // Achievements, Titel, Cosmetics, Arena, Daily, Luck. Name, Passwort,
         // Farbe, Erstellungsdatum und Sessions bleiben.
-        adminResetAll(key) {
+        // keep = true: Achievements (samt Titel) und Cosmetics bleiben
+        adminResetAll(key, keep) {
             const u = db.users[key];
             if (!u) return null;
-            const before = { coins: u.coins, items: (u.arena && u.arena.inv.length) || 0, cosmetics: (u.inventory || []).length };
+            const before = { coins: u.coins, items: (u.arena && u.arena.inv.length) || 0, cosmetics: (u.inventory || []).length, keep: !!keep };
             db.users[key] = {
                 name: u.name, salt: u.salt, hash: u.hash, color: u.color, created: u.created, lastSeen: u.lastSeen,
-                coins: START_COINS, stats: newStats()
+                coins: START_COINS, stats: newStats(),
+                ...(keep ? { achievements: u.achievements, title: u.title, inventory: u.inventory, equipped: u.equipped } : {})
             };
             touch();
             return before;

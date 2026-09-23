@@ -760,13 +760,15 @@ Fuer alle Events gilt:
   Laufende Cashouts brechen ab.
 - Jeder Teilnehmer sieht das Event mit eigener Event-Rangliste. Wer im Menue
   oder Casino ist, spielt nicht mit.
-- Am Ende **Coins = (Punkte × 1,5 + Platz-Bonus) × Spielerfaktor** fuer
-  Konten (seit 23.09.2026, Issue #4). Platz-Bonus 750 / 400 / 200 fuer die
-  Top 3 (nur mit Punkten). Spielerfaktor 1 + 0,5 je weiterem Teilnehmer,
-  hoechstens ×3 (2 Spieler ×1,5, 3 ×2, ab 5 ×3). Beispiel: Sieger mit 749
-  Punkten bei 2 Spielern = (1123 + 750) × 1,5 = 2810. Bis dahin gab es
-  Punkte / 10 (+50 fuer Platz 1), also hoechstens ~150. Laenge =
-  Punkte / 40 fuer alle, dann 5 s **Podium** mit den Top 3.
+- Am Ende **Coins = (Punkte × 0,5 + Platz-Bonus) × Spielerfaktor** fuer
+  Konten, Platz-Bonus 250 / 120 / 60 fuer die Top 3 (nur mit Punkten).
+  Spielerfaktor 1 + 0,5 je weiterem Teilnehmer, hoechstens ×3 (2 Spieler
+  ×1,5, 3 ×2, ab 5 ×3). Beispiel: Sieger mit 749 Punkten bei 2 Spielern =
+  (374 + 250) × 1,5 = 936. **Laenge = Punkte / 12** fuer alle (749 Punkte →
+  +62), dann 5 s **Podium** mit den Top 3. Geschichte: bis 23.09. mittags
+  Punkte / 10 Coins; Issue #4 hob auf ×1,5 und Boni 750/400/200 (Sieger
+  ~2800); am Abend desselben Tages auf ein Drittel zurueck, weil zu stark
+  (Max), dafuer Laenge von Punkte / 40 auf Punkte / 12.
 - Dann **Double or Nothing** fuer jeden, der etwas gewonnen hat: 50/50 per
   Muenzwurf, 15 s Bedenkzeit, ohne Antwort wird behalten. Wer noch ueberlegt
   oder wirft, bleibt eingefroren und ist fuer die anderen ein durchsichtiger
@@ -867,6 +869,10 @@ Runde, die live geht, bekommt dort einen kurzen Eintrag** – englisch, eine
 Zeile je Aenderung, kein Fliesstext (Wunsch Max, 23.09.2026). Der Eintrag
 gehoert in denselben Commit wie die Aenderung.
 
+**Versionen** statt Titeln (Max): normale Runde = +0.1 (2.1 → 2.2), grosse
+Aenderung = naechste Hauptzahl (2.x → 3.0). Stand 23.09.2026 abends: 3.0
+(neuer Name, Domain, Menue).
+
 ## Name und Adresse
 
 Seit 23.09.2026 heisst das Spiel **Kek-Game** (vorher „Snake and Gamba“).
@@ -921,8 +927,9 @@ Coins gesamt, offene Tickets. Die Seite fragt alle 5 s neu.
 | 🎰 Luck | garantierter Mindestgewinn fuer die naechsten N Runden (`u.rig`, `luck.js`): Slots (Drilling mit Quote ≥ Ziel wird gebaut), Budget Starlight fuer Spins und Bonus Buy (neu gewuerfelt bis ≥ Ziel, optional „Freispiele muessen kommen“; Zeitbudget 0,4 s, sonst der beste Versuch), Plinko (Fach ≥ Ziel, Pfad passend gebaut), Daily Wheel (neu gedreht), Crossy Road (N Laeufe ohne Unfall). Jede Runde verbraucht eins; der Spieler sieht nichts davon (`u.rig` geht nie an den Browser) |
 | 🔫 Arena | Scrap setzen; Item bauen (Art, Basis, Grade, bis zu drei Effekte mit Stufe, Anzahl) – die Seltenheit wird wie bei einem echten Drop berechnet; Lager ansehen, einzeln/ausgewaehlt loeschen, leeren |
 
-Im Coins-Tab gibt es **„Reset EVERYTHING…“** (Name eintippen zur
-Bestaetigung): Coins zurueck auf 100, Statistik, Achievements, Titel,
+Im Coins-Tab gibt es **„Reset (keep achievements + cosmetics)…“** – wie
+unten, aber Achievements, Titel und Cosmetics bleiben (`reset-soft`) – und
+**„Reset EVERYTHING…“** (beide: Name eintippen zur Bestaetigung): Coins zurueck auf 100, Statistik, Achievements, Titel,
 Cosmetics, Arena-Lager, Daily und Luck weg; Name, Passwort, Farbe und
 Sessions bleiben. Laufende Runden (Feld, Tisch, Raid, Crossy) werden vorher
 beendet, der Spieler bleibt angemeldet. API: `POST /api/users/KEY/reset-all

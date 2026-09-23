@@ -2300,6 +2300,91 @@ button:disabled {
     gap: 14px;
 }
 
+/* Hauptmenue: Cosmetic-Banner und drei Bereiche */
+.shop-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    margin: 10px 0 12px;
+    padding: 12px 16px;
+    border: 0;
+    border-radius: 14px;
+    text-align: left;
+    color: #fff;
+    background: linear-gradient(110deg, #ff5bd6, #a970ff 45%, #3da5ff);
+    background-size: 200% 100%;
+    animation: bannerFlow 6s linear infinite alternate;
+    box-shadow: 0 0 22px rgba(169,112,255,.45);
+}
+
+@keyframes bannerFlow {
+    to { background-position: 100% 0; }
+}
+
+.shop-banner .sb-ico {
+    font-size: 34px;
+}
+
+.shop-banner .sb-txt {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.shop-banner b {
+    font-size: 20px;
+}
+
+.shop-banner small {
+    opacity: .9;
+    font-weight: 600;
+}
+
+.shop-banner .sb-go {
+    font-size: 26px;
+    font-weight: 900;
+}
+
+.main-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.main-tabs button {
+    font-size: 17px;
+    padding: 10px;
+    background: rgba(255,255,255,.05);
+    color: #fff;
+    border: 1px solid rgba(0,255,140,.3);
+}
+
+.main-tabs button.on {
+    background: #00ff88;
+    color: #04130b;
+}
+
+.main-tabs small {
+    font-size: 11px;
+    opacity: .7;
+}
+
+.menu-sects.one {
+    grid-template-columns: 1fr;
+}
+
+.menu-sects[hidden] {
+    display: none !important;
+}
+
+.menu-sect.kekemon {
+    border-color: rgba(255,120,200,.35);
+    background: rgba(255,120,200,.05);
+    text-align: center;
+}
+
 /* Arena als volle Zeile unter Snake und Gamba */
 .menu-sect.arena {
     grid-column: 1 / -1;
@@ -3315,14 +3400,15 @@ span.tier-common, span.tier-uncommon, span.tier-rare, span.tier-epic, span.tier-
 
 .cs-tabs {
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
     border-bottom: 1px solid rgba(255,210,63,.3);
     padding-bottom: 8px;
-    overflow-x: auto;
 }
 
 .cs-tabs button {
-    flex: 1 0 auto;
+    flex: 1 1 0;
+    min-width: 100px;
     font-size: 15px;
     padding: 8px 12px;
     background: rgba(255,255,255,.05);
@@ -4778,11 +4864,24 @@ body.touch input, body.touch textarea {
                         <span>👤 <b id="me-name"></b></span>
                         <span class="coins">🪙 <span id="me-coins">0</span></span>
                         <button type="button" class="ghost" id="support-btn" style="font-size:13px;padding:5px 10px">💬 Support<span class="sp-badge" id="sp-badge" hidden></span></button>
-                        <button type="button" class="ghost" id="shop-btn" style="font-size:13px;padding:5px 10px">🎨 Cosmetic Shop</button>
                         <button type="button" class="ghost" id="konto-btn" style="font-size:13px;padding:5px 10px">Account</button>
                     </div>
 
-                    <div class="menu-sects">
+                    <!-- Cosmetic Shop gut sichtbar (Wunsch Max) -->
+                    <button type="button" class="shop-banner" id="shop-btn">
+                        <span class="sb-ico">🎨</span>
+                        <span class="sb-txt"><b>Cosmetic Shop</b><small id="shop-banner-sub">Skins, heads, trails, death effects · new offers every day</small></span>
+                        <span class="sb-go">→</span>
+                    </button>
+
+                    <!-- Hauptbereiche -->
+                    <div class="main-tabs" id="main-tabs">
+                        <button type="button" data-main="games" class="on">🎮 Games</button>
+                        <button type="button" data-main="gamba">🎰 Gamba</button>
+                        <button type="button" data-main="kekemon">🐾 Kekémon <small>soon</small></button>
+                    </div>
+
+                    <div class="menu-sects one" data-mainpane="games">
                         <div class="menu-sect">
                             <h3>🐍 Snake</h3>
                             <input id="guest-name" maxlength="16" placeholder="Name (as guest)" autocomplete="off">
@@ -4790,18 +4889,29 @@ body.touch input, body.touch textarea {
                             <button type="button" id="play-btn">▶ Play</button>
                             <div class="msg" id="play-msg"></div>
                         </div>
-                        <div class="menu-sect gamba">
-                            <h3>🎰 Gamba</h3>
-                            <div class="gamba-list">🎁 Daily Wheel<br>🎰 Slots · 🌟 Budget Starlight<br>🐔 Crossy Road · 🔻 Plinko<br>🃏 Blackjack · 🎡 Roulette · ♠️ Poker</div>
-                            <div class="gamba-live" id="gamba-live"></div>
-                            <button type="button" class="gold" id="casino-btn">Enter the casino →</button>
-                        </div>
                         <div class="menu-sect arena">
                             <h3>🔫 Arena</h3>
                             <div class="gamba-list">Extraction shooter · loot, cases, weapons with crazy effects</div>
                             <button type="button" id="sh-open">Enter the arena →</button>
                             <div class="gamba-live" id="sh-live"></div>
                             <div class="msg" id="sh-menu-msg"></div>
+                        </div>
+                    </div>
+
+                    <div class="menu-sects one" data-mainpane="gamba" hidden>
+                        <div class="menu-sect gamba">
+                            <h3>🎰 Gamba</h3>
+                            <div class="gamba-list">🎁 Daily Wheel<br>🎰 Slots · 🌟 Budget Starlight<br>🐔 Crossy Road · 🔻 Plinko<br>🃏 Blackjack · 🎡 Roulette · ♠️ Poker</div>
+                            <div class="gamba-live" id="gamba-live"></div>
+                            <button type="button" class="gold" id="casino-btn">Enter the casino →</button>
+                        </div>
+                    </div>
+
+                    <div class="menu-sects one" data-mainpane="kekemon" hidden>
+                        <div class="menu-sect kekemon">
+                            <h3>🐾 Kekémon</h3>
+                            <div class="gamba-list">Catch, raise and battle anime monsters.<br>Coming soon™ – stay tuned in the patch notes.</div>
+                            <button type="button" disabled>🔒 Coming soon</button>
                         </div>
                     </div>
 
@@ -5254,7 +5364,7 @@ const status = $('status');
 
 // Patch notes (public/patchnotes.json): neueste offen, der Rest zugeklappt
 fetch('patchnotes.json').then(r => r.json()).then(list => {
-    $('pn-list').innerHTML = list.map((p, i) => `<details ${i === 0 ? 'open' : ''}><summary>${esc(p.title)}<small>${esc(p.date)}</small></summary>` +
+    $('pn-list').innerHTML = list.map((p, i) => `<details ${i === 0 ? 'open' : ''}><summary>Version ${esc(p.version)}<small>${esc(p.date)}</small></summary>` +
         `<ul>${p.items.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>`).join('');
 }).catch(() => { $('patchnotes').hidden = true; });
 
@@ -8587,7 +8697,10 @@ function hubSetUtil(i, base, n) {
 function hubSalvage(uids) {
     const rare = hub.inv.filter(x => uids.includes(x.uid) && tierIdx(x.tier) >= 2 && x.kind !== 'util').length;
     const eq = hub.inv.filter(x => uids.includes(x.uid) && hubEquippedAs(x.uid)).length;
-    if ((rare || eq) && !confirm(`Salvage ${uids.length} items?${rare ? ` ${rare} of them are Rare or better.` : ''}${eq ? ` ${eq} are in your loadout.` : ''}`)) return;
+    // Mehrfach-Salvage fragt immer nach (Wunsch Max), einzelne Items nur ab Rare
+    if (!uids.length) return;
+    const scrap = hub.inv.filter(x => uids.includes(x.uid)).reduce((s, x) => s + (x.sv || 0), 0);
+    if (!confirm(`Really salvage ${uids.length} item${uids.length === 1 ? '' : 's'}?${scrap ? ` You get ${scrap.toLocaleString('en')} scrap.` : ''}${rare ? `\n${rare} of them are Rare or better.` : ''}${eq ? `\n${eq} are in your loadout.` : ''}`)) return;
     hubMulti.clear();
     wsSend({ type: 'arSalvage', uids });
 }
@@ -10288,6 +10401,19 @@ function musicTick() {
     }
 }
 setInterval(musicTick, 100);
+
+// Hauptmenue-Bereiche (gemerkt pro Browser)
+function mainTab(t) {
+    document.querySelectorAll('#main-tabs [data-main]').forEach(b => b.classList.toggle('on', b.dataset.main === t));
+    document.querySelectorAll('[data-mainpane]').forEach(p => { p.hidden = p.dataset.mainpane !== t; });
+    try { localStorage.setItem('mainTab', t); } catch {}
+}
+$('main-tabs').onclick = e => { const b = e.target.closest('[data-main]'); if (b) mainTab(b.dataset.main); };
+try { mainTab(localStorage.getItem('mainTab') || 'games'); } catch { mainTab('games'); }
+setInterval(() => {
+    if (!shopRot || $('menu').classList.contains('hidden')) return;
+    $('shop-banner-sub').textContent = `New daily offers in ${leftText(shopRot.day.ends - performance.now())} · weekly in ${leftText(shopRot.week.ends - performance.now())}`;
+}, 1000);
 
 $('shop-btn').onclick = () => {
     unlockAudio();
