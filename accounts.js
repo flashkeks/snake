@@ -25,9 +25,9 @@ function sha256(s) {
 
 // Woher Coins kommen (#11): snake = Cashouts, events = Quiz-Belohnungen,
 // daily = Daily Wheel, don = Double or Nothing (netto, kann negativ sein),
-// admin = Gutschriften/Abzuege im Admin-Interface. Das Casino rechnet je
-// Spiel in stats.games (#5).
-const EARN_SOURCES = ['snake', 'events', 'daily', 'don', 'admin'];
+// admin = Gutschriften/Abzuege im Admin-Interface, shooter = Kills in der
+// Arena (#7). Das Casino rechnet je Spiel in stats.games (#5).
+const EARN_SOURCES = ['snake', 'events', 'daily', 'don', 'admin', 'shooter'];
 
 function newStats() {
     return {

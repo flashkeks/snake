@@ -2204,6 +2204,89 @@ button:disabled {
     gap: 14px;
 }
 
+/* Arena als volle Zeile unter Snake und Gamba */
+.menu-sect.arena {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 14px;
+    border-color: rgba(255,91,214,.4);
+    background: rgba(255,91,214,.05);
+}
+
+.menu-sect.arena #sh-live, .menu-sect.arena #sh-menu-msg {
+    grid-column: 1 / -1;
+}
+
+#sh-play {
+    font-size: 18px;
+    padding: 10px;
+    background: #ff5bd6;
+    color: #fff;
+}
+
+/* ---------- Shooter-Arena ---------- */
+
+/* Arena im Vollbild ueber allem, das Spielfeld-Fenster ist dafuer zu klein */
+#shooter {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    border-radius: 0;
+    align-items: center;
+}
+
+#shooter .card {
+    width: min(1500px, 100%);
+    border-color: #ff5bd6;
+    box-shadow: 0 0 50px rgba(255,91,214,.3);
+}
+
+.sh-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 150px;
+    gap: 10px;
+}
+
+#sh-canvas {
+    display: block;
+    width: min(100%, calc((100vh - 120px) * 1.6));
+    margin: 0 auto;
+    height: auto;
+    aspect-ratio: 8 / 5;
+    min-width: 0;
+    min-height: 0;
+    border-radius: 8px;
+    cursor: crosshair;
+    touch-action: none;
+    image-rendering: auto;
+}
+
+#sh-stats {
+    font-weight: 800;
+    color: #ffd23f;
+    margin-right: auto;
+}
+
+.sh-board td {
+    padding: 2px 4px;
+    font-size: 13px;
+}
+
+.sh-board .me {
+    font-weight: 800;
+}
+
+@media (max-width: 700px) {
+    .sh-main {
+        grid-template-columns: 1fr;
+    }
+    .sh-board {
+        display: none;
+    }
+}
+
 .menu-sect {
     display: flex;
     flex-direction: column;
@@ -2245,6 +2328,10 @@ button:disabled {
 @media (max-width: 700px) {
     .menu-sects {
         grid-template-columns: 1fr;
+    }
+    .menu-sect.arena {
+        grid-template-columns: 1fr;
+        row-gap: 8px;
     }
 }
 
@@ -3603,6 +3690,13 @@ body.touch input, body.touch textarea {
                             <div class="gamba-live" id="gamba-live"></div>
                             <button type="button" class="gold" id="casino-btn">Enter the casino →</button>
                         </div>
+                        <div class="menu-sect arena">
+                            <h3>🔫 Arena</h3>
+                            <div class="gamba-list">Top-down shooter · +50 coins per kill</div>
+                            <button type="button" id="sh-play">Enter the arena →</button>
+                            <div class="gamba-live" id="sh-live"></div>
+                            <div class="msg" id="sh-menu-msg"></div>
+                        </div>
                     </div>
 
                     <div class="hint" id="menu-hint">
@@ -3673,6 +3767,27 @@ body.touch input, body.touch textarea {
                         <button type="button" class="cs-tile" id="poker-btn"><span class="ico">♠️</span><b>Poker</b><small class="cs-who" id="who-poker">No tables yet</small></button>
                     </div>
                     <div class="msg" id="casino-msg"></div>
+                </div>
+            </div>
+
+            <!-- Shooter-Arena (#7) -->
+            <div id="shooter" class="overlay hidden">
+                <div class="card">
+                    <div class="s2-head">
+                        <div class="cs-title" style="color:#ff5bd6;text-shadow:0 0 16px rgba(255,91,214,.5)">🔫 Arena</div>
+                        <span id="sh-stats"></span>
+                        <span class="coins">🪙 <span id="sh-coins">–</span></span>
+                        <button type="button" class="s2-icon" id="sh-leave" title="Leave the arena">✕</button>
+                    </div>
+                    <div class="sh-main">
+                        <canvas id="sh-canvas" width="1600" height="1000"></canvas>
+                        <div>
+                            <h3 style="margin:0 0 4px">Players</h3>
+                            <table class="sh-board"><tbody id="sh-board"></tbody></table>
+                            <div class="hint" style="margin-top:8px">WASD / arrows move<br>mouse aim, click or Space shoot<br>touch: left = move, right = aim + fire</div>
+                        </div>
+                    </div>
+                    <div class="msg" id="sh-msg"></div>
                 </div>
             </div>
 
@@ -4068,6 +4183,11 @@ ws.onmessage = event => {
         case 'spin2Error': s2Error(data.error); break;
         case 'event': onEvent(data); break;
         case 'mg': onMgFrame(data); break;
+        case 'sh': onSh(data); break;
+        case 'shJoined': onShJoined(data); break;
+        case 'shLeft': onShLeft(data); break;
+        case 'shKill': onShKill(data); break;
+        case 'shError': showMsg('sh-menu-msg', data.error, 'err'); break;
         case 'table': onTable(data); break;
         case 'tableLeft': onTableLeft(); break;
         case 'tableError': showMsg('ev-msg', data.error, 'err'); showMsg('casino-msg', data.error, 'err'); showMsg('pkl-msg', data.error, 'err'); break;
@@ -4112,7 +4232,7 @@ function showMsg(id, text, kind) {
 // ---------- Screens ----------
 
 function showScreen(name) {
-    ['menu', 'casino', 'daily', 'cross', 'plinko', 'pokerlobby', 'support', 'slots', 'slots2', 'konto', 'event', 'offer'].forEach(s => $(s).classList.toggle('hidden', s !== name));
+    ['menu', 'casino', 'daily', 'cross', 'plinko', 'pokerlobby', 'shooter', 'support', 'slots', 'slots2', 'konto', 'event', 'offer'].forEach(s => $(s).classList.toggle('hidden', s !== name));
 }
 
 function backToMenu(resultHtml) {
@@ -4136,6 +4256,7 @@ function setToken(t) {
 
 function setMe(user) {
     me = user;
+    if ($('sh-coins')) $('sh-coins').textContent = me ? me.coins : '–';
     $('auth-box').style.display = me ? 'none' : '';
     $('me-box').style.display = me ? '' : 'none';
     $('guest-name').style.display = me ? 'none' : '';
@@ -6745,6 +6866,300 @@ const sfx = {
         }
     }
 };
+
+// ---------- Shooter-Arena (#7) ----------
+// Der Server rechnet alles; hier nur Eingaben schicken und die Zustaende
+// (20/s) mit 100 ms Verzoegerung weich zwischen zwei Staenden zeichnen.
+
+let sh = null;              // { id, map } solange man in der Arena ist
+let shSnaps = [];           // [{ t (lokal), players, bullets, pickups }]
+const shKeys = new Set();
+const shIn = { mx: 0, my: 0, a: 0, f: false };
+let shSent = '';
+let shLastSend = 0;
+let shFeed = [];
+let shTouch = { move: null, aim: null };
+const SH_DELAY = 100;
+
+function shJoinClick() {
+    unlockAudio();
+    showMsg('sh-menu-msg', '');
+    wsSend({ type: 'shJoin', name: $('guest-name').value.trim() });
+}
+
+function onShJoined(d) {
+    sh = { id: d.id, map: d.map };
+    shSnaps = [];
+    shFeed = (d.feed || []).map(f => ({ ...f, at: 0 }));
+    showScreen('shooter');
+    document.body.classList.add('shooting');
+    shResize();
+    requestAnimationFrame(shFrame);
+}
+
+function onShLeft(d) {
+    sh = null;
+    document.body.classList.remove('shooting');
+    shKeys.clear();
+    shIn.f = false;
+    if (!$('shooter').classList.contains('hidden')) {
+        showScreen('menu');
+        $('menu-result').innerHTML = `<div class="result ${d.coins ? 'cash' : ''}">🔫 Arena: ${d.kills} kills · ${d.deaths} deaths${d.coins ? ` · +${d.coins} coins` : ''}</div>`;
+    }
+}
+
+function onSh(d) {
+    shSnaps.push({ t: performance.now(), ...d });
+    if (shSnaps.length > 6) shSnaps.shift();
+}
+
+function onShKill(k) {
+    shFeed.push({ ...k, at: performance.now() });
+    if (shFeed.length > 6) shFeed.shift();
+    if (k.killer === shMe()?.n) beep(1200, 0.08, 0.06);
+    if (k.victim === shMe()?.n) sTone(160, { dur: .4, vol: .2, slide: 60, rev: .1 });
+}
+
+function shMe() {
+    const s = shSnaps[shSnaps.length - 1];
+    return s && sh ? s.players.find(p => p.id === sh.id) : null;
+}
+
+// Canvas in Welt-Koordinaten zeichnen; Groesse nach verfuegbarer Breite
+function shResize() {
+    const cv = $('sh-canvas');
+    if (!cv || !sh) return;
+    cv.width = sh.map.w;
+    cv.height = sh.map.h;
+}
+
+// Zwei Staende um (jetzt - Verzoegerung) finden und dazwischen rechnen
+function shInterp() {
+    const t = performance.now() - SH_DELAY;
+    let a = shSnaps[0], b = shSnaps[shSnaps.length - 1];
+    for (let i = 0; i < shSnaps.length - 1; i++) {
+        if (shSnaps[i].t <= t && shSnaps[i + 1].t >= t) {
+            a = shSnaps[i];
+            b = shSnaps[i + 1];
+            break;
+        }
+    }
+    const k = b.t > a.t ? Math.max(0, Math.min(1, (t - a.t) / (b.t - a.t))) : 1;
+    const prev = new Map(a.players.map(p => [p.id, p]));
+    const players = b.players.map(p => {
+        const q = prev.get(p.id);
+        if (!q || q.dead !== p.dead) return p;
+        return { ...p, x: q.x + (p.x - q.x) * k, y: q.y + (p.y - q.y) * k };
+    });
+    return { players, bullets: b.bullets, pickups: b.pickups };
+}
+
+function shFrame() {
+    if (!sh) return;
+    requestAnimationFrame(shFrame);
+    shSendInput();
+    const cv = $('sh-canvas');
+    if (!cv || !shSnaps.length) return;
+    const c = cv.getContext('2d');
+    const m = sh.map;
+    const s = shInterp();
+    const now = performance.now();
+
+    // Boden
+    c.fillStyle = '#10161f';
+    c.fillRect(0, 0, m.w, m.h);
+    c.strokeStyle = 'rgba(255,255,255,.04)';
+    c.lineWidth = 1;
+    for (let x = 0; x <= m.w; x += 50) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, m.h); c.stroke(); }
+    for (let y = 0; y <= m.h; y += 50) { c.beginPath(); c.moveTo(0, y); c.lineTo(m.w, y); c.stroke(); }
+    // Waende
+    for (const [x, y, w, h] of m.walls) {
+        c.fillStyle = '#3a4658';
+        c.fillRect(x, y, w, h);
+        c.fillStyle = '#4f5f77';
+        c.fillRect(x, y, w, 6);
+    }
+    c.strokeStyle = '#ff5bd6';
+    c.lineWidth = 6;
+    c.strokeRect(3, 3, m.w - 6, m.h - 6);
+
+    // Pickups
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.font = '30px system-ui';
+    for (const [x, y, icon] of s.pickups) {
+        const bob = Math.sin(now / 250 + x) * 3;
+        c.fillText(icon, x, y + bob);
+    }
+
+    // Kugeln
+    c.fillStyle = '#fff6c2';
+    for (let i = 0; i < s.bullets.length; i += 2) {
+        c.beginPath();
+        c.arc(s.bullets[i], s.bullets[i + 1], 4, 0, Math.PI * 2);
+        c.fill();
+    }
+
+    // Spieler
+    for (const p of s.players) {
+        if (p.dead) continue;
+        const mine = p.id === sh.id;
+        const a = mine ? shIn.a : p.a;
+        c.save();
+        c.translate(p.x, p.y);
+        c.globalAlpha = p.pr ? .5 + .3 * Math.sin(now / 80) : 1;
+        // Lauf
+        c.rotate(a);
+        c.fillStyle = p.sg ? '#ffb347' : '#ccd';
+        c.fillRect(8, -5, 26, 10);
+        c.rotate(-a);
+        c.beginPath();
+        c.arc(0, 0, m.r, 0, Math.PI * 2);
+        c.fillStyle = p.c;
+        c.fill();
+        c.lineWidth = mine ? 4 : 2;
+        c.strokeStyle = mine ? '#fff' : 'rgba(0,0,0,.5)';
+        c.stroke();
+        if (p.rf) {
+            c.font = '16px system-ui';
+            c.fillText('⚡', 0, 1);
+        }
+        c.globalAlpha = 1;
+        // HP-Balken und Name
+        c.fillStyle = 'rgba(0,0,0,.6)';
+        c.fillRect(-22, -m.r - 14, 44, 6);
+        c.fillStyle = p.hp > 50 ? '#00d67a' : p.hp > 25 ? '#ffd23f' : '#f43f5e';
+        c.fillRect(-22, -m.r - 14, 44 * p.hp / 100, 6);
+        c.fillStyle = '#fff';
+        c.font = 'bold 15px system-ui';
+        c.fillText(p.n, 0, -m.r - 26);
+        c.restore();
+    }
+
+    // Eigener Tod: Countdown
+    const me = s.players.find(p => p.id === sh.id);
+    if (me && me.dead) {
+        c.fillStyle = 'rgba(0,0,0,.5)';
+        c.fillRect(0, 0, m.w, m.h);
+        c.fillStyle = '#fff';
+        c.font = 'bold 64px system-ui';
+        c.fillText(`💀 Respawn in ${Math.ceil(me.rs / 1000)}`, m.w / 2, m.h / 2);
+    }
+
+    // Kill-Feed oben rechts
+    c.textAlign = 'right';
+    c.font = 'bold 20px system-ui';
+    shFeed.filter(f => !f.at || now - f.at < 6000).slice(-5).forEach((f, i) => {
+        c.fillStyle = 'rgba(0,0,0,.55)';
+        const text = `${f.killer} 🔫 ${f.victim}${f.coins ? ` +${f.coins}🪙` : ''}`;
+        const w = c.measureText(text).width + 16;
+        c.fillRect(m.w - 20 - w, 20 + i * 32, w, 28);
+        c.fillStyle = '#fff';
+        c.fillText(text, m.w - 28, 35 + i * 32);
+    });
+
+    // Anzeige oben
+    if (me) $('sh-stats').textContent = `❤️ ${me.hp} · ${me.k} kills · ${me.d} deaths${me.rf ? ' · ⚡ rapid' : ''}${me.sg ? ' · 🔫 shotgun' : ''}`;
+    $('sh-board').innerHTML = [...s.players].sort((x, y) => y.k - x.k || x.d - y.d).map(p =>
+        `<tr class="${p.id === sh.id ? 'me' : ''}"><td><span class="dot" style="background:${esc(p.c)}"></span>${esc(p.n)}</td><td style="text-align:right">${p.k}</td><td style="text-align:right;opacity:.7">${p.d}</td></tr>`).join('');
+}
+
+// Eingaben: Tasten, Maus, Touch -> hoechstens 20/s an den Server
+function shSendInput() {
+    let mx = 0, my = 0;
+    if (shKeys.has('w') || shKeys.has('arrowup')) my -= 1;
+    if (shKeys.has('s') || shKeys.has('arrowdown')) my += 1;
+    if (shKeys.has('a') || shKeys.has('arrowleft')) mx -= 1;
+    if (shKeys.has('d') || shKeys.has('arrowright')) mx += 1;
+    if (shTouch.move) {
+        const t = shTouch.move;
+        const dx = t.x - t.x0, dy = t.y - t.y0, len = Math.hypot(dx, dy);
+        if (len > 8) { mx = dx / Math.max(len, 50); my = dy / Math.max(len, 50); }
+    }
+    shIn.mx = Math.round(mx * 100) / 100;
+    shIn.my = Math.round(my * 100) / 100;
+    const key = `${shIn.mx},${shIn.my},${shIn.a.toFixed(2)},${shIn.f}`;
+    const now = performance.now();
+    if ((key !== shSent && now - shLastSend > 50) || now - shLastSend > 500) {
+        shSent = key;
+        shLastSend = now;
+        wsSend({ type: 'shInput', mx: shIn.mx, my: shIn.my, a: Math.round(shIn.a * 100) / 100, f: shIn.f });
+    }
+}
+
+// Bildschirm-Punkt -> Welt-Koordinate im Canvas
+function shWorld(ev) {
+    const cv = $('sh-canvas');
+    const r = cv.getBoundingClientRect();
+    return { x: (ev.clientX - r.left) / r.width * cv.width, y: (ev.clientY - r.top) / r.height * cv.height };
+}
+
+function shAimAt(pt) {
+    const me = shMe();
+    if (me) shIn.a = Math.atan2(pt.y - me.y, pt.x - me.x);
+}
+
+document.addEventListener('keydown', e => {
+    if (!sh || e.target.tagName === 'INPUT') return;
+    const k = e.key.toLowerCase();
+    if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) {
+        e.preventDefault();
+        shKeys.add(k);
+    }
+    if (e.code === 'Space') {
+        e.preventDefault();
+        shIn.f = true;
+    }
+});
+document.addEventListener('keyup', e => {
+    if (!sh) return;
+    shKeys.delete(e.key.toLowerCase());
+    if (e.code === 'Space') shIn.f = false;
+});
+window.addEventListener('blur', () => { shKeys.clear(); shIn.f = false; });
+
+$('sh-canvas').addEventListener('mousemove', e => { if (sh) shAimAt(shWorld(e)); });
+$('sh-canvas').addEventListener('mousedown', e => { if (sh) { shAimAt(shWorld(e)); shIn.f = true; e.preventDefault(); } });
+document.addEventListener('mouseup', () => { if (sh) shIn.f = false; });
+$('sh-canvas').addEventListener('contextmenu', e => { if (sh) e.preventDefault(); });
+
+// Touch: linke Haelfte = Stick zum Laufen, rechte Haelfte = zielen und feuern
+$('sh-canvas').addEventListener('touchstart', e => {
+    if (!sh) return;
+    e.preventDefault();
+    const cv = $('sh-canvas');
+    const r = cv.getBoundingClientRect();
+    for (const t of e.changedTouches) {
+        if (t.clientX - r.left < r.width / 2 && !shTouch.move) shTouch.move = { id: t.identifier, x0: t.clientX, y0: t.clientY, x: t.clientX, y: t.clientY };
+        else if (!shTouch.aim) {
+            shTouch.aim = { id: t.identifier };
+            shAimAt(shWorld(t));
+            shIn.f = true;
+        }
+    }
+}, { passive: false });
+$('sh-canvas').addEventListener('touchmove', e => {
+    if (!sh) return;
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+        if (shTouch.move && t.identifier === shTouch.move.id) Object.assign(shTouch.move, { x: t.clientX, y: t.clientY });
+        if (shTouch.aim && t.identifier === shTouch.aim.id) shAimAt(shWorld(t));
+    }
+}, { passive: false });
+const shTouchEnd = e => {
+    for (const t of e.changedTouches) {
+        if (shTouch.move && t.identifier === shTouch.move.id) shTouch.move = null;
+        if (shTouch.aim && t.identifier === shTouch.aim.id) {
+            shTouch.aim = null;
+            shIn.f = false;
+        }
+    }
+};
+$('sh-canvas').addEventListener('touchend', shTouchEnd);
+$('sh-canvas').addEventListener('touchcancel', shTouchEnd);
+
+$('sh-play').onclick = shJoinClick;
+$('sh-leave').onclick = () => wsSend({ type: 'shLeave' });
 
 // ---------- Casino: Lobby ----------
 

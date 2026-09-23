@@ -18,6 +18,7 @@ const casino = require('./casino');
 const plinko = require('./plinko');
 const createTickets = require('./tickets');
 const startAdmin = require('./admin');
+const createShooter = require('./shooter');
 
 const PORT = Number(process.env.PORT) || 3000;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
@@ -779,6 +780,7 @@ async function handle(c, data) {
             if (c.joined) return send(c, { type: 'authError', error: 'Leave the game first' });
             if (c.cross) return send(c, { type: 'authError', error: 'Finish your Crossy Road run first' });
             tables.leave(c);
+            shooter.leave(c);
             accounts.logout(data.token);
             c.account = null;
             send(c, { type: 'auth', token: null, user: null });
@@ -799,6 +801,7 @@ async function handle(c, data) {
             const r = await accounts.deleteAccount(c.account, data.password);
             if (r.error) return send(c, { type: 'authError', error: r.error });
             tables.leave(c);
+            shooter.leave(c);
             c.account = null;
             send(c, { type: 'auth', token: null, user: null, note: 'Account deleted' });
             pushTop(true);
@@ -810,6 +813,7 @@ async function handle(c, data) {
         case 'join': {
             if (c.joined) return;
             tables.leave(c);
+            shooter.leave(c);
             let name;
             if (c.account) {
                 const u = accounts.get(c.account);
@@ -949,12 +953,44 @@ async function handle(c, data) {
 
         case 'tableJoin':
             if (c.joined) return send(c, { type: 'tableError', error: 'Leave the snake field first' });
+            shooter.leave(c);
             tables.join(c, String(data.kind));
             return;
 
         case 'pokerCreate':
             if (c.joined) return send(c, { type: 'tableError', error: 'Leave the snake field first' });
+            shooter.leave(c);
             tables.create(c, data);
+            return;
+
+        // --- Shooter-Arena (#7) ---
+
+        case 'shJoin': {
+            if (c.joined) return send(c, { type: 'shError', error: 'Leave the snake field first' });
+            if (c.cross) return send(c, { type: 'shError', error: 'Finish your Crossy Road run first' });
+            tables.leave(c);
+            let name;
+            if (c.account) {
+                const u = accounts.get(c.account);
+                if (!u) return;
+                name = u.name;
+            } else {
+                name = cleanText(data.name, 16);
+                if (!name) return send(c, { type: 'shError', error: 'Enter a name (or log in)' });
+                if (accounts.exists(name)) return send(c, { type: 'shError', error: 'That name belongs to an account. Log in or pick another name' });
+            }
+            const u = c.account ? accounts.get(c.account) : null;
+            const err = shooter.join(c, name, cleanColor(data.color) || (u && u.color) || null);
+            if (err) send(c, { type: 'shError', error: err });
+            return;
+        }
+
+        case 'shInput':
+            shooter.input(c, data);
+            return;
+
+        case 'shLeave':
+            shooter.leave(c);
             return;
 
         case 'tableLeave':
@@ -1192,6 +1228,7 @@ wss.on('connection', (ws, req) => {
 
     ws.on('close', () => {
         tables.leave(c);
+        shooter.leave(c);
         crossClose(c);
         if (c.account) revealWin(c.account);
         clients.delete(id);
@@ -1361,6 +1398,12 @@ const tables = createTables({
     onChange: () => broadcast({ type: 'lobby', lobby: tables.lobby() })
 });
 
+// ---------- Shooter-Arena (#7) ----------
+
+const shooter = createShooter({ accounts, send, feed, refresh: c => sendAccount(c) });
+// Eigener, schnellerer Takt als das Snake-Feld (33 ms)
+setInterval(() => shooter.tick(), 16);
+
 // ---------- Support-Tickets ----------
 
 function sendTickets(c, open) {
@@ -1383,7 +1426,8 @@ startAdmin({
         connections: clients.size,
         playing: players.size,
         loggedIn: new Set([...clients.values()].filter(c => c.account).map(c => c.account)).size,
-        tables: tables.lobby()
+        tables: tables.lobby(),
+        shooter: shooter.names().length
     }),
     pushAccount: key => clientsOf(key).forEach(c => sendAccount(c)),
     pushTicket: key => clientsOf(key).forEach(c => sendTickets(c)),
@@ -1397,6 +1441,7 @@ startAdmin({
             send(c, { type: 'left' });
         }
         tables.leave(c);
+        shooter.leave(c);
         crossClose(c);
         c.account = null;
         send(c, { type: 'authExpired' });

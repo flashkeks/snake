@@ -1,6 +1,6 @@
 # 🐶 Snake and Gamba
 
-(bis 23.09.2026 „Kek Minigames“.) Zwei Bereiche:
+(bis 23.09.2026 „Kek Minigames“.) Drei Bereiche:
 
 - **🐍 Snake:** Multiplayer-Snake im Browser, mit Kopf-an-Kopf-Duellen im
   CS:GO-Case-Opening-Stil, Mystery-Boxen, Double or Nothing, Cashout und
@@ -8,6 +8,7 @@
 - **🎰 Gamba (Casino):** Daily Wheel, Slots, Budget Starlight, Crossy Road, Plinko
   und dauerhafte Tische fuer Blackjack, Roulette und Poker (Spieler gegen
   Spieler), an denen man sieht, wer gerade mitspielt.
+- **🔫 Arena:** Top-down-Shooter, jeder gegen jeden (seit 23.09.2026).
 
 Konten, Coins und Bestenliste gelten fuer beides. Ein Node-Prozess
 (`server.js`, nur `ws` als Abhaengigkeit) liefert die Seite aus und spricht
@@ -25,6 +26,7 @@ Live: **`snake.flashkeks.com`** auf `edge` (Netcup).
 | `slots.js` | Slot-Automat „Slots“ (frueher „Kek Slots“); `node slots.js` rechnet die Rueckzahlungsquote aus |
 | `slots2.js` | Tumble-Slot „Budget Starlight“ (frueher „Sweet Kek“, intern weiter `s2`/`spin2`); `node slots2.js N` simuliert grob Rueckzahlung, Bonus-Quote, Bonus-Kauf (zum Abstimmen siehe unten) |
 | `events.js` | Events im Snake (Flag Quiz, Trivia, Where is it?, Guess the number und die Map-Events): Ablauf, Punkte, Belohnung |
+| `shooter.js` | Arena (#7): Bewegung, Kugeln, Treffer, Pickups, Kill-Coins mit Anti-Farming |
 | `minigames.js` | Map-Events (#6): Labyrinth, Coin Rush, Last Snake Standing – Map-Bau, Schritte, Kollisionen, Punkte |
 | `tables.js` | Casino-Tische Blackjack (mit Sidebets) und Roulette: Runden, Einsaetze, Auszahlung; haengt auch Poker als dritten Tisch ein |
 | `poker.js` | Poker (Texas Hold'em No-Limit, Spieler gegen Spieler): Sitze, Blinds, Setzrunden, Side-Pots, Handbewertung, Showdown |
@@ -469,6 +471,33 @@ geht eine Zeile in den Feed, wie ueblich erst nach der Landung. Wer den
 Screen mitten im Fall verlaesst, bekommt die Anzeige sofort verbucht
 (gerechnet hat der Server ohnehin schon).
 
+## 🔫 Arena (Shooter, Issue #7)
+
+Hauptmenue → „Enter the arena“ (Konto oder Gastname). Top-down, jeder gegen
+jeden, bis 16 Spieler, die ganze Arena (1600 × 1000) ist im Vollbild zu
+sehen. Wer in der Arena ist, ist nicht auf dem Snake-Feld und an keinem
+Tisch (und umgekehrt).
+
+- **Steuerung:** WASD/Pfeile laufen, Maus zielt, Klick oder Leertaste
+  schiesst. Touch: linke Haelfte = Stick zum Laufen, rechte Haelfte =
+  zielen und feuern.
+- **Werte:** 100 HP, Pistole 20 Schaden, 4 Schuss/s. Pickups alle 6–12 s
+  (hoechstens 4): 🩹 +50 HP, ⚡ 8 s Schnellfeuer (~9/s), 🔫 8 s Schrotflinte
+  (5 Kugeln im Faecher, je 14). Tod → 3 s warten, neu an freiem Platz,
+  2 s unverwundbar (blinkt).
+- **Server rechnet alles** (33-ms-Takt, eigenes `setInterval`): Bewegung
+  mit Gleiten an Waenden, Kugeln in Teilschritten gegen Tunneln, Treffer.
+  Der Browser schickt nur Eingaben (`shInput {mx, my, a, f}`, hoechstens
+  20/s) und zeichnet die Zustaende (`sh`, 20/s) mit 100 ms Verzoegerung
+  interpoliert.
+- **Coins:** 50 je Kill fuer Konten, aber **nur fuer Kills an anderen Konten
+  von anderer IP** (Gaeste lassen sich beliebig oft aufmachen, Zweitkonten
+  im selben Netz auch), und derselbe Gegner zaehlt hoechstens 3× je 10
+  Minuten. Gezaehlt in `stats.earned.shooter`, dazu `stats.shooterKills`
+  und `stats.shooterDeaths`.
+- 5er-Killstreak geht in den Feed des Hauptspiels.
+- PvP-Einsaetze (Spawn kostet Coins, Cases) bleiben #12.
+
 ## Mini-Events (Snake)
 
 Alle 90–180 s (das erste nach 45–75 s) taucht eine **3 × 3 grosse 🎪
@@ -656,10 +685,12 @@ Client → Server: `register`, `login`, `resume {token}`, `logout`,
 `tableAction` (`bet`/`clear` beim Roulette, `bet`/`pp`/`t3`/`clear`/`move`
 beim Blackjack, `sit {seat?}`/`stand`/`move` (`fold`, `check`,
 `call`, `raise {to}`, `allin`) beim Poker), `pokerCreate {buyIn, seats, name}`, `daily`, `dailyDone`, `crossStart {bet, diff}`, `crossStep`,
-`crossCash`, `plinko {bet, risk}`, `tickets`, `ticketNew {subject, text}`, `ticketReply {id, text}`,
+`crossCash`, `plinko {bet, risk}`, `shJoin {name}`, `shInput {mx, my, a, f}`,
+`shLeave`, `tickets`, `ticketNew {subject, text}`, `ticketReply {id, text}`,
 `ticketRead {id}`.
 
-Server → Client: `welcome`, `mg` (Schritt im Map-Event), `auth`, `authError`, `authExpired`, `account`,
+Server → Client: `welcome`, `mg` (Schritt im Map-Event), `sh`, `shJoined`
+(mit Map), `shLeft` (Bilanz), `shKill`, `shError`, `auth`, `authError`, `authExpired`, `account`,
 `joined`, `joinError`, `left`, `died` (`cause`, `by`, `byId`, `at`), `swapfx`, `cashedout`, `cashoutCancel`, `state`
 (alle 60 ms, mit `arena` und `paused`), `duel`, `gamble`, `box`, `jackpot`,
 `feed` (mit `who` und `big` fuer den Sound), `chat`, `chatlog`, `highscores`,
