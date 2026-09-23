@@ -56,7 +56,19 @@ tr:hover td { background: rgba(0,255,140,.03); }
 .msg.ok { color: var(--acc); } .msg.err { color: var(--red); }
 
 /* Konto-Dialog */
-dialog { background: var(--panel); color: var(--text); border: 1px solid var(--acc); border-radius: 12px; padding: 18px; width: min(480px, 94vw); }
+dialog { background: var(--panel); color: var(--text); border: 1px solid var(--acc); border-radius: 12px; padding: 18px; width: min(900px, 96vw); max-height: 92vh; }
+.dtabs { display: flex; gap: 6px; margin: 6px 0 10px; flex-wrap: wrap; }
+.dtabs button.on { background: var(--acc); color: #04130b; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 9px; border-radius: 8px; background: rgba(255,255,255,.06); font-size: 13px; }
+.chip.on { background: rgba(0,255,140,.16); border: 1px solid var(--acc); }
+.chip button { padding: 1px 7px; font-size: 12px; }
+.cat-h { margin: 10px 0 5px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+.luck td, .stash td { white-space: normal; }
+.rar-common { color: #cfd8e3; } .rar-rare { color: #3da5ff; } .rar-epic { color: #b884ff; } .rar-legendary { color: #ffd23f; }
+.t-common { color: #cfd8e3; } .t-uncommon { color: #7dffb0; } .t-rare { color: #3da5ff; } .t-epic { color: #b884ff; }
+.t-legendary { color: #ffd23f; } .t-mythic { color: #ff5b5b; } .t-ultra { color: #fff; text-shadow: 0 0 8px #ff5bd6; }
+.active-luck { color: var(--gold); font-weight: 800; }
 dialog::backdrop { background: rgba(0,0,0,.6); }
 dialog h2 { margin: 0 0 10px; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
@@ -147,6 +159,13 @@ dialog h2 { margin: 0 0 10px; }
 <dialog id="dlg">
     <h2 id="d-name"></h2>
     <div class="muted" id="d-info"></div>
+    <div class="dtabs" id="d-tabs">
+        <button type="button" data-dtab="coins" class="on">💰 Coins</button>
+        <button type="button" data-dtab="cos">🎨 Cosmetics</button>
+        <button type="button" data-dtab="luck">🎰 Luck</button>
+        <button type="button" data-dtab="arena">🔫 Arena</button>
+    </div>
+    <div id="dp-coins">
     <div class="row">Coins: <span class="big" id="d-coins"></span></div>
     <div class="row">
         <button type="button" data-add="100">+100</button>
@@ -168,6 +187,10 @@ dialog h2 { margin: 0 0 10px; }
         <button type="button" id="d-logout">Log out everywhere</button>
         <button type="button" class="danger" id="d-delete">Delete account…</button>
     </div>
+    </div>
+    <div id="dp-cos" hidden></div>
+    <div id="dp-luck" hidden></div>
+    <div id="dp-arena" hidden></div>
     <div class="msg" id="d-msg"></div>
     <div class="row" style="justify-content:flex-end"><button type="button" id="d-close">Close</button></div>
 </dialog>
@@ -271,8 +294,152 @@ function openUser(key) {
     $('d-coins').textContent = fmt(cur.coins);
     $('d-msg').textContent = '';
     $('d-amount').value = '';
+    dtab('coins');
     $('dlg').showModal();
+    loadDetail();
 }
+
+// ---------- Admin v2: Cosmetics, Luck, Arena ----------
+
+let cat = null;       // Katalog (/api/catalog)
+let det = null;       // Detail des offenen Kontos
+let dTab = 'coins';
+
+function dtab(t) {
+    dTab = t;
+    document.querySelectorAll('#d-tabs [data-dtab]').forEach(b => b.classList.toggle('on', b.dataset.dtab === t));
+    for (const x of ['coins', 'cos', 'luck', 'arena']) $('dp-' + x).hidden = x !== t;
+    drawDetail();
+}
+$('d-tabs').onclick = e => { const b = e.target.closest('[data-dtab]'); if (b) dtab(b.dataset.dtab); };
+
+async function loadDetail() {
+    try {
+        if (!cat) cat = await api('/api/catalog');
+        det = await api(`/api/users/${encodeURIComponent(cur.key)}/detail`);
+        drawDetail();
+    } catch (e) { msg('d-msg', e.message, 'err'); }
+}
+
+async function post(what, body, okText) {
+    try {
+        det = await api(`/api/users/${encodeURIComponent(cur.key)}/${what}`, { method: 'POST', body });
+        msg('d-msg', okText, 'ok');
+        drawDetail();
+    } catch (e) { msg('d-msg', e.message, 'err'); }
+}
+
+function drawDetail() {
+    if (!det || !cat) return;
+    if (dTab === 'cos') drawCos();
+    if (dTab === 'luck') drawLuck();
+    if (dTab === 'arena') drawArena();
+}
+
+function drawCos() {
+    const C = cat.cosmetics, own = new Set(det.inventory), eq = det.equipped;
+    let html = `<div class="row"><b>${own.size} / ${C.items.length} owned</b>` +
+        `<select id="c-add" style="flex:1">${Object.entries(C.cats).map(([k, n]) => `<optgroup label="${esc(n)}">` +
+            C.items.filter(i => i.cat === k).map(i => `<option value="${i.id}" ${own.has(i.id) ? 'disabled' : ''}>${i.icon} ${esc(i.name)} · ${i.rarity} · ${fmt(i.price)}</option>`).join('') + '</optgroup>').join('')}</select>` +
+        `<button type="button" class="primary" data-cos="give">Give</button><button type="button" data-cos="equip">Give + equip</button></div>` +
+        `<div class="row"><button type="button" class="gold" data-cos="giveAll">Give all ${C.items.length}</button><button type="button" class="danger" data-cos="takeAll">Take all</button></div>`;
+    for (const [k, n] of Object.entries(C.cats)) {
+        const list = C.items.filter(i => i.cat === k && own.has(i.id));
+        if (!list.length) continue;
+        html += `<div class="cat-h">${esc(n)}</div><div class="chips">` + list.map(i => {
+            const on = eq[k] === i.id;
+            return `<span class="chip ${on ? 'on' : ''}"><span class="rar-${i.rarity}">${i.icon} ${esc(i.name)}</span>` +
+                (on ? `<button type="button" data-cid="${i.id}" data-cop="unequip">✓ worn</button>` : `<button type="button" data-cid="${i.id}" data-cop="equip">wear</button>`) +
+                `<button type="button" class="danger" data-cid="${i.id}" data-cop="take" title="Take away">✕</button></span>`;
+        }).join('') + '</div>';
+    }
+    $('dp-cos').innerHTML = html;
+}
+$('dp-cos').onclick = e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.cos) {
+        const op = b.dataset.cos;
+        if (op === 'takeAll' && !confirm(`Take ALL cosmetics from ${cur.name}?`)) return;
+        return post('cosmetics', { op, id: $('c-add').value }, 'Saved');
+    }
+    if (b.dataset.cop) post('cosmetics', { op: b.dataset.cop, id: b.dataset.cid }, 'Saved');
+};
+
+function drawLuck() {
+    const rows = Object.entries(cat.luck).map(([k, g]) => {
+        const r = det.rig[k];
+        const active = r ? `<span class="active-luck">${r.n} left${g.mins ? ` · ≥ ${g.unit === '×' ? '×' + r.min : fmt(r.min) + ' coins'}` : ''}${r.bonus ? ' · bonus' : ''}</span>` : '<span class="muted">off</span>';
+        const mins = g.mins ? `<select data-lmin="${k}">${g.mins.map(m => `<option value="${m}">≥ ${g.unit === '×' ? '×' + m : fmt(m)}</option>`).join('')}</select>` : '';
+        const bonus = g.bonus ? `<label title="Free spins must trigger"><input type="checkbox" data-lbonus="${k}"> free spins</label>` : '';
+        return `<tr><td><b>${esc(g.name)}</b></td><td>${active}</td>` +
+            `<td><input type="number" min="1" max="1000" value="5" style="width:70px" data-ln="${k}"> rounds ${mins} ${bonus}</td>` +
+            `<td><button type="button" class="gold" data-lset="${k}">Set</button> <button type="button" data-lclear="${k}" ${r ? '' : 'disabled'}>Clear</button></td></tr>`;
+    }).join('');
+    $('dp-luck').innerHTML = `<div class="muted">Guarantees a minimum win for the next rounds of ${esc(cur.name)}. The player sees nothing; every change goes to the log. ` +
+        `Slots and Plinko hit exactly, Starlight and the wheel re-roll (Starlight: best try within 0.4 s – for huge wins use it with Bonus Buy).</div>` +
+        `<table class="luck"><tbody>${rows}</tbody></table>`;
+}
+$('dp-luck').onclick = e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.lset) {
+        const k = b.dataset.lset, q = s => $('dp-luck').querySelector(s);
+        const minEl = q(`[data-lmin="${k}"]`), bonEl = q(`[data-lbonus="${k}"]`);
+        post('luck', { game: k, n: Number(q(`[data-ln="${k}"]`).value), min: minEl ? Number(minEl.value) : 0, bonus: bonEl ? bonEl.checked : false }, 'Luck set');
+    }
+    if (b.dataset.lclear) post('luck', { game: b.dataset.lclear, n: 0 }, 'Luck cleared');
+};
+
+let aKind = 'weapon';
+function drawArena() {
+    const A = cat.arena, a = det.arena;
+    const bases = aKind === 'weapon' ? Object.entries(A.weapons).map(([k, w]) => [k, `${w.icon} ${w.name}${w.special ? ' (case only)' : ''}`])
+        : aKind === 'armor' ? Object.entries(A.armors).map(([k, x]) => [k, `${x.icon} ${x.name} · ${A.sets[x.set].name} ${x.slot}`])
+        : aKind === 'throw' ? Object.entries(A.throws).map(([k, t]) => [k, `${t.icon} ${t.name}`]) : [['medkit', '💉 Medkit']];
+    const modDefs = aKind === 'armor' ? A.armorMods : A.weaponMods;
+    const modRow = i => `<select data-am="${i}"><option value="">– no effect –</option>${Object.entries(modDefs).map(([k, m]) => `<option value="${k}">${m.icon} ${m.name} (max ${m.max})</option>`).join('')}</select>` +
+        `<input type="number" min="1" max="5" value="1" style="width:55px" data-al="${i}">`;
+    const gear = aKind === 'weapon' || aKind === 'armor';
+    const loadout = new Set(Object.values(a.loadout || {}).filter(v => typeof v === 'string'));
+    const rows = a.inv.slice().sort((x, y) => (y.odds || 1) - (x.odds || 1)).map(it => {
+        const icon = it.kind === 'med' ? '💉' : it.kind === 'throw' ? (A.throws[it.base] || {}).icon : (A.weapons[it.base] || A.armors[it.base] || {}).icon;
+        const mods = (it.mods || []).map(m => { const d = (it.kind === 'armor' ? A.armorMods : A.weaponMods)[m.id]; return d ? `${d.icon}${d.name} ${m.lvl}` : m.id; }).join(', ');
+        return `<tr><td><input type="checkbox" data-auid="${esc(it.uid)}"></td><td>${icon || '❔'} <b>${esc(it.name)}</b>${loadout.has(it.uid) ? ' <span class="muted">(loadout)</span>' : ''}</td>` +
+            `<td>${it.kind === 'weapon' || it.kind === 'armor' ? '★'.repeat((it.grade || 0) + 1) : ''}</td><td class="t-${it.tier}">${it.tier}${it.odds > 1 ? ' · 1 in ' + fmt(it.odds) : ''}</td>` +
+            `<td>${esc(mods)}</td><td class="num">${it.sv || 0}⚙️</td><td><button type="button" class="danger" data-adel="${esc(it.uid)}">✕</button></td></tr>`;
+    }).join('');
+    $('dp-arena').innerHTML =
+        `<div class="row"><b>Scrap</b> <input type="number" id="a-scrap" value="${a.scrap || 0}" style="width:120px"><button type="button" id="a-scrap-set">Set</button>` +
+        `<span class="muted">Stash ${a.inv.length} / ${A.invMax}</span></div>` +
+        `<div class="panel"><div class="row"><b>Create item</b>` +
+        `<select id="a-kind">${[['weapon', 'Weapon'], ['armor', 'Armor'], ['throw', 'Grenade'], ['med', 'Medkit']].map(([k, n]) => `<option value="${k}" ${k === aKind ? 'selected' : ''}>${n}</option>`).join('')}</select>` +
+        `<select id="a-base">${bases.map(([k, n]) => `<option value="${k}">${esc(n)}</option>`).join('')}</select>` +
+        (gear ? `<select id="a-grade">${A.grades.map((g, i) => `<option value="${i}">Grade ${'★'.repeat(i + 1)} (+${Math.round(g * 100)}%)</option>`).join('')}</select>` : '') +
+        `<input type="number" id="a-count" min="1" max="50" value="1" style="width:60px"> ×</div>` +
+        (gear ? `<div class="row">Effects: ${modRow(0)} ${modRow(1)} ${modRow(2)}</div>` : '') +
+        `<div class="row"><button type="button" class="primary" id="a-give">Give</button><span class="muted">Rarity (1 in X) is calculated like a real drop.</span></div></div>` +
+        `<div class="row"><b>Stash</b><button type="button" class="danger" id="a-del-picked">Delete selected</button><button type="button" class="danger" id="a-clear">Clear stash</button></div>` +
+        `<table class="stash"><tbody>${rows || '<tr><td class="muted">empty</td></tr>'}</tbody></table>`;
+}
+$('dp-arena').onchange = e => { if (e.target.id === 'a-kind') { aKind = e.target.value; drawArena(); } };
+$('dp-arena').onclick = e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.id === 'a-scrap-set') return post('arena', { op: 'scrap', set: Number($('a-scrap').value) }, 'Scrap set');
+    if (b.id === 'a-give') {
+        const mods = [0, 1, 2].map(i => ({ id: $('dp-arena').querySelector(`[data-am="${i}"]`), lvl: $('dp-arena').querySelector(`[data-al="${i}"]`) }))
+            .filter(x => x.id && x.id.value).map(x => ({ id: x.id.value, lvl: Number(x.lvl.value) }));
+        return post('arena', { op: 'give', kind: aKind, base: $('a-base').value, grade: $('a-grade') ? Number($('a-grade').value) : 0, mods, count: Number($('a-count').value) }, 'Item given');
+    }
+    if (b.dataset.adel) return post('arena', { op: 'delete', uid: b.dataset.adel }, 'Deleted');
+    if (b.id === 'a-del-picked') {
+        const uids = [...$('dp-arena').querySelectorAll('[data-auid]:checked')].map(x => x.dataset.auid);
+        if (uids.length && confirm(`Delete ${uids.length} items?`)) post('arena', { op: 'delete', uids }, 'Deleted');
+        return;
+    }
+    if (b.id === 'a-clear' && confirm(`Clear the whole arena stash of ${cur.name}?`)) post('arena', { op: 'clear' }, 'Stash cleared');
+};
 
 async function coins(body) {
     try {

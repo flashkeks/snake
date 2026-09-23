@@ -247,6 +247,48 @@ module.exports = function startAdmin(h) {
                 return json(res, 200, { ok: true });
             }
 
+            // ---------- Admin v2: Cosmetics, Luck, Arena ----------
+
+            if (m === 'GET' && p === '/api/catalog') {
+                const A = h.arenaItems.catalog();
+                return json(res, 200, {
+                    cosmetics: { cats: h.shop.CATS, items: h.shop.ITEMS.map(({ id, cat, name, icon, price, rarity }) => ({ id, cat, name, icon, price, rarity })) },
+                    arena: {
+                        weapons: A.weapons, armors: A.armors, sets: A.sets, throws: A.throws, grades: A.grades, tiers: A.tiers,
+                        weaponMods: A.weaponMods, armorMods: A.armorMods, invMax: A.invMax
+                    },
+                    luck: h.luck.GAMES
+                });
+            }
+
+            mm = p.match(/^\/api\/users\/([^/]+)\/(detail|cosmetics|luck|arena)$/);
+            if (mm) {
+                const key = decodeURIComponent(mm[1]);
+                const u = h.accounts.get(key);
+                if (!u) return json(res, 404, { error: 'no such user' });
+                if (m === 'GET' && mm[2] === 'detail') return json(res, 200, h.accounts.adminDetail(key));
+                if (m !== 'POST') return json(res, 404, { error: 'not found' });
+                const b = await body(req);
+                let err;
+                if (mm[2] === 'cosmetics') {
+                    err = h.accounts.adminCosmetic(key, String(b.op), String(b.id || ''));
+                    if (!err) {
+                        log(email, 'cosmetic-' + b.op, u.name, b.id ? { id: String(b.id) } : undefined);
+                        h.pushAccount(key);
+                    }
+                } else if (mm[2] === 'luck') {
+                    err = h.accounts.adminRig(key, String(b.game), b.n, b.min, b.bonus);
+                    if (!err) log(email, 'luck', u.name, { game: String(b.game), n: Number(b.n) || 0, min: Number(b.min) || 0, bonus: !!b.bonus });
+                } else if (mm[2] === 'arena') {
+                    err = h.accounts.adminArena(key, String(b.op), b);
+                    if (!err) log(email, 'arena-' + b.op, u.name, b.op === 'give'
+                        ? { kind: String(b.kind), base: String(b.base), grade: Number(b.grade) || 0, mods: (b.mods || []).map(x => `${x.id}${x.lvl}`).join(' '), count: Number(b.count) || 1 }
+                        : b.op === 'scrap' ? { set: Number(b.set) } : b.op === 'delete' ? { items: (Array.isArray(b.uids) ? b.uids : [b.uid]).length } : undefined);
+                }
+                if (err) return json(res, 400, { error: err });
+                return json(res, 200, h.accounts.adminDetail(key));
+            }
+
             if (m === 'GET' && p === '/api/tickets') return json(res, 200, { tickets: h.tickets.adminList() });
 
             mm = p.match(/^\/api\/tickets\/(\d+)$/);

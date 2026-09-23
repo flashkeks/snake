@@ -246,6 +246,11 @@ function generate(sourceId) {
     return finish({ kind, base, grade, mods });
 }
 
+// Vom Admin gebaut: beliebige Basis, Grade und Mods; Seltenheit wie gewuerfelt
+function craft(kind, base, grade, mods) {
+    return finish({ kind, base, grade: grade || 0, mods: (mods || []).slice().sort((a, b) => b.lvl - a.lvl) });
+}
+
 // Feste Items (Shop, Starter): Grade I, keine Mods
 function plain(kind, base) {
     return finish({ kind, base, grade: 0, mods: [] });
@@ -379,7 +384,7 @@ function catalog() {
 
 module.exports = {
     WEAPONS, ARMORS, SETS, SLOTS, THROWS, THROW_RANGE, NADES_MAX, GRADES, WEAPON_MODS, ARMOR_MODS, SOURCES, CASES, SHOP, TIERS,
-    INV_MAX, MEDKIT_HEAL, generate, plain, salvageValue, weaponStats, armorStats, catalog, tierOf, migrate
+    INV_MAX, MEDKIT_HEAL, generate, plain, craft, salvageValue, weaponStats, armorStats, catalog, tierOf, migrate
 };
 
 // Kalibrieren: node arena-items.js calibrate [N] – druckt die Tabelle

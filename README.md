@@ -27,6 +27,7 @@ Live: **`snake.flashkeks.com`** auf `edge` (Netcup).
 | `slots2.js` | Tumble-Slot „Budget Starlight“ (frueher „Sweet Kek“, intern weiter `s2`/`spin2`); `node slots2.js N` simuliert grob Rueckzahlung, Bonus-Quote, Bonus-Kauf (zum Abstimmen siehe unten) |
 | `events.js` | Events im Snake (Flag Quiz, Trivia, Where is it?, Guess the number und die Map-Events): Ablauf, Punkte, Belohnung |
 | `achievements.js` | Achievements (#3): Katalog, Pruefungen, Titel |
+| `luck.js` | Admin v2: erzwungene Mindestgewinne je Konto und Spiel |
 | `shop.js` | Shop (#9): Katalog, was andere von einem sehen |
 | `shooter.js` | Arena: Hub (Shop, Cases, Salvage, Loadout) und Raid (Map, Kisten, Beutel, Extraction, Kampf mit Effekten) |
 | `arena-items.js` | Arena-Items: Waffen, Ruestungsteile und Sets, Granaten, Grade, Mods, Erzeugung je Quelle, kalibrierte Seltenheit, Salvage-Wert, Migration |
@@ -841,11 +842,28 @@ Die Seite setzt ihn selbst.
 Oben: wer eingeloggt ist, wer spielt, wer an welchem Tisch sitzt, Konten,
 Coins gesamt, offene Tickets. Die Seite fragt alle 5 s neu.
 
+**Konto-Dialog (Admin v2, 23.09.2026)** – „Manage“ oeffnet vier Tabs:
+
+| Tab | Was geht |
+|---|---|
+| 💰 Coins | wie bisher: geben, nehmen, setzen, Daily zuruecksetzen, abmelden, loeschen |
+| 🎨 Cosmetics | Besitz je Kategorie; einzeln geben, geben + anlegen, anlegen/ablegen, wegnehmen; alle 134 geben oder alle nehmen. Aenderungen kommen sofort beim Spieler an (`account`) |
+| 🎰 Luck | garantierter Mindestgewinn fuer die naechsten N Runden (`u.rig`, `luck.js`): Slots (Drilling mit Quote ≥ Ziel wird gebaut), Budget Starlight fuer Spins und Bonus Buy (neu gewuerfelt bis ≥ Ziel, optional „Freispiele muessen kommen“; Zeitbudget 0,4 s, sonst der beste Versuch), Plinko (Fach ≥ Ziel, Pfad passend gebaut), Daily Wheel (neu gedreht), Crossy Road (N Laeufe ohne Unfall). Jede Runde verbraucht eins; der Spieler sieht nichts davon (`u.rig` geht nie an den Browser) |
+| 🔫 Arena | Scrap setzen; Item bauen (Art, Basis, Grade, bis zu drei Effekte mit Stufe, Anzahl) – die Seltenheit wird wie bei einem echten Drop berechnet; Lager ansehen, einzeln/ausgewaehlt loeschen, leeren |
+
+Tischspiele (Roulette, Blackjack, Poker) haben kein Luck: die Tische sind
+geteilt, ein erzwungenes Ergebnis traefe alle am Tisch.
+
 API (alles JSON): `GET /api/overview`, `GET /api/users`,
 `POST /api/users/KEY/coins {delta | set, note}`, `POST /api/users/KEY/reset-daily`,
 `POST /api/users/KEY/logout-all`, `DELETE /api/users/KEY {confirm: NAME}`,
 `GET /api/tickets`, `GET /api/tickets/ID`, `POST /api/tickets/ID/reply {text}`,
-`POST /api/tickets/ID/status {status}`, `GET /api/log`.
+`POST /api/tickets/ID/status {status}`, `GET /api/log`,
+`GET /api/catalog` (Cosmetics, Arena-Basen und -Effekte, Luck-Spiele),
+`GET /api/users/KEY/detail`, `POST /api/users/KEY/cosmetics {op: give|take|equip|unequip|giveAll|takeAll, id}`,
+`POST /api/users/KEY/luck {game, n, min, bonus}` (n = 0 loescht),
+`POST /api/users/KEY/arena {op: give|delete|scrap|clear, …}`. Alles davon
+landet im Admin-Log.
 
 ## Tests
 

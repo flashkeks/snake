@@ -21,6 +21,7 @@ const startAdmin = require('./admin');
 const createShooter = require('./shooter');
 const shop = require('./shop');
 const arenaItems = require('./arena-items');
+const luck = require('./luck');
 
 // Cosmetic Shop: aktuelle Rotation mit Restzeit (der Browser rechnet selbst weiter)
 function shopRot() {
@@ -1137,7 +1138,9 @@ async function handle(c, data) {
         case 'daily': {
             if (!c.account) return send(c, { type: 'dailyError', error: 'Accounts only' });
             if (!accounts.claimDaily(c.account)) return send(c, { type: 'dailyError', error: 'Already spun today – come back tomorrow' });
-            const r = casino.spinWheel();
+            // Luck (Admin v2): vorgegebener Mindestwert
+            const rig = accounts.takeRig(c.account, 'daily');
+            const r = rig ? luck.dailySpin(casino, rig.min) : casino.spinWheel();
             const u = accounts.get(c.account);
             const balance = accounts.addCoins(c.account, r.value);
             accounts.earn(c.account, 'daily', r.value);
@@ -1163,7 +1166,7 @@ async function handle(c, data) {
             const u = accounts.get(c.account);
             if (!u || u.coins < bet) return send(c, { type: 'crossError', error: 'Not enough coins' });
             const balance = accounts.addCoins(c.account, -bet);
-            c.cross = { bet, diff, step: 0, last: 0 };
+            c.cross = { bet, diff, step: 0, last: 0, safe: !!accounts.takeRig(c.account, 'crossy') };
             accounts.stat(c.account, s => { s.spins++; });
             send(c, { type: 'cross', state: 'run', step: 0, bet, diff, balance });
             return;
@@ -1176,7 +1179,7 @@ async function handle(c, data) {
             if (now - g.last < 250) return;
             g.last = now;
             const d = casino.DIFFS[g.diff];
-            if (Math.random() < d.p) {
+            if (!g.safe && Math.random() < d.p) {
                 c.cross = null;
                 accounts.game(c.account, 'crossy', { wager: g.bet, win: 0 });
                 return send(c, { type: 'cross', state: 'dead', step: g.step + 1, bet: g.bet, diff: g.diff, balance: accounts.get(c.account).coins });
@@ -1212,7 +1215,8 @@ async function handle(c, data) {
             c.lastPlinko = now;
 
             accounts.addCoins(c.account, -bet);
-            const r = plinko.drop(bet, risk);
+            const rig = accounts.takeRig(c.account, 'plinko');
+            const r = rig ? luck.plinkoDrop(plinko, bet, risk, rig.min) : plinko.drop(bet, risk);
             const balance = accounts.addCoins(c.account, r.win);
             accounts.stat(c.account, s => {
                 s.spins++;
@@ -1257,7 +1261,8 @@ async function handle(c, data) {
             c.lastSpin2 = now;
 
             accounts.addCoins(c.account, -cost);
-            const r = slots2.spin(bet, buy);
+            const rig = accounts.takeRig(c.account, 'starlight');
+            const r = rig ? luck.starlightSpin(slots2, bet, buy, rig) : slots2.spin(bet, buy);
             const balance = accounts.addCoins(c.account, r.win);
             accounts.stat(c.account, s => {
                 s.spins++;
@@ -1306,7 +1311,8 @@ async function handle(c, data) {
             c.lastSpin = now;
 
             accounts.addCoins(c.account, -bet);
-            const r = slots.spin(bet);
+            const rig = accounts.takeRig(c.account, 'slots');
+            const r = rig ? luck.slotsSpin(slots, bet, rig.min) : slots.spin(bet);
             const balance = accounts.addCoins(c.account, r.win);
             accounts.stat(c.account, s => {
                 s.spins++;
@@ -1559,6 +1565,9 @@ function clientsOf(key) {
 
 startAdmin({
     accounts,
+    shop,
+    arenaItems,
+    luck,
     tickets,
     dataDir: DATA_DIR,
     publicDir: PUBLIC,

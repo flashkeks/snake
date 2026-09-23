@@ -10,6 +10,8 @@ const crypto = require('crypto');
 const { berlinDay } = require('./casino');
 const shop = require('./shop');
 const ach = require('./achievements');
+const arenaItems = require('./arena-items');
+const luck = require('./luck');
 
 const START_COINS = 100;
 const SESSION_DAYS = 30;
@@ -417,6 +419,115 @@ module.exports = function createAccounts(dataDir) {
             u.coins = Math.max(0, Math.floor(n));
             touch();
             return u.coins;
+        },
+
+        // ---------- Admin v2: Cosmetics, Luck, Arena ----------
+
+        adminDetail(key) {
+            const u = db.users[key];
+            if (!u) return null;
+            const a = u.arena || { inv: [], loadout: {}, scrap: 0 };
+            return {
+                inventory: u.inventory || [], equipped: u.equipped || {}, rig: u.rig || {},
+                arena: { inv: a.inv.map(it => ({ ...it, sv: arenaItems.salvageValue(it) })), loadout: a.loadout, scrap: a.scrap }
+            };
+        },
+
+        // op: give | take | giveAll | takeAll | equip | unequip. Fehlertext oder null
+        adminCosmetic(key, op, id) {
+            const u = db.users[key];
+            if (!u) return 'no such user';
+            u.inventory = u.inventory || [];
+            u.equipped = { ...u.equipped };
+            const item = shop.BY_ID[id];
+            if (op === 'giveAll') u.inventory = shop.ITEMS.map(i => i.id);
+            else if (op === 'takeAll') {
+                u.inventory = [];
+                u.equipped = {};
+            } else if (!item) return 'unknown item';
+            else if (op === 'give') {
+                if (!u.inventory.includes(id)) u.inventory.push(id);
+            } else if (op === 'take') {
+                u.inventory = u.inventory.filter(x => x !== id);
+                if (u.equipped[item.cat] === id) delete u.equipped[item.cat];
+            } else if (op === 'equip') {
+                if (!u.inventory.includes(id)) u.inventory.push(id);
+                u.equipped[item.cat] = id;
+            } else if (op === 'unequip') {
+                if (u.equipped[item.cat] === id) delete u.equipped[item.cat];
+            } else return 'unknown op';
+            touch();
+            return null;
+        },
+
+        // Luck setzen (n = 0 loescht). Fehlertext oder null
+        adminRig(key, game, n, min, bonus) {
+            const u = db.users[key];
+            if (!u) return 'no such user';
+            const g = luck.GAMES[game];
+            if (!g) return 'unknown game';
+            n = Math.floor(Number(n));
+            if (!Number.isFinite(n) || n < 0 || n > 1000) return 'bad count';
+            u.rig = { ...u.rig };
+            if (!n) delete u.rig[game];
+            else {
+                const m = g.mins ? Number(min) : 0;
+                if (g.mins && (!Number.isFinite(m) || m <= 0)) return 'bad minimum';
+                u.rig[game] = { n, min: m, bonus: !!(g.bonus && bonus) };
+            }
+            touch();
+            return null;
+        },
+
+        // Eine Runde Luck verbrauchen: { min, bonus } oder null
+        takeRig(key, game) {
+            const u = db.users[key];
+            const r = u && u.rig && u.rig[game];
+            if (!r || r.n <= 0) return null;
+            r.n--;
+            if (r.n <= 0) delete u.rig[game];
+            touch();
+            return { min: r.min, bonus: r.bonus };
+        },
+
+        // Arena-Lager: give {kind, base, grade, mods, count} | delete {uid} | scrap {set} | clear
+        adminArena(key, op, d) {
+            const u = db.users[key];
+            if (!u) return 'no such user';
+            if (!u.arena) u.arena = { inv: [], loadout: { primary: null, secondary: null, armor: null, meds: 0 }, scrap: 0 };
+            const a = u.arena;
+            const I = arenaItems;
+            if (op === 'give') {
+                const kind = String(d.kind), base = String(d.base);
+                const ok = kind === 'weapon' ? I.WEAPONS[base] : kind === 'armor' ? I.ARMORS[base] : kind === 'throw' ? I.THROWS[base] : kind === 'med';
+                if (!ok) return 'unknown base';
+                const count = Math.max(1, Math.min(50, Math.floor(Number(d.count)) || 1));
+                if (a.inv.length + count > I.INV_MAX) return `stash full (${a.inv.length}/${I.INV_MAX})`;
+                const defs = kind === 'weapon' ? I.WEAPON_MODS : I.ARMOR_MODS;
+                const mods = kind === 'weapon' || kind === 'armor' ? (Array.isArray(d.mods) ? d.mods : [])
+                    .filter(m => defs[m.id]).slice(0, 6)
+                    .map(m => ({ id: m.id, lvl: Math.max(1, Math.min(defs[m.id].max, Math.floor(Number(m.lvl)) || 1)) }))
+                    .filter((m, i, arr) => arr.findIndex(x => x.id === m.id) === i) : [];
+                const grade = kind === 'weapon' || kind === 'armor' ? Math.max(0, Math.min(4, Math.floor(Number(d.grade)) || 0)) : 0;
+                const made = [];
+                for (let i = 0; i < count; i++) made.push(I.craft(kind === 'med' ? 'med' : kind, kind === 'med' ? 'medkit' : base, grade, mods));
+                a.inv.push(...made);
+                for (const it of made) this.stat(key, s => { s.bestOdds = Math.max(s.bestOdds || 0, it.odds || 0); });
+            } else if (op === 'delete') {
+                const uids = new Set((Array.isArray(d.uids) ? d.uids : [d.uid]).map(String));
+                a.inv = a.inv.filter(it => !uids.has(it.uid));
+            } else if (op === 'scrap') {
+                const v = Math.floor(Number(d.set));
+                if (!Number.isFinite(v) || v < 0 || v > 1e9) return 'bad amount';
+                a.scrap = v;
+            } else if (op === 'clear') {
+                a.inv = [];
+            } else return 'unknown op';
+            // Loadout zeigt nie auf Geloeschtes
+            const l = a.loadout || {};
+            for (const s of ['primary', 'secondary', 'armor', 'helmet', 'vest', 'pants', 'boots']) if (l[s] && !a.inv.some(x => x.uid === l[s])) l[s] = null;
+            touch();
+            return null;
         },
 
         adminResetDaily(key) {
