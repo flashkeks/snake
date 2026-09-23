@@ -385,6 +385,30 @@ aendern, und Antworten, die man belegen kann.
 - **Feed** mit Streak-Ansagen (DOPPELKILL, TRIPLEKILL, RAMPAGE, GODLIKE) und
   Gold-Zeilen fuer seltene Treffer.
 
+## iPad und Handy
+
+Auf Touch-Geraeten (`pointer: coarse` oder `maxTouchPoints`) bekommt `body`
+die Klasse `touch`, beim Spielen dazu `playing`.
+
+- **Steuerkreuz** (▲◀▶▼): liegt halbtransparent unten links auf dem Feld. Auf
+  dem Handy im Hochformat (≤ 820 px) sitzt es **unter** dem Feld, damit es
+  nichts verdeckt. Reagiert auf `pointerdown`, also sofort, mit kurzer
+  Vibration.
+- **💰-Knopf** zum Gedrueckthalten = Cashout, wie die Leertaste. Das alte
+  „lange aufs Feld druecken“ ist weg, es kam dem Lenken in die Quere.
+- **Wischen** auf dem Feld lenkt schon waehrend der Bewegung, alle 22 px neu.
+  So gehen mehrere Kurven ohne abzusetzen. Frueher kam die Richtung erst beim
+  Loslassen.
+- `touch-action: none` auf Feld und Steuerung: kein Scrollen und kein Zoom
+  durch Doppeltippen beim Spielen. Eingabefelder mit 16 px, damit iOS nicht
+  hineinzoomt.
+- **≤ 820 px Breite:** Menue, Casino, Slots, Events und Tickets liegen als
+  Vollbild ueber allem statt im Feld. Die Casino-Kacheln stehen zweispaltig,
+  der Starlight-Kopf bricht in zwei Zeilen um.
+
+Geprueft mit Playwright-Emulation (iPhone 13 hochkant, iPad Pro 11 quer):
+Steuerkreuz, Cashout-Halten und Wischen senden die richtigen Nachrichten.
+
 ## Support-Tickets
 
 Hauptmenue → „💬 Support“ (nur mit Konto). Liste der eigenen Tickets, neues
