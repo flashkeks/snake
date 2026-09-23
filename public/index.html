@@ -2441,7 +2441,7 @@ button:disabled {
     position: absolute;
     left: 50%;
     top: -80px;
-    font-size: 54px;
+    font-size: 42px;
     transform: translateX(-50%) rotate(90deg);
     animation: carDrive linear infinite;
     z-index: 2;
@@ -2602,19 +2602,6 @@ button:disabled {
     justify-content: center;
     align-items: center;
     flex-wrap: wrap;
-}
-
-.pl-rows {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    font-weight: 800;
-}
-
-.pl-rows input {
-    width: 130px;
-    accent-color: #ffd23f;
 }
 
 #pl-drop {
@@ -3268,7 +3255,7 @@ body.touch input, body.touch textarea {
                         <button type="button" class="cs-tile" id="slots-btn"><span class="ico">🎰</span><b>Slots</b><small>Classic three reels</small></button>
                         <button type="button" class="cs-tile" id="slots2-btn"><span class="ico">🌟</span><b>Budget Starlight</b><small>Tumbles · multipliers · free spins</small></button>
                         <button type="button" class="cs-tile" id="cross-btn"><span class="ico">🐔</span><b>Crossy Road</b><small>Cross lanes, cash out in time</small></button>
-                        <button type="button" class="cs-tile" id="plinko-btn"><span class="ico">🔻</span><b>Plinko</b><small>Drop balls, up to ×2062</small></button>
+                        <button type="button" class="cs-tile" id="plinko-btn"><span class="ico">🔻</span><b>Plinko</b><small>Drop balls, up to ×1000</small></button>
                         <button type="button" class="cs-tile" data-table="blackjack"><span class="ico">🃏</span><b>Blackjack</b><small class="cs-who" id="who-blackjack">Table is empty</small></button>
                         <button type="button" class="cs-tile" data-table="roulette"><span class="ico">🎡</span><b>Roulette</b><small class="cs-who" id="who-roulette">Table is empty</small></button>
                     </div>
@@ -3332,7 +3319,6 @@ body.touch input, body.touch textarea {
                     </div>
                     <div class="pl-opts">
                         <div class="pl-risks" id="pl-risks"></div>
-                        <label class="pl-rows">Rows <input type="range" id="pl-rows" min="8" max="16" step="1" value="12"> <b id="pl-rows-n">12</b></label>
                     </div>
                     <div class="s2-bar">
                         <div class="s2-bet">
@@ -6230,8 +6216,10 @@ function crBuildRoad() {
     let html = '<div class="cr-track"><div class="cr-side">START</div>';
     d.mults.forEach((m, i) => {
         const cls = i < step ? 'done' : i === step && crRun ? 'next' : '';
-        // Verkehr: jede Spur eigenes Tempo, ueberfahrene Spuren sind gesperrt
-        const cars = [0, 1].map(k => `<span class="cr-car" style="animation-duration:${(1.6 + ((i * 7 + k * 3) % 10) / 6).toFixed(2)}s;animation-delay:-${((i * 13 + k * 17) % 20) / 10}s">${CR_CARS[(i + k * 3) % CR_CARS.length]}</span>`).join('');
+        // Verkehr: ein Auto je Spur, jede dritte Spur frei, eigenes Tempo je
+        // Spur; ueberfahrene Spuren sind gesperrt. (Bis 23.09.2026 zwei grosse
+        // Autos je Spur, das war zu wuselig.)
+        const cars = i % 3 === 1 ? '' : `<span class="cr-car" style="animation-duration:${(3 + ((i * 7) % 10) / 4).toFixed(2)}s;animation-delay:-${((i * 13) % 30) / 10}s">${CR_CARS[i % CR_CARS.length]}</span>`;
         html += `<div class="cr-lane ${cls}" data-i="${i}"><div class="cr-barrier"></div>${cars}<div class="cr-hole">×${m}</div></div>`;
     });
     html += '<div class="cr-side goal">🏁</div></div><div class="cr-chicken" id="cr-chicken">🐔</div>';
@@ -6316,9 +6304,12 @@ function onCross(d) {
         return;
     }
     if (d.state === 'dead') {
-        // Huhn huepft auf die Spur, dann kommt das Auto
+        // Huhn huepft auf die Spur, dann kommt das Auto. Huhn und Spur hier
+        // festhalten: startet man in den naechsten 430 ms neu, gibt es schon
+        // ein neues Huhn, und das darf nicht zum 💥 werden.
         crPlaceChicken(d.step, true);
         const lane = $('cr-road').querySelector(`.cr-lane[data-i="${d.step - 1}"]`);
+        const deadChicken = $('cr-chicken');
         setTimeout(() => {
             if (lane) {
                 const car = document.createElement('span');
@@ -6330,10 +6321,9 @@ function onCross(d) {
             sNoise({ dur: .35, vol: .35, type: 'lowpass', f: 1800, f2: 150, rev: .2, a: .002 });
             sTone(160, { dur: .5, vol: .3, slide: 40, rev: .1 });
             setTimeout(() => {
-                const ch = $('cr-chicken');
-                if (ch) {
-                    ch.textContent = '💥';
-                    ch.classList.add('dead');
+                if (deadChicken && deadChicken.isConnected) {
+                    deadChicken.textContent = '💥';
+                    deadChicken.classList.add('dead');
                 }
             }, 180);
         }, 250);
@@ -6359,7 +6349,7 @@ function onCross(d) {
 // (plPending = Gewinne von Kugeln, die noch fallen).
 
 let plRisk = 'medium';
-let plRows = 12;
+let plRows = 16;            // fest, kommt vom Server (welcome.plinko.rows)
 let plBet = 10;
 let plBalls = [];           // { path, slot, mult, win, rows, t0 }
 let plPending = 0;
@@ -6377,7 +6367,7 @@ function plInfo() {
 }
 
 function plMults() {
-    return plInfo().tables[plRisk][plRows];
+    return plInfo().tables[plRisk];
 }
 
 function plBusy() {
@@ -6388,16 +6378,13 @@ function plBuild() {
     const info = plInfo();
     if (!info) return;
     $('pl-risks').innerHTML = Object.entries(info.risks).map(([k, label]) =>
-        `<button type="button" data-risk="${k}" class="${k === plRisk ? 'on' : ''}">${label} · ×${info.tables[k][plRows][0].toLocaleString('en-US')}</button>`).join('');
+        `<button type="button" data-risk="${k}" class="${k === plRisk ? 'on' : ''}">${label} · ×${info.tables[k][0].toLocaleString('en-US')}</button>`).join('');
     $('pl-risks').querySelectorAll('button').forEach(b => b.onclick = () => {
         if (plBusy()) return;
         plRisk = b.dataset.risk;
         plBuild();
     });
-    $('pl-rows').min = info.rowsMin;
-    $('pl-rows').max = info.rowsMax;
-    $('pl-rows').value = plRows;
-    $('pl-rows-n').textContent = plRows;
+    plRows = info.rows;
     $('pl-bet').min = info.minBet;
     plControls();
     plDraw();
@@ -6405,7 +6392,6 @@ function plBuild() {
 
 function plControls() {
     const busy = plBusy();
-    $('pl-rows').disabled = busy;
     $('pl-risks').querySelectorAll('button').forEach(b => { b.disabled = busy && b.dataset.risk !== plRisk; });
     $('pl-auto').textContent = plAuto ? `STOP (${plAuto.left})` : 'AUTO';
     $('pl-auto').classList.toggle('on', !!plAuto);
@@ -6415,12 +6401,6 @@ function plControls() {
 function plShowCoins() {
     if (me) $('pl-coins').textContent = Math.max(0, me.coins - plPending);
 }
-
-$('pl-rows').oninput = e => {
-    if (plBusy()) return;
-    plRows = Number(e.target.value);
-    plBuild();
-};
 
 function plSetBet(v) {
     const min = plInfo() ? plInfo().minBet : 10;
@@ -6451,7 +6431,7 @@ function plDrop() {
     plInFlight++;
     plControls();
     showMsg('pl-msg', '');
-    wsSend({ type: 'plinko', bet: plBet, rows: plRows, risk: plRisk });
+    wsSend({ type: 'plinko', bet: plBet, risk: plRisk });
     return true;
 }
 
@@ -6482,7 +6462,7 @@ function onPlinko(d) {
     plInFlight = Math.max(0, plInFlight - 1);
     if (me) me.coins = d.balance;
     plPending += d.win;
-    plBalls.push({ path: d.path, slot: d.slot, mult: d.mult, win: d.win, bet: d.bet, rows: d.rows, t0: performance.now(), hit: -1 });
+    plBalls.push({ path: d.path, slot: d.slot, mult: d.mult, win: d.win, bet: d.bet, rows: d.path.length, t0: performance.now(), hit: -1 });
     plShowCoins();
     plControls();
     plStartLoop();
@@ -6505,17 +6485,24 @@ function plSettleAll() {
     plControls();
 }
 
+// Farbe je Stufe, Mitte kraeftig, zum Rand hin heller
+const PL_COLORS = {
+    low: [[10, 128, 240], [160, 232, 236]],
+    medium: [[16, 168, 16], [180, 240, 32]],
+    high: [[160, 64, 224], [240, 160, 240]]
+};
+
 function plColor(k, n) {
-    // Mitte gelb, Rand rot
     const d = Math.abs(k - n / 2) / (n / 2);
-    return `hsl(${Math.round(48 - d * 48)}, 100%, ${Math.round(58 - d * 8)}%)`;
+    const [a, b] = PL_COLORS[plRisk] || PL_COLORS.medium;
+    return `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * d)).join(',')})`;
 }
 
-// Auf schmalen Faechern (viele Reihen) ohne "×" und ohne fuehrende Null
-function plLabel(m, narrow) {
-    if (m >= 100 || (narrow && m >= 10)) return String(m);
-    if (narrow) return m < 1 ? String(m).replace(/^0/, '') : String(m);
-    return '×' + m;
+// Wie auf dem Brett: 1K, 130, 26, 9,0, 0,2
+function plLabel(m) {
+    if (m >= 1000) return (m / 1000) + 'K';
+    if (m >= 10) return String(m);
+    return m.toFixed(1).replace('.', ',');
 }
 
 function plHistory(mult) {
@@ -6533,8 +6520,8 @@ function plHistory(mult) {
 function plGeo(n) {
     const cv = $('pl-canvas');
     const W = cv.width, H = cv.height;
-    const top = 36, bucketH = 40;
-    const sx = (W - 24) / (n + 2);
+    const top = 30, bucketH = 52;
+    const sx = (W - 8) / (n + 2);
     const sy = Math.min(sx, (H - top - bucketH - 16) / n);
     const cx = W / 2;
     return {
@@ -6600,14 +6587,19 @@ function plDraw() {
 
     // Faecher
     const mults = plMults();
-    const bw = g.sx - 4, bh = 30;
+    const bw = g.sx - 3, bh = 38;
     c.textAlign = 'center';
     c.textBaseline = 'middle';
     mults.forEach((m, k) => {
         const hit = plSlotHit.get(k);
         const a = hit ? Math.max(0, 1 - (now - hit) / 350) : 0;
         const x = g.slotX(k) - bw / 2;
-        const y = g.slotY - bh / 2 + 6 + a * 8;
+        const y = g.slotY - bh / 2 + 10 + a * 8;
+        // heller Sockel unten, darueber das Fach (wie ein Knopf)
+        c.fillStyle = 'rgba(255,255,255,.75)';
+        c.beginPath();
+        c.roundRect(x, y + 4, bw, bh, 6);
+        c.fill();
         c.fillStyle = plColor(k, n);
         c.shadowColor = plColor(k, n);
         c.shadowBlur = a * 20;
@@ -6616,8 +6608,10 @@ function plDraw() {
         c.fill();
         c.shadowBlur = 0;
         c.fillStyle = '#1b0f00';
-        const label = plLabel(m, bw < 48);
-        c.font = `900 ${Math.min(16, Math.floor(bw / Math.max(3, label.length) * 1.6))}px system-ui`;
+        const label = plLabel(m);
+        // so gross wie es ins Fach passt
+        let fs = 18;
+        do c.font = `800 ${fs}px system-ui`; while (c.measureText(label).width > bw - 4 && --fs > 8);
         c.fillText(label, g.slotX(k), y + bh / 2 + 1);
     });
 

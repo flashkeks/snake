@@ -27,7 +27,7 @@ Live: **`snake.flashkeks.com`** auf `edge` (Netcup).
 | `events.js` | Quiz-Events im Snake (Flag Quiz, Trivia, Where is it?, Guess the number): Ablauf, Punkte, Belohnung |
 | `tables.js` | Casino-Tische Blackjack und Roulette: Runden, Einsaetze, Auszahlung |
 | `casino.js` | Daily Wheel und Crossy Road (Werte, Wahrscheinlichkeiten); `node casino.js` rechnet nach |
-| `plinko.js` | Plinko: Faecher-Multis je Stufe und Reihenzahl, Drop; `node plinko.js [N]` zeigt alle Tabellen samt RTP (mit N zusaetzlich eine Simulation) |
+| `plinko.js` | Plinko: 16 Reihen, feste Faecher-Multis je Stufe, Drop; `node plinko.js [N]` zeigt die Tabellen samt RTP (mit N zusaetzlich eine Simulation) |
 | `flags.js` | Laender fuer das Flag Quiz (ISO-Code + englischer Name) |
 | `trivia.js` | Trivia-Fragen (Frage, richtige Antwort, drei falsche) |
 | `places.js` | Orte fuer „Where is it?“ (Name, Hinweis, Koordinaten) |
@@ -328,31 +328,39 @@ alle 250 ms). Verbindung weg mitten im Lauf: geschaffte Spuren werden
 ausgezahlt, ohne Schritt gibt es den Einsatz zurueck. Logout mitten im Lauf
 geht nicht.
 
+Verkehr (nur Optik): ein Auto je Spur, jede dritte Spur frei. Bis
+23.09.2026 waren es zwei grosse Autos je Spur, das sah zu wuselig aus. Am
+selben Tag behoben: wer direkt nach dem Tod neu startete, bekam das neue
+Huhn als 💥 angezeigt, weil die verzoegerte Todes-Animation sich das Huhn
+erst nach 430 ms per ID holte. Jetzt haelt sie das tote Huhn selbst fest.
+
 ### 🔻 Plinko
 
-Kugel faellt durch ein Nagelbrett, je Reihe 50/50 links oder rechts, unten
-landet sie in einem von n + 1 Faechern (binomialverteilt). Stufe Low,
-Medium oder High, 8–16 Reihen (Schieber). **Der Server wuerfelt den ganzen
-Pfad** (`plinko {bet, rows, risk}`) und bucht Einsatz und Gewinn sofort; der
+Kugel faellt durch ein Nagelbrett mit **fest 16 Reihen**, je Reihe 50/50
+links oder rechts, unten landet sie in einem von 17 Faechern
+(binomialverteilt). Stufe Low, Medium oder High. **Der Server wuerfelt den
+ganzen Pfad** (`plinko {bet, risk}`) und bucht Einsatz und Gewinn sofort; der
 Browser spielt den Pfad nur ab und zieht den Gewinn erst bei der Landung auf
 die Anzeige. Mehrere Kugeln duerfen gleichzeitig fallen, der Server nimmt
-hoechstens alle 120 ms eine an. Stufe und Reihen sind gesperrt, solange noch
-eine Kugel faellt.
+hoechstens alle 120 ms eine an. Die Stufe ist gesperrt, solange noch eine
+Kugel faellt.
 
-Die Multis sind nicht von Hand gepflegt: je Stufe eine Kurve (Mitte →
-Rand), skaliert und gerundet so, dass die Rueckzahlung knapp **unter 99 %**
-liegt (alle 27 Tabellen zwischen 98,8 und 99,0 %), dazu monoton zum Rand.
+Die Multis sind fest vorgegeben (Wunsch Max, 23.09.2026: gerade Zahlen, wie
+bei den bekannten Plinko-Automaten). Faecher von aussen nach innen, die
+andere Haelfte gespiegelt:
 
-| Stufe | 8 Reihen | 16 Reihen | Mitte |
-|---|---|---|---|
-| Low | bis ×4,9 | bis ×14 | ×0,6 |
-| Medium | bis ×20 | bis ×223 | ×0,5–0,6 |
-| High | bis ×44 | bis ×2062 | ×0,3–0,4 |
+| Stufe | Faecher (Rand → Mitte) | RTP |
+|---|---|---|
+| Low | 16 · 9 · 2 · 1,4 · 1,4 · 1,2 · 1,1 · 1 · **0,5** | 99,00 % |
+| Medium | 110 · 41 · 10 · 5 · 3 · 1,5 · 1 · 0,5 · **0,3** | 98,99 % |
+| High | 1000 · 130 · 26 · 9 · 4 · 2 · 0,2 · 0,2 · **0,2** | 98,98 % |
+
+Angezeigt wie im Vorbild: `1K`, `130`, `26`, `9,0`, `0,2`. Farbe je Stufe:
+Low blau, Medium gruen, High lila, zum Rand hin heller. Die erste Fassung
+(Commit `4af27a8`) hatte 8–16 Reihen mit errechneten Tabellen.
 
 **Mindesteinsatz 10** (sonst ueberall frei): Gewinne werden abgerundet, bei
-Einsatz 1 zahlt ein ×0,6-Fach 0 Coins. Aufrunden waere schlimmer – dann
-zahlt Low mit Einsatz 1 ueberall mindestens 1 und die Rueckzahlung laege
-ueber 100 %.
+Einsatz 1 zahlt ein ×0,2-Fach 0 Coins.
 
 Bedienung: DROP oder **Leertaste**, AUTO wirft 10/25/50/100 Kugeln im
 Abstand von 260 ms und stoppt bei zu wenig Coins. Rechts die letzten 8
@@ -519,7 +527,7 @@ Client → Server: `register`, `login`, `resume {token}`, `logout`,
 `value` bei Guess the number), `tableJoin {kind}`, `tableLeave`,
 `tableAction` (`bet`/`clear` beim Roulette, `bet`/`clear`/`move` beim
 Blackjack), `daily`, `dailyDone`, `crossStart {bet, diff}`, `crossStep`,
-`crossCash`, `plinko {bet, rows, risk}`, `tickets`, `ticketNew {subject, text}`, `ticketReply {id, text}`,
+`crossCash`, `plinko {bet, risk}`, `tickets`, `ticketNew {subject, text}`, `ticketReply {id, text}`,
 `ticketRead {id}`.
 
 Server → Client: `welcome`, `auth`, `authError`, `authExpired`, `account`,
@@ -530,6 +538,6 @@ Server → Client: `welcome`, `auth`, `authError`, `authExpired`, `account`,
 `table` (Tisch-Zustand, nur an die am Tisch, mit `you`), `tableLeft`,
 `tableError`, `lobby`, `daily`, `dailyError`, `cross` (`state`: run, dead,
 cashed), `crossError`, `plinko` (`path`, `slot`, `mult`, `win`, `balance`),
-`plinkoError` (`quiet` bei zu schnellen Drops), `tickets` (`list`, `unread`, `open`), `ticketError`. `welcome` bringt dazu `wheel`, `cross`, `plinko` (Stufen, Reihen, alle Tabellen) und `lobby`.
+`plinkoError` (`quiet` bei zu schnellen Drops), `tickets` (`list`, `unread`, `open`), `ticketError`. `welcome` bringt dazu `wheel`, `cross`, `plinko` (Reihen, Stufen, Tabellen) und `lobby`.
 
 Die Oberflaeche ist seit 23.09.2026 englisch, diese Doku bleibt deutsch.

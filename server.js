@@ -1028,25 +1028,24 @@ async function handle(c, data) {
             const now = Date.now();
             if (now - (c.lastPlinko || 0) < 120) return send(c, { type: 'plinkoError', error: 'Too fast', quiet: true });
             const bet = Number(data.bet);
-            const rows = Number(data.rows);
             const risk = String(data.risk);
             // Mindestens 10: darunter frisst das Abrunden die kleinen Multis auf
-            if (!validBet(bet) || bet < plinko.MIN_BET || !plinko.valid(risk, rows)) return send(c, { type: 'plinkoError', error: `Invalid bet (min ${plinko.MIN_BET})` });
+            if (!validBet(bet) || bet < plinko.MIN_BET || !plinko.valid(risk)) return send(c, { type: 'plinkoError', error: `Invalid bet (min ${plinko.MIN_BET})` });
             const u = accounts.get(c.account);
             if (!u || u.coins < bet) return send(c, { type: 'plinkoError', error: 'Not enough coins' });
             c.lastPlinko = now;
 
             accounts.addCoins(c.account, -bet);
-            const r = plinko.drop(bet, risk, rows);
+            const r = plinko.drop(bet, risk);
             const balance = accounts.addCoins(c.account, r.win);
             accounts.stat(c.account, s => {
                 s.spins++;
                 s.biggestWin = Math.max(s.biggestWin, r.win);
             });
-            send(c, { type: 'plinko', bet, rows, risk, path: r.path, slot: r.slot, mult: r.mult, win: r.win, balance });
+            send(c, { type: 'plinko', bet, risk, path: r.path, slot: r.slot, mult: r.mult, win: r.win, balance });
             // Bis die Kugel unten ist (~0,13 s je Reihe) nicht in Bestenliste und Feed
             const line = r.mult >= 100 && r.win >= 1000 ? [`🔻 ${u.name} hit ×${r.mult} on Plinko: ${r.win} coins`, 'gold', c.id] : null;
-            hideWin(c.account, r.win, line, 1000 + rows * 150);
+            hideWin(c.account, r.win, line, 1000 + plinko.ROWS * 150);
             return;
         }
 
