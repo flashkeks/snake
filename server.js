@@ -20,6 +20,7 @@ const createTickets = require('./tickets');
 const startAdmin = require('./admin');
 const createShooter = require('./shooter');
 const createRooms = require('./arena-rooms');
+const createTrade = require('./arena-trade');
 const shop = require('./shop');
 const arenaItems = require('./arena-items');
 const arenaLevel = require('./arena-level');
@@ -836,6 +837,7 @@ async function handle(c, data) {
             tables.leave(c);
             shooter.leave(c);
             rooms.leave(c);
+            trade.gone(c);
             accounts.logout(data.token);
             c.account = null;
             send(c, { type: 'auth', token: null, user: null });
@@ -1141,6 +1143,17 @@ async function handle(c, data) {
             rooms.handle(c, data);
             return;
 
+        // Handel zwischen Spielern (4.5)
+        case 'trReq':
+        case 'trAccept':
+        case 'trDecline':
+        case 'trSet':
+        case 'trReady':
+        case 'trCancel':
+        case 'trState':
+            trade.handle(c, data);
+            return;
+
         case 'tableLeave':
             tables.leave(c);
             return;
@@ -1416,6 +1429,7 @@ wss.on('connection', (ws, req) => {
     });
 
     ws.on('close', () => {
+        trade.gone(c);
         tables.leave(c);
         shooter.leave(c);
         rooms.leave(c);
@@ -1601,6 +1615,13 @@ const rooms = createRooms({
     accounts, send, broadcast, feed, refresh: c => sendAccount(c), worlds: createShooter.PVP_WORLDS, zombieWorld: createShooter.ZOMBIE_WORLD,
     createArena: o => createShooter({ accounts, send, feed, refresh: c => sendAccount(c), changed: () => {} }, o),
     busy: c => shooter.has(c) || !!c.joined || !!c.cross
+});
+
+// Handel: nur Hub-Aktion, kein eigener Takt
+const trade = createTrade({
+    accounts, send, clientsOf, refresh: c => sendAccount(c),
+    hubRefresh: c => shooter.hubAction(c, { type: 'arHub' }),
+    log: line => console.log('trade:', line)
 });
 
 // Eigener, schnellerer Takt als das Snake-Feld (33 ms)

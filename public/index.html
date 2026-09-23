@@ -2799,6 +2799,87 @@ body.world-arena h1 {
     margin-bottom: 12px;
 }
 
+/* Handel */
+.tr-note {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    border-radius: 10px;
+    background: rgba(255,210,63,.1);
+    border: 1px solid rgba(255,210,63,.5);
+}
+
+.tr-note b {
+    color: #ffd23f;
+}
+
+.tr-start .row {
+    display: flex;
+    gap: 8px;
+    margin: 10px 0;
+    max-width: 520px;
+}
+
+.tr-head {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.tr-head .hint {
+    flex: 1;
+}
+
+.tr-sides {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 12px;
+    align-items: stretch;
+    margin-bottom: 12px;
+}
+
+.tr-side {
+    padding: 10px;
+    border-radius: 12px;
+    border: 2px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.03);
+}
+
+.tr-side.ready {
+    border-color: #00ff88;
+    box-shadow: 0 0 16px rgba(0,255,136,.3);
+}
+
+.tr-side h4 {
+    margin: 0 0 8px;
+}
+
+.tr-ok {
+    color: #00ff88;
+    font-size: 12px;
+    margin-left: 6px;
+}
+
+.tr-money {
+    margin-top: 8px;
+    display: flex;
+    gap: 12px;
+}
+
+.tr-money input {
+    width: 110px;
+}
+
+.tr-arrows {
+    align-self: center;
+    font-size: 26px;
+    opacity: .6;
+}
+
 /* PvP-Lobbys */
 .mode[data-mode] {
     cursor: pointer;
@@ -5752,6 +5833,7 @@ body.touch input, body.touch textarea {
                         <button type="button" data-hubtab="equip" data-group="inv">🎒 Inventory</button>
                         <button type="button" data-hubtab="cases">🎁 Cases</button>
                         <button type="button" data-hubtab="shop">🛒 Shop</button>
+                        <button type="button" data-hubtab="trade" id="hub-trade-tab">🤝 Trade</button>
                         <button type="button" data-hubtab="profile">🎖️ Profile</button>
                     </div>
                     <div id="hub-body"></div>
@@ -6228,6 +6310,7 @@ ws.onmessage = event => {
         case 'arHub': onArHub(data); break;
         case 'arXp': onArXp(data); break;
         case 'pvpLobbies': onPvpLobbies(data.lobbies); break;
+        case 'trInvite': case 'trState': case 'trClosed': case 'trDone': case 'trInfo': onTrade(data); break;
         case 'pvpError': showMsg('hub-msg', data.error, 'err'); break;
         case 'shTrader': onShTrader(data); break;
         case 'arError': showMsg('hub-msg', data.error, 'err'); break;
@@ -9430,6 +9513,7 @@ function hubOpen(tab) {
     showScreen('arenahub');
     hubDraw();
     wsSend({ type: 'arHub' });
+    wsSend({ type: 'trState' });
 }
 
 function onArHub(d) {
@@ -9581,6 +9665,85 @@ $('hub-body').addEventListener('dragend', () => {
     hubDrag = null;
     dndClear($('hub-body'));
 });
+
+// ---------- Handel (4.5) ----------
+let trState = null;         // laufender Handel (trState vom Server)
+let trInvites = [];         // offene Anfragen an mich
+
+function hubTrade() {
+    if (!trState) {
+        return `<div class="tr-start"><b>🤝 Trade with another player</b><div class="row"><input id="tr-name" maxlength="16" placeholder="Player name" autocomplete="off">` +
+            `<button type="button" class="gold" data-tr="req">Send request</button></div>` +
+            `<div class="hint">They must be online. Both of you put items, scrap and coins in, both press Ready – then everything swaps at once. ` +
+            `Any change takes the Ready away again, so nobody can sneak a swap in. Items in your loadout cannot be traded.</div></div>` +
+            (trInvites.length ? '<h4>Requests for you</h4>' + trInvites.map(i => `<div class="tr-note">📨 <b>${esc(i.from)}</b> wants to trade <button type="button" class="gold" data-tr="accept" data-id="${i.id}">Accept</button><button type="button" class="ghost" data-tr="decline" data-id="${i.id}">Decline</button></div>`).join('') : '');
+    }
+    const S = trState;
+    const side = (s, mine) => `<div class="tr-side ${s.ready ? 'ready' : ''}"><h4>${mine ? 'You give' : esc(s.name) + ' gives'} ${s.ready ? '<span class="tr-ok">✔ READY</span>' : ''}</h4>` +
+        `<div class="inv-grid">${s.items.map(it => itemCard(it)).join('') || '<div class="hint">no items</div>'}</div>` +
+        (mine ? `<div class="row tr-money"><label>⚙️ <input type="number" id="tr-scrap" min="0" max="${hub.scrap}" value="${s.scrap}"></label>` +
+            `<label>🪙 <input type="number" id="tr-coins" min="0" max="${me.coins}" value="${s.coins}"></label></div>`
+            : `<div class="tr-money">⚙️ ${s.scrap.toLocaleString('en-US')} scrap · 🪙 ${s.coins.toLocaleString('en-US')} coins</div>`) + '</div>';
+    const mineSet = new Set(S.me.items.map(x => x.uid));
+    const tradable = hub.inv.filter(it => !hubEquippedAs(it.uid)).sort(hubSort);
+    return `<div class="tr-head"><b>🤝 Trading with ${esc(S.them.name)}</b><span class="hint">Both press Ready to swap. Changes reset Ready.</span>` +
+        `<button type="button" class="${S.me.ready ? 'ghost' : 'gold'}" data-tr="ready">${S.me.ready ? '✖ Not ready' : '✔ Ready'}</button>` +
+        `<button type="button" class="danger" data-tr="cancel">Cancel</button></div>` +
+        `<div class="tr-sides">${side(S.me, true)}<span class="tr-arrows">⇄</span>${side(S.them, false)}</div>` +
+        `<h4>Your stash – click to add or remove (${mineSet.size}/20)</h4><div class="inv-grid" data-trstash="1">${tradable.map(it => itemCard(it, { pick: mineSet.has(it.uid) })).join('') || '<div class="hint">Nothing tradable (items in your loadout are locked)</div>'}</div>`;
+}
+
+function trSend(items) {
+    wsSend({ type: 'trSet', items, scrap: Number(($('tr-scrap') || {}).value) || 0, coins: Number(($('tr-coins') || {}).value) || 0 });
+}
+
+function trToggle(uid) {
+    const items = trState.me.items.map(x => x.uid);
+    const i = items.indexOf(uid);
+    if (i >= 0) items.splice(i, 1);
+    else if (items.length < 20) items.push(uid);
+    trSend(items);
+}
+
+function trClick(t, ds) {
+    if (ds.tr === 'req') {
+        const n = ($('tr-name') || {}).value || '';
+        if (n.trim()) wsSend({ type: 'trReq', name: n.trim() });
+    } else if (ds.tr === 'accept') {
+        trInvites = trInvites.filter(i => i.id !== Number(ds.id));
+        wsSend({ type: 'trAccept', id: Number(ds.id) });
+    } else if (ds.tr === 'decline') {
+        trInvites = trInvites.filter(i => i.id !== Number(ds.id));
+        wsSend({ type: 'trDecline', id: Number(ds.id) });
+        hubDraw();
+    } else if (ds.tr === 'ready') wsSend({ type: 'trReady', on: !trState.me.ready });
+    else if (ds.tr === 'cancel') wsSend({ type: 'trCancel' });
+}
+
+$('hub-body').addEventListener('change', e => {
+    if (hubTab === 'trade' && trState && (e.target.id === 'tr-scrap' || e.target.id === 'tr-coins')) trSend(trState.me.items.map(x => x.uid));
+});
+
+function onTrade(d) {
+    const open = hub && !$('arenahub').classList.contains('hidden');
+    if (d.type === 'trInvite') {
+        if (!trInvites.some(i => i.id === d.id)) trInvites.push({ id: d.id, from: d.from });
+        beep(880, 0.1, 0.05);
+        setTimeout(() => { trInvites = trInvites.filter(i => i.id !== d.id); if (open) hubDraw(); }, 60000);
+    } else if (d.type === 'trState') {
+        const first = !trState;
+        trState = d;
+        if (first && open) hubTab = 'trade';
+    } else if (d.type === 'trClosed') {
+        trState = null;
+        showMsg('hub-msg', d.why, 'err');
+    } else if (d.type === 'trDone') {
+        trState = null;
+        showMsg('hub-msg', `🤝 Trade done! You got ${d.got.length ? d.got.join(', ') : 'no items'}${d.scrap ? ` · ${d.scrap} scrap` : ''}${d.coins ? ` · ${d.coins} coins` : ''}`, 'ok');
+        fanfare(true);
+    } else if (d.type === 'trInfo') showMsg('hub-msg', d.text, d.err ? 'err' : 'ok');
+    if (open) hubDraw();
+}
 
 // ---------- PvP-Lobbys (4.3) ----------
 function onPvpLobbies(list) {
@@ -9869,6 +10032,8 @@ function hubDraw() {
             (hubLast ? `<div class="raid-result ${hubLast.result}">${hubLast.html}</div>` : ''));
     } else if (hubTab === 'profile') {
         html = hubProfile();
+    } else if (hubTab === 'trade') {
+        html = hubTrade();
     } else if (hubTab === 'equip') {
         html = hubLoadout() + (hubPick ? hubPicker() : hubStash(filters));
         setTimeout(() => $('hub-body').querySelectorAll('.it[data-uid]').forEach(x => { x.draggable = true; }), 0);
@@ -9913,6 +10078,10 @@ function hubDraw() {
             `<h3>For scrap</h3><div class="cases">${arenaCat.shop.filter(o => o.currency === 'scrap').map(card).join('')}</div>` +
             `<div class="hint">Armor, bigger backpacks, rarer weapons and special consumables only come from cases and crates.</div>`;
     }
+    if (trInvites.length && hubTab !== 'trade') {
+        html = trInvites.map(i => `<div class="tr-note">📨 <b>${esc(i.from)}</b> wants to trade <button type="button" class="gold" data-tr="accept" data-id="${i.id}">Accept</button><button type="button" class="ghost" data-tr="decline" data-id="${i.id}">Decline</button></div>`).join('') + html;
+    }
+    $('hub-trade-tab').textContent = `🤝 Trade${trInvites.length ? ` (${trInvites.length})` : trState ? ' •' : ''}`;
     if (['equip', 'inv', 'salvage'].includes(hubTab)) {
         hubInvLast = hubTab;
         html = `<div class="cr-diffs hub-sub">${[['equip', '🎒 Equip'], ['inv', '📋 List'], ['salvage', '♻️ Salvage']].map(([k, n]) =>
@@ -10003,6 +10172,8 @@ $('hub-body').addEventListener('click', e => {
         return hubDraw();
     }
     if (hubTab === 'profile') return profClick(t, ds, e);
+    if (ds.tr) return trClick(t, ds);
+    if (hubTab === 'trade' && ds.uid && t.closest('[data-trstash]')) return trToggle(ds.uid);
     if (ds.pvp) return pvpClick(ds);
     if (t.id === 'hub-deploy') return wsSend({ type: 'shJoin' });
     if (t.id === 'hub-salvage-picked') return hubSalvage([...hubMulti]);

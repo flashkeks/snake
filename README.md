@@ -826,6 +826,21 @@ Detailansicht.
 - Protokoll: `pvpCreate {kind: 'zombies'}`, `pvpStart`; im Spiel `sh.zmb =
   { wave, phase, left, zombies, pts, perks, team: [[name, pts, kills, tot]] }`.
 
+### 🤝 Handel (4.5, `arena-trade.js`)
+
+- Hub-Tab „Trade“: Anfrage an einen Namen (muss online sein, 60 s gueltig),
+  der andere sieht sie in jedem Hub-Tab oben und im Trade-Tab.
+- Nach dem Annehmen stellen beide ihr Angebot zusammen: bis 20 Items aus dem
+  Lager (nicht aus dem Loadout), Scrap, Coins. Jede Aenderung nimmt beiden
+  „Ready“ weg. Sind beide ready, tauscht der Server in einem Schritt, nach
+  erneuter Pruefung (Besitz, Loadout, Coins/Scrap, Platz im Lager 100).
+- Abbrechen, Offline gehen oder Logout beendet den Handel. Jeder Tausch
+  landet als `trade: A ↔ B: …` im Journal von `snake.service`, Statistik
+  `trades`.
+- Protokoll: `trReq {name}`, `trAccept/trDecline {id}`, `trSet {items,
+  scrap, coins}`, `trReady {on}`, `trCancel`, `trState`; Server:
+  `trInvite`, `trState {me, them}`, `trClosed`, `trDone`, `trInfo`.
+
 ### Raid (`shooter.js`)
 
 - **Map** 4000 × 2800, fest aus Seed 1337: 16 Gebaeude mit Tueren, 90

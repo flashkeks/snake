@@ -1,5 +1,15 @@
 [
   {
+    "version": "4.5",
+    "date": "23.09.2026",
+    "items": [
+      "🤝 Trading: send a trade request to any online player (Arena → Trade)",
+      "Offer items from your stash plus scrap and coins, see exactly what the other side gives",
+      "Both press Ready and everything swaps at once – any change resets Ready, so no last-second tricks",
+      "Items in your loadout are locked while you trade"
+    ]
+  },
+  {
     "version": "4.4",
     "date": "23.09.2026",
     "items": [
