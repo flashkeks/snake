@@ -111,7 +111,7 @@ dialog h2 { margin: 0 0 10px; }
             <table>
                 <thead><tr>
                     <th>Name</th><th class="num">Coins</th><th>Last seen</th><th class="num">Spins</th>
-                    <th class="num">Biggest win</th><th class="num">Best score</th><th class="num">Kills</th><th>Daily</th><th></th>
+                    <th class="num">Biggest win</th><th class="num">Best score</th><th class="num">Kills</th><th class="num">Achievements</th><th>Daily</th><th></th>
                 </tr></thead>
                 <tbody id="u-body"></tbody>
             </table>
@@ -243,13 +243,14 @@ function drawUsers() {
     $('u-count').textContent = `${list.length} of ${users.length}`;
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date());
     $('u-body').innerHTML = list.map(u => `<tr>
-        <td><span class="dot" style="background:${esc(u.color || '#555')}"></span><b>${esc(u.name)}</b></td>
+        <td><span class="dot" style="background:${esc(u.color || '#555')}"></span><b>${esc(u.name)}</b>${u.title ? ` <span class="muted">« ${esc(u.title)} »</span>` : ''}</td>
         <td class="num" style="color:var(--gold);font-weight:800">${fmt(u.coins)}</td>
         <td>${ago(u.lastSeen)}</td>
         <td class="num">${fmt(u.stats.spins)}</td>
         <td class="num">${fmt(u.stats.biggestWin)}</td>
         <td class="num">${fmt(u.stats.bestScore)}</td>
         <td class="num">${fmt(u.stats.kills)}</td>
+        <td class="num">🏆 ${u.achievements || 0}</td>
         <td>${u.daily === today ? '✔ spun' : '<span class="muted">ready</span>'}</td>
         <td><button type="button" data-user="${esc(u.key)}">Manage</button></td>
     </tr>`).join('');

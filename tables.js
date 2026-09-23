@@ -199,7 +199,7 @@ module.exports = function createTables(h) {
         // Poker: Bilanz inkl. dem, was gerade am Tisch liegt
         const live = id => t.kind === 'poker' ? t.game.stackOf(id) : 0;
         return [...t.members.values()]
-            .map(m => ({ id: m.id, name: m.name, color: m.color, guest: !m.account, value: m.net + live(m.id) }))
+            .map(m => ({ id: m.id, name: m.name, color: m.color, guest: !m.account, value: m.net + live(m.id), tt: (m.account && h.accounts.titleOf && h.accounts.titleOf(m.account)) || undefined }))
             .sort((a, b) => b.value - a.value);
     }
 

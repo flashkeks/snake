@@ -26,6 +26,7 @@ Live: **`snake.flashkeks.com`** auf `edge` (Netcup).
 | `slots.js` | Slot-Automat „Slots“ (frueher „Kek Slots“); `node slots.js` rechnet die Rueckzahlungsquote aus |
 | `slots2.js` | Tumble-Slot „Budget Starlight“ (frueher „Sweet Kek“, intern weiter `s2`/`spin2`); `node slots2.js N` simuliert grob Rueckzahlung, Bonus-Quote, Bonus-Kauf (zum Abstimmen siehe unten) |
 | `events.js` | Events im Snake (Flag Quiz, Trivia, Where is it?, Guess the number und die Map-Events): Ablauf, Punkte, Belohnung |
+| `achievements.js` | Achievements (#3): Katalog, Pruefungen, Titel |
 | `shop.js` | Shop (#9): Katalog, was andere von einem sehen |
 | `shooter.js` | Arena (#7, #12): drei Arenen, Bewegung, Kugeln, Treffer, Waffen, Pickups, Kopfgeld-Escrow, Cases, Anti-Farming |
 | `minigames.js` | Map-Events (#6): Labyrinth, Coin Rush, Last Snake Standing – Map-Bau, Schritte, Kollisionen, Punkte |
@@ -159,6 +160,29 @@ Aeltere Zahlen vor dem 23.09.2026 gibt es nur in den alten Feldern
 - Gaeste duerfen keinen Namen nehmen, der einem Konto gehoert.
 - Rate-Limits je IP (`cf-connecting-ip`): 5 neue Konten pro Stunde, 10
   Logins bzw. Passwortversuche pro 5 Minuten.
+
+### 🏆 Achievements und Titel (Issue #3)
+
+Katalog in `achievements.js` (25 Stueck), jedes mit Pruefung gegen Konto und
+Statistik (#5). `accounts.stat()` prueft nach jeder Aenderung, `addCoins`
+bei Zuwachs ab 1 Mio. Neu erreichte landen in `u.achievements { id:
+Zeitpunkt }`; der Server schickt `achievement` an alle Fenster des Kontos
+(Toast) und eine Feed-Zeile. **Rueckwirkend:** beim Serverstart werden alle
+Konten still geprueft – wer es schon erfuellt, hat es ohne Toast.
+
+Die meisten geben einen **Titel**; angelegt wird er auf der Konto-Seite
+(`setTitle {id|null}`, `u.title`). Er steht neben dem Namen auf dem Feld
+(`tt` im Zustand), in der Spielerliste, in der Bestenliste, im Chat und an
+den Tischen; das Admin-Interface zeigt Anzahl und Titel.
+
+Beispiele: First blood, 100 Kills, 10er-Streak (`stats.bestStreak`), Score
+10k/50k, Cashout ueber 5000, 100 Tode, 10 h Spielzeit, Event-Siege, Daily 7
+Tage am Stueck (`u.dailyStreak`, `stats.dailyBestStreak`), Starlight 1000×
+und Max Win (100.000×), Plinko ×1000, Crossy Hardcore bis zum Ziel
+(`stats.crossyHardcoreWins`), Poker-Pot 10k, 100 Blackjack-Haende, 1000
+Casino-Runden, 1 Mio Coins, Arena-Kill/50 Kills/1000er-Kopfgeld
+(`stats.arenaBigBounty`), erstes Ticket (`stats.ticketsCreated`), Shop-Kauf,
+alle Skins.
 
 ### 🛒 Shop (Issue #9)
 
@@ -783,12 +807,12 @@ Client → Server: `register`, `login`, `resume {token}`, `logout`,
 beim Blackjack, `sit {seat?}`/`stand`/`move` (`fold`, `check`,
 `call`, `raise {to}`, `allin`) beim Poker), `pokerCreate {buyIn, seats, name}`, `daily`, `dailyDone`, `crossStart {bet, diff}`, `crossStep`,
 `crossCash`, `plinko {bet, risk}`, `board {cat, game, period}`, `me`, `shJoin {name, room}`,
-`shInput {mx, my, a, f, s}`, `shCase`, `shRetry`, `shPing {t}`, `shLeave`, `shopBuy {id}`, `shopEquip {cat, id|null}`, `tickets`, `ticketNew {subject, text}`, `ticketReply {id, text}`,
+`shInput {mx, my, a, f, s}`, `shCase`, `shRetry`, `shPing {t}`, `shLeave`, `shopBuy {id}`, `shopEquip {cat, id|null}`, `setTitle {id|null}`, `tickets`, `ticketNew {subject, text}`, `ticketReply {id, text}`,
 `ticketRead {id}`.
 
 Server → Client: `welcome`, `mg` (Schritt im Map-Event), `sh`, `shJoined`
 (mit Map und Waffen), `shLeft` (Bilanz, Rueckgabe), `shKill`, `shHit`, `shHurt`,
-`shCase`, `shPickup`, `shPong`, `shRooms`, `shError`, `shopOk`, `shopError`, `deathfx`, `auth`, `authError`, `authExpired`, `account`,
+`shCase`, `shPickup`, `shPong`, `shRooms`, `shError`, `shopOk`, `shopError`, `deathfx`, `achievement`, `auth`, `authError`, `authExpired`, `account`,
 `joined`, `joinError`, `left`, `died` (`cause`, `by`, `byId`, `at`), `swapfx`, `cashedout`, `cashoutCancel`, `state`
 (alle 60 ms, mit `arena` und `paused`), `duel`, `gamble`, `box`, `jackpot`,
 `feed` (mit `who` und `big` fuer den Sound), `chat`, `chatlog`, `highscores`, `board`,

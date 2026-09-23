@@ -20,6 +20,7 @@ const createTickets = require('./tickets');
 const startAdmin = require('./admin');
 const createShooter = require('./shooter');
 const shop = require('./shop');
+const achievements = require('./achievements');
 
 const PORT = Number(process.env.PORT) || 3000;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
@@ -27,6 +28,17 @@ const PUBLIC = path.join(__dirname, 'public');
 
 const accounts = createAccounts(DATA_DIR);
 const tickets = createTickets(DATA_DIR);
+
+// Achievement erreicht (#3): allen Fenstern des Kontos zeigen, Feed-Zeile
+accounts.onUnlock = (key, a) => {
+    for (const c of clients.values()) {
+        if (c.account !== key) continue;
+        send(c, { type: 'achievement', id: a.id, icon: a.icon, name: a.name, desc: a.desc, title: a.title || null });
+        sendAccount(c);
+    }
+    const u = accounts.get(key);
+    if (u) feed(`🏆 ${u.name} unlocked ${a.icon} ${a.name}`, 'good');
+};
 
 const server = http.createServer((req, res) => {
     const url = req.url.split('?')[0];
@@ -439,6 +451,7 @@ function kill(id, killerId, how, cause) {
         grow(killer, Math.ceil(victim.len / 2));
         killer.kills++;
         killer.streak++;
+        if (killer.account) accounts.stat(killer.account, s => { s.bestStreak = Math.max(s.bestStreak || 0, killer.streak); });
         if (killer.account) {
             accounts.stat(killer.account, s => { s.kills++; });
             accounts.period(killer.account, x => { x.kills++; });
@@ -854,6 +867,7 @@ async function handle(c, data) {
             if (c.account) accounts.setColor(c.account, c.color);
             // Shop (#9): was andere von einem sehen
             c.cos = c.account ? shop.visible(accounts.get(c.account).equipped) : null;
+            c.title = c.account ? accounts.titleOf(c.account) : null;
             spawn(c);
             players.set(c.id, c);
             send(c, { type: 'joined', name: c.name, guest: c.guest });
@@ -919,6 +933,7 @@ async function handle(c, data) {
                 color: c.color || (u && u.color) || '#cccccc',
                 // Namensfarbe aus dem Shop (#9)
                 nc: u && u.equipped && u.equipped.name ? u.equipped.name : undefined,
+                tt: (u && accounts.titleOf(c.account)) || undefined,
                 guest: !u,
                 text,
                 ts: now
@@ -950,6 +965,7 @@ async function handle(c, data) {
             const u = accounts.get(c.account);
             const r = tickets.create(c.account, u.name, data.subject, data.text);
             if (r.error) return send(c, { type: 'ticketError', error: r.error });
+            accounts.stat(c.account, s => { s.ticketsCreated = (s.ticketsCreated || 0) + 1; });
             sendTickets(c, r.ticket.id);
             return;
         }
@@ -1018,6 +1034,17 @@ async function handle(c, data) {
             if (!allow('board:' + c.id, 30, 60e3)) return;
             const list = accounts.board(cat, game, cat === 'coins' ? 'all' : period, key => pendingWins.has(key) ? pendingWins.get(key).amount : 0);
             send(c, { type: 'board', cat, game, period, list });
+            return;
+        }
+
+        // --- Achievements (#3): Titel anlegen/ablegen ---
+        case 'setTitle': {
+            if (!c.account) return;
+            const err = accounts.setTitle(c.account, data.id === null ? null : String(data.id));
+            if (err) return send(c, { type: 'authError', error: err });
+            if (players.has(c.id)) c.title = accounts.titleOf(c.account);
+            sendAccount(c);
+            pushTop(true);
             return;
         }
 
@@ -1132,7 +1159,10 @@ async function handle(c, data) {
                 return send(c, { type: 'cross', state: 'dead', step: g.step + 1, bet: g.bet, diff: g.diff, balance: accounts.get(c.account).coins });
             }
             g.step++;
-            if (g.step >= d.lanes) return crossCash(c, true);
+            if (g.step >= d.lanes) {
+                if (g.diff === 'hardcore') accounts.stat(c.account, s => { s.crossyHardcoreWins = (s.crossyHardcoreWins || 0) + 1; });
+                return crossCash(c, true);
+            }
             send(c, { type: 'cross', state: 'run', step: g.step, bet: g.bet, diff: g.diff, mult: casino.crossMult(g.diff, g.step) });
             return;
         }
@@ -1285,6 +1315,7 @@ wss.on('connection', (ws, req) => {
         palette: PALETTE,
         slots: { symbols: slots.SYMBOLS, bets: slots.BETS, twoCherry: slots.TWO_CHERRY },
         shop: { cats: shop.CATS, items: shop.ITEMS },
+        achievements: achievements.catalog(),
         slots2: { pays: slots2.PAYS, scatterPays: slots2.SCATTER_PAYS, buyCost: slots2.BUY_COST, freeSpins: slots2.FREE_SPINS, retrigger: slots2.RETRIGGER, maxWin: slots2.MAX_WIN, rtp: slots2.RTP },
         wheel: casino.WHEEL,
         cross: casino.crossTable(),
@@ -1857,6 +1888,7 @@ function broadcastState(now) {
             score: scoreOf(p),
             color: p.color,
             sk: p.cos || undefined,
+            tt: p.title || undefined,
             name: p.name,
             guest: p.guest,
             frozen: !!p.frozen || !!paused,

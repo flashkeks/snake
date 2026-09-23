@@ -9,6 +9,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { berlinDay } = require('./casino');
 const shop = require('./shop');
+const ach = require('./achievements');
 
 const START_COINS = 100;
 const SESSION_DAYS = 30;
@@ -132,7 +133,9 @@ module.exports = function createAccounts(dataDir) {
         return {
             name: u.name, coins: u.coins, color: u.color || null, stats: u.stats, dailyReady: u.daily !== berlinDay(),
             // Shop (#9)
-            inventory: u.inventory || [], equipped: u.equipped || {}
+            inventory: u.inventory || [], equipped: u.equipped || {},
+            // Achievements (#3)
+            achievements: u.achievements || {}, title: u.title || null
         };
     }
 
@@ -154,9 +157,43 @@ module.exports = function createAccounts(dataDir) {
         }
     }, 3600e3);
 
-    return {
+    // Achievements (#3): neu erreichte eintragen und melden (onUnlock setzt server.js)
+    function checkAch(key, silent) {
+        const u = db.users[key];
+        if (!u) return;
+        const got = ach.fresh(u);
+        if (!got.length) return;
+        u.achievements = { ...u.achievements };
+        for (const a of got) u.achievements[a.id] = Date.now();
+        dirty = true;
+        if (!silent && api.onUnlock) for (const a of got) api.onUnlock(key, a);
+    }
+
+    // Beim Start rueckwirkend und still: wer es schon erfuellt, hat es
+    for (const key of Object.keys(db.users)) checkAch(key, true);
+
+    const api = {
         NAME_RE,
         save,
+        onUnlock: null,
+        checkAch,
+        titleOf: key => ach.titleOf(db.users[key]),
+
+        // Titel anlegen (Achievement-Id mit Titel) oder ablegen (null)
+        setTitle(key, id) {
+            const u = db.users[key];
+            if (!u) return 'Unknown account';
+            if (id === null) {
+                delete u.title;
+                touch();
+                return null;
+            }
+            const a = ach.BY_ID[id];
+            if (!a || !a.title || !(u.achievements || {})[id]) return 'Unlock that achievement first';
+            u.title = id;
+            touch();
+            return null;
+        },
 
         exists(name) {
             return !!db.users[String(name).toLowerCase()];
@@ -285,6 +322,7 @@ module.exports = function createAccounts(dataDir) {
             if (!u) return null;
             u.coins = Math.max(0, Math.floor(u.coins + n));
             touch();
+            if (n > 0 && u.coins >= 1000000) checkAch(key);
             return u.coins;
         },
 
@@ -293,8 +331,13 @@ module.exports = function createAccounts(dataDir) {
             const u = db.users[key];
             const day = berlinDay();
             if (!u || u.daily === day) return false;
+            // Serie fuer "Regular" (#3): gestern gedreht = weiter, sonst neu
+            const y = new Date(Date.parse(day + 'T12:00:00Z') - 864e5).toISOString().slice(0, 10);
+            const streak = u.daily === y ? (u.dailyStreak || 0) + 1 : 1;
             u.daily = day;
+            u.dailyStreak = streak;
             touch();
+            this.stat(key, s => { s.dailyBestStreak = Math.max(s.dailyBestStreak || 0, streak); });
             return true;
         },
 
@@ -306,6 +349,7 @@ module.exports = function createAccounts(dataDir) {
             u.stats.earned = { ...base.earned, ...u.stats.earned };
             fn(u.stats);
             touch();
+            checkAch(key);
         },
 
         // Zeitraum-Zaehler (heute, Woche) aktualisieren; fn bekommt je einen Zeitraum
@@ -352,6 +396,7 @@ module.exports = function createAccounts(dataDir) {
                 key, name: u.name, coins: u.coins, color: u.color || null,
                 created: u.created || null, lastSeen: u.lastSeen || null,
                 daily: u.daily || null, stats: { ...newStats(), ...u.stats },
+                achievements: Object.keys(u.achievements || {}).length, title: ach.titleOf(u),
                 sessions: Object.values(db.sessions).filter(x => x.user === key && x.expires > Date.now()).length
             }));
         },
@@ -424,7 +469,7 @@ module.exports = function createAccounts(dataDir) {
                 }[cat] || 0;
             };
             return Object.entries(db.users)
-                .map(([key, u]) => ({ name: u.name, value: value(u, key) }))
+                .map(([key, u]) => ({ name: u.name, value: value(u, key), tt: ach.titleOf(u) || undefined }))
                 // Casino-Bilanz darf negativ sein, sonst nur echte Werte
                 .filter(e => cat === 'casino' ? e.value !== 0 : e.value > 0)
                 .sort((a, b) => b.value - a.value)
@@ -434,7 +479,7 @@ module.exports = function createAccounts(dataDir) {
         top(hidden) {
             const all = Object.entries(db.users).map(([key, u]) => hidden && hidden(key) ? { ...u, coins: u.coins - hidden(key) } : u);
             const pick = (sortKey, n) => all
-                .map(u => ({ name: u.name, value: sortKey(u) }))
+                .map(u => ({ name: u.name, value: sortKey(u), tt: ach.titleOf(u) || undefined }))
                 .filter(e => e.value > 0)
                 .sort((a, b) => b.value - a.value)
                 .slice(0, n);
@@ -445,6 +490,7 @@ module.exports = function createAccounts(dataDir) {
             };
         }
     };
+    return api;
 };
 
 module.exports.GAMES = GAMES;

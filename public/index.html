@@ -2613,6 +2613,115 @@ button:disabled {
     font-size: 70px;
 }
 
+/* ---------- Achievements ---------- */
+
+.tt {
+    display: inline-block;
+    margin: 0 4px;
+    padding: 0 6px;
+    border-radius: 8px;
+    font-size: .78em;
+    font-weight: 800;
+    color: #2a1a00;
+    background: linear-gradient(115deg, #d4a514, #ffd700, #fff3b0);
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.ach-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+
+.ach-bar select {
+    height: 32px;
+    background: #0b120e;
+    color: #fff;
+    border: 1px solid rgba(255,210,63,.4);
+    border-radius: 8px;
+}
+
+.ach-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 6px;
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.ach {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: rgba(255,255,255,.03);
+    opacity: .45;
+    font-size: 13px;
+}
+
+.ach.got {
+    opacity: 1;
+    background: rgba(255,210,63,.08);
+    border: 1px solid rgba(255,210,63,.35);
+}
+
+.ach b, .ach small {
+    display: block;
+}
+
+.ach small {
+    opacity: .75;
+    font-size: 11px;
+}
+
+.ach-ico {
+    font-size: 26px;
+}
+
+.ach-toast {
+    position: fixed;
+    left: 50%;
+    top: 18px;
+    transform: translateX(-50%);
+    z-index: 100;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 18px;
+    border-radius: 14px;
+    background: rgba(20,16,4,.95);
+    border: 2px solid #ffd23f;
+    box-shadow: 0 0 40px rgba(255,210,63,.5);
+    animation: pop .5s ease-out;
+    transition: opacity .6s, transform .6s;
+}
+
+.ach-toast.out {
+    opacity: 0;
+    transform: translate(-50%, -30px);
+}
+
+.ach-toast small, .ach-toast b, .ach-toast span {
+    display: block;
+}
+
+.ach-toast small {
+    color: #ffd23f;
+    font-weight: 800;
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.ach-toast .ach-ico {
+    font-size: 40px;
+}
+
 /* ---------- Shop ---------- */
 
 #shop .card {
@@ -4225,6 +4334,12 @@ body.touch input, body.touch textarea {
                     <h2>👤 <span id="konto-name"></span></h2>
                     <div class="stats" id="konto-stats"></div>
 
+                    <div class="ach-bar">
+                        <h3 id="ach-head" style="margin:0">🏆 Achievements</h3>
+                        <label>Title <select id="ach-title"></select></label>
+                    </div>
+                    <div class="ach-grid" id="ach-grid"></div>
+
                     <h3>Change password</h3>
                     <form id="pw-form" style="display:flex;flex-direction:column;gap:8px">
                         <input id="pw-old" type="password" placeholder="Current password" autocomplete="current-password">
@@ -4425,7 +4540,10 @@ ws.onmessage = event => {
         case 'account':
             setMe(data.user);
             if (!$('shop').classList.contains('hidden')) drawShop();
-            if (!$('konto').classList.contains('hidden')) drawStats();
+            if (!$('konto').classList.contains('hidden')) {
+                drawStats();
+                drawAchievements();
+            }
             break;
         case 'joined':
             joined = true;
@@ -4476,6 +4594,7 @@ ws.onmessage = event => {
         case 'shopOk': onShopOk(data); break;
         case 'shopError': showMsg('shop-msg', data.error, 'err'); break;
         case 'deathfx': onDeathFx(data); break;
+        case 'achievement': onAchievement(data); break;
         case 'shRooms': onShRooms(data.rooms); break;
         case 'shHit': onShHit(data); break;
         case 'shHurt': onShHurt(data); break;
@@ -4658,6 +4777,7 @@ $('slots-back').onclick = () => { casinoRefresh(); showScreen('casino'); };
 $('konto-btn').onclick = () => {
     showMsg('konto-msg', '');
     drawStats();
+    drawAchievements();
     showScreen('konto');
     // Frische Zahlen holen (Spins schicken nur den Kontostand, nicht die Statistik)
     wsSend({ type: 'me' });
@@ -4876,6 +4996,12 @@ function addChat(m) {
     who.className = 'who' + (m.nc ? ' nc-' + m.nc : '');
     who.style.color = m.color;
     who.textContent = m.name + (m.guest ? ' (guest)' : '') + ': ';
+    if (m.tt) {
+        const tag = document.createElement('span');
+        tag.className = 'tt';
+        tag.textContent = m.tt;
+        line.appendChild(tag);
+    }
     line.appendChild(who);
     line.appendChild(document.createTextNode(m.text));
     chatLog.appendChild(line);
@@ -5171,6 +5297,15 @@ function draw(perfNow) {
         const icons = Object.keys(fx).filter(k => k !== 'shield').map(k => FX_ICON[k]).filter(Boolean).join('');
         ctx.font = `bold ${Math.floor(cell * 0.6)}px system-ui`;
         ctx.fillStyle = nameStyle(p.sk && p.sk.name, now) || 'rgba(255,255,255,.85)';
+        if (p.tt) {
+            ctx.save();
+            ctx.font = `bold ${Math.floor(cell * 0.5)}px system-ui`;
+            ctx.fillStyle = '#ffd23f';
+            ctx.fillText(`« ${p.tt} »`, hx + cell / 2, hy - cell * 1.15);
+            ctx.restore();
+            ctx.font = `bold ${Math.floor(cell * 0.6)}px system-ui`;
+            ctx.fillStyle = nameStyle(p.sk && p.sk.name, now) || 'rgba(255,255,255,.85)';
+        }
         ctx.fillText((p.gambling ? '🪙 ' : '') + (mine ? 'You' : p.name) + ` · ${p.score}` + (icons ? ' ' + icons : ''),
             hx + cell / 2, hy - cell * 0.5);
     }
@@ -5661,7 +5796,7 @@ function renderEvent() {
 
     $('ev-board').innerHTML = d.board.map((r, i) =>
         `<tr class="${r.id === evMe() ? 'me' : ''}"><td>${['🥇', '🥈', '🥉'][i] || (i + 1) + '.'}</td>` +
-        `<td><span class="dot" style="background:${esc(r.color)}"></span>${esc(r.name)}${r.guest ? ' <span style="opacity:.5">(guest)</span>' : ''}</td>` +
+        `<td><span class="dot" style="background:${esc(r.color)}"></span>${esc(r.name)}${r.guest ? ' <span style="opacity:.5">(guest)</span>' : ''}${ttTag(r.tt)}</td>` +
         `<td style="text-align:right">${d.eventType === 'gamble' && r.value > 0 ? '+' : ''}${r.value}</td></tr>`
     ).join('');
 
@@ -8093,6 +8228,48 @@ $('shop-back').onclick = () => showScreen('menu');
 // Vorschau der Skins bewegt sich
 setInterval(() => { if (!$('shop').classList.contains('hidden') && shopCat === 'skin') drawPreviews(); }, 120);
 
+// ---------- Achievements (#3) ----------
+// Katalog kommt mit `welcome`, freigeschaltete stehen in me.achievements,
+// der angelegte Titel in me.title. Andere bringen ihren Titel als `tt` mit.
+
+let achCatalog = [];
+
+// Titel-Schildchen fuer HTML-Listen
+function ttTag(tt) {
+    return tt ? ` <span class="tt">${esc(tt)}</span>` : '';
+}
+
+function onAchievement(a) {
+    const box = document.createElement('div');
+    box.className = 'ach-toast';
+    box.innerHTML = `<span class="ach-ico">${a.icon}</span><div><small>Achievement unlocked</small><b>${esc(a.name)}</b>` +
+        `<span>${esc(a.desc)}${a.title ? ` · title <b class="tt">${esc(a.title)}</b>` : ''}</span></div>`;
+    document.body.appendChild(box);
+    sfx.fanfare('big');
+    setTimeout(() => box.classList.add('out'), 4200);
+    setTimeout(() => box.remove(), 5000);
+}
+
+function drawAchievements() {
+    if (!me || !achCatalog.length) return;
+    const have = me.achievements || {};
+    const n = achCatalog.filter(a => have[a.id]).length;
+    const titles = achCatalog.filter(a => a.title && have[a.id]);
+    $('ach-head').textContent = `🏆 Achievements ${n} / ${achCatalog.length}`;
+    $('ach-title').innerHTML = '<option value="">No title</option>' +
+        titles.map(a => `<option value="${a.id}" ${me.title === a.id ? 'selected' : ''}>${esc(a.title)}</option>`).join('');
+    $('ach-title').disabled = !titles.length;
+    // Freigeschaltete zuerst
+    const sorted = [...achCatalog].sort((x, y) => (!!have[y.id]) - (!!have[x.id]));
+    $('ach-grid').innerHTML = sorted.map(a => {
+        const got = have[a.id];
+        return `<div class="ach ${got ? 'got' : ''}" title="${esc(a.desc)}"><span class="ach-ico">${got ? a.icon : '🔒'}</span>` +
+            `<div><b>${esc(a.name)}</b><small>${esc(a.desc)}${a.title ? ` · 🏷️ ${esc(a.title)}` : ''}</small></div></div>`;
+    }).join('');
+}
+
+$('ach-title').onchange = e => wsSend({ type: 'setTitle', id: e.target.value || null });
+
 // ---------- Casino: Lobby ----------
 
 let casinoInfo = null;      // { wheel, cross } aus welcome
@@ -8101,6 +8278,7 @@ let lobbyNow = { blackjack: [], roulette: [] };
 function buildCasino(d) {
     casinoInfo = { wheel: d.wheel, cross: d.cross, plinko: d.plinko };
     if (d.shop) initShop(d.shop);
+    if (d.achievements) achCatalog = d.achievements;
     onLobby(d.lobby || lobbyNow);
     drawDailyWheel(0);
     crBuildDiffs();
@@ -8955,7 +9133,7 @@ function updatePanels() {
     const rows = [...players]
         .sort((a, b) => b.score - a.score)
         .map((p, i) => `<tr class="${p.id === myId ? 'me' : ''}">` +
-            `<td class="name"><span class="dot" style="background:${esc(colorOf(p))}"></span>${i === 0 ? '👑 ' : ''}${esc(p.name)}${p.guest ? ' <span style="opacity:.5">(guest)</span>' : ''}</td>` +
+            `<td class="name"><span class="dot" style="background:${esc(colorOf(p))}"></span>${i === 0 ? '👑 ' : ''}${esc(p.name)}${p.guest ? ' <span style="opacity:.5">(guest)</span>' : ''}${ttTag(p.tt)}</td>` +
             `<td class="num">⭐ ${p.score}</td>` +
             `<td class="num">🗡️ ${p.kills}</td></tr>`)
         .join('') || '<tr><td style="opacity:.5">Nobody here</td></tr>';
@@ -9028,7 +9206,7 @@ function drawHall() {
     }
     const fmt = v => cat === 'bestx' ? `×${v}` : `${icon} ${cat === 'casino' && v > 0 ? '+' : ''}${Number(v).toLocaleString('en-US')}`;
     $('hall').innerHTML = list.map((s, i) =>
-        `<tr><td class="name">${medals[i] || (i + 1) + '.'} ${esc(s.name)}</td>` +
+        `<tr><td class="name">${medals[i] || (i + 1) + '.'} ${esc(s.name)}${ttTag(s.tt)}</td>` +
         `<td class="num">${fmt(s.value)}</td></tr>`
     ).join('') || '<tr><td style="opacity:.5">Nothing yet</td></tr>';
 }

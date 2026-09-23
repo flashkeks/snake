@@ -337,7 +337,10 @@ function createRoom(id, h) {
         if (feedLog.length > 20) feedLog.shift();
         for (const q of players.values()) h.send(q.c, { type: 'shKill', ...line });
         if (shooter.streak === 5) h.feed(`🔫 ${shooter.name} is on a 5 kill streak in the Arena!`, 'gold');
-        if (paid >= 1000) h.feed(`🔫 ${shooter.name} claimed a ${paid} coin bounty in the Arena`, 'gold');
+        if (paid >= 1000) {
+            h.feed(`🔫 ${shooter.name} claimed a ${paid} coin bounty in the Arena`, 'gold');
+            if (fee && shooter.account) h.accounts.stat(shooter.account, s => { s.arenaBigBounty = (s.arenaBigBounty || 0) + 1; });
+        }
     }
 
     function tick() {
