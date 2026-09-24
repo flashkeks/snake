@@ -57,8 +57,37 @@ const WEAPONS = {
     nukelauncher: { name: 'Fat Boy', icon: '☢️', tier: 5, tag: 'demo', ms: 2500, dmg: 120, speed: 650, life: 1.6, spread: 0, pellets: 1, explode: 4, nukeShell: true },
     archstaff: { name: 'Staff of the Archmage', icon: '🧙', tier: 5, tag: 'mage', ms: 380, dmg: 40, speed: 950, life: 1.3, spread: 0.02, pellets: 1, innate: { multishot: 2, homing: 2, tesla: 1 } },
     // Singularity: jeder Einschlag reisst ein kleines schwarzes Loch auf
-    singularity: { name: 'Singularity', icon: '🌀', tier: 6, tag: 'demo', ms: 1600, dmg: 90, speed: 450, life: 2.0, spread: 0, pellets: 1, hole: true, innate: { homing: 2, tesla: 1 } }
+    singularity: { name: 'Singularity', icon: '🌀', tier: 6, tag: 'demo', ms: 1600, dmg: 90, speed: 450, life: 2.0, spread: 0, pellets: 1, hole: true, innate: { homing: 2, tesla: 1 } },
+
+    // ---------- 6.6 (Max): zehn neue Grundwaffen, nur Common bis Epic ----------
+    uzi: { name: 'Micro Uzi', icon: '🔫', tier: 0, ms: 70, dmg: 7, speed: 950, life: 0.6, spread: 0.13, pellets: 1 },
+    carbine: { name: 'Carbine', icon: '🪖', tier: 0, ms: 190, dmg: 19, speed: 1200, life: 0.95, spread: 0.03, pellets: 1 },
+    dmr: { name: 'DMR', icon: '🎯', tier: 0, ms: 520, dmg: 48, speed: 1800, life: 1.2, spread: 0.01, pellets: 1 },
+    lmg: { name: 'LMG', icon: '⚙️', tier: 0, ms: 105, dmg: 13, speed: 1100, life: 0.9, spread: 0.1, pellets: 1 },
+    burst: { name: 'Burst rifle', icon: '🔫', tier: 0, ms: 430, dmg: 15, speed: 1250, life: 0.95, spread: 0.05, pellets: 3 },
+    doublebarrel: { name: 'Double barrel', icon: '💥', tier: 0, ms: 950, dmg: 12, speed: 850, life: 0.35, spread: 0.42, pellets: 10 },
+    slingshot: { name: 'Slingshot', icon: '🪨', tier: 0, ms: 380, dmg: 22, speed: 700, life: 0.9, spread: 0.02, pellets: 1 },
+    nailgun: { name: 'Nail gun', icon: '🔩', tier: 0, ms: 125, dmg: 10, speed: 1000, life: 0.6, spread: 0.06, pellets: 1, innate: { pierce: 1 } },
+    knives: { name: 'Throwing knives', icon: '🔪', tier: 0, ms: 300, dmg: 28, speed: 900, life: 0.6, spread: 0.02, pellets: 1 },
+    flaregun: { name: 'Flare gun', icon: '🎇', tier: 0, ms: 700, dmg: 24, speed: 800, life: 1.0, spread: 0.02, pellets: 1, innate: { burn: 1 } },
+    musket: { name: 'Musket', icon: '🪶', tier: 0, ms: 1400, dmg: 105, speed: 1600, life: 1.2, spread: 0.01, pellets: 1 },
+
+    // ---------- 6.6: Unique-Waffen (Anime), sehr stark, eigene Optik (look) ----------
+    // tier = unterste Stufe; es gibt sie nur ab dort aufwaerts (Legendary+, Mythic+, nur Ultra)
+    rasengan: { name: 'Rasengan', icon: '🔵', tier: 4, unique: true, ms: 900, dmg: 150, speed: 600, life: 1.3, spread: 0, pellets: 1, explode: 2.4, look: 'rasen', desc: 'A spinning chakra sphere that grinds and bursts (Naruto)' },
+    getsuga: { name: 'Zangetsu', icon: '🗡️', tier: 4, unique: true, ms: 750, dmg: 130, speed: 1000, life: 0.9, spread: 0, pellets: 1, wave: true, hitR: 55, look: 'getsuga', desc: 'Getsuga Tensho – a black crescent that cuts through everyone in its path (Bleach)' },
+    amaterasu: { name: 'Amaterasu', icon: '👁️', tier: 4, unique: true, ms: 380, dmg: 32, speed: 900, life: 1.0, spread: 0.02, pellets: 1, innate: { burn: 5 }, look: 'amaterasu', desc: 'Black flames that never stop burning (Naruto)' },
+    spiritgun: { name: 'Spirit Gun', icon: '👉', tier: 4, unique: true, ms: 650, dmg: 170, speed: 1600, life: 1.2, spread: 0, pellets: 1, explode: 1, look: 'spirit', desc: 'Rei Gun – a finger-shot of pure spirit energy (Yu Yu Hakusho)' },
+    gob: { name: 'Gate of Babylon', icon: '🌟', tier: 5, unique: true, ms: 650, dmg: 60, speed: 1300, life: 1.2, spread: 0.5, pellets: 7, portals: true, innate: { homing: 1 }, look: 'gob', desc: 'Golden portals open behind you and rain legendary weapons (Fate)' },
+    kamehameha: { name: 'Kamehameha', icon: '🌊', tier: 5, unique: true, ms: 2200, dmg: 560, speed: 3000, life: 0.4, spread: 0, pellets: 1, beam: true, beamW: 60, look: 'kame', desc: 'A massive energy wave through walls and everything in its way (Dragon Ball)' },
+    dragonslayer: { name: 'Dragonslayer', icon: '⚔️', tier: 5, unique: true, ms: 1000, dmg: 115, speed: 1100, life: 0.22, spread: 1.2, pellets: 9, look: 'cleave', desc: 'Too big to be called a sword – cleaves everything in front of you (Berserk)' },
+    venuzdonoa: { name: 'Venuzdonoa', icon: '⚫', tier: 6, unique: true, ms: 1400, dmg: 950, speed: 3500, life: 0.4, spread: 0, pellets: 1, beam: true, beamW: 44, rift: true, look: 'venuz', desc: 'The sword of the Demon King: destroys even the concept of what it hits (Misfit of Demon King Academy)' },
+    hollowpurple: { name: 'Hollow Purple', icon: '🟣', tier: 6, unique: true, ms: 3000, dmg: 750, speed: 520, life: 3.2, spread: 0, pellets: 1, erase: true, hitR: 110, look: 'purple', desc: 'Imaginary technique: erases everything it touches, walls included (Jujutsu Kaisen)' }
 };
+// Obergrenze der Stufe je Basis (6.6, Max: keine legendaere Pistole). Grundware
+// (tier 0) hoechstens Epic, tier 1 hoechstens Legendary, sonst offen.
+const UNIQUE_W = 0.12;
+const maxTierOf = b => b.max !== undefined ? b.max : b.tier === 0 ? 3 : b.tier === 1 ? 4 : 6;
 // Im Shop fuer Coins (nur Grundwaffen, immer Common)
 const WEAPON_PRICES = { smg: 600, shotgun: 900, rifle: 1400, sniper: 2500 };
 
@@ -115,6 +144,25 @@ for (const [sid, s] of Object.entries(SETS)) {
         };
     }
 }
+// 6.6 (Max): Einzelteile ohne Set, dazu Anime-Uniques. fx = Extra-Werte
+// (dmg/rate Faktor, regen HP/s, dodge/thorns/crit Anteil, taken Faktor).
+// full = Ganzkoerper: zaehlt fuer alle vier Slots, andere Teile wirken dann nicht.
+Object.assign(ARMORS, {
+    kevlar: { name: 'Kevlar vest', icon: '🦺', slot: 'vest', tier: 0, hp: 32, speed: 0 },
+    bikehelmet: { name: 'Bike helmet', icon: '⛑️', slot: 'helmet', tier: 0, hp: 12, speed: 0.01 },
+    kneepads: { name: 'Knee pads', icon: '🦵', slot: 'pants', tier: 0, hp: 10, speed: 0.01 },
+    runners: { name: 'Running shoes', icon: '👟', slot: 'boots', tier: 0, hp: 4, speed: 0.05 },
+    riothelmet: { name: 'Riot helmet', icon: '🪖', slot: 'helmet', tier: 1, hp: 26, speed: -0.01, fx: { taken: 0.97 }, desc: '3% less damage taken' },
+    ghillie: { name: 'Ghillie pants', icon: '🌿', slot: 'pants', tier: 1, hp: 12, speed: 0, fx: { dodge: 0.04 }, desc: '4% dodge' },
+    scouter: { name: 'Scouter', icon: '🥽', slot: 'helmet', tier: 4, unique: true, hp: 22, speed: 0, fx: { crit: 0.08 }, desc: '+8% crit chance – it reads their power level (Dragon Ball)' },
+    strawhat: { name: 'Straw Hat', icon: '👒', slot: 'helmet', tier: 4, unique: true, hp: 30, speed: 0.08, fx: { dodge: 0.06 }, desc: '+8% speed, 6% dodge – the hat of the future Pirate King (One Piece)' },
+    odm: { name: 'ODM Gear', icon: '🪝', slot: 'boots', tier: 4, unique: true, hp: 25, speed: 0.2, desc: '+20% speed – omni-directional mobility (Attack on Titan)' },
+    hokage: { name: 'Hokage Cloak', icon: '🧥', slot: 'vest', tier: 4, unique: true, hp: 90, speed: 0, fx: { regen: 3 }, desc: '+3 HP/s regeneration (Naruto)' },
+    kamina: { name: "Kamina's Shades", icon: '🕶️', slot: 'helmet', tier: 5, unique: true, hp: 40, speed: 0.03, fx: { dmg: 1.15, rate: 1.1 }, desc: '+15% damage, +10% fire rate – who the hell do you think we are (Gurren Lagann)' },
+    saitama: { name: "Saitama's Cape", icon: '🦸', slot: 'vest', tier: 5, unique: true, hp: 60, speed: 0.05, fx: { dmg: 1.35 }, desc: '+35% damage – just a hero for fun (One Punch Man)' },
+    ironman: { name: 'Iron Man Suit', icon: '🤖', slot: 'vest', tier: 6, unique: true, full: true, hp: 420, speed: 0.12, fx: { dmg: 1.2, dodge: 0.1, thorns: 0.15 }, desc: 'Full body: +420 HP, +12% speed, +20% damage, 10% dodge, reflects 15%' },
+    susanoo: { name: 'Susanoo', icon: '👹', slot: 'vest', tier: 6, unique: true, full: true, hp: 600, speed: -0.05, fx: { taken: 0.7, regen: 5 }, desc: 'Full body: +600 HP, 30% less damage, +5 HP/s – the ultimate defense (Naruto)' }
+});
 
 // ---------- Verbrauchsgut: zwei Slots im Loadout (Q und G) ----------
 // use: heal (sofort/ueber Zeit), throw (auf den Mauszeiger), self (um sich herum)
@@ -133,7 +181,16 @@ const UTILS = {
     blink: { name: 'Blink scroll', icon: '✴️', tier: 3, tag: 'mage', use: 'self', stack: 2, range: 420, desc: 'Teleports you towards the cursor (420)' },
     phoenix: { name: 'Phoenix elixir', icon: '🐦‍🔥', tier: 4, use: 'heal', stack: 1, full: true, protect: 3000, desc: 'Full heal and 3 s invulnerable' },
     nuke: { name: 'Tactical nuke', icon: '☢️', tier: 5, tag: 'demo', use: 'throw', stack: 1, r: 420, dmg: 320, fuse: 3000, nuke: true, desc: '3 s fuse, 320 damage in a huge radius, walls do not help' },
-    blackhole: { name: 'Black hole', icon: '🕳️', tier: 6, tag: 'demo', use: 'throw', stack: 1, r: 300, dmg: 220, pull: 1600, desc: 'Pulls everyone in for 1.6 s, then collapses (220)' }
+    blackhole: { name: 'Black hole', icon: '🕳️', tier: 6, tag: 'demo', use: 'throw', stack: 1, r: 300, dmg: 220, pull: 1600, desc: 'Pulls everyone in for 1.6 s, then collapses (220)' },
+    // 6.6: mehr Verbrauchsgut bis Ultra; die seltenen sind absichtlich absurd stark
+    energy: { name: 'Energy drink', icon: '🥫', tier: 0, use: 'heal', stack: 4, heal: 15, ms: 0, speed: 0.2, speedMs: 4000, desc: '+15 HP and 20% speed for 4 s' },
+    sticky: { name: 'Sticky bomb', icon: '🧷', tier: 1, tag: 'demo', use: 'throw', stack: 3, r: 120, dmg: 115, fuse: 1800, desc: 'Sticks where it lands, explodes after 1.8 s (115)' },
+    adrenaline: { name: 'Adrenaline shot', icon: '💉', tier: 2, use: 'heal', stack: 2, heal: 60, ms: 0, speed: 0.4, speedMs: 4000, desc: '+60 HP and 40% speed for 4 s' },
+    chidori: { name: 'Chidori', icon: '⚡', tier: 4, use: 'self', stack: 1, range: 520, dmg: 280, desc: 'Lightning dash to the cursor – 280 damage to everything on the way (Naruto)' },
+    senzu: { name: 'Senzu Bean', icon: '🫘', tier: 5, use: 'heal', stack: 1, full: true, protect: 5000, speed: 0.3, speedMs: 8000, desc: 'Full heal, 5 s invulnerable, +30% speed for 8 s (Dragon Ball)' },
+    genkidama: { name: 'Spirit Bomb', icon: '🌕', tier: 5, tag: 'demo', use: 'throw', stack: 1, r: 400, dmg: 750, fuse: 2600, desc: 'Everyone lends you energy: 750 damage in a huge radius (Dragon Ball)' },
+    infinitevoid: { name: 'Infinite Void', icon: '♾️', tier: 6, use: 'self', stack: 1, r: 700, stun: 6000, desc: 'Domain Expansion: every enemy around you freezes for 6 s and takes 50% more damage (Jujutsu Kaisen)' },
+    worldender: { name: 'World Ender', icon: '☄️', tier: 6, tag: 'demo', use: 'throw', stack: 1, r: 99999, fuse: 4500, world: true, desc: '4.5 s countdown, then EVERYTHING on the map dies – except you and your team' }
 };
 // ---------- Rucksaecke: eigener Slot, bestimmen den Platz im Raid ----------
 const BASE_PACK = 12;            // Plaetze ohne Rucksack
@@ -188,6 +245,11 @@ const ARMOR_MODS = {
 const SOURCES = {
     // Kisten auf der Map: nur Granaten und Heilung (Max: Inventar lief sonst zu schnell voll)
     crate: { t: [0.62, 0.27, 0.09, 0.0189, 0.001, 0.00001, 0], kinds: { util: 1 }, uses: ['heal', 'throw'] },
+    // 6.6 (Max): bessere Kisten auf der Map (selten, wechseln beim Nachfuellen)
+    crate2: { t: [0.15, 0.38, 0.3, 0.13, 0.037, 0.003, 0], kinds: { util: 1 }, uses: ['heal', 'throw'] },
+    crate3: { t: [0, 0.15, 0.4, 0.33, 0.1, 0.018, 0.002], kinds: { util: 0.5, weapon: 0.25, armor: 0.2, pack: 0.05 } },
+    // Seltene Gegner-Beute (Stufe 2 von 3); Stufe 3 zieht aus 'boss'
+    npcrare: { t: [0.1, 0.35, 0.33, 0.18, 0.037, 0.003, 0], kinds: { util: 0.4, weapon: 0.3, armor: 0.25, pack: 0.05 } },
     // Versorgungsabwurf: Ausruestung, etwas besser als eine Standard-Case
     airdrop: { t: [0.3, 0.38, 0.2, 0.1, 0.0195, 0.0005, 0], kinds: { weapon: 0.45, armor: 0.45, pack: 0.1 } },
     // Normale Gegner (4.1): meist Verbrauchsgut, selten Ausruestung
@@ -266,14 +328,15 @@ function defsOf(kind) {
 // die eigene Stufe der Basis, desto wahrscheinlicher (Specials setzen sich
 // oben durch). Themen-Case: tagShare aus den Basen mit Tag, wenn es welche gibt.
 function pickBase(kind, tier, src) {
-    let all = Object.entries(defsOf(kind)).filter(([, b]) => b.tier <= tier);
+    let all = Object.entries(defsOf(kind)).filter(([, b]) => b.tier <= tier && (kind === 'util' || kind === 'pack' || maxTierOf(b) >= tier));
     if (src.uses) all = all.filter(([, b]) => src.uses.includes(b.use));
     let pool = all;
     if (src.tag) {
         const tagged = all.filter(([, b]) => b.tag === src.tag);
         if (tagged.length && Math.random() < src.tagShare) pool = tagged;
     }
-    return pickWeighted(pool.map(([k, b]) => [k, Math.pow(4, b.tier)]));
+    // Uniques (6.6) sind auch innerhalb ihrer Stufe selten
+    return pickWeighted(pool.map(([k, b]) => [k, Math.pow(4, b.tier) * (b.unique ? UNIQUE_W : 1)]));
 }
 
 // Stufe 1..max mit P(L) ~ decay^(L-1)
@@ -410,25 +473,39 @@ function weaponStats(item) {
         nukeShell: !!b.nukeShell,
         hole: !!b.hole,
         rocket: !!b.rocket,
-        magic: b.tag === 'mage'
+        magic: b.tag === 'mage',
+        // 6.6 Uniques
+        look: b.look || 0, wave: !!b.wave, erase: !!b.erase, hitR: b.hitR || 0, portals: !!b.portals, rift: !!b.rift, beamW: b.beamW || 0
     };
 }
 
 // Summe aller Ruestungsteile samt Set-Bonus; gear = { helmet, vest, pants, boots }
 function armorStats(gear) {
-    const s = { hp: 0, speed: 1, regen: 0, thorns: 0, dodge: 0, dmg: 1, rate: 1, taken: 1, healMul: 1, homing: 0, phantom: false, sets: {} };
+    const s = { hp: 0, speed: 1, regen: 0, thorns: 0, dodge: 0, dmg: 1, rate: 1, taken: 1, healMul: 1, homing: 0, crit: 0, phantom: false, sets: {} };
+    // Ganzkoerper-Ruestung (6.6): nur sie zaehlt
+    const fullSlot = SLOTS.find(sl => gear && gear[sl] && ARMORS[gear[sl].base] && ARMORS[gear[sl].base].full);
     for (const slot of SLOTS) {
         const it = gear && gear[slot];
         if (!it) continue;
+        if (fullSlot && slot !== fullSlot) continue;
         const a = ARMORS[it.base];
         if (!a) continue;
+        if (a.fx) {
+            s.dmg *= a.fx.dmg || 1;
+            s.rate *= a.fx.rate || 1;
+            s.taken *= a.fx.taken || 1;
+            s.regen += a.fx.regen || 0;
+            s.dodge += a.fx.dodge || 0;
+            s.thorns += a.fx.thorns || 0;
+            s.crit += a.fx.crit || 0;
+        }
         const L = id => lvlOf(it, id);
         s.hp += a.hp * (1 + TIER_BONUS[TIER_IDX[it.tier] || 0]) + L('plating') * 8;
         s.speed += a.speed + L('swift') * 0.03;
         s.regen += L('regen');
         s.thorns += L('thorns') * 0.05;
         s.dodge += L('dodge') * 0.03;
-        s.sets[a.set] = (s.sets[a.set] || 0) + 1;
+        if (a.set) s.sets[a.set] = (s.sets[a.set] || 0) + 1;
     }
     const n = id => s.sets[id] || 0;
     if (n('scout') >= 4) { s.speed += 0.12; s.dodge += 0.1; } else if (n('scout') >= 2) s.speed += 0.06;
@@ -452,13 +529,14 @@ function catalog() {
     return {
         weapons: WEAPONS, armors: ARMORS, sets: SETS, slots: SLOTS, slotNames: SLOT_NAMES, utils: UTILS, packs: PACKS, basePack: BASE_PACK, tierBonus: TIER_BONUS,
         weaponMods: mods(WEAPON_MODS), armorMods: mods(ARMOR_MODS),
-        cases, shop: SHOP, tiers: TIERS, invMax: INV_MAX
+        cases, shop: SHOP, tiers: TIERS, invMax: INV_MAX,
+        maxTier: { weapon: Object.fromEntries(Object.entries(WEAPONS).map(([k, b]) => [k, maxTierOf(b)])), armor: Object.fromEntries(Object.entries(ARMORS).map(([k, b]) => [k, maxTierOf(b)])) }
     };
 }
 
 module.exports = {
     TIERS, TIER_IDX, TIER_ODDS, TIER_BONUS, WEAPONS, ARMORS, SETS, SLOTS, UTILS, PACKS, BASE_PACK, THROW_RANGE, WEAPON_MODS, ARMOR_MODS,
-    SOURCES, CASES, SHOP, INV_MAX, generate, plain, craft, salvageValue, weaponStats, armorStats, catalog, migrate, effectFactor
+    SOURCES, CASES, SHOP, INV_MAX, maxTierOf, generate, plain, craft, salvageValue, weaponStats, armorStats, catalog, migrate, effectFactor
 };
 
 // Nachrechnen: node arena-items.js [N] – Verteilung je Quelle

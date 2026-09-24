@@ -1640,6 +1640,17 @@ async function handle(c, data) {
                     const p = za._players.get(c.id);
                     String(data.zmob).split(',').forEach((k, i) => za._spawnMob(k, p.x + 160 + (i % 4) * 90, p.y - 150 + Math.floor(i / 4) * 110));
                 }
+                // Waffe/Verbrauchsgut direkt geben (Test der Unique-Optik)
+                const tp = za ? za._players.get(c.id) : shooter._players.get(c.id);
+                if (tp && data.give && arenaItems.WEAPONS[data.give]) {
+                    tp.gear.primary = arenaItems.craft('weapon', String(data.give), 'ultra', []);
+                    tp.slot = 'primary';
+                }
+                if (tp && data.giveUtil && arenaItems.UTILS[data.giveUtil]) tp.util[0] = { base: String(data.giveUtil), n: 3 };
+                if (tp && data.giveArmor && arenaItems.ARMORS[data.giveArmor]) {
+                    const it = arenaItems.craft('armor', String(data.giveArmor), 'ultra', []);
+                    tp.gear[it.slot] = it;
+                }
                 if (za && data.god) for (const q of za._players.values()) q.protect = Date.now() + 3600e3;
                 if (za && data.zBossHp && za._boss()) za._boss().hp = za._boss().maxHp * Number(data.zBossHp);
             }

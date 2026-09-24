@@ -1390,3 +1390,456 @@ function zDrawStation(c, m, s, L, now) {
     c.textBaseline = 'alphabetic';
     return true;
 }
+
+// ================= 6.6: Kisten, Beute, Uniques, World Ender =================
+
+// Kisten: 1 = Vorrat (blau), 2 = golden
+function zDrawCrate(c, x, y, g, ready, now) {
+    if (!ready) return false;
+    const p = .5 + .5 * Math.sin(now / 260 + x);
+    if (g === 1) {
+        zGlow(c, x, y, 48, '90,170,255', .35 + .15 * p);
+        drawEmojiC(c, '🧰', x, y, 38);
+    } else {
+        const beam = c.createLinearGradient(x, y - 140, x, y);
+        beam.addColorStop(0, 'rgba(255,210,63,0)');
+        beam.addColorStop(1, `rgba(255,210,63,${.3 + .2 * p})`);
+        c.fillStyle = beam;
+        c.fillRect(x - 12, y - 140, 24, 140);
+        zGlow(c, x, y, 64, '255,210,63', .45 + .2 * p);
+        for (let i = 0; i < 5; i++) {
+            const t = now / 700 + i * 1.26;
+            c.fillStyle = `rgba(255,240,170,${.5 + .5 * Math.sin(now / 150 + i)})`;
+            c.beginPath();
+            c.arc(x + Math.cos(t) * 30, y + Math.sin(t) * 18 - 8, 2.5, 0, Math.PI * 2);
+            c.fill();
+        }
+        drawEmojiC(c, '🎁', x, y - p * 3, 42);
+    }
+    return true;
+}
+
+// Gegner-Beute in drei Stufen: 3 gewoehnlich, 4 selten, 5 Boss-Pool (1 in 50)
+function zDrawMobBag(c, x, y, n, kind, now) {
+    const p = .5 + .5 * Math.sin(now / 220 + y);
+    const bob = Math.sin(now / 250) * 3;
+    if (kind === 3) drawEmojiC(c, '👝', x, y + bob, 30);
+    else if (kind === 4) {
+        zGlow(c, x, y, 46, '184,132,255', .35 + .15 * p);
+        drawEmojiC(c, '💼', x, y + bob, 34);
+    } else {
+        const beam = c.createLinearGradient(x, y - 220, x, y);
+        beam.addColorStop(0, 'rgba(255,90,200,0)');
+        beam.addColorStop(1, `rgba(255,90,200,${.35 + .25 * p})`);
+        c.fillStyle = beam;
+        c.fillRect(x - 16, y - 220, 32, 220);
+        zGlow(c, x, y, 80, '255,90,200', .5 + .2 * p);
+        c.save();
+        c.translate(x, y + bob);
+        c.rotate(now / 900);
+        c.strokeStyle = `rgba(255,220,255,${.6 + .4 * p})`;
+        c.lineWidth = 2;
+        for (let i = 0; i < 8; i++) {
+            const t = i / 8 * Math.PI * 2;
+            c.beginPath();
+            c.moveTo(Math.cos(t) * 26, Math.sin(t) * 26);
+            c.lineTo(Math.cos(t) * (40 + 8 * p), Math.sin(t) * (40 + 8 * p));
+            c.stroke();
+        }
+        c.restore();
+        drawEmojiC(c, '💎', x, y + bob, 40);
+    }
+    c.fillStyle = '#ffd23f';
+    c.font = 'bold 13px system-ui';
+    c.textAlign = 'center';
+    c.fillText(`${n}`, x + 18, y - 16);
+    return true;
+}
+
+// Ganzkoerper-Ruestung am Spieler (in dessen Koordinaten, bereits gedreht)
+function zDrawSuit(c, base, r, now) {
+    if (base === 'ironman') {
+        const p = .5 + .5 * Math.sin(now / 160);
+        c.fillStyle = 'rgba(190,20,30,.85)';
+        c.beginPath();
+        c.arc(0, 0, r + 3, 0, Math.PI * 2);
+        c.fill();
+        c.strokeStyle = '#ffcf33';
+        c.lineWidth = 3;
+        c.stroke();
+        c.fillStyle = '#ffcf33';
+        c.beginPath();
+        c.moveTo(r * .9, -r * .35); c.lineTo(r * .9, r * .35); c.lineTo(r * .3, r * .25); c.lineTo(r * .3, -r * .25);
+        c.closePath();
+        c.fill();
+        zGlow(c, 0, 0, r * .75, '160,230,255', .6 + .3 * p);
+        c.fillStyle = '#e8fbff';
+        c.beginPath();
+        c.arc(0, 0, r * .22, 0, Math.PI * 2);
+        c.fill();
+        // Duesen-Glimmen hinten
+        zGlow(c, -r - 6, 0, 16 + 6 * p, '120,200,255', .7);
+    } else if (base === 'susanoo') {
+        const p = .5 + .5 * Math.sin(now / 300);
+        zGlow(c, 0, 0, r * 3.2, '150,70,255', .35 + .15 * p);
+        c.strokeStyle = `rgba(190,120,255,${.6 + .3 * p})`;
+        c.lineWidth = 3;
+        // Rippen
+        for (let i = -3; i <= 3; i++) {
+            c.beginPath();
+            c.ellipse(-r * .2, 0, r * 1.9, r * (1.4 + i * .08), 0, -Math.PI * .45 + i * .05, Math.PI * .45 - i * .05);
+            c.stroke();
+        }
+        c.lineWidth = 2;
+        c.beginPath();
+        c.arc(0, 0, r * 2.2, -Math.PI * .7, Math.PI * .7);
+        c.stroke();
+    }
+}
+
+// Geschosse der Unique-Waffen
+function zDrawLook(c, bx, by, vx, vy, sp, look, now) {
+    const ux = vx / sp, uy = vy / sp, a = Math.atan2(vy, vx);
+    if (look === 'rasen') {
+        zGlow(c, bx, by, 40, '120,200,255', .8);
+        c.save();
+        c.translate(bx, by);
+        for (let i = 0; i < 4; i++) {
+            c.rotate(now / 40);
+            c.strokeStyle = `rgba(220,245,255,${.8 - i * .15})`;
+            c.lineWidth = 2;
+            c.beginPath();
+            c.arc(0, 0, 10 + i * 5, 0, Math.PI * 1.2);
+            c.stroke();
+        }
+        c.restore();
+        c.fillStyle = '#fff';
+        c.beginPath();
+        c.arc(bx, by, 7, 0, Math.PI * 2);
+        c.fill();
+    } else if (look === 'getsuga') {
+        c.save();
+        c.translate(bx, by);
+        c.rotate(a);
+        c.fillStyle = 'rgba(0,0,0,.85)';
+        c.strokeStyle = '#ff2030';
+        c.lineWidth = 3;
+        c.shadowColor = '#ff2030';
+        c.shadowBlur = 18;
+        c.beginPath();
+        c.arc(-40, 0, 64, -1.1, 1.1);
+        c.arc(-58, 0, 58, 1.0, -1.0, true);
+        c.closePath();
+        c.fill();
+        c.stroke();
+        c.shadowBlur = 0;
+        c.restore();
+    } else if (look === 'amaterasu') {
+        for (let k = 0; k < 6; k++) {
+            const t = k / 6;
+            c.fillStyle = `rgba(${k < 2 ? '60,0,40' : '10,0,10'},${.9 - t * .7})`;
+            c.beginPath();
+            c.arc(bx - ux * k * 8 + Math.sin(now / 50 + k) * 3, by - uy * k * 8 + Math.cos(now / 60 + k) * 3, 10 - k, 0, Math.PI * 2);
+            c.fill();
+        }
+        c.strokeStyle = 'rgba(160,0,60,.8)';
+        c.lineWidth = 2;
+        c.beginPath();
+        c.arc(bx, by, 9, 0, Math.PI * 2);
+        c.stroke();
+    } else if (look === 'spirit') {
+        c.strokeStyle = 'rgba(80,200,255,.45)';
+        c.lineWidth = 14;
+        c.lineCap = 'round';
+        c.beginPath();
+        c.moveTo(bx - ux * 60, by - uy * 60);
+        c.lineTo(bx, by);
+        c.stroke();
+        c.lineCap = 'butt';
+        zGlow(c, bx, by, 28, '120,220,255', .9);
+        c.fillStyle = '#fff';
+        c.beginPath();
+        c.arc(bx, by, 8, 0, Math.PI * 2);
+        c.fill();
+    } else if (look === 'gob') {
+        // goldene Klinge mit Glanz
+        c.save();
+        c.translate(bx, by);
+        c.rotate(a);
+        c.strokeStyle = 'rgba(255,210,63,.35)';
+        c.lineWidth = 8;
+        c.beginPath();
+        c.moveTo(-40, 0);
+        c.lineTo(0, 0);
+        c.stroke();
+        c.fillStyle = '#ffe27a';
+        c.beginPath();
+        c.moveTo(18, 0); c.lineTo(-6, -4); c.lineTo(-14, 0); c.lineTo(-6, 4);
+        c.closePath();
+        c.fill();
+        c.fillStyle = '#b8860b';
+        c.fillRect(-20, -6, 5, 12);
+        c.restore();
+    } else if (look === 'cleave') {
+        c.strokeStyle = 'rgba(255,255,255,.6)';
+        c.lineWidth = 5;
+        c.beginPath();
+        c.moveTo(bx - ux * 30, by - uy * 30);
+        c.lineTo(bx, by);
+        c.stroke();
+        c.strokeStyle = 'rgba(200,40,40,.5)';
+        c.lineWidth = 2;
+        c.beginPath();
+        c.moveTo(bx - ux * 46, by - uy * 46);
+        c.lineTo(bx - ux * 10, by - uy * 10);
+        c.stroke();
+    } else if (look === 'purple') {
+        // Hollow Purple: violette Kugel, rote und blaue Schlieren, verzerrt den Boden
+        zGlow(c, bx, by, 150, '160,40,255', .35);
+        c.save();
+        c.translate(bx, by);
+        for (let i = 0; i < 3; i++) {
+            c.rotate(now / 120 + i);
+            c.strokeStyle = i === 0 ? 'rgba(255,60,60,.7)' : i === 1 ? 'rgba(60,120,255,.7)' : 'rgba(255,255,255,.5)';
+            c.lineWidth = 4;
+            c.beginPath();
+            c.arc(0, 0, 70 + i * 10, 0, Math.PI * 1.1);
+            c.stroke();
+        }
+        c.restore();
+        const g = c.createRadialGradient(bx, by, 4, bx, by, 60);
+        g.addColorStop(0, '#ffffff');
+        g.addColorStop(.3, '#d28bff');
+        g.addColorStop(1, 'rgba(90,0,160,.2)');
+        c.fillStyle = g;
+        c.beginPath();
+        c.arc(bx, by, 60, 0, Math.PI * 2);
+        c.fill();
+        for (let k = 1; k <= 5; k++) {
+            c.fillStyle = `rgba(160,60,255,${.25 - k * .04})`;
+            c.beginPath();
+            c.arc(bx - ux * k * 40, by - uy * k * 40, 55 - k * 6, 0, Math.PI * 2);
+            c.fill();
+        }
+    } else return false;
+    return true;
+}
+
+// Strahlen der Uniques: Kamehameha (blau, riesig), Venuzdonoa (schwarz-rot, Risse)
+function zDrawBeamLook(c, f, k, now) {
+    const L = Math.hypot(f.x2 - f.x1, f.y2 - f.y1) || 1;
+    const a = Math.atan2(f.y2 - f.y1, f.x2 - f.x1);
+    const w = (f.bw || 40) * 1.4;
+    const fade = 1 - k;
+    c.save();
+    c.translate(f.x1, f.y1);
+    c.rotate(a);
+    if (f.look === 'kame') {
+        const grow = Math.min(1, k * 6);
+        const g = c.createLinearGradient(0, -w * 1.8, 0, w * 1.8);
+        g.addColorStop(0, 'rgba(60,160,255,0)');
+        g.addColorStop(.3, `rgba(80,180,255,${.5 * fade})`);
+        g.addColorStop(.5, `rgba(240,250,255,${fade})`);
+        g.addColorStop(.7, `rgba(80,180,255,${.5 * fade})`);
+        g.addColorStop(1, 'rgba(60,160,255,0)');
+        c.fillStyle = g;
+        c.fillRect(0, -w * 1.8, L * grow, w * 3.6);
+        // Wellen am Rand
+        c.strokeStyle = `rgba(200,240,255,${.7 * fade})`;
+        c.lineWidth = 3;
+        for (const sgn of [-1, 1]) {
+            c.beginPath();
+            for (let x = 0; x < L * grow; x += 20) {
+                const y = sgn * (w * 1.1 + Math.sin(x / 40 - now / 40) * 10);
+                x ? c.lineTo(x, y) : c.moveTo(x, y);
+            }
+            c.stroke();
+        }
+        zGlow(c, 0, 0, w * 2.2, '140,210,255', fade);
+        zGlow(c, L * grow, 0, w * 2.4, '200,240,255', .8 * fade);
+    } else if (f.look === 'venuz') {
+        // schwarze Klinge aus Nichts, rote Blitze, Risse quer durch den Raum
+        const g = c.createLinearGradient(0, -w, 0, w);
+        g.addColorStop(0, 'rgba(120,0,0,0)');
+        g.addColorStop(.5, `rgba(0,0,0,${.95 * fade})`);
+        g.addColorStop(1, 'rgba(120,0,0,0)');
+        c.fillStyle = g;
+        c.fillRect(0, -w, L, w * 2);
+        c.strokeStyle = `rgba(255,30,40,${fade})`;
+        c.shadowColor = '#ff1020';
+        c.shadowBlur = 20;
+        c.lineWidth = 3;
+        c.beginPath();
+        zBolt(c, 0, 0, L, 0, w, 24);
+        c.stroke();
+        c.lineWidth = 1.5;
+        for (let i = 0; i < 10; i++) {
+            const x = (i + .5) / 10 * L;
+            c.beginPath();
+            zBolt(c, x, 0, x + (Math.random() - .5) * 60, (Math.random() < .5 ? -1 : 1) * (w * 1.5 + Math.random() * 60), 16, 4);
+            c.stroke();
+        }
+        c.shadowBlur = 0;
+        c.fillStyle = `rgba(255,255,255,${.9 * fade})`;
+        c.font = `900 ${28 + k * 20}px serif`;
+        c.textAlign = 'center';
+        c.globalAlpha = fade;
+        c.fillText('滅', L * .5, -w * 2);
+        c.globalAlpha = 1;
+    } else {
+        c.restore();
+        return false;
+    }
+    c.restore();
+    return true;
+}
+
+// Effekte der neuen Verbrauchsgueter und Uniques
+Object.assign(ZFX_MS, { portal: 450, chidori: 700, void: 2200, genki: 1600 });
+const zDrawFxOld = zDrawFx;
+zDrawFx = function (c, f, k, now) {
+    if (f.type !== 'shFx') return false;
+    if (f.kind === 'portal') {
+        zGlow(c, f.x, f.y, 30, '255,210,63', .9 * (1 - k));
+        c.strokeStyle = `rgba(255,230,120,${1 - k})`;
+        c.lineWidth = 3;
+        c.beginPath();
+        c.ellipse(f.x, f.y, 22 * (1 - k * .5), 26 * (1 - k * .5), now / 200, 0, Math.PI * 2);
+        c.stroke();
+        return true;
+    }
+    if (f.kind === 'chidori') {
+        c.strokeStyle = `rgba(160,220,255,${1 - k})`;
+        c.lineWidth = 6 * (1 - k) + 1;
+        c.shadowColor = '#9fe8ff';
+        c.shadowBlur = 20;
+        for (let i = 0; i < 3; i++) {
+            c.beginPath();
+            zBolt(c, f.from[0], f.from[1], f.x, f.y, 40, 10);
+            c.stroke();
+        }
+        c.shadowBlur = 0;
+        zGlow(c, f.x, f.y, 90 * (1 - k) + 20, '160,220,255', 1 - k);
+        return true;
+    }
+    if (f.kind === 'void') {
+        // Domaene: Sternenfeld im Kreis, dehnt sich aus und bleibt kurz
+        const r = f.r * Math.min(1, k * 4);
+        const a = k < .8 ? 1 : (1 - k) / .2;
+        c.save();
+        c.beginPath();
+        c.arc(f.x, f.y, r, 0, Math.PI * 2);
+        c.clip();
+        c.fillStyle = `rgba(4,0,20,${.85 * a})`;
+        c.fillRect(f.x - r, f.y - r, r * 2, r * 2);
+        for (let i = 0; i < 120; i++) {
+            const t = i * 2.39996, d = (i * 37 % 100) / 100 * f.r;
+            c.fillStyle = `rgba(${200 + (i % 3) * 20},${180 + (i % 5) * 15},255,${a * (.4 + .6 * Math.abs(Math.sin(now / 300 + i)))})`;
+            c.fillRect(f.x + Math.cos(t + now / 4000) * d, f.y + Math.sin(t + now / 4000) * d, 2, 2);
+        }
+        c.restore();
+        c.strokeStyle = `rgba(160,120,255,${a})`;
+        c.lineWidth = 4;
+        c.beginPath();
+        c.arc(f.x, f.y, r, 0, Math.PI * 2);
+        c.stroke();
+        return true;
+    }
+    if (f.kind === 'genki') {
+        // Genkidama: riesige leuchtende Kugel faellt vom Himmel
+        const fall = Math.min(1, k * 2.2);
+        const y = f.y - 700 * (1 - fall);
+        zGlow(c, f.x, y, f.r * (.4 + .3 * fall), '150,210,255', .9 * (1 - k * .6));
+        c.fillStyle = `rgba(230,245,255,${.8 * (1 - k * .5)})`;
+        c.beginPath();
+        c.arc(f.x, y, f.r * .28, 0, Math.PI * 2);
+        c.fill();
+        if (k > .45) {
+            for (let i = 0; i < 3; i++) {
+                const kk = Math.min(1, (k - .45) * 2 - i * .12);
+                if (kk <= 0) continue;
+                c.strokeStyle = `rgba(200,235,255,${1 - kk})`;
+                c.lineWidth = 12 * (1 - kk) + 2;
+                c.beginPath();
+                c.arc(f.x, f.y, f.r * 1.6 * kk, 0, Math.PI * 2);
+                c.stroke();
+            }
+        }
+        return true;
+    }
+    return zDrawFxOld(c, f, k, now);
+};
+const zFxSoundOld = zFxSound;
+zFxSound = function (d) {
+    if (d.type === 'shBeam' && d.look === 'kame') {
+        sTone(180, { dur: 1.2, type: 'sawtooth', vol: .12, slide: 700, rev: .5, lp: 2000 });
+        sNoise({ dur: 1.2, vol: .25, type: 'bandpass', f: 1200, f2: 300, rev: .4, a: .05 });
+        shShake(20, 900);
+    } else if (d.type === 'shBeam' && d.look === 'venuz') {
+        sTone(60, { dur: 1.4, type: 'sawtooth', vol: .2, slide: 30, rev: .6, lp: 500 });
+        sNoise({ t: .05, dur: .6, vol: .3, type: 'lowpass', f: 900, f2: 60, rev: .5, a: .002 });
+        shShake(26, 900);
+    } else if (d.type === 'shFx' && d.kind === 'chidori') {
+        sNoise({ dur: .5, vol: .2, type: 'highpass', f: 3000, f2: 1500, rev: .2, a: .01 });
+        sTone(1600, { dur: .4, type: 'sawtooth', vol: .05, slide: 800, rev: .2 });
+    } else if (d.type === 'shFx' && d.kind === 'void') {
+        sTone(90, { dur: 2.2, type: 'sine', vol: .2, slide: 45, rev: .7 });
+        [880, 1320, 1760].forEach((f, i) => sBell(f, .1 + i * .15, .05, 2));
+        shShake(12, 800);
+    } else if (d.type === 'shFx' && d.kind === 'genki') {
+        sTone(120, { dur: 2, type: 'sine', vol: .25, slide: 40, rev: .6 });
+    } else if (d.type === 'shFx' && d.kind === 'portal') {
+        sTone(1400, { dur: .12, type: 'triangle', vol: .02, slide: 2000, rev: .2 });
+    }
+    return zFxSoundOld(d);
+};
+
+// ---------- World Ender: Countdown und Weltuntergang ----------
+function zWorldEnd(d) {
+    let el = document.getElementById('zw-end');
+    if (!el) {
+        const st = document.createElement('style');
+        st.textContent = `
+#zw-end{position:fixed;inset:0;z-index:70;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui,sans-serif}
+#zw-end.arm{background:radial-gradient(ellipse at center,rgba(255,0,0,0) 40%,rgba(255,0,0,.35));animation:zwPulse .5s ease-in-out infinite alternate}
+#zw-end .t{font:900 clamp(22px,4vw,44px) system-ui;color:#ff3b3b;letter-spacing:.25em;text-shadow:0 0 20px #f00}
+#zw-end .n{font:900 clamp(80px,16vw,200px)/1 system-ui;color:#fff;text-shadow:0 0 40px #f00,0 0 80px #f00}
+#zw-end .b{font:700 16px system-ui;color:#ffd0d0;letter-spacing:.2em;margin-top:8px}
+#zw-end.boom{animation:zwBoom 3.6s ease-out forwards}
+#zw-end.boom .n,#zw-end.boom .t,#zw-end.boom .b{display:none}
+@keyframes zwPulse{from{opacity:.55}to{opacity:1}}
+@keyframes zwBoom{0%{background:#fff;opacity:1}12%{background:#fff8d0}35%{background:radial-gradient(circle at center,#ffe9a0,#ff7a1e 40%,#5a0a00 80%)}70%{background:radial-gradient(circle at center,rgba(255,120,30,.5),rgba(40,0,0,.8));opacity:1}100%{background:rgba(0,0,0,0);opacity:0}}`;
+        document.head.appendChild(st);
+        el = document.createElement('div');
+        el.id = 'zw-end';
+        document.body.appendChild(el);
+    }
+    clearInterval(el._t);
+    if (d.phase === 'arm') {
+        const end = performance.now() + d.ms;
+        el.className = 'arm';
+        const draw = () => {
+            const left = Math.max(0, Math.ceil((end - performance.now()) / 1000));
+            el.innerHTML = `<div class="t">☢ WORLD ENDER ☢</div><div class="n">${left}</div><div class="b">thrown by ${String(d.by).replace(/[<>&"]/g, '')}</div>`;
+        };
+        draw();
+        el._t = setInterval(() => {
+            draw();
+            sTone(880, { dur: .35, type: 'square', vol: .06, slide: 440, rev: .2 });
+        }, 500);
+        sTone(440, { dur: d.ms / 1000, type: 'sawtooth', vol: .05, slide: 880, rev: .3, lp: 1200 });
+        return;
+    }
+    // Knall: weiss, Feuerball, Grollen, lang wackeln; auf dem Canvas grosse Ringe ueber die ganze Map
+    el.className = '';
+    void el.offsetWidth;
+    el.className = 'boom';
+    el.innerHTML = '';
+    setTimeout(() => { el.className = ''; }, 3700);
+    sNoise({ dur: 3.5, vol: .6, type: 'lowpass', f: 700, f2: 40, rev: .7, a: .002 });
+    sTone(40, { dur: 4, type: 'sine', vol: .5, slide: 20, rev: .7 });
+    sTone(80, { dur: 2, type: 'triangle', vol: .2, slide: 30, rev: .5 });
+    shShake(60, 3000);
+    const t0 = performance.now();
+    for (let i = 0; i < 6; i++) shFx.push({ type: 'shBoom', x: d.x, y: d.y, r: 900 + i * 700, nuke: true, t: t0 - i * 120 });
+}

@@ -3836,6 +3836,13 @@ body.world-arena h1 {
     font-weight: 700;
 }
 
+/* 6.6: Unique-Items */
+.unique-box {
+    border-color: #ff5bd6 !important;
+    background: linear-gradient(135deg, rgba(255,91,214,.12), rgba(90,216,255,.08)) !important;
+}
+.unique-box b { color: #ff9be6; }
+
 .set-box {
     display: flex;
     flex-direction: column;
@@ -7092,6 +7099,7 @@ ws.onmessage = event => {
         case 'shBoom': case 'shZap': case 'shFx': case 'shBeam': onShFx(data); break;
         case 'shFlash': onShFlash(data); break;
         case 'shBossIntro': zBossIntro(data); break;
+        case 'shWorldEnd': zWorldEnd(data); break;
         case 'shPong': shRtt = shRtt * .7 + (performance.now() - data.t) * .3; break;
         case 'arHub': onArHub(data); break;
         case 'kmState': onKmState(data); break;
@@ -10404,15 +10412,17 @@ function itemDetail(it) {
         `<small class="it-tier">${tierName(itTier(it))}${odds > 1 ? ` · 1 in ${odds.toLocaleString('en-US')}` : ''}${sc ? ` · ⚡ ${scoreText(sc)}` : ''}</small></div></div>`;
     if (k === 'weapon') {
         const dmg = def.dmg * (1 + bonus) * (1 + L('sharp') * 0.12), rate = 1000 / (def.ms / (1 + L('rapid') * 0.1)), pel = def.pellets + L('multishot');
+        if (def.unique) s += `<div class="set-box unique-box"><b>✦ Unique</b><small>${esc(def.desc || '')}</small></div>`;
         s += `<div class="it-stats"><span>💥 ${Math.round(dmg)}${pel > 1 ? ' × ' + pel : ''}</span><span>⚡ ${rate.toFixed(1)}/s</span>` +
             `<span>📏 ${Math.round(def.speed * def.life * (1 + L('velocity') * 0.25) * (1 + L('velocity') * 0.15))}</span>` +
             (def.explode ? '<span>💣 explodes</span>' : '') + '</div>' +
             (Object.keys(inn).length ? `<div class="set-box"><b>Built in</b>${Object.entries(inn).map(([id, l]) => `<small>${(arenaCat.weaponMods[id] || {}).icon || ''} ${esc(INNATE_TEXT[id] ? INNATE_TEXT[id](l) : id)}</small>`).join('')}</div>` : '');
     } else if (k === 'armor') {
-        const set = arenaCat.sets[def.set];
+        const set = def.set && arenaCat.sets[def.set];
         s += `<div class="it-stats"><span>❤️ +${Math.round(def.hp * (1 + bonus) + L('plating') * 8)} HP</span>` +
             (def.speed ? `<span>👟 ${def.speed > 0 ? '+' : ''}${Math.round(def.speed * 100)}% speed</span>` : '') + '</div>' +
-            `<div class="set-box" style="border-color:${set.color}"><b style="color:${set.color}">${set.name} set · ${arenaCat.slotNames[def.slot]}</b>${set.bonus.map(x => `<small>${esc(x)} pieces</small>`).join('')}</div>`;
+            (set ? `<div class="set-box" style="border-color:${set.color}"><b style="color:${set.color}">${set.name} set · ${arenaCat.slotNames[def.slot]}</b>${set.bonus.map(x => `<small>${esc(x)} pieces</small>`).join('')}</div>`
+                : `<div class="set-box ${def.unique ? 'unique-box' : ''}"><b>${def.unique ? '✦ Unique · ' : ''}${def.full ? 'Full body – replaces all armor' : arenaCat.slotNames[def.slot] + ' · no set'}</b>${def.desc ? `<small>${esc(def.desc)}</small>` : ''}</div>`);
     } else if (k === 'pack') {
         s += `<div class="it-stats"><span>🎒 ${def.cap} slots in the raid</span></div><div class="hint">Without a backpack you have ${arenaCat.basePack}.</div>`;
     } else {
@@ -12284,8 +12294,10 @@ function shFrame() {
         c.fillText(L.label, s.x, s.y + 38);
     }
     // Kisten und Beutel (Militaerkisten gross mit Leuchten)
-    for (const [, x, y, ready, mil] of latest.crates) {
+    for (const [, x, y, ready, mil, grade] of latest.crates) {
         c.globalAlpha = ready ? 1 : .25;
+        // 6.6: bessere Kisten (Vorrat blau, golden) mit eigenem Look
+        if (!mil && grade && zDrawCrate(c, x, y, grade, ready, now)) continue;
         if (mil && ready) {
             const g = c.createRadialGradient(x, y, 4, x, y, 50);
             g.addColorStop(0, `rgba(255,91,91,${.4 + .2 * Math.sin(now / 250)})`);
@@ -12299,6 +12311,7 @@ function shFrame() {
     }
     c.globalAlpha = 1;
     for (const [, x, y, n, kind] of latest.bags) {
+        if (kind >= 3 && zDrawMobBag(c, x, y, n, kind, now)) continue;
         if (kind) {
             // Boss-Beute golden, Abwurf blau, beide mit Lichtsaeule
             const col = kind === 2 ? '255,210,63' : '90,170,255';
@@ -12336,10 +12349,12 @@ function shFrame() {
     }
     // Kugeln (Farbe nach Effekt)
     const age = (now - latest.recv) / 1000;
-    for (const [, x, y, vx, vy, owner, fx, bt] of latest.bullets) {
+    for (const [, x, y, vx, vy, owner, fx, bt, look] of latest.bullets) {
         const t = owner === sh.id && !WATCH ? age + shRtt / 2000 : Math.max(0, age - SH_INTERP / 1000);
         const bx = x + vx * t, by = y + vy * t;
         const sp = Math.hypot(vx, vy) || 1;
+        // 6.6: Unique-Waffen mit eigener Optik (public/zfx.js)
+        if (look && zDrawLook(c, bx, by, vx, vy, sp, look, now)) continue;
         if (fx & 2048) {
             // Gegner: kurze orange Leuchtspur
             c.strokeStyle = 'rgba(255,150,40,.9)';
@@ -12674,11 +12689,12 @@ function shFrame() {
     }
 
     // Explosionen, Blitze
-    const fxMs = f => zFxMs(f) || (f.nuke ? 1400 : f.type === 'shBeam' ? 450 : f.kind === 'phoenix' || f.kind === 'hole' ? 1100 : 500);
+    const fxMs = f => zFxMs(f) || (f.type === 'shBeam' && f.look ? 900 : 0) || (f.nuke ? 1400 : f.type === 'shBeam' ? 450 : f.kind === 'phoenix' || f.kind === 'hole' ? 1100 : 500);
     shFx = shFx.filter(f => now - f.t < fxMs(f));
     for (const f of shFx) {
         const k = (now - f.t) / fxMs(f);
         if (zDrawFx(c, f, k, now)) continue;
+        if (f.type === 'shBeam' && f.look && zDrawBeamLook(c, f, k, now)) continue;
         if (f.type === 'shBeam') {
             // Strahl: breiter Schein, heller Kern, Funken am Ende
             const a = 1 - k;
@@ -13055,6 +13071,7 @@ function shDrawPlayer(c, p, x, y, a, mine, now, my) {
     c.lineWidth = mine ? 4 : 2;
     c.strokeStyle = mine ? '#fff' : 'rgba(0,0,0,.6)';
     c.stroke();
+    if (p.fb) zDrawSuit(c, p.fb, m.r, now);
     if (p.ar) {
         c.strokeStyle = arenaCat.sets[p.ar].color;
         c.lineWidth = 3;
@@ -13220,7 +13237,7 @@ function shEventHud(c, latest, W, H, now, dpr) {
     };
     if (bs) arrow(bs.x, bs.y, bs.def.icon, '#ff3b3b');
     if (latest.drop) arrow(latest.drop[0], latest.drop[1], '🪂', '#5aaaff');
-    for (const [, x, y, , kind] of latest.bags) if (kind === 2) arrow(x, y, '💰', '#ffd23f');
+    for (const [, x, y, , kind] of latest.bags) if (kind === 2 || kind === 5) arrow(x, y, kind === 5 ? '💎' : '💰', '#ffd23f');
     if (shEventMsg && now - shEventMsg.t < 4500) {
         c.globalAlpha = Math.min(1, (4500 - (now - shEventMsg.t)) / 600);
         c.font = 'bold 20px system-ui';

@@ -1126,6 +1126,53 @@ der Statistik unter `earned.cards`.
 | Mythic | 1 in 20 000 | 1 in 3 478 | 1 in 1000 |
 | Ultra | 1 in 200 000 | 1 in 34 783 | 1 in 10 000 |
 
+## 🔫 Arena 6.6: Items, Uniques, Kisten-Stufen, Boss-Wege
+
+Max (24.09.2026): mehr Items bis in die hoechste Stufe, Uniques nach Anime-
+Vorbild mit krassen Animationen, Grundware nicht ueber Epic, Kisten und
+Gegner-Beute in Stufen, Raid-Bosse haengen an Ecken.
+
+- **Stufen-Grenze** (`arena-items.js` `maxTierOf`): tier 0 hoechstens Epic,
+  tier 1 hoechstens Legendary, sonst offen (`max` am Eintrag ueberschreibt).
+  `pickBase` beachtet sie fuer Waffen und Ruestung. Alte Items bleiben, wie sie sind.
+- **Neue Grundwaffen** (Common–Epic): Micro Uzi, Carbine, DMR, LMG, Burst
+  rifle, Double barrel, Slingshot, Nail gun, Throwing knives, Flare gun, Musket.
+- **Uniques** (`unique: true`, Gewicht x`UNIQUE_W` = 0,12 innerhalb der
+  Stufe; Sovereign: ~1 Unique je 600 Cases):
+  - ab Legendary: Rasengan, Zangetsu (Getsuga Tensho), Amaterasu, Spirit Gun
+  - ab Mythic: Gate of Babylon, Kamehameha, Dragonslayer
+  - nur Ultra: Venuzdonoa, Hollow Purple
+  Mechaniken: `portals` (Kugeln aus Portalen hinter dem Spieler), `wave`
+  (schneidet durch alles, `hitR`), `erase` (dazu durch Waende), `beamW`
+  (breiter Strahl), `rift` (schwarze Loecher an bis zu 3 Getroffenen).
+  Durchschlag-Grenze gilt fuer `wave`/`erase` nicht. Optik: `look` an der
+  Kugel (9. Feld im `bullets`-Tupel) bzw. am `shBeam`, gezeichnet in `zfx.js`.
+- **Ruestung** ohne Set (`fx`: dmg/rate/taken/regen/dodge/thorns/crit):
+  Kevlar vest, Bike helmet, Knee pads, Running shoes, Riot helmet, Ghillie
+  pants; Uniques Scouter, Straw Hat, ODM Gear, Hokage Cloak (Legendary+),
+  Kamina's Shades, Saitama's Cape (Mythic+), Iron Man Suit und Susanoo
+  (Ultra, `full`: Ganzkoerper, andere Teile wirken dann nicht; am Spieler
+  gezeichnet ueber `fb`).
+- **Verbrauchsgut**: Energy drink (0), Sticky bomb (1), Adrenaline shot (2),
+  Chidori (4, Blitz-Sprint mit 280 Schaden), Senzu Bean (5), Spirit Bomb (5,
+  750 im Radius 400), Infinite Void (6, Gegner 6 s erstarrt, +50 % Schaden
+  – `m.stunUntil`, Spieler 95 % langsamer), World Ender (6, 4,5 s
+  Countdown, dann stirbt alles ausser Werfer und Team; `shWorldEnd`
+  arm/boom, Vollbild-Sequenz). Ultra-Verbrauchsgut kommt praktisch nur aus
+  Sovereign/Elite (Kisten wuerfeln keine Ultra-Stufe).
+- **Kisten-Stufen**: `cr.g` 0/1/2 (87/11/2 %, neu beim Nachfuellen) ->
+  Quellen `crate`/`crate2`/`crate3` (golden: auch Ausruestung, +1 Item,
+  3x XP). Tupel `crates` hat Feld 6 = Stufe.
+- **Gegner-Beute** (`npcdrop`): Stufe 1 `npcdrop` 👝, Stufe 2 (1 in 8)
+  `npcrare` 💼, Stufe 3 (1 in 50) aus `boss` 💎 mit Lichtsaeule und Pfeil.
+  Beutel-Tupel `kind` 3/4/5.
+- **Raid-Bosse**: nutzen das Wegfeld (Raster fuer grosse Koerper, r 44,
+  frei nach `mobBlocked`), verfolgen 9 s statt 3,5 s ohne Sicht. Startzellen
+  im Umkreis, wenn der Spieler nah an einer Wand steht. Test (Mauer dazwischen,
+  9 s): Boss erreicht den Spieler 8/12 vorher, 10/12 jetzt.
+- **Test** (nur `SNAKE_TEST=1`): `shTestEvent` mit `give` (Waffe, Ultra),
+  `giveUtil`, `giveArmor`.
+
 ## 🧟 Zombies 6.5: haerter, Bosse, neue Arten, Baeume je Modus, Loadouts
 
 Max (24.09.2026): zwei Level-3-Spieler kamen mit Mystery-Box-Waffen locker

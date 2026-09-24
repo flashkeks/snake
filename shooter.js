@@ -417,7 +417,9 @@ module.exports = function createArena(h, opts = {}) {
     // h: { accounts, send, feed, refresh(c), changed() }
     const players = new Map();       // client id -> Spieler im Raid
     const bullets = [];
-    const crates = MAP.crates.map((c, i) => ({ id: i, x: c.x, y: c.y, t: c.t, readyAt: 0 }));
+    // 6.6: Kisten haben eine Stufe (0 normal, 1 Vorrat, 2 golden), neu gewuerfelt beim Nachfuellen
+    const crateGrade = () => { const r = Math.random(); return r < 0.02 ? 2 : r < 0.13 ? 1 : 0; };
+    const crates = MAP.crates.map((c, i) => ({ id: i, x: c.x, y: c.y, t: c.t, readyAt: 0, g: c.t === 'mil' ? 0 : crateGrade() }));
     const bags = [];
     const nades = [];                // Wurfsachen im Flug oder mit Zuender
     const smokes = [];               // Rauchwolken { id, x, y, r, until }
@@ -801,6 +803,7 @@ module.exports = function createArena(h, opts = {}) {
         p.healMul = s.healMul;
         p.homing = s.homing;
         p.phantom = s.phantom;
+        p.critArmor = s.crit || 0;
         p.sets = s.sets;
         p.packMax = p.gear.backpack ? I.PACKS[p.gear.backpack.base].cap : I.BASE_PACK;
         // Level: Stats und Skills (4.0)
@@ -1170,9 +1173,11 @@ module.exports = function createArena(h, opts = {}) {
             award(p, L.XP.crate * 4, 'military crate');
         } else if (best.cr) {
             best.cr.readyAt = now + CRATE_RESPAWN;
-            const n = 1 + Math.floor(Math.random() * 2) + (Math.random() < p.b.loot ? 1 : 0);
-            got = Array.from({ length: n }, () => I.generate('crate'));
-            award(p, L.XP.crate, 'crate');
+            const g = best.cr.g || 0;
+            const n = 1 + Math.floor(Math.random() * 2) + (Math.random() < p.b.loot ? 1 : 0) + (g === 2 ? 1 : 0);
+            got = Array.from({ length: n }, () => I.generate(['crate', 'crate2', 'crate3'][g]));
+            award(p, L.XP.crate * (1 + 2 * g), 'crate');
+            best.cr.g = crateGrade();
         } else {
             got = best.b.items;
             bags.splice(bags.indexOf(best.b), 1);
@@ -1250,6 +1255,10 @@ module.exports = function createArena(h, opts = {}) {
             if (def.full) {
                 p.hp = p.maxHp;
                 p.protect = now + def.protect / SPEED;
+                if (def.speed) {
+                    p.stimUntil = now + def.speedMs / SPEED;
+                    p.stim = def.speed;
+                }
             } else {
                 if (p.hp >= p.maxHp && !def.speed) return;
                 const amount = def.heal * p.healMul;
@@ -1274,6 +1283,37 @@ module.exports = function createArena(h, opts = {}) {
                 q.slowUntil = now + def.slowMs / SPEED;
                 damage(q, p, def.dmg, now, q.x, q.y, { how: 'frost', noDodge: true });
             }
+        } else if (u.base === 'chidori') {
+            // Blitz-Sprint zum Mauszeiger, Schaden an allem auf der Strecke
+            if (!Number.isFinite(tx) || !Number.isFinite(ty)) return;
+            let dx = tx - p.x, dy = ty - p.y;
+            const d = Math.hypot(dx, dy) || 1;
+            dx /= d;
+            dy /= d;
+            let dist = 0;
+            while (dist < Math.min(def.range, d) && !blocked(p.x + dx * (dist + 15), p.y + dy * (dist + 15), R)) dist += 15;
+            const x0 = p.x, y0 = p.y, x1 = p.x + dx * dist, y1 = p.y + dy * dist;
+            const onPath = (x, y, r) => {
+                const t = Math.max(0, Math.min(dist, (x - x0) * dx + (y - y0) * dy));
+                return Math.hypot(x - (x0 + dx * t), y - (y0 + dy * t)) < r + 40;
+            };
+            for (const q of [...players.values()]) if (q !== p && !q.dead && !(p.team && p.team === q.team) && onPath(q.x, q.y, R)) damage(q, p, def.dmg, now, q.x, q.y, { how: 'tesla', noDodge: true });
+            for (const m of [...mobs]) if (onPath(m.x, m.y, m.def.r)) hurtMob(m, p, def.dmg * (p.b.expl || 1), now, m.x, m.y);
+            p.x = x1;
+            p.y = y1;
+            p.lastMove = now;
+            p.protect = Math.max(p.protect || 0, now + 400 / SPEED);
+            fxAt(x1, y1, { type: 'shFx', kind: 'chidori', x: Math.round(x1), y: Math.round(y1), from: [Math.round(x0), Math.round(y0)] });
+        } else if (u.base === 'infinitevoid') {
+            // Domaene: alle Gegner im Umkreis erstarren, nehmen mehr Schaden
+            fxAt(p.x, p.y, { type: 'shFx', kind: 'void', x: Math.round(p.x), y: Math.round(p.y), r: def.r });
+            for (const m of mobs) if (Math.hypot(m.x - p.x, m.y - p.y) < def.r + m.def.r) m.stunUntil = now + def.stun / SPEED;
+            for (const q of near(p.x, p.y, def.r)) {
+                if (q === p || (p.team && p.team === q.team)) continue;
+                q.slow = 0.95;
+                q.slowUntil = now + def.stun / SPEED;
+                h.send(q.c, { type: 'shFlash', ms: 1500 });
+            }
         } else if (u.base === 'blink') {
             if (!Number.isFinite(tx) || !Number.isFinite(ty)) return;
             let dx = tx - p.x, dy = ty - p.y;
@@ -1295,6 +1335,22 @@ module.exports = function createArena(h, opts = {}) {
         sendInv(p);
     }
 
+    // World Ender (6.6): alles auf der Karte stirbt, ausser dem Werfer und seinem Team
+    function worldEnd(g, now) {
+        const owner = players.get(g.owner) || null;
+        for (const q of players.values()) h.send(q.c, { type: 'shWorldEnd', phase: 'boom', x: Math.round(g.x), y: Math.round(g.y), by: owner ? owner.name : '?' });
+        for (const m of [...mobs]) {
+            if (!(m.hp > 0)) continue;
+            hurtMob(m, owner, m.hp * 10 + 1e6, now, m.x, m.y);
+        }
+        for (const q of [...players.values()]) {
+            if (q === owner || q.dead || (owner && owner.team && owner.team === q.team)) continue;
+            q.protect = 0;
+            q.lastUsed = q.windUsed = true;
+            damage(q, owner, 1e7, now, q.x, q.y, { how: 'nuke', noDodge: true });
+        }
+    }
+
     function throwNade(p, base, tx, ty, now) {
         const def = I.UTILS[base];
         let dx = tx - p.x, dy = ty - p.y;
@@ -1303,6 +1359,7 @@ module.exports = function createArena(h, opts = {}) {
         dx /= d;
         dy /= d;
         const flight = Math.max(250, dist / 800 * 1000) / SPEED;
+        if (def.world) for (const q of players.values()) h.send(q.c, { type: 'shWorldEnd', phase: 'arm', ms: def.fuse, by: p.name });
         nades.push({
             id: ++seqId, owner: p.id, base, def, x: p.x + dx * (R + 8), y: p.y + dy * (R + 8),
             vx: dx * dist / (flight / 1000), vy: dy * dist / (flight / 1000),
@@ -1362,6 +1419,13 @@ module.exports = function createArena(h, opts = {}) {
                 }
             } else if (g.base === 'nuke') {
                 blast(g, g.x, g.y, def.r, def.dmg, now, false, 'nuke');
+            } else if (g.base === 'sticky') {
+                blast(g, g.x, g.y, def.r, def.dmg, now, true, 'grenade');
+            } else if (g.base === 'genkidama') {
+                fxAt(g.x, g.y, { type: 'shFx', kind: 'genki', x: Math.round(g.x), y: Math.round(g.y), r: def.r });
+                blast(g, g.x, g.y, def.r, def.dmg, now, false, 'nuke');
+            } else if (g.base === 'worldender') {
+                worldEnd(g, now);
             } else if (g.base === 'flash') {
                 fxAt(g.x, g.y, { type: 'shFx', kind: 'flash', x: Math.round(g.x), y: Math.round(g.y), r: def.r });
                 for (const q of near(g.x, g.y, def.r)) {
@@ -1442,7 +1506,7 @@ module.exports = function createArena(h, opts = {}) {
         w.dmg *= p.dmgMul;
         w.ms /= p.rateMul;
         w.homing += p.homing;
-        w.crit = (w.crit || 0) + p.b.crit + (p.critBonus || 0);
+        w.crit = (w.crit || 0) + p.b.crit + (p.critBonus || 0) + (p.critArmor || 0);
         // Pack-a-Punch (Zombies): je Stufe ×1,6 Schaden, ×1,12 Feuerrate
         if (item && item.pap) {
             w.dmg *= Math.pow(1.6, item.pap);
@@ -1454,12 +1518,23 @@ module.exports = function createArena(h, opts = {}) {
         if (w.beam) return railBeam(p, w, now);
         for (let k = 0; k < w.pellets; k++) {
             const off = w.pellets > 1 ? (k / (w.pellets - 1) - 0.5) * Math.max(w.spread, 0.08 * w.pellets) : (Math.random() - 0.5) * w.spread;
-            const a = p.a + off;
+            let a = p.a + off;
+            let ox = p.x + Math.cos(a) * (R + 6), oy = p.y + Math.sin(a) * (R + 6);
+            // Gate of Babylon (6.6): Portale hinter dem Spieler, alle zielen auf den Punkt vor ihm
+            if (w.portals) {
+                const side = (k / Math.max(1, w.pellets - 1) - 0.5) * 220 + (Math.random() - 0.5) * 30;
+                ox = p.x - Math.cos(p.a) * (50 + Math.random() * 40) - Math.sin(p.a) * side;
+                oy = p.y - Math.sin(p.a) * (50 + Math.random() * 40) + Math.cos(p.a) * side;
+                if (blocked(ox, oy, 4)) { ox = p.x; oy = p.y; }
+                const tx = p.x + Math.cos(p.a) * 520, ty = p.y + Math.sin(p.a) * 520;
+                a = Math.atan2(ty - oy, tx - ox) + (Math.random() - 0.5) * 0.06;
+                fxAt(ox, oy, { type: 'shFx', kind: 'portal', x: Math.round(ox), y: Math.round(oy) });
+            }
             bullets.push({
                 id: ++seqId, owner: p.id,
-                x: p.x + Math.cos(a) * (R + 6), y: p.y + Math.sin(a) * (R + 6),
+                x: ox, y: oy,
                 vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed,
-                dies: now + w.life * 1000 / SPEED, w, pierce: w.pierce, bounce: w.bounce, hits: new Set(),
+                dies: now + w.life * 1000 / SPEED, w, pierce: w.wave || w.erase ? 999 : w.pierce, bounce: w.bounce, hits: new Set(),
                 fx: (w.explode ? 1 : 0) | (w.burn ? 2 : 0) | (w.frost ? 4 : 0) | (w.tesla ? 8 : 0) | (w.homing ? 16 : 0) | (w.flame ? 32 : 0) | (w.nukeShell ? 64 : 0) | (w.hole ? 128 : 0) |
                     (w.rocket ? 256 : 0) | (w.magic ? 512 : 0),
                 tier: I.TIER_IDX[item.tier] || 0
@@ -1473,18 +1548,28 @@ module.exports = function createArena(h, opts = {}) {
         const dx = Math.cos(p.a), dy = Math.sin(p.a);
         const x1 = p.x + dx * (R + 6), y1 = p.y + dy * (R + 6);
         const x2 = p.x + dx * len, y2 = p.y + dy * len;
-        fxAt(p.x, p.y, { type: 'shBeam', x1: Math.round(x1), y1: Math.round(y1), x2: Math.round(x2), y2: Math.round(y2), owner: p.id });
+        fxAt(p.x, p.y, { type: 'shBeam', x1: Math.round(x1), y1: Math.round(y1), x2: Math.round(x2), y2: Math.round(y2), owner: p.id, look: w.look || undefined, bw: w.beamW || undefined });
+        // Breite (6.6): Kamehameha und Venuzdonoa treffen einen breiten Streifen
+        const bw = w.beamW || 10;
         for (const q of [...players.values()]) {
             if (q === p || q.dead || (p.team && p.team === q.team)) continue;
             const t = (q.x - p.x) * dx + (q.y - p.y) * dy;
             if (t < 0 || t > len) continue;
             const perp = Math.abs((q.x - p.x) * dy - (q.y - p.y) * dx);
-            if (perp > R + 10) continue;
+            if (perp > R + bw) continue;
             hitPlayer({ owner: p.id, w, x: q.x, y: q.y, hits: new Set() }, q, now);
         }
+        let rifts = 0;
         for (const m of [...mobs]) {
             const t = (m.x - p.x) * dx + (m.y - p.y) * dy;
-            if (t >= 0 && t <= len && Math.abs((m.x - p.x) * dy - (m.y - p.y) * dx) < m.def.r + 10) hurtMob(m, p, w.dmg, now, m.x, m.y);
+            if (t >= 0 && t <= len && Math.abs((m.x - p.x) * dy - (m.y - p.y) * dx) < m.def.r + bw) {
+                // Venuzdonoa: Risse ins Nichts an bis zu drei Getroffenen
+                if (w.rift && rifts < 3 && m.hp > 0) {
+                    rifts++;
+                    bulletHole({ x: m.x, y: m.y, owner: p.id, w: { dmg: w.dmg * 0.3 } }, now);
+                }
+                hurtMob(m, p, w.dmg, now, m.x, m.y);
+            }
         }
     }
 
@@ -2210,6 +2295,7 @@ module.exports = function createArena(h, opts = {}) {
             }
         }
         dmg *= m.def.taken || 1;
+        if (now < (m.stunUntil || 0)) dmg *= 1.5;
         const real = Math.min(dmg, m.hp);
         m.hp -= dmg;
         if (attacker && attacker.account) m.dmgBy.set(attacker.id, (m.dmgBy.get(attacker.id) || 0) + real);
@@ -2302,7 +2388,12 @@ module.exports = function createArena(h, opts = {}) {
             if (killer.b.bloodlust) killer.hp = Math.min(killer.maxHp, killer.hp + killer.b.bloodlust / 2);
         }
         if (def.drop && !m.parent && Math.random() < def.drop.chance) {
-            dropBag(m.x, m.y, Array.from({ length: def.drop.n }, () => I.generate(def.drop.src)));
+            // 6.6 (Max): drei Stufen, die oberste (1 in 50) aus dem Boss-Pool
+            if (def.drop.src === 'npcdrop') {
+                const r = Math.random();
+                const g = r < 1 / 50 ? 3 : r < 1 / 50 + 1 / 8 ? 2 : 1;
+                dropBag(m.x, m.y, Array.from({ length: def.drop.n }, () => I.generate(g === 3 ? 'boss' : g === 2 ? 'npcrare' : 'npcdrop')), 'mob' + g);
+            } else dropBag(m.x, m.y, Array.from({ length: def.drop.n }, () => I.generate(def.drop.src)));
         }
         fxAt(m.x, m.y, { type: 'shFx', kind: 'mobdie', x: Math.round(m.x), y: Math.round(m.y), icon: def.icon });
     }
@@ -2360,20 +2451,28 @@ module.exports = function createArena(h, opts = {}) {
     // Waenden. Alle NAV_MS eine Breitensuche von allen lebenden Spielern aus
     // (8 Richtungen, keine Diagonale durch Ecken); jeder Zombie geht zum
     // Nachbarfeld mit kleinerem Abstand. Nah und mit freier Bahn: direkt.
-    const NAV_CELL = 40, NAV_R = 20, NAV_MS = 250;
+    // 6.6: zwei Raster – klein (Zombies, r <= 30) und gross (Bosse im Raid,
+    // die sonst an Tueren und Ecken haengen blieben). Frei = mobBlocked, also
+    // auch keine Wege durch Stadt und Aussenposten.
+    const NAV_CELL = 40, NAV_MS = 250;
     const NAV_W = Math.ceil(W / NAV_CELL), NAV_H = Math.ceil(H / NAV_CELL);
-    let navFree = null, navDist = null, navAt = 0;
+    const NAVS = { small: { r: 20 }, big: { r: 44 } };
+    let navFree = null, navDist = null;
     const NAV_DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
-    function navBuild(now) {
-        if (!navFree) {
-            navFree = new Uint8Array(NAV_W * NAV_H);
+    function navBuild(now, size) {
+        const N = NAVS[size || 'small'];
+        if (!N.free) {
+            N.free = new Uint8Array(NAV_W * NAV_H);
             for (let y = 0; y < NAV_H; y++) for (let x = 0; x < NAV_W; x++) {
-                navFree[y * NAV_W + x] = blocked((x + 0.5) * NAV_CELL, (y + 0.5) * NAV_CELL, NAV_R) ? 0 : 1;
+                N.free[y * NAV_W + x] = mobBlocked((x + 0.5) * NAV_CELL, (y + 0.5) * NAV_CELL, N.r) ? 0 : 1;
             }
-            navDist = new Float32Array(NAV_W * NAV_H);
+            N.dist = new Float32Array(NAV_W * NAV_H);
+            N.at = 0;
         }
-        if (now - navAt < NAV_MS) return;
-        navAt = now;
+        navFree = N.free;
+        navDist = N.dist;
+        if (now - N.at < NAV_MS) return;
+        N.at = now;
         navDist.fill(Infinity);
         // Dijkstra-light: Warteschlange nach Kosten (1 gerade, 1,41 schraeg), klein genug fuer ein Array
         const q = [];
@@ -2383,6 +2482,19 @@ module.exports = function createArena(h, opts = {}) {
             if (cx < 0 || cy < 0 || cx >= NAV_W || cy >= NAV_H) continue;
             navDist[cy * NAV_W + cx] = 0;
             q.push(cy * NAV_W + cx);
+            // Steht der Spieler nah an einer Wand, ist seine Zelle fuer grosse
+            // Koerper gesperrt: freie Zellen im Umkreis mit einsaeen (6.6)
+            if (!navFree[cy * NAV_W + cx]) {
+                for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
+                    const nx = cx + dx, ny = cy + dy;
+                    if (nx < 0 || ny < 0 || nx >= NAV_W || ny >= NAV_H || !navFree[ny * NAV_W + nx]) continue;
+                    const j = ny * NAV_W + nx, dd = Math.hypot(dx, dy);
+                    if (dd < navDist[j]) {
+                        navDist[j] = dd;
+                        q.push(j);
+                    }
+                }
+            }
         }
         for (let head = 0; head < q.length; head++) {
             const i = q[head], x = i % NAV_W, y = (i - x) / NAV_W, d0 = navDist[i];
@@ -2403,7 +2515,7 @@ module.exports = function createArena(h, opts = {}) {
     // Wegpunkt fuer einen Zombie: direkt, wenn nah und frei, sonst das beste Nachbarfeld
     function zNav(m, tgt, d) {
         if (d < 160 || (d < 500 && clearFor(m.x, m.y, tgt.x, tgt.y, m.def.r))) return tgt;
-        navBuild(Date.now());
+        navBuild(Date.now(), m.def.r > 30 ? 'big' : 'small');
         const cx = Math.floor(m.x / NAV_CELL), cy = Math.floor(m.y / NAV_CELL);
         if (cx < 0 || cy < 0 || cx >= NAV_W || cy >= NAV_H) return tgt;
         let best = navDist[cy * NAV_W + cx], bx = -1, by = -1;
@@ -2558,6 +2670,8 @@ module.exports = function createArena(h, opts = {}) {
                 if (!(m.hp > 0)) return;
             }
         }
+        // Infinite Void (6.6): wer drin ist, steht still
+        if (now < (m.stunUntil || 0)) return;
         // Zombie-Boss (6.5): Auftritt abwarten, ab halber HP Wut
         if (m.introUntil && now < m.introUntil) return;
         if (def.enrage && !m.enraged && m.hp < m.maxHp * def.enrage) {
@@ -2592,7 +2706,8 @@ module.exports = function createArena(h, opts = {}) {
         } else if (now >= m.nextThink) {
             m.nextThink = now + 250 + Math.random() * 150;
             if (tgt && mobSees(m, tgt, now, def.aggro * 1.5)) m.seen = now;
-            else if (tgt && now - m.seen > 3500) tgt = m.tgt = null;
+            // Bosse (6.6) verfolgen laenger und laufen per Wegfeld um Ecken statt aufzugeben
+            else if (tgt && now - m.seen > (def.boss ? 9000 : 3500)) tgt = m.tgt = null;
             if (!tgt) {
                 let best = null, bd = def.aggro;
                 for (const q of players.values()) {
@@ -2699,7 +2814,7 @@ module.exports = function createArena(h, opts = {}) {
             const d = Math.hypot(tgt.x - m.x, tgt.y - m.y);
             m.a = Math.atan2(tgt.y - m.y, tgt.x - m.x);
             // Zombies (6.5.1): um Ecken herum ueber das Wegfeld statt geradeaus
-            const goal = zb && def.zombie ? zNav(m, tgt, d) : tgt;
+            const goal = (zb && def.zombie) || def.boss ? zNav(m, tgt, d) : tgt;
             if (def.melee) {
                 mobMove(m, goal.x, goal.y, def.chase, dt);
             } else {
@@ -2912,7 +3027,7 @@ module.exports = function createArena(h, opts = {}) {
                 const px = b.x, py = b.y;
                 b.x += b.vx * dt / steps;
                 b.y += b.vy * dt / steps;
-                if (blocked(b.x, b.y, 3)) {
+                if (!b.w.erase && blocked(b.x, b.y, 3)) {
                     if (b.bounce > 0) {
                         b.bounce--;
                         const hx = blocked(b.x, py, 3), hy = blocked(px, b.y, 3);
@@ -2931,26 +3046,31 @@ module.exports = function createArena(h, opts = {}) {
                 const bowner = players.get(b.owner);
                 for (const q of players.values()) {
                     if (q.id === b.owner || b.hits.has(q.id) || q.dead || (bowner && bowner.team && bowner.team === q.team)) continue;
-                    if (Math.hypot(q.x - b.x, q.y - b.y) < R + (b.w.big ? 14 : 4)) {
+                    if (Math.hypot(q.x - b.x, q.y - b.y) < R + Math.max(b.w.big ? 14 : 4, b.w.hitR || 0)) {
                         b.hits.add(q.id);
                         if (b.w.mobBoom) mobBoom(b, now);
                         else hitPlayer(b, q, now);
+                        if (b.w.wave || b.w.erase) continue;
                         if (b.pierce > 0) b.pierce--;
                         else gone = true;
                         break;
                     }
                 }
                 if (!gone && !isMob(b.owner)) {
-                    for (const m of mobsNear(b.x, b.y, 60)) {
-                        if (b.hits.has(m.id) || Math.hypot(m.x - b.x, m.y - b.y) >= m.def.r + 4) continue;
+                    const hitR = b.w.hitR || 4;
+                    for (const m of mobsNear(b.x, b.y, 60 + hitR)) {
+                        if (b.hits.has(m.id) || Math.hypot(m.x - b.x, m.y - b.y) >= m.def.r + hitR) continue;
                         b.hits.add(m.id);
                         const shooter = players.get(b.owner) || null;
                         const crit = b.w.crit && Math.random() < b.w.crit;
                         // jeder durchschlagene Gegner vorher kostet 20 % Schaden (6.5.1)
-                        const fall = Math.pow(0.8, b.hits.size - 1);
+                        const sweep = b.w.wave || b.w.erase;
+                        const fall = sweep ? 1 : Math.pow(0.8, b.hits.size - 1);
                         hurtMob(m, shooter, b.w.dmg * fall * (crit ? (shooter ? shooter.b.critMul : 2) : 1), now, b.x, b.y, crit, b.w);
                         if (b.w.hole) bulletHole(b, now);
                         if (b.w.explode) explode(b, now, null);
+                        // Getsuga / Hollow Purple: schneiden durch alles, ohne Grenze
+                        if (sweep) continue;
                         if (b.pierce > 0) b.pierce--;
                         else gone = true;
                         break;
@@ -2993,12 +3113,13 @@ module.exports = function createArena(h, opts = {}) {
                         x: Math.round(q.x * 10) / 10, y: Math.round(q.y * 10) / 10, a: Math.round(q.a * 100) / 100,
                         hp: Math.max(0, Math.round(q.hp)), mh: q.maxHp, w: qw.base, wt: qw.tier, wn: qw.name,
                         ar: q.gear.vest ? I.ARMORS[q.gear.vest.base].set : null, hm: q.gear.helmet ? I.ARMORS[q.gear.helmet.base].set : null,
+                        fb: ['helmet', 'vest', 'pants', 'boots'].map(sl => q.gear[sl] && I.ARMORS[q.gear[sl].base] && I.ARMORS[q.gear[sl].base].full ? q.gear[sl].base : null).find(Boolean) || undefined,
                         burn: !!q.burn, slow: now < q.slowUntil, pr: now < q.protect
                     };
                 }),
-                bullets: bullets.filter(b => inView(b.x, b.y)).map(b => [b.id, Math.round(b.x), Math.round(b.y), Math.round(b.vx), Math.round(b.vy), b.owner, b.fx, b.tier]),
-                crates: crates.filter(cr => inView(cr.x, cr.y)).map(cr => [cr.id, cr.x, cr.y, now >= cr.readyAt ? 1 : 0, cr.t === 'mil' ? 1 : 0]),
-                bags: bags.filter(b => inView(b.x, b.y)).map(b => [b.id, Math.round(b.x), Math.round(b.y), b.items.length, b.kind === 'boss' ? 2 : b.kind === 'drop' ? 1 : 0]),
+                bullets: bullets.filter(b => inView(b.x, b.y)).map(b => b.w.look ? [b.id, Math.round(b.x), Math.round(b.y), Math.round(b.vx), Math.round(b.vy), b.owner, b.fx, b.tier, b.w.look] : [b.id, Math.round(b.x), Math.round(b.y), Math.round(b.vx), Math.round(b.vy), b.owner, b.fx, b.tier]),
+                crates: crates.filter(cr => inView(cr.x, cr.y)).map(cr => [cr.id, cr.x, cr.y, now >= cr.readyAt ? 1 : 0, cr.t === 'mil' ? 1 : 0, cr.g || 0]),
+                bags: bags.filter(b => inView(b.x, b.y)).map(b => [b.id, Math.round(b.x), Math.round(b.y), b.items.length, b.kind === 'boss' ? 2 : b.kind === 'drop' ? 1 : b.kind === 'mob1' ? 3 : b.kind === 'mob2' ? 4 : b.kind === 'mob3' ? 5 : 0]),
                 // Events sieht jeder, egal wo (Karte und Pfeil am Rand)
                 boss: bossView(now),
                 strikes: strikes.filter(s => inView(s.x, s.y)).map(s => [s.id, Math.round(s.x), Math.round(s.y), s.r, Math.max(0, Math.round(s.at - now)), s.total, s.look || 0]),
