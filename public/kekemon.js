@@ -242,7 +242,7 @@ function kmDrawPacks() {
             <h4>${esc(p.name)}</h4>
             <div class="sub">${p.size} cards · ${sets}<br><b>${p.sure} guaranteed Rare or better</b>${p.mega ? '<br>Better odds on every card' : ''}</div>
             <button type="button" class="gold" data-kmbuy="${id}" ${poor ? 'disabled' : ''}>${poor && me
-                ? `🔒 🪙 ${p.price.toLocaleString('en-US')} · need ${(p.price - me.coins).toLocaleString('en-US')} more`
+                ? `🔒 🪙 ${p.price.toLocaleString('en-US')}`
                 : `Open for 🪙 ${p.price.toLocaleString('en-US')}`}</button>
         </div>`;
     }).join('');
