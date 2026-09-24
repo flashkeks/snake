@@ -212,7 +212,8 @@ const THROW_RANGE = 560;
 
 // ---------- Mods (Special-Effekte) ----------
 // Wie viele Effekte ein Item bekommt, ist fuer alle Quellen und Stufen gleich
-const EFFECT_N = [0.9, 0.09, 0.0095, 0.0005];
+// 6.6 (Max): ein Effekt 20 %, zwei ~2 %, drei ~0,1 % (vorher 9 / 0,95 / 0,05 %)
+const EFFECT_N = [0.779, 0.2, 0.02, 0.001];
 
 const WEAPON_MODS = {
     sharp: { name: 'Sharp', icon: '🗡️', w: 30, max: 5, decay: 0.3, desc: l => `+${l * 12}% damage` },

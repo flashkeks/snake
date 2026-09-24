@@ -1,5 +1,13 @@
 [
   {
+    "version": "6.6.1",
+    "date": "24.09.2026",
+    "items": [
+      "🎒 Full stash: items wait in your inventory instead of turning into scrap",
+      "✨ Special effects are more common"
+    ]
+  },
+  {
     "version": "6.6",
     "date": "24.09.2026",
     "items": [

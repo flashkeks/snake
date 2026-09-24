@@ -514,9 +514,11 @@ module.exports = function createArena(h, opts = {}) {
     function sendHub(c, extra) {
         const a = st(c);
         if (!a) return;
+        flushOverflow(a);
         const u = h.accounts.get(c.account);
         h.send(c, {
             type: 'arHub', inv: a.inv.map(it => ({ ...it, sv: I.salvageValue(it) })), loadout: a.loadout,
+            overflow: (a.overflow || []).map(it => ({ ...it, sv: I.salvageValue(it) })),
             loadouts: { extract: a.loadout, pvp: loadoutOf(a, 'pvp'), zombies: loadoutOf(a, 'zombies') },
             presets: Object.fromEntries(L.MODES.map(m => [m, presetsOf(a, m).map(x => ({ name: x.name, l: x.l }))])),
             scrap: a.scrap, coins: u.coins, inRaid: players.has(c.id), prog: progView(c, a), pvp: a.pvp || null, zombies: a.zombies || null,
@@ -533,18 +535,35 @@ module.exports = function createArena(h, opts = {}) {
         });
     }
 
+    // 6.6 (Max): Lager voll -> nichts mehr automatisch zu Scrap (Avalon verlor so
+    // seine erste goldene Waffe). Was nicht passt, wartet in a.overflow und
+    // rutscht nach, sobald Platz frei wird (flushOverflow bei jedem sendHub).
+    const OVERFLOW_MAX = 200;
     function addItems(c, items) {
         const a = st(c);
         const room = I.INV_MAX - a.inv.length;
         const kept = items.slice(0, Math.max(0, room));
         const over = items.slice(kept.length);
         a.inv.push(...kept);
-        // Lager voll: der Rest wird automatisch zu Scrap
-        const scrap = over.reduce((s, it) => s + I.salvageValue(it), 0);
-        a.scrap += scrap;
-        for (const it of kept) noteBest(c.account, it);
+        a.overflow = a.overflow || [];
+        a.overflow.push(...over);
+        // Notbremse: nur wenn auch die Warteschlange ueberlaeuft, geht das Schlechteste zu Scrap
+        let scrap = 0;
+        if (a.overflow.length > OVERFLOW_MAX) {
+            a.overflow.sort((x, y) => (y.score || 0) - (x.score || 0));
+            for (const it of a.overflow.splice(OVERFLOW_MAX)) scrap += I.salvageValue(it);
+            a.scrap += scrap;
+        }
+        for (const it of kept.concat(over)) noteBest(c.account, it);
         h.accounts.touch();
         return { kept, over, scrap };
+    }
+
+    function flushOverflow(a) {
+        if (!a.overflow || !a.overflow.length) return;
+        const room = I.INV_MAX - a.inv.length;
+        if (room > 0) a.inv.push(...a.overflow.splice(0, room));
+        h.accounts.touch();
     }
 
     function pay(c, price, currency) {
@@ -701,10 +720,11 @@ module.exports = function createArena(h, opts = {}) {
         }
         if (d.type === 'arSalvage') {
             const uids = new Set((Array.isArray(d.uids) ? d.uids : []).slice(0, 300).map(String));
-            const out = a.inv.filter(it => uids.has(it.uid));
+            const out = a.inv.filter(it => uids.has(it.uid)).concat((a.overflow || []).filter(it => uids.has(it.uid)));
             if (!out.length) return;
             const scrap = Math.round(out.reduce((s, it) => s + I.salvageValue(it), 0) * L.bonuses(a.prog, 'extract').scrap);
             a.inv = a.inv.filter(it => !uids.has(it.uid));
+            if (a.overflow) a.overflow = a.overflow.filter(it => !uids.has(it.uid));
             fixLoadout(a);
             a.scrap += scrap;
             h.accounts.touch();
@@ -1019,7 +1039,7 @@ module.exports = function createArena(h, opts = {}) {
         h.accounts.stat(p.account, s => { s.arenaExtracts = (s.arenaExtracts || 0) + 1; });
         if (!silent) {
             award(p, L.XP.extract + L.XP.extractItem * p.pack.length + L.XP.minute * Math.floor((Date.now() - p.joinedAt) / 60000), 'extracted');
-            h.send(p.c, { type: 'shLeft', result: 'extracted', items: p.pack.map(brief), scrap: r.scrap, kills: p.kills, secs: Math.round((Date.now() - p.joinedAt) / 1000) });
+            h.send(p.c, { type: 'shLeft', result: 'extracted', items: p.pack.map(brief), scrap: r.scrap, waiting: r.over.length, kills: p.kills, secs: Math.round((Date.now() - p.joinedAt) / 1000) });
             const best = p.pack.reduce((b, it) => !b || (it.score || 0) > (b.score || 0) ? it : b, null);
             if (best && I.TIER_IDX[best.tier] >= 4) h.feed(`🚁 ${p.name} extracted with a ${I.TIERS[I.TIER_IDX[best.tier]].name} ${best.name}`, 'gold');
         }

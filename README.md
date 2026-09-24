@@ -1170,6 +1170,13 @@ Gegner-Beute in Stufen, Raid-Bosse haengen an Ecken.
   frei nach `mobBlocked`), verfolgen 9 s statt 3,5 s ohne Sicht. Startzellen
   im Umkreis, wenn der Spieler nah an einer Wand steht. Test (Mauer dazwischen,
   9 s): Boss erreicht den Spieler 8/12 vorher, 10/12 jetzt.
+- **6.6.1:** Effekt-Chancen `EFFECT_N` = 77,9 / 20 / 2 / 0,1 % (0–3 Effekte).
+  Lager voll: nichts mehr automatisch zu Scrap (Avalon verlor so eine
+  Legendary Crossbow beim Extrahieren). Ueberschuss wartet in
+  `a.overflow` (max. 200, erst darueber geht das Schlechteste zu Scrap),
+  `flushOverflow` bei jedem `sendHub` schiebt nach, sobald Platz frei ist.
+  Im Inventory grau angezeigt, einzeln verschrottbar (`arSalvage` nimmt
+  auch wartende uids).
 - **Test** (nur `SNAKE_TEST=1`): `shTestEvent` mit `give` (Waffe, Ultra),
   `giveUtil`, `giveArmor`.
 

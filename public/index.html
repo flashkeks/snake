@@ -3836,6 +3836,17 @@ body.world-arena h1 {
     font-weight: 700;
 }
 
+/* 6.6: wartende Items bei vollem Lager */
+.inv-wait {
+    margin: 0 0 12px;
+    padding: 10px;
+    border: 1px dashed rgba(255,210,63,.5);
+    border-radius: 10px;
+    background: rgba(255,210,63,.05);
+}
+.inv-wait .it { filter: grayscale(.85); opacity: .6; }
+.inv-wait .it:hover { filter: none; opacity: 1; }
+
 /* 6.6: Unique-Items */
 .unique-box {
     border-color: #ff5bd6 !important;
@@ -11013,10 +11024,15 @@ function hubDraw() {
         setTimeout(() => $('hub-body').querySelectorAll('.it[data-uid]').forEach(x => { x.draggable = true; }), 0);
     } else if (hubTab === 'inv') {
         const list = inv.filter(hubFilterFn).sort(hubSort);
-        const sel = hubSel && inv.find(x => x.uid === hubSel);
-        html = `<div class="inv-bar">${filters}<span class="hint">${inv.length} / ${arenaCat.invMax}</span></div>` +
+        const waiting = hub.overflow || [];
+        const sel = hubSel && (inv.find(x => x.uid === hubSel) || waiting.find(x => x.uid === hubSel));
+        // 6.6: Lager voll -> Items warten grau und rutschen nach, sobald Platz frei ist
+        html = (waiting.length ? `<div class="inv-wait"><b>📥 ${waiting.length} item${waiting.length > 1 ? 's' : ''} waiting – your stash is full.</b> ` +
+            `<span class="hint">Salvage something and they move in automatically. Nothing gets scrapped on its own.</span>` +
+            `<div class="inv-grid">${waiting.map(it => itemCard(it, {})).join('')}</div></div>` : '') +
+            `<div class="inv-bar">${filters}<span class="hint">${inv.length} / ${arenaCat.invMax}</span></div>` +
             `<div class="inv-main"><div class="inv-list">${hubStacks(list).map(({ it, uids }) => itemRow(it, { sel: uids.includes(hubSel), eq: hubEquippedAs(it.uid), n: uids.length })).join('') || '<div class="hint">Nothing here.</div>'}</div>` +
-            `<div class="inv-detail">${sel ? itemDetail(sel) + hubActions(sel) : '<div class="hint">Click an item to equip or salvage it.</div>'}</div></div>`;
+            `<div class="inv-detail">${sel ? itemDetail(sel) + (waiting.includes(sel) ? `<div class="hint">Waiting for space in your stash.</div><div class="it-actions"><button type="button" class="danger" data-salvage="${sel.uid}">♻️ Salvage (+${sel.sv || 0} ⚙️)</button></div>` : hubActions(sel)) : '<div class="hint">Click an item to equip or salvage it.</div>'}</div></div>`;
     } else if (hubTab === 'salvage') {
         const free = inv.filter(x => !hubEquippedAs(x.uid));
         const tierBtns = arenaCat.tiers.slice(0, 4).map(t => {
@@ -11337,7 +11353,7 @@ $('hub-body').addEventListener('click', e => {
     if (ds.equip) return wsSend({ type: 'arEquip', mode: hubMode, slot: ds.equip, uid: ds.uid });
     if (ds.unequip) return wsSend({ type: 'arEquip', mode: hubMode, slot: ds.unequip, uid: null });
     if (ds.salvage) {
-        const it = hub.inv.find(x => x.uid === ds.salvage);
+        const it = hub.inv.find(x => x.uid === ds.salvage) || (hub.overflow || []).find(x => x.uid === ds.salvage);
         if (it && tierIdx(it.tier) >= 2 && it.kind !== 'util' && !confirm(`Salvage ${it.name} (${tierName(it.tier)})?`)) return;
         hubSel = null;
         return wsSend({ type: 'arSalvage', uids: [ds.salvage] });
@@ -11635,8 +11651,9 @@ function onShLeft(d) {
     }
     const t = d.secs ? `${Math.floor(d.secs / 60)}:${String(d.secs % 60).padStart(2, '0')}` : '–';
     if (d.result === 'extracted') {
-        hubLast = { result: 'ok', html: `🚁 <b>Extracted!</b> Loot: ${list(d.items)}${d.scrap ? ` · stash full, ${d.scrap} scrap instead` : ''}` };
-        return shResult({ kind: 'win', big: '🚁 EXTRACTED', sub: `You made it out${d.scrap ? ` · stash full, ${d.scrap} scrap instead` : ''}`,
+        const wait = d.waiting ? ` · stash full – ${d.waiting} item${d.waiting > 1 ? 's' : ''} waiting in 🎒 Inventory` : '';
+        hubLast = { result: 'ok', html: `🚁 <b>Extracted!</b> Loot: ${list(d.items)}${wait}${d.scrap ? ` · ${d.scrap} scrap for overflow` : ''}` };
+        return shResult({ kind: 'win', big: '🚁 EXTRACTED', sub: `You made it out${wait}`,
             stats: [[t, 'time'], [d.kills || 0, 'kills'], ['+' + xp.toLocaleString('en-US'), 'XP']], items: d.items, itemsTitle: 'Loot secured', again: 'extract' });
     }
     hubLast = { result: 'dead', html: `💀 <b>${d.result === 'left' ? 'You left the raid' : 'You died'}${d.by ? ` – killed by ${esc(d.by)}` : ''}.</b> Lost: ${list(d.lost)}` };
