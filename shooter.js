@@ -50,8 +50,12 @@ const BAG_LIFE = 5 * 60e3;
 const INTERACT_R = 75;
 const MED_MS = 2000;
 // Events: Boss laeuft ueber die Map, Versorgungsabwurf mit Ausruestung
-const BOSS_EVERY = [2 * 60e3, 10 * 60e3];
+// 6.9 (Max: oefter Bosse): 2–10 min -> 1–4 min
+const BOSS_EVERY = [60e3, 4 * 60e3];
 const BOSS_LIFE = 8 * 60e3;
+// 6.9 (Max: Boss fast tot und dann weg): gegangen wird erst, wenn er seit
+// BOSS_CALM keinen Treffer bekommen hat und kein Spieler in BOSS_NEAR ist
+const BOSS_CALM = 60e3, BOSS_NEAR = 1100;
 // Gegner (4.1): so viele laufen herum, geweckt nur in der Naehe von Spielern
 const MOB_BASE = 45, MOB_PER_PLAYER = 8, MOB_MAX = 120;
 const MOB_WAKE = 1700;
@@ -2307,6 +2311,7 @@ module.exports = function createArena(h, opts = {}) {
 
     function hurtMob(m, attacker, dmg, now, x, y, crit, w) {
         if (!(m.hp > 0) || dmg <= 0) return;
+        if (attacker) m.hitAt = now;
         // Insta-Kill (Power-up): normale Zombies fallen mit einem Treffer
         if (zb && attacker && !m.def.boss && zfx('insta', now)) dmg = Math.max(dmg, m.hp / (m.def.taken || 1) + 1);
         if (attacker && attacker.b) {
@@ -2706,7 +2711,8 @@ module.exports = function createArena(h, opts = {}) {
         }
         const cd = ms => ms / SPEED * (m.enraged ? 0.65 : 1);
         if (bossSkills(m, now, dt, cd)) return;
-        if (def.boss && !def.zombie && now - m.born > BOSS_LIFE / SPEED) {
+        if (def.boss && !def.zombie && now - m.born > BOSS_LIFE / SPEED && now - (m.hitAt || 0) > BOSS_CALM / SPEED
+            && ![...players.values()].some(p => !p.dead && Math.hypot(p.x - m.x, p.y - m.y) < BOSS_NEAR)) {
             mobs.splice(mobs.indexOf(m), 1);
             bossId = null;
             nextBossAt = now + randIn(BOSS_EVERY) / SPEED;
