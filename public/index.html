@@ -6123,7 +6123,8 @@ body.touch input, body.touch textarea {
                     <div class="cs-tabs" id="km-tabs">
                         <button type="button" data-kmtab="packs">📦 Packs</button>
                         <button type="button" data-kmtab="album">📖 Collection</button>
-                        <button type="button" data-kmtab="battle">⚔️ Gym battles</button>
+                        <button type="button" data-kmtab="battle">🏟️ Gyms</button>
+                        <button type="button" data-kmtab="duel">⚔️ Duels</button>
                         <button type="button" data-kmtab="trade">🤝 Trade</button>
                     </div>
                     <div class="msg" id="km-msg"></div>
@@ -6445,6 +6446,7 @@ body.touch input, body.touch textarea {
                     <option value="alevel">🎖️ Arena level</option>
                     <option value="pvp">⚔️ PvP rating</option>
                     <option value="zwave">🧟 Zombies: best wave</option>
+                    <option value="kmduel">🃏 Kekémon duel rating</option>
                 </select>
                 <select id="hall-game" title="Game" hidden>
                     <option value="starlight">🌟 Starlight</option>
@@ -6648,6 +6650,9 @@ ws.onmessage = event => {
         case 'arHub': onArHub(data); break;
         case 'kmState': onKmState(data); break;
         case 'kbState': onKbState(data); break;
+        case 'kdState': onKdState(data); break;
+        case 'kdInvite': onKdInvite(data); break;
+        case 'kdInfo': onKdInfo(data); break;
         case 'mkState': onMkState(data); break;
         case 'mkNote': mkToast(data.text, data.kind); if (!$('market').classList.contains('hidden')) showMsg('mk-msg', data.text, data.kind === 'err' ? 'err' : 'ok'); break;
         case 'lbJoined': onLbJoined(data); break;
@@ -14037,18 +14042,18 @@ function hallBroadcast() {
 
 function hallRequest() {
     if (hallBroadcast()) return drawHall();
-    wsSend({ type: 'board', cat: hallSel.cat, game: hallSel.game, period: ['coins', 'alevel', 'pvp', 'zwave'].includes(hallSel.cat) ? 'all' : hallSel.period });
+    wsSend({ type: 'board', cat: hallSel.cat, game: hallSel.game, period: ['coins', 'alevel', 'pvp', 'zwave', 'kmduel'].includes(hallSel.cat) ? 'all' : hallSel.period });
 }
 
 function hallChanged() {
     // Coins und Arena-Level gibt es nur als "All time"
-    if (['coins', 'alevel', 'pvp', 'zwave'].includes(hallSel.cat)) hallSel.period = 'all';
+    if (['coins', 'alevel', 'pvp', 'zwave', 'kmduel'].includes(hallSel.cat)) hallSel.period = 'all';
     $('hall-cat').value = hallSel.cat;
     $('hall-game').value = hallSel.game;
     $('hall-game').hidden = hallSel.cat !== 'bestx';
     document.querySelectorAll('#hall-tabs button').forEach(x => {
         x.classList.toggle('on', x.dataset.period === hallSel.period);
-        x.disabled = ['coins', 'alevel', 'pvp', 'zwave'].includes(hallSel.cat) && x.dataset.period !== 'all';
+        x.disabled = ['coins', 'alevel', 'pvp', 'zwave', 'kmduel'].includes(hallSel.cat) && x.dataset.period !== 'all';
     });
     try { localStorage.setItem('hallSel', JSON.stringify(hallSel)); } catch (e) {}
     hallList = null;
@@ -14067,7 +14072,7 @@ setInterval(() => { if (!hallBroadcast() && ws.readyState === WebSocket.OPEN) ha
 
 function onBoard(d) {
     if (d.cat !== hallSel.cat || (d.cat === 'bestx' && d.game !== hallSel.game)) return;
-    if (!['coins', 'alevel', 'pvp', 'zwave'].includes(d.cat) && d.period !== hallSel.period) return;
+    if (!['coins', 'alevel', 'pvp', 'zwave', 'kmduel'].includes(d.cat) && d.period !== hallSel.period) return;
     hallList = d.list;
     drawHall();
 }
@@ -14081,7 +14086,7 @@ function drawHall() {
         $('hall').innerHTML = '<tr><td style="opacity:.5">Loading…</td></tr>';
         return;
     }
-    const fmt = (v, s) => cat === 'zwave' ? `Wave ${v} · ${s.k} kills` : cat === 'pvp' ? `⚔️ ${v} · ${s.w}-${s.l}` : cat === 'alevel' ? `Lv ${s.lv} · ${Number(v).toLocaleString('en-US')} XP` : cat === 'bestx' ? `×${v}` : `${icon} ${cat === 'casino' && v > 0 ? '+' : ''}${Number(v).toLocaleString('en-US')}`;
+    const fmt = (v, s) => cat === 'zwave' ? `Wave ${v} · ${s.k} kills` : cat === 'pvp' || cat === 'kmduel' ? `⚔️ ${v} · ${s.w}-${s.l}` : cat === 'alevel' ? `Lv ${s.lv} · ${Number(v).toLocaleString('en-US')} XP` : cat === 'bestx' ? `×${v}` : `${icon} ${cat === 'casino' && v > 0 ? '+' : ''}${Number(v).toLocaleString('en-US')}`;
     $('hall').innerHTML = list.map((s, i) =>
         `<tr><td class="name">${medals[i] || (i + 1) + '.'} ${esc(s.name)}${ttTag(s.tt)}</td>` +
         `<td class="num">${fmt(s.value, s)}</td></tr>`

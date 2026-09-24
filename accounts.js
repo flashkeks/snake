@@ -298,6 +298,11 @@ module.exports = function createAccounts(dataDir) {
             return !!db.users[String(name).toLowerCase()];
         },
 
+        // Alle Konten als [key, user] (fuer Aufraeumen beim Start, z. B. Duell-Einsaetze)
+        users() {
+            return Object.entries(db.users);
+        },
+
         get(key) {
             return db.users[key] || null;
         },
@@ -741,6 +746,13 @@ module.exports = function createAccounts(dataDir) {
                 return Object.values(db.users)
                     .filter(u => u.arena && u.arena.pvp && u.arena.pvp.wins + u.arena.pvp.losses + u.arena.pvp.draws > 0)
                     .map(u => ({ name: u.name, value: u.arena.pvp.rating, tt: ach.titleOf(u) || undefined, w: u.arena.pvp.wins, l: u.arena.pvp.losses }))
+                    .sort((a, b) => b.value - a.value).slice(0, 10);
+            }
+            // Kekemon-Duelle (5.10): Elo, nur wer schon gespielt hat
+            if (cat === 'kmduel') {
+                return Object.values(db.users)
+                    .filter(u => u.kmDuel && u.kmDuel.wins + u.kmDuel.losses > 0)
+                    .map(u => ({ name: u.name, value: u.kmDuel.rating, tt: ach.titleOf(u) || undefined, w: u.kmDuel.wins, l: u.kmDuel.losses }))
                     .sort((a, b) => b.value - a.value).slice(0, 10);
             }
             // Arena-Level (4.0): nach Gesamt-XP, nur "All time"

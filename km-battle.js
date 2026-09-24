@@ -17,6 +17,11 @@
 //   - Wer zuerst beginnt: die schnellere aktive Karte.
 //
 // Reine Logik ohne Netz – server.js haelt je Spieler einen Kampf.
+//
+// Seit 5.10 auch Spieler gegen Spieler (km-duels.js): createBattle mit
+// { ai: false }, dann play(b, c, s) fuer die jeweilige Seite. Ansicht und
+// Ereignisse lassen sich mit view(b, me) / flip(ev, me) so drehen, dass die
+// eigene Seite immer Seite 0 ist – der Browser kennt nur "ich unten".
 
 const BURN_DMG = 15, BURN_TURNS = 3, HEAL = 30, BOOST = 20, DEF_FACTOR = 0.4, WEAK = 1.5;
 // Varianten machen Karten ein bisschen staerker (HP und Schaden)
@@ -44,9 +49,9 @@ function createBattle(teamA, teamB, opts = {}) {
     const b = {
         sides: [
             { name: opts.nameA || 'You', cards: teamA, active: 0, ai: false },
-            { name: opts.nameB || 'Leader', cards: teamB, active: 0, ai: true }
+            { name: opts.nameB || 'Leader', cards: teamB, active: 0, ai: opts.ai !== false }
         ],
-        turn: 0, round: 1, over: false, winner: null, smart: opts.smart || 0, needSwitch: false
+        turn: 0, round: 1, over: false, winner: null, smart: opts.smart || 0, needSwitch: false, switchSide: 0
     };
     b.turn = teamA[0].spd >= teamB[0].spd ? 0 : 1;
     const ev = [{ k: 'start', first: b.turn }];
@@ -131,6 +136,7 @@ function knockout(b, s, ev) {
     } else {
         // Spieler waehlt die naechste Karte
         b.needSwitch = true;
+        b.switchSide = s;
         b.nextTurn = next;
         ev.push({ k: 'choose', s });
     }
@@ -241,43 +247,78 @@ function doAct(b, s, c, ev) {
     return false;
 }
 
-// Aktion des Spielers; danach zieht die KI. Liefert Ereignisse oder Fehlertext.
-function play(b, c) {
+// Aktion einer Seite (Standard: Seite 0 = Spieler gegen KI); danach zieht
+// die KI, falls es eine gibt. Liefert Ereignisse oder Fehlertext.
+function play(b, c, s = 0) {
     if (b.over) return { err: 'The battle is over' };
     const ev = [];
     if (c.a === 'forfeit') {
         b.over = true;
-        b.winner = 1;
-        ev.push({ k: 'forfeit' }, { k: 'end', winner: 1 });
+        b.winner = 1 - s;
+        b.needSwitch = false;
+        ev.push({ k: 'forfeit', s }, { k: 'end', winner: b.winner });
         return { ev };
     }
     if (b.needSwitch) {
-        const side = b.sides[0], to = Number(c.to);
+        if (b.switchSide !== s) return { err: 'Wait – your opponent picks the next card' };
+        const side = b.sides[s], to = Number(c.to);
         if (c.a !== 'switch' || !side.cards[to] || side.cards[to].hp <= 0) return { err: 'Pick your next card' };
         side.active = to;
         b.needSwitch = false;
-        ev.push({ k: 'switch', s: 0, to, forced: true });
+        ev.push({ k: 'switch', s, to, forced: true });
         b.turn = b.nextTurn;
         if (b.turn === 0) b.round++;
         startTurn(b, ev);
         runAi(b, ev);
         return { ev };
     }
-    if (b.turn !== 0) return { err: 'Not your turn' };
-    if (!doAct(b, 0, c, ev)) return { err: 'You cannot do that now' };
+    if (b.turn !== s) return { err: 'Not your turn' };
+    if (!doAct(b, s, c, ev)) return { err: 'You cannot do that now' };
     runAi(b, ev);
     return { ev };
 }
 
-// Ansicht fuer den Browser
-function view(b) {
+// Wer muss gerade handeln? (Seite, die waehlen oder ziehen muss)
+function waitingOn(b) {
+    if (b.over) return null;
+    return b.needSwitch ? b.switchSide : b.turn;
+}
+
+// Zeit abgelaufen (Duelle): fuer die wartende Seite automatisch handeln –
+// naechste lebende Karte schicken bzw. aufladen
+function auto(b) {
+    const s = waitingOn(b);
+    if (s === null) return null;
+    if (b.needSwitch) {
+        const to = b.sides[s].cards.findIndex(c => c.hp > 0);
+        return play(b, { a: 'switch', to }, s);
+    }
+    return play(b, { a: 'charge' }, s);
+}
+
+// Ansicht fuer den Browser, aus Sicht von Seite me (die steht dann vorne)
+function view(b, me = 0) {
+    const sides = b.sides.map(s => ({
+        name: s.name, active: s.active,
+        cards: s.cards.map(c => ({ id: c.id, v: c.v, hp: c.hp, maxHp: c.maxHp, energy: c.energy, burn: c.burn, stun: c.stun, boost: c.boost, def: c.def, attacks: c.attacks }))
+    }));
+    const fl = x => x === null || x === undefined ? x : x ^ me;
     return {
-        turn: b.turn, round: b.round, over: b.over, winner: b.winner, needSwitch: b.needSwitch,
-        sides: b.sides.map(s => ({
-            name: s.name, active: s.active,
-            cards: s.cards.map(c => ({ id: c.id, v: c.v, hp: c.hp, maxHp: c.maxHp, energy: c.energy, burn: c.burn, stun: c.stun, boost: c.boost, def: c.def, attacks: c.attacks }))
-        }))
+        turn: fl(b.turn), round: b.round, over: b.over, winner: fl(b.winner),
+        needSwitch: b.needSwitch && b.switchSide === me,
+        foeSwitch: b.needSwitch && b.switchSide !== me,
+        sides: me ? [sides[1], sides[0]] : sides
     };
 }
 
-module.exports = { fighter, createBattle, play, view, damage, VAR_MUL, BURN_DMG, BURN_TURNS, HEAL, BOOST };
+// Ereignisse aus Sicht von Seite me
+function flip(ev, me) {
+    if (!me) return ev;
+    return ev.map(e => {
+        const o = { ...e };
+        for (const k of ['s', 'first', 'winner']) if (typeof o[k] === 'number') o[k] ^= 1;
+        return o;
+    });
+}
+
+module.exports = { fighter, createBattle, play, auto, waitingOn, view, flip, damage, VAR_MUL, BURN_DMG, BURN_TURNS, HEAL, BOOST };

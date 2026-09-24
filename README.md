@@ -1172,6 +1172,47 @@ Leiter-Teams sind fest (aus der Arena-Id gewuerfelt). Danach je Sieg 15 %
 der Coins, hoechstens 3 belohnte Siege je Arena und Tag. Ein Kampf lebt nur im
 Speicher (`c.kb`); Server-Neustart oder Tab zu = Kampf weg, ohne Strafe.
 
+## ⚔️ Kekémon-Duelle (5.10, `km-duels.js`)
+
+Tab „Duels" in Kekémon (der Arena-Tab heisst seit 5.10 „Gyms"). Spieler gegen
+Spieler mit denselben Regeln wie die Arenen.
+
+- **Gegner finden** (Max: beides): offenes Duell, das jeder annehmen kann, oder
+  Herausforderung an einen Spieler, der gerade online ist. Der bekommt ein
+  Banner (in jeder Welt) mit Annehmen/Ablehnen. Offene Duelle verfallen nach
+  10 min oder wenn der Eroeffner offline geht.
+- **Einsatz** (Max: Einsatz + Rating): 0 bis 100 000, beide zahlen ihn beim
+  Kampfbeginn, der Sieger bekommt beide. Keine Coins aus dem Nichts. Waehrend
+  des Kampfes liegt der Einsatz als `u.kmDuelEscrow` am Konto; stirbt der
+  Server mitten im Kampf (Deploy!), zahlt der naechste Start ihn zurueck.
+  Gebucht als `earned.cards` (Sieger +Einsatz, Verlierer −Einsatz).
+- **Ablauf:** annehmen → beide waehlen drei Karten (90 s, Gegner-Team bleibt
+  bis zum Kampf verborgen) → Kampf. 30 s je Zug; laeuft die Zeit ab, laedt der
+  Server fuer den Saeumigen auf bzw. schickt die naechste Karte. Drei verpasste
+  Zuege am Stueck = Aufgabe. Der Kampf haengt am Konto, nicht an der
+  Verbindung: Seite neu laden geht.
+- **Rating:** Elo, Start 1000, K = 32, in `u.kmDuel = { rating, wins, losses,
+  won }`; Leaderboard „🃏 Kekémon duel rating" (`kmduel`). Feed-Zeile nach
+  jedem Duell, gold ab 10k Einsatz.
+- **Technik:** `km-battle.js` kennt seit 5.10 zwei menschliche Seiten
+  (`createBattle(..., { ai: false })`, `play(b, c, s)`, `auto(b)`,
+  `waitingOn(b)`). `view(b, me)` und `flip(ev, me)` drehen Ansicht und
+  Ereignisse so, dass die eigene Seite immer Seite 0 ist – der Browser zeichnet
+  Arena und Duell mit demselben Kampf-Bildschirm.
+- Protokoll: `kdState`, `kdCreate {stake, target?}`, `kdJoin {id}`,
+  `kdDecline {id}`, `kdCancel`, `kdTeam {team}`, `kdAct {a, i?, to?}`; vom
+  Server `kdState { me, open, mine, duel, online, ev?, result?, duelDone? }`,
+  `kdInvite`, `kdInfo`.
+
+**Kampf-Bildschirm neu (5.10, Max: „fighting interface bissl ueberarbeiten"):**
+passt samt Knoepfen auf einen Bildschirm; Gegner oben rechts, man selbst unten
+links; Zug-Anzeige mit Zeit in der Mitte oben; Energie als Punkte mit
+Kosten-Strichen; Bank als Knoepfe mit Name und HP (antippen = wechseln);
+Laufschrift fuers letzte Ereignis, volles Protokoll aufklappbar; Knopfleiste
+klebt unten, Angriffe zeigen Schaden inkl. ×1,5, „Knocks it out" oder „Needs N
+more ⚡"; Aufgeben als kleine Flagge oben. Am Handy: kleinere Karten, Tabs in
+einer Zeile.
+
 ## 🏛️ Markt (5.2)
 
 Vierte Welt im Umschalter (🏛️ Market) und im Hauptmenue. Zwei Tabs.

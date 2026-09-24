@@ -26,6 +26,7 @@ const createMarket = require('./market');
 const createLobby = require('./lobby');
 const kmBattle = require('./km-battle');
 const createGyms = require('./km-gyms');
+const createDuels = require('./km-duels');
 const shop = require('./shop');
 const arenaItems = require('./arena-items');
 const arenaLevel = require('./arena-level');
@@ -618,7 +619,7 @@ let lastTop = '';
 const pendingWins = new Map();  // Konto -> { amount, feed, timer, onReveal }
 
 // Leaderboard (#8): Kategorien und Spiele mit sinnvollem Multi
-const BOARD_CATS = ['score', 'coins', 'kills', 'bigwin', 'bestx', 'casino', 'events', 'arena', 'alevel', 'pvp', 'zwave'];
+const BOARD_CATS = ['score', 'coins', 'kills', 'bigwin', 'bestx', 'casino', 'events', 'arena', 'alevel', 'pvp', 'zwave', 'kmduel'];
 const BOARD_X_GAMES = ['starlight', 'slots', 'plinko', 'crossy', 'roulette', 'blackjack', 'poker'];
 
 function hideWin(key, amount, feedLine, ms, onReveal) {
@@ -1307,7 +1308,7 @@ async function handle(c, data) {
             if (!BOARD_CATS.includes(cat) || !['day', 'week', 'all'].includes(period)) return;
             if (cat === 'bestx' && !BOARD_X_GAMES.includes(game)) return;
             if (!allow('board:' + c.id, 30, 60e3)) return;
-            const list = accounts.board(cat, game, ['coins', 'alevel', 'pvp', 'zwave'].includes(cat) ? 'all' : period, key => pendingWins.has(key) ? pendingWins.get(key).amount : 0);
+            const list = accounts.board(cat, game, ['coins', 'alevel', 'pvp', 'zwave', 'kmduel'].includes(cat) ? 'all' : period, key => pendingWins.has(key) ? pendingWins.get(key).amount : 0);
             send(c, { type: 'board', cat, game, period, list });
             return;
         }
@@ -1359,6 +1360,17 @@ async function handle(c, data) {
         case 'kbAct':
         case 'kbLeave':
             gyms.handle(c, data);
+            return;
+
+        // Kekemon-Duelle (5.10)
+        case 'kdState':
+        case 'kdCreate':
+        case 'kdJoin':
+        case 'kdDecline':
+        case 'kdCancel':
+        case 'kdTeam':
+        case 'kdAct':
+            duels.handle(c, data);
             return;
 
         // In game (5.0): der Browser meldet seinen Schirm
@@ -1734,6 +1746,7 @@ wss.on('connection', (ws, req) => {
 
     ws.on('close', () => {
         trade.gone(c);
+        duels.gone(c);
         lobby.leave(c);
         tables.leave(c);
         shooter.leave(c);
@@ -1961,6 +1974,13 @@ const gyms = createGyms({
     accounts, cards, cardDb, battle: kmBattle, send, feed, refresh: mkRefresh,
     log: line => console.log(line)
 });
+
+const duels = createDuels({
+    accounts, cards, cardDb, battle: kmBattle, send, clientsOf, feed, refresh: mkRefresh,
+    onlineKeys: () => [...clients.values()].filter(c => c.account).map(c => c.account),
+    log: line => console.log(line)
+});
+setInterval(() => duels.tick(), 1000);
 
 // Eigener, schnellerer Takt als das Snake-Feld (33 ms)
 setInterval(() => {

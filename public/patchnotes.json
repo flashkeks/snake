@@ -1,5 +1,16 @@
 [
   {
+    "version": "5.10",
+    "date": "24.09.2026",
+    "items": [
+      "⚔️ Kekémon duels: fight other players with your cards – open a duel for everyone or challenge someone who is online",
+      "Optional stake up to 100,000 coins: both pay it, the winner takes both. Plus a duel rating and its own leaderboard",
+      "30 s per turn in duels. Miss it and you charge automatically, miss 3 in a row and you give up. Reloading the page keeps your duel",
+      "🎨 New battle screen (gyms too): fits on one screen, clear turn marker, energy dots, bench as buttons, attack buttons show when they knock out or how much energy is missing",
+      "Kekémon tabs: ⚔️ Gym battles is now 🏟️ Gyms, next to the new ⚔️ Duels"
+    ]
+  },
+  {
     "version": "5.9",
     "date": "24.09.2026",
     "items": [
