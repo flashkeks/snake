@@ -106,7 +106,18 @@ function onKmState(d) {
             }
         }
         if (d.sold) showMsg('km-msg', `Sold ${d.sold.n} card${d.sold.n === 1 ? '' : 's'} for 🪙 ${d.sold.coins.toLocaleString('en-US')}`, 'ok');
-        if (!$('kekemon').classList.contains('hidden')) kmDraw();
+        if (d.bought) showMsg('km-msg', `${d.bought.n > 1 ? d.bought.n + '× ' : ''}${kmCat.packs[d.bought.pack].name} added to 📦 Packs`, 'ok');
+        // Daily Pack Wheel: erst drehen, dann neu zeichnen
+        if (d.wheelSpin) {
+            const [pid, n] = d.wheelSpin.prize;
+            const P = kmCat.packs[pid];
+            return pwSpin('km-wheel', kmWheelSegs(), d.wheelSpin.index, () => {
+                showMsg('km-msg', `🎉 You won ${n > 1 ? n + '× ' : ''}${P.icon} ${P.name}! It's in your packs.`, 'ok');
+                kmSfx('fanfare', pid === 'jackpot' ? 'bonus' : pid === 'mixed' ? 'big' : 'small');
+                if (!$('kekemon').classList.contains('hidden')) kmDraw();
+            });
+        }
+        if (!$('kekemon').classList.contains('hidden') && !pwBusy['km-wheel']) kmDraw();
         const v = $('km-view');
         if (v && !v.hidden && v.dataset.id) kmView(v.dataset.id);
     }).catch(() => showMsg('km-msg', 'Could not load the card list', 'err'));
@@ -178,11 +189,13 @@ function kmDraw() {
         body.innerHTML = '<div class="km-note">Loading cards…</div>';
         return;
     }
-    if (kmTab === 'packs') body.innerHTML = kmDrawPacks();
+    if (kmTab === 'shop') body.innerHTML = kmDrawPacks();
+    else if (kmTab === 'packs') body.innerHTML = kmDrawInv();
     else if (kmTab === 'album') body.innerHTML = kmDrawAlbum();
     else if (kmTab === 'battle') body.innerHTML = kmDrawBattleTab();
     else if (kmTab === 'duel') body.innerHTML = kmDrawDuelTab();
-    else body.innerHTML = '<div class="km-note">🤝 <b>Trading cards</b> works in the 🏛️ Market: Auction Hall or trade with a player in the lobby (F).<br>Fight other players in ⚔️ Duels.</div>';
+    else body.innerHTML = kmDrawInv();
+    if (kmTab === 'packs') pwIdle('km-wheel', kmWheelSegs());
 }
 
 // "1 in 12,345" oder Prozent, je nachdem was lesbarer ist
@@ -234,23 +247,168 @@ function kmDrawOdds() {
 
 function kmDrawPacks() {
     const P = kmCat.packs;
-    const tiles = Object.entries(P).map(([id, p]) => {
+    const tiles = Object.entries(P).filter(([, p]) => !p.wheel).map(([id, p]) => {
         const sets = p.sets.map(s => kmCat.sets[s].icon + ' ' + kmCat.sets[s].name).join(' · ');
         const poor = !me || me.coins < p.price;
+        const have = (km && km.inv && km.inv[id]) || 0;
         return `<div class="km-pack" style="--pc:${KM_PACK_COLOR[id] || '#ffb13d'}">
             <div class="ico">${p.icon}</div>
             <h4>${esc(p.name)}</h4>
             <div class="sub">${p.size} cards · ${sets}<br><b>${p.sure} guaranteed Rare or better</b>${p.mega ? '<br>Better odds on every card' : ''}</div>
             <button type="button" class="gold" data-kmbuy="${id}" ${poor ? 'disabled' : ''}>${poor && me
                 ? `🔒 🪙 ${p.price.toLocaleString('en-US')}`
-                : `Open for 🪙 ${p.price.toLocaleString('en-US')}`}</button>
+                : `Buy for 🪙 ${p.price.toLocaleString('en-US')}`}</button>
+            ${have ? `<small class="km-have">You have ${have} unopened – see 📦 Packs</small>` : ''}
         </div>`;
     }).join('');
     const sell = kmCat.rarities.map(r => `<b style="color:${r.color}">${r.name}</b> ${kmCat.sell[r.id].toLocaleString('en-US')}`).join(' · ');
-    return `<div class="km-packs">${tiles}</div>
+    return `<div class="km-note" style="padding:6px 0 10px">Bought packs go to 📦 <b>Packs</b> – open them there whenever you like, or trade them.</div>
+        <div class="km-packs">${tiles}</div>
         ${kmDrawOdds()}
         <div class="km-odds">Duplicates sell for coins (tap a card in your collection): ${sell}.<br>Pokéball ×${kmCat.sellMul.p}, Masterball ×${kmCat.sellMul.m}, Shiny ×${kmCat.sellMul.s} on top. You always keep one of each card.</div>
         <div class="km-odds">Card data: <a href="https://anilist.co" target="_blank" rel="noopener">AniList</a> · <a href="https://akabab.github.io/superhero-api/" target="_blank" rel="noopener">Superhero API</a> · <a href="https://www.tvmaze.com" target="_blank" rel="noopener">TVMaze</a></div>`;
+}
+
+// ---------- Packs (6.1): ungeoeffnete Packs + Daily Pack Wheel ----------
+
+const KM_WHEEL_COLOR = { daily: ['#3da5ff', '#2a7fd4', '#57b6ff'], mixed: '#ffb13d', jackpot: '#111' };
+
+function kmWheelSegs() {
+    const segs = (km && km.wheel && km.wheel.segs) || [];
+    let k = 0;
+    return segs.map(([pid, n]) => {
+        const P = kmCat.packs[pid] || { icon: '?' };
+        const col = KM_WHEEL_COLOR[pid];
+        return { icon: P.icon, label: '×' + n, color: Array.isArray(col) ? col[k++ % col.length] : col || '#888', gold: pid === 'jackpot' };
+    });
+}
+
+function kmDrawInv() {
+    const inv = (km && km.inv) || {};
+    const P = kmCat.packs;
+    const ready = km && km.wheel && km.wheel.ready;
+    const tiles = Object.entries(inv).filter(([id, n]) => n > 0 && P[id]).map(([id, n]) => {
+        const p = P[id];
+        return `<div class="km-pack km-invpack" style="--pc:${KM_PACK_COLOR[id] || (id === 'daily' ? '#3da5ff' : id === 'jackpot' ? '#ff5bd6' : '#ffb13d')}">
+            <span class="km-invn">×${n}</span>
+            <div class="ico">${p.icon}</div>
+            <h4>${esc(p.name)}</h4>
+            <div class="sub">${p.size} cards · ${p.sure} guaranteed Rare or better${p.mega ? '<br>Mega odds' : ''}</div>
+            <button type="button" class="gold" data-kmopen="${id}">Open</button>
+        </div>`;
+    }).join('');
+    const odds = `<small class="hint">40 % 1× · 25 % 2× · 10 % 3× ${P.daily.icon} Daily Booster (10k odds) · 20 % ${P.mixed.icon} Mega Booster · 5 % ${P.jackpot.icon} Jackpot Booster (only here: Mega odds, 12 cards)</small>`;
+    return `<div class="km-wheelbox">
+            <div class="pw-wrap"><canvas id="km-wheel" width="340" height="340"></canvas><div class="pw-pointer">▼</div></div>
+            <div class="km-wheelside">
+                <h3>🎡 Daily Pack Wheel</h3>
+                <div>One free spin every day. Every prize is a pack for your inventory.</div>
+                <button type="button" class="gold" id="km-spin" ${ready && !pwBusy['km-wheel'] ? '' : 'disabled'}>${ready ? '🎡 Spin for free' : '✔ Spun today – come back tomorrow'}</button>
+                ${odds}
+            </div>
+        </div>
+        <h3 class="kd-h">Your packs</h3>
+        <div class="km-packs">${tiles || '<div class="km-note" style="grid-column:1/-1">No unopened packs. Buy some in 🛒 Pack Shop, spin the wheel or beat a gym.</div>'}</div>
+        <div class="km-odds">Packs can be traded and sold in the 🏛️ Market like cards.</div>`;
+}
+
+// ---------- Gluecksrad (6.1, fuer Daily Pack Wheel und Daily Case Wheel) ----------
+// segs: [{ icon, label, color, gold }]; Feld 0 steht bei Winkel 0 oben.
+
+const pwBusy = {};
+
+function pwDraw(id, segs, angle) {
+    const cv = $(id);
+    if (!cv || !segs.length) return;
+    const c = cv.getContext('2d');
+    const W = cv.width, R = W / 2;
+    const seg = Math.PI * 2 / segs.length;
+    c.clearRect(0, 0, W, W);
+    c.save();
+    c.translate(R, R);
+    c.fillStyle = '#2a1d3d';
+    c.beginPath();
+    c.arc(0, 0, R - 2, 0, Math.PI * 2);
+    c.fill();
+    c.rotate(angle);
+    segs.forEach((sg, i) => {
+        const a0 = -Math.PI / 2 + i * seg - seg / 2;
+        c.fillStyle = sg.color;
+        c.beginPath();
+        c.moveTo(0, 0);
+        c.arc(0, 0, R * 0.88, a0, a0 + seg);
+        c.closePath();
+        c.fill();
+        c.strokeStyle = sg.gold ? '#ffd23f' : 'rgba(255,255,255,.6)';
+        c.lineWidth = sg.gold ? 4 : 2;
+        c.stroke();
+        c.save();
+        c.rotate(a0 + seg / 2);
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.translate(R * 0.62, 0);
+        c.rotate(Math.PI / 2);
+        c.font = `${Math.round(R * 0.15)}px system-ui`;
+        c.fillText(sg.icon, 0, -R * 0.02);
+        c.font = `900 ${Math.round(R * 0.085)}px system-ui`;
+        c.fillStyle = sg.gold ? '#ffd23f' : '#fff';
+        c.strokeStyle = 'rgba(0,0,0,.6)';
+        c.lineWidth = 3;
+        c.strokeText(sg.label, 0, R * 0.13);
+        c.fillText(sg.label, 0, R * 0.13);
+        c.restore();
+    });
+    c.restore();
+    for (let i = 0; i < 24; i++) {
+        const a = i / 24 * Math.PI * 2;
+        c.fillStyle = (i + Math.floor(performance.now() / 250)) % 2 ? '#fff6c2' : '#b8860b';
+        c.beginPath();
+        c.arc(R + Math.cos(a) * R * 0.94, R + Math.sin(a) * R * 0.94, R * 0.022, 0, Math.PI * 2);
+        c.fill();
+    }
+    const g = c.createRadialGradient(R, R, 0, R, R, R * 0.14);
+    g.addColorStop(0, '#fff6c2');
+    g.addColorStop(1, '#b8860b');
+    c.fillStyle = g;
+    c.beginPath();
+    c.arc(R, R, R * 0.13, 0, Math.PI * 2);
+    c.fill();
+}
+
+// Stillstehend zeichnen (Lichter blinken ueber das Intervall unten)
+const pwIdleSegs = {};
+const pwAngle = {};          // letzter Stand, damit das Rad nach dem Drehen stehen bleibt
+function pwIdle(id, segs) {
+    pwIdleSegs[id] = segs;
+    pwDraw(id, segs, pwAngle[id] || 0);
+}
+setInterval(() => {
+    for (const [id, segs] of Object.entries(pwIdleSegs)) if (!pwBusy[id] && $(id)) pwDraw(id, segs, pwAngle[id] || 0);
+}, 250);
+
+// Drehen bis Feld index oben steht, dann done()
+function pwSpin(id, segs, index, done) {
+    const seg = Math.PI * 2 / segs.length;
+    const end = Math.PI * 12 - index * seg + (Math.random() - 0.5) * seg * 0.6;
+    const dur = 6000;
+    const t0 = performance.now();
+    let last = -1;
+    pwBusy[id] = true;
+    (function step() {
+        const t = Math.min(1, (performance.now() - t0) / dur);
+        const e = 1 - Math.pow(1 - t, 4);
+        const ang = end * e;
+        pwDraw(id, segs, ang);
+        const k = Math.floor((ang + seg / 2) / seg);
+        if (k !== last) {
+            last = k;
+            try { sTone(1600, { dur: .03, type: 'triangle', vol: .05 * (1 - t) + .01, rev: 0 }); } catch {}
+        }
+        if (t < 1 && $(id)) return requestAnimationFrame(step);
+        pwAngle[id] = end % (Math.PI * 2);
+        pwBusy[id] = false;
+        done();
+    })();
 }
 
 function kmList() {
@@ -411,7 +569,7 @@ function kmStack() {
         return `<div class="km-sc" data-pos="${pos}" style="z-index:${100 - pos};--d:${Math.min(pos, 4)}">${kmCard(kmCat.byId[g.id], { v: g.v })}${o.fresh[ci] ? '<span class="km-new">NEW</span>' : ''}</div>`;
     }).join('');
     box.innerHTML = `<div class="km-count" id="km-count2"></div>
-        <div class="km-stack" id="km-stack">${cards}</div>
+        <div class="km-reveal"><div class="km-stack" id="km-stack">${cards}</div><div class="km-rinfo" id="km-rinfo"></div></div>
         <div class="km-note" style="padding:0">Swipe or tap the card · → / Space</div>
         <div class="km-open-btns"><button type="button" id="km-skip">Skip to summary</button></div>`;
     kmReveal();
@@ -423,6 +581,20 @@ function kmReveal() {
     const g = o.cards[o.order[o.idx]];
     const c = kmCat.byId[g.id];
     $('km-count2').textContent = `${o.idx + 1} / ${o.cards.length}`;
+    // Kurzinfo rechts (6.1, Max): Seltenheit, Wert, Ball, Shiny
+    const R = kmCat.rarities[kmCat.ridx[c.rarity]];
+    const ball = g.v.includes('m') ? 'Masterball' : g.v.includes('p') ? 'Pokéball' : '';
+    const ri = $('km-rinfo');
+    if (ri) {
+        ri.innerHTML = `<div class="km-ri-r" style="color:${R.color}">${esc(R.name)}</div>
+            <div class="km-ri-v">🪙 ${kmValue(c, g.v).toLocaleString('en-US')}<small>value</small></div>
+            ${ball ? `<div class="km-ri-t ${g.v.includes('m') ? 'vm' : 'vp'}">${kmBall(g.v.includes('m') ? 'm' : 'p')} ${ball} ×${kmCat.sellMul[g.v.includes('m') ? 'm' : 'p']}</div>` : ''}
+            ${g.v.includes('s') ? `<div class="km-ri-t vs">✦ Shiny ×${kmCat.sellMul.s}</div>` : ''}
+            ${o.fresh[o.order[o.idx]] ? '<div class="km-ri-t new">NEW</div>' : ''}`;
+        ri.classList.remove('pop');
+        void ri.offsetWidth;
+        ri.classList.add('pop');
+    }
     document.querySelectorAll('#km-stack .km-sc').forEach(el => el.style.setProperty('--d', Math.max(0, Math.min(Number(el.dataset.pos) - o.idx, 4))));
     const r = kmCat.ridx[c.rarity];
     const top = document.querySelector(`#km-stack .km-sc[data-pos="${o.idx}"]`);
@@ -470,7 +642,7 @@ function kmSummary() {
     }).join('');
     $('km-open').innerHTML = `<div class="km-open-row">${row}</div>
         <div class="km-open-btns">
-        <button type="button" class="gold" id="km-again">Open another (🪙 ${kmCat.packs[o.pack].price.toLocaleString('en-US')})</button>
+        ${(km && km.inv && km.inv[o.pack]) ? `<button type="button" class="gold" id="km-again">Open another ${esc(kmCat.packs[o.pack].name)} (${km.inv[o.pack]} left)</button>` : ''}
         <button type="button" id="km-done">Done</button></div>`;
 }
 
@@ -523,6 +695,14 @@ $('km-back').onclick = () => setWorld('snake');
 $('km-body').addEventListener('click', e => {
     const buy = e.target.closest('[data-kmbuy]');
     if (buy) return wsSend({ type: 'kmBuy', pack: buy.dataset.kmbuy });
+    const opn = e.target.closest('[data-kmopen]');
+    if (opn) return wsSend({ type: 'kmOpen', pack: opn.dataset.kmopen });
+    if (e.target.closest('#km-spin')) {
+        if (!km || !km.wheel || !km.wheel.ready || pwBusy['km-wheel']) return;
+        pwBusy['km-wheel'] = true;
+        e.target.closest('#km-spin').disabled = true;
+        return wsSend({ type: 'kmWheel' });
+    }
     const card = e.target.closest('[data-kmcard]');
     if (card) return kmView(card.dataset.kmcard);
     if (e.target.id === 'km-more') {
@@ -584,7 +764,7 @@ $('km-open').addEventListener('click', e => {
     if (e.target.id === 'km-again') {
         const pack = kmOpening.pack;
         kmCloseOpen();
-        return wsSend({ type: 'kmBuy', pack });
+        return wsSend({ type: 'kmOpen', pack });
     }
     if (e.target.id === 'km-done') kmCloseOpen();
 });
@@ -1101,7 +1281,7 @@ function kbDrawBattle(bp, kind) {
         else line = `${r.stake ? (r.win ? `+🪙 ${r.pot.toLocaleString('en-US')}` : `−🪙 ${r.stake.toLocaleString('en-US')}`) + ' · ' : ''}rating ${r.rating || '?'} (${r.delta >= 0 ? '+' : ''}${r.delta || 0})`;
         bar = `<div class="kb-result ${r.win ? 'win' : 'lose'}">
             <div class="big">${r.win ? '🏆 VICTORY' : '💀 DEFEAT'}</div><div>${line}</div>
-            <div class="kb-result-btns">${r.pack ? `<button type="button" class="gold" id="kb-openpack">🎁 Open your free ${esc(kmCat.packs[r.pack.pack].name)}</button>` : ''}
+            <div class="kb-result-btns">${r.pack ? `<button type="button" class="gold" id="kb-openpack">🎁 Free ${esc(kmCat.packs[r.pack.pack].name)} added – go to 📦 Packs</button>` : ''}
             <button type="button" id="${kind === 'gym' ? 'kb-done' : 'kd-done'}">${kind === 'gym' ? 'Back to gyms' : 'Back to duels'}</button></div>
         </div>`;
     } else if (myTurn && v.need === 'switch') {
@@ -1248,11 +1428,12 @@ $('km-body').addEventListener('click', e => {
     if (ds.kdjoin) return wsSend({ type: 'kdJoin', id: Number(ds.kdjoin) });
     if (ds.kddecline) return wsSend({ type: 'kdDecline', id: Number(ds.kddecline) });
     if (ds.kbff) { if (confirm(duel && kd.duel && kd.duel.stake ? `Give up? You lose your stake of ${kd.duel.stake.toLocaleString('en-US')} coins.` : 'Give up this battle?')) act({ a: 'forfeit' }); return; }
-    if (t.id === 'kb-openpack' && bp.result && bp.result.pack) {
-        const p = bp.result.pack;
-        bp.result.pack = null;
-        kmDraw();
-        return kmShowPack(p);
+    if (t.id === 'kb-openpack') {
+        Object.assign(kbP.gym, kbNewPlayer());
+        wsSend({ type: 'kbGyms' });
+        kmTab = 'packs';
+        wsSend({ type: 'kmState' });
+        return kmDraw();
     }
     if (t.id === 'kb-done') { Object.assign(kbP.gym, kbNewPlayer()); wsSend({ type: 'kbGyms' }); return kmDraw(); }
     if (t.id === 'kd-done') { Object.assign(kbP.duel, kbNewPlayer()); if (kd) kd.duelDone = null; wsSend({ type: 'kdState' }); return kmDraw(); }

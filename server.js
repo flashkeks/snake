@@ -27,6 +27,7 @@ const createLobby = require('./lobby');
 const kmBattle = require('./km-battle');
 const createGyms = require('./km-gyms');
 const createDuels = require('./km-duels');
+const createWheels = require('./wheels');
 const shop = require('./shop');
 const arenaItems = require('./arena-items');
 const arenaLevel = require('./arena-level');
@@ -47,6 +48,7 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const PUBLIC = path.join(__dirname, 'public');
 
 const accounts = createAccounts(DATA_DIR);
+const wheels = createWheels({ accounts });
 const tickets = createTickets(DATA_DIR);
 
 // Kekemon (5.0): Karten einmal beim Start rechnen. Der Katalog (~2000 Karten)
@@ -531,7 +533,11 @@ setInterval(() => {
 // Id~Variante ('p' Pokeball, 'm' Masterball, 's' Shiny, z. B. 'a123~ms').
 function kmState(c, extra) {
     const u = accounts.get(c.account);
-    send(c, { type: 'kmState', v: cardHash, have: u.cards || {}, packs: (u.stats && u.stats.packs) || 0, ...extra });
+    // inv (6.1): ungeoeffnete Packs { packId: Anzahl }; wheel: Daily Pack Wheel
+    send(c, {
+        type: 'kmState', v: cardHash, have: u.cards || {}, packs: (u.stats && u.stats.packs) || 0,
+        inv: u.packs || {}, wheel: { ready: wheels.ready('pack', u), segs: wheels.segments('pack') }, ...extra
+    });
 }
 
 const KM_VNAME = { p: 'Pokeball', m: 'Masterball', s: 'Shiny' };
@@ -541,16 +547,42 @@ function kmHandle(c, d) {
     const u = accounts.get(c.account);
     u.cards = u.cards || {};
     if (d.type === 'kmState') return kmState(c);
+    u.packs = u.packs || {};
+    // Kaufen (6.1): landet ungeoeffnet im Inventar (Tab "Packs")
     if (d.type === 'kmBuy') {
         if (!Object.prototype.hasOwnProperty.call(cards.PACKS, d.pack)) return send(c, { type: 'kmError', error: 'Unknown pack' });
         const p = cards.PACKS[d.pack];
+        if (p.wheel) return send(c, { type: 'kmError', error: 'This pack is not for sale' });
+        const n = Math.max(1, Math.min(10, Math.floor(Number(d.n)) || 1));
+        if (u.coins < p.price * n) return send(c, { type: 'kmError', error: 'Not enough coins' });
+        accounts.addCoins(c.account, -p.price * n);
+        accounts.earn(c.account, 'cards', -p.price * n);
+        u.packs[d.pack] = (u.packs[d.pack] || 0) + n;
+        accounts.touch();
+        sendAccount(c);
+        return kmState(c, { bought: { pack: d.pack, n } });
+    }
+    // Daily Pack Wheel (6.1)
+    if (d.type === 'kmWheel') {
+        const r = wheels.spin('pack', c.account);
+        if (r.err) return send(c, { type: 'kmError', error: r.err });
+        const [pid, n] = r.prize;
+        u.packs[pid] = (u.packs[pid] || 0) + n;
+        accounts.stat(c.account, st => { st.packWheels = (st.packWheels || 0) + 1; });
+        accounts.touch();
+        if (r.slot === 'jackpot') feed(`🌟 ${u.name} hit the JACKPOT on the Daily Pack Wheel!`, 'gold', c.id);
+        return kmState(c, { wheelSpin: { index: r.index, prize: r.prize } });
+    }
+    // Oeffnen aus dem Inventar (6.1)
+    if (d.type === 'kmOpen') {
+        if (!Object.prototype.hasOwnProperty.call(cards.PACKS, d.pack)) return send(c, { type: 'kmError', error: 'Unknown pack' });
+        if (!(u.packs[d.pack] > 0)) return send(c, { type: 'kmError', error: 'You have no such pack' });
         if (!cardDb.cards.length) return send(c, { type: 'kmError', error: 'No cards loaded' });
-        if (u.coins < p.price) return send(c, { type: 'kmError', error: 'Not enough coins' });
         const got = cards.openPack(cardDb, d.pack);
         // Nur fuer lokale Tests: Varianten erzwingen
         if (process.env.SNAKE_TEST === '1' && Array.isArray(d.testV)) got.forEach((g, i) => { if (typeof d.testV[i] === 'string') g.v = d.testV[i]; });
-        accounts.addCoins(c.account, -p.price);
-        accounts.earn(c.account, 'cards', -p.price);
+        u.packs[d.pack]--;
+        if (!u.packs[d.pack]) delete u.packs[d.pack];
         // Neu = diese Karte (egal welche Variante) noch gar nicht im Album
         const ownsBase = id => Object.keys(u.cards).some(k => cards.parseKey(k).id === id && u.cards[k] > 0);
         const fresh = [];
@@ -1381,6 +1413,8 @@ async function handle(c, data) {
         // Kekemon (5.0): Sammlung, Packs, Doppelte verkaufen
         case 'kmState':
         case 'kmBuy':
+        case 'kmOpen':
+        case 'kmWheel':
         case 'kmSell':
         case 'kmSellDupes':
             kmHandle(c, data);
@@ -1399,6 +1433,8 @@ async function handle(c, data) {
         case 'arHub':
         case 'arBuy':
         case 'arCase':
+        case 'arCaseOpen':
+        case 'arWheel':
         case 'arSalvage':
         case 'arEquip':
         case 'arProg':
@@ -1924,7 +1960,7 @@ const tables = createTables({
 // ---------- Shooter-Arena (#7) ----------
 
 const shooter = createShooter({
-    accounts, send, feed,
+    accounts, send, feed, wheels,
     refresh: c => sendAccount(c),
     // Wer ist in welcher Arena: fuers Menue an alle
     changed: () => broadcast({ type: 'shRooms', rooms: shooter.rooms() })

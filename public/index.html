@@ -6142,11 +6142,11 @@ body.touch input, body.touch textarea {
                         <button type="button" class="s2-icon" id="km-back" title="Back">✕</button>
                     </div>
                     <div class="cs-tabs" id="km-tabs">
+                        <button type="button" data-kmtab="shop">🛒 Pack Shop</button>
                         <button type="button" data-kmtab="packs">📦 Packs</button>
                         <button type="button" data-kmtab="album">📖 Collection</button>
                         <button type="button" data-kmtab="battle">🏟️ Gyms</button>
                         <button type="button" data-kmtab="duel">⚔️ Duels</button>
-                        <button type="button" data-kmtab="trade">🤝 Trade</button>
                     </div>
                     <div class="msg" id="km-msg"></div>
                     <div id="km-body"></div>
@@ -9997,7 +9997,29 @@ function onArHub(d) {
     if (d.got) showMsg('hub-msg', `Bought ${d.got.n > 1 ? d.got.n + '× ' : ''}${d.got.name}`, 'ok');
     if (d.salvaged) showMsg('hub-msg', `Salvaged ${d.salvaged.count} item${d.salvaged.count > 1 ? 's' : ''} for ${d.salvaged.scrap} scrap`, 'ok');
     for (const u of [...hubMulti]) if (!d.inv.some(x => x.uid === u)) hubMulti.delete(u);
-    if (!d.caseItem) hubDraw();
+    if (d.caseBought) showMsg('hub-msg', `${d.caseBought.n > 1 ? d.caseBought.n + '× ' : ''}${arenaCat.cases[d.caseBought.id].name} added to Your cases`, 'ok');
+    // Daily Case Wheel: erst drehen, dann neu zeichnen
+    if (d.wheelSpin) {
+        const [cid, n] = d.wheelSpin.prize;
+        const C = arenaCat.cases[cid];
+        return pwSpin('ar-wheel', arWheelSegs(), d.wheelSpin.index, () => {
+            showMsg('hub-msg', `🎉 You won ${n > 1 ? n + '× ' : ''}${C.icon} ${C.name}! It's in Your cases.`, 'ok');
+            sfx.fanfare && sfx.fanfare(cid === 'jackpot' ? 'big' : 'small');
+            hubDraw();
+        });
+    }
+    if (!d.caseItem && !pwBusy['ar-wheel']) hubDraw();
+}
+
+// Felder des Daily Case Wheel (6.1)
+function arWheelSegs() {
+    const segs = (hub && hub.wheel && hub.wheel.segs) || [];
+    const cols = ['#3da5ff', '#2a7fd4', '#57b6ff'];
+    let k = 0;
+    return segs.map(([cid, n]) => {
+        const c = arenaCat.cases[cid] || { icon: '?' };
+        return { icon: c.icon, label: '×' + n, color: cid === 'jackpot' ? '#111' : cid === 'elite50' ? '#a970ff' : cols[k++ % cols.length], gold: cid === 'jackpot' };
+    });
 }
 
 function hubEquippedAs(uid) {
@@ -10446,12 +10468,26 @@ function hubDraw() {
             `<div class="inv-grid">${hubStacks(list).map(({ it, uids }) => itemCard(it, { eq: hubEquippedAs(it.uid), n: uids.length, pick: uids.every(u => hubMulti.has(u)) })).join('') || '<div class="hint">Nothing here.</div>'}</div>`;
     } else if (hubTab === 'cases') {
         const chances = t => arenaCat.tiers.map((x, i) => t[i] > 0 ? `<span class="tier-${x.id} it-tier">${x.name} ${t[i] >= 0.1 ? Math.round(t[i] * 100) + '%' : '1 in ' + Math.round(1 / t[i]).toLocaleString('en-US')}</span>` : '').join('');
-        html = `<div class="cases">${Object.entries(arenaCat.cases).map(([k, c]) =>
+        // 6.1 (Max): Cases kaufen -> "Your cases", dort oeffnen; Daily Case Wheel
+        const mine = Object.entries(hub.cases || {}).filter(([k, n]) => n > 0 && arenaCat.cases[k]);
+        const ready = hub.wheel && hub.wheel.ready;
+        const C = arenaCat.cases;
+        html = `<div class="case-view" id="hub-caseview" hidden><div class="sh-pointer"></div><div class="sh-strip" id="hub-strip"></div></div>` +
+            `<div id="hub-caseres"></div>` +
+            `<div class="km-wheelbox"><div class="pw-wrap"><canvas id="ar-wheel" width="340" height="340"></canvas><div class="pw-pointer">▼</div></div>` +
+            `<div class="km-wheelside"><h3>🎡 Daily Case Wheel</h3><div>One free spin every day. Every prize is a case for your inventory.</div>` +
+            `<button type="button" class="gold" id="ar-spin" ${ready && !pwBusy['ar-wheel'] ? '' : 'disabled'}>${ready ? '🎡 Spin for free' : '✔ Spun today – come back tomorrow'}</button>` +
+            `<small class="hint">40 % 1× · 25 % 2× · 10 % 3× ${C.elite.icon} ${esc(C.elite.name)} · 20 % ${C.elite50.icon} ${esc(C.elite50.name)} · 5 % ${C.jackpot.icon} ${esc(C.jackpot.name)} (only here, Sovereign odds)</small></div></div>` +
+            `<h3 class="kd-h">Your cases</h3><div class="cases">${mine.map(([k, n]) => {
+                const c = C[k];
+                return `<div class="case-card case-${k} case-own"><span class="km-invn">×${n}</span><span class="it-ico">${c.icon}</span><b>${esc(c.name)}</b><small>${esc(c.desc)}</small>` +
+                    `<div class="chances">${chances(c.tiers)}</div><button type="button" class="gold" data-caseopen="${k}">Open</button></div>`;
+            }).join('') || '<div class="hint">No unopened cases – buy some below or spin the wheel. Cases can be traded in the 🏛️ Market.</div>'}</div>` +
+            `<h3 class="kd-h">Case shop</h3><div class="hint">Bought cases go to "Your cases" above.</div>` +
+            `<div class="cases">${Object.entries(C).filter(([, c]) => !c.wheel).map(([k, c]) =>
             `<div class="case-card case-${k}"><span class="it-ico">${c.icon}</span><b>${esc(c.name)}</b><small>${esc(c.desc)}</small>` +
             `<div class="chances">${chances(c.tiers)}</div>` +
-            `<button type="button" class="gold" data-case="${k}">${c.currency === 'scrap' ? '⚙️' : '🪙'} ${c.price.toLocaleString('en-US')}</button></div>`).join('')}</div>` +
-            `<div class="case-view" id="hub-caseview" hidden><div class="sh-pointer"></div><div class="sh-strip" id="hub-strip"></div></div>` +
-            `<div id="hub-caseres"></div>`;
+            `<button type="button" class="gold" data-case="${k}">Buy ${c.currency === 'scrap' ? '⚙️' : '🪙'} ${c.price.toLocaleString('en-US')}</button></div>`).join('')}</div>`;
     } else if (hubTab === 'shop') {
         const btn = (o, n = 1) => `<button type="button" class="${o.currency === 'scrap' ? 'ghost' : 'gold'}" data-buy="${o.id}" data-n="${n}">${n > 1 ? n + '× ' : ''}${o.currency === 'scrap' ? '⚙️' : '🪙'} ${(o.price * n).toLocaleString('en-US')}</button>`;
         const card = o => {
@@ -10471,6 +10507,7 @@ function hubDraw() {
             `<button type="button" data-hubsub="${k}" class="${hubTab === k ? 'on' : ''}">${n}</button>`).join('')}</div>` + html;
     }
     $('hub-body').innerHTML = html;
+    if (hubTab === 'cases') pwIdle('ar-wheel', arWheelSegs());
 }
 
 function hubActions(it) {
@@ -10583,6 +10620,13 @@ $('hub-body').addEventListener('click', e => {
         return wsSend({ type: 'arSalvage', uids: [ds.salvage] });
     }
     if (ds.case) return wsSend({ type: 'arCase', id: ds.case });
+    if (ds.caseopen) return wsSend({ type: 'arCaseOpen', id: ds.caseopen });
+    if (t.id === 'ar-spin') {
+        if (!hub.wheel || !hub.wheel.ready || pwBusy['ar-wheel']) return;
+        pwBusy['ar-wheel'] = true;
+        t.disabled = true;
+        return wsSend({ type: 'arWheel' });
+    }
     if (ds.buy) return wsSend({ type: 'arBuy', id: ds.buy, n: Number(ds.n) || 1 });
     const slotEl = t.closest('.lo-slot[data-slot]');
     if (slotEl && !t.matches('button')) {

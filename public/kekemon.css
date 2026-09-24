@@ -2291,3 +2291,167 @@ body.world-cards #kekemon > .card {
         display: none;
     }
 }
+
+/* ---------- 6.1: Gluecksrad, Pack-Inventar, Info beim Aufdecken ---------- */
+
+.km-wheelbox {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px 28px;
+    margin-top: 8px;
+    padding: 14px;
+    border-radius: 16px;
+    background: radial-gradient(ellipse at 30% 50%, rgba(255,210,63,.12), transparent 60%), rgba(255,255,255,.03);
+    border: 1px solid rgba(255,210,63,.3);
+}
+
+.km-wheelside {
+    flex: 1 1 240px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.km-wheelside h3 {
+    margin: 0;
+}
+
+.km-wheelside button {
+    align-self: flex-start;
+}
+
+.pw-wrap {
+    position: relative;
+    width: min(300px, 80vw);
+    aspect-ratio: 1;
+    flex: none;
+}
+
+.pw-wrap canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.pw-pointer {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 28px;
+    color: #ffd23f;
+    text-shadow: 0 2px 4px #000;
+    pointer-events: none;
+}
+
+.km-invpack {
+    position: relative;
+}
+
+.km-invn {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    font-weight: 900;
+    font-size: 18px;
+    color: #ffd23f;
+    text-shadow: 0 1px 3px #000;
+}
+
+.km-have {
+    display: block;
+    margin-top: 6px;
+    color: #7dffb0;
+}
+
+.km-reveal {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+}
+
+.km-rinfo {
+    width: 190px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px;
+    border-radius: 14px;
+    background: rgba(0,0,0,.45);
+    border: 1px solid rgba(255,255,255,.12);
+}
+
+.km-rinfo.pop {
+    animation: km-ri-pop .35s ease-out;
+}
+
+@keyframes km-ri-pop {
+    from { opacity: 0; transform: translateX(14px); }
+}
+
+.km-ri-r {
+    font-size: 22px;
+    font-weight: 900;
+}
+
+.km-ri-v {
+    font-size: 20px;
+    font-weight: 900;
+    color: #ffd23f;
+    display: flex;
+    flex-direction: column;
+}
+
+.km-ri-v small {
+    font-size: 11px;
+    font-weight: 400;
+    color: #9aa7b8;
+}
+
+.km-ri-t {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 8px;
+    background: rgba(255,255,255,.08);
+}
+
+.km-ri-t .kc-ball {
+    width: 18px;
+    height: 18px;
+    position: static;
+}
+
+.km-ri-t.vm { color: #c9a2ff; }
+.km-ri-t.vp { color: #ff8a9a; }
+.km-ri-t.vs { color: #ffe27a; }
+.km-ri-t.new { color: #7dffb0; }
+
+@media (max-width: 700px) {
+    .km-reveal {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .km-rinfo {
+        width: auto;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 10px;
+    }
+
+    .km-ri-r,
+    .km-ri-v {
+        font-size: 16px;
+    }
+}
+
+.case-own {
+    position: relative;
+}

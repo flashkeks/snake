@@ -33,6 +33,7 @@ module.exports = function createTrade(h) {
                 return it ? A.view({ k: 'item', item: it }) : null;
             }
             if (r.k === 'card') return (u.cards || {})[r.key] >= r.n ? { k: 'card', key: r.key, n: r.n } : null;
+            if (r.k === 'pack' || r.k === 'case') return A.check(key, r) ? null : A.view({ k: r.k, id: r.id, n: r.n });
             return { k: 'cos', id: r.id };
         }).filter(Boolean);
     }

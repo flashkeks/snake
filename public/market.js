@@ -17,7 +17,9 @@ let trState = null;          // laufender Handel
 let trInvites = [];          // Anfragen an mich
 let trSrc = 'item';          // Quelle im Handelsfenster
 
-const MK_KIND = { item: '⚔️ Arena items', card: '🃏 Cards', cos: '🎨 Cosmetics' };
+const MK_KIND = { item: '⚔️ Arena items', card: '🃏 Cards', pack: '📦 Packs', case: '🧰 Cases', cos: '🎨 Cosmetics' };
+// Arten mit Stueckzahl (6.1: Packs und Cases wie Karten)
+const MK_COUNTED = new Set(['card', 'pack', 'case']);
 
 function mkFmt(n) {
     return Math.round(n || 0).toLocaleString('en-US');
@@ -50,6 +52,7 @@ function mkAsset(a, opt = {}) {
         if (!c) return '<div class="mk-cos">❔<b>Unknown card</b></div>';
         return `<div class="mk-cardwrap">${kmCard(c, { mini: true, v, count: a.n })}</div>`;
     }
+    if (a.k === 'pack' || a.k === 'case') return `<div class="mk-cos mk-box ${a.k}"><span>${a.icon || '❔'}</span><b>${a.n > 1 ? a.n + '× ' : ''}${esc(a.name || a.id)}</b><small>${a.k === 'pack' ? 'Kekémon pack' : 'Arena case'} · unopened</small></div>`;
     const it = COS[a.id];
     if (!it) return `<div class="mk-cos">❔<b>${esc(a.id)}</b></div>`;
     return `<div class="mk-cos" style="--rc:${RAR_COLOR[it.rarity] || '#cfd8e3'}"><span>${it.icon}</span><b>${esc(it.name)}</b><small>${esc(it.cat)} · ${esc(it.rarity || '')}</small></div>`;
@@ -61,6 +64,7 @@ function mkAssetName(a) {
         const c = kmCat && kmCat.byId[kmParse(a.key).id];
         return (a.n > 1 ? a.n + '× ' : '') + (c ? c.name : 'Card');
     }
+    if (a.k === 'pack' || a.k === 'case') return (a.n > 1 ? a.n + '× ' : '') + (a.name || a.id);
     return (COS[a.id] || {}).name || a.id;
 }
 
@@ -70,6 +74,7 @@ function mkAssetText(a) {
         const c = kmCat && kmCat.byId[kmParse(a.key).id];
         return c ? `${c.name} ${c.from} ${c.rarity}` : '';
     }
+    if (a.k === 'pack' || a.k === 'case') return `${a.name || a.id} ${a.k === 'pack' ? 'pack booster' : 'case'}`;
     const it = COS[a.id];
     return it ? `${it.name} ${it.cat} ${it.rarity}` : '';
 }
@@ -82,6 +87,9 @@ function mkMine(src, have) {
     if (src === 'card') {
         return Object.entries(have.cards).filter(([, n]) => n > 0).map(([key, n]) => ({ ref: { k: 'card', key, n: 1 }, asset: { k: 'card', key, n }, max: n }))
             .sort((a, b) => kmCat ? (kmRank({ id: kmParse(b.ref.key).id, v: kmParse(b.ref.key).v }) - kmRank({ id: kmParse(a.ref.key).id, v: kmParse(a.ref.key).v })) : 0);
+    }
+    if (src === 'pack' || src === 'case') {
+        return (have[src === 'pack' ? 'packs' : 'cases'] || []).map(x => ({ ref: { k: src, id: x.id, n: 1 }, asset: { k: src, ...x }, max: x.n }));
     }
     return have.cos.map(id => ({ ref: { k: 'cos', id }, asset: { k: 'cos', id } }));
 }
@@ -203,15 +211,15 @@ function mkSellView() {
     const srcs = Object.entries(MK_KIND).map(([k, n]) => `<button type="button" class="${mkSellSrc === k ? 'on' : ''}" data-mksrc="${k}">${n}</button>`).join('');
     const list = mkMine(mkSellSrc);
     const pick = list.map((x, i) => {
-        const sel = mkSell && JSON.stringify(mkSell.ref.k === 'card' ? { ...mkSell.ref, n: 1 } : mkSell.ref) === JSON.stringify(x.ref);
+        const sel = mkSell && JSON.stringify(MK_COUNTED.has(mkSell.ref.k) ? { ...mkSell.ref, n: 1 } : mkSell.ref) === JSON.stringify(x.ref);
         return `<div class="mk-pick ${sel ? 'sel' : ''}" data-mkpick="${i}">${mkAsset(x.asset)}</div>`;
     }).join('');
     const note = mkSellSrc === 'item' ? 'Items in your arena loadout are locked – take them off first.'
         : mkSellSrc === 'cos' ? 'Only bought cosmetics can be sold. If you wear it, it comes off.'
-        : !list.length ? 'You have no Kekémon cards yet – open packs in 🃏 Kekémon first.' : '';
+        : !list.length ? (mkSellSrc === 'card' ? 'You have no Kekémon cards yet – open packs in 🃏 Kekémon first.' : 'Nothing here yet.') : '';
     let form = '<div class="hint">Pick something above.</div>';
     if (mkSell) {
-        const card = mkSell.ref.k === 'card';
+        const card = MK_COUNTED.has(mkSell.ref.k);
         form = `<div class="mk-form">
             <div><b>Selling:</b> ${esc(mkSell.label)}</div>
             ${card ? `<label>Amount <input type="number" id="mk-n" min="1" max="${mkSell.max}" value="${mkSell.ref.n}"> <small>of ${mkSell.max}</small></label>` : ''}
@@ -304,7 +312,7 @@ function trDraw() {
     const list = mkMine(trSrc);
     const pick = list.map((x, i) => {
         const o = has(x.ref);
-        return `<div class="mk-pick ${o ? 'sel' : ''}" data-trpick="${i}">${mkAsset(x.asset)}${o && o.k === 'card' ? `<span class="tr-n">${o.n}/${x.max}</span>` : ''}</div>`;
+        return `<div class="mk-pick ${o ? 'sel' : ''}" data-trpick="${i}">${mkAsset(x.asset)}${o && MK_COUNTED.has(o.k) ? `<span class="tr-n">${o.n}/${x.max}</span>` : ''}</div>`;
     }).join('');
     box.innerHTML = `<div class="tr-card">
         <div class="tr-head"><b>🤝 Trading with ${esc(S.them.name)}</b>
@@ -324,7 +332,7 @@ function trPick(i) {
     if (!x) return;
     const refs = trState.me.refs.map(r => ({ ...r }));
     const j = refs.findIndex(r => r.k === x.ref.k && (r.k === 'item' ? r.uid === x.ref.uid : r.k === 'card' ? r.key === x.ref.key : r.id === x.ref.id));
-    if (x.ref.k === 'card') {
+    if (MK_COUNTED.has(x.ref.k)) {
         if (j < 0) refs.push({ ...x.ref, n: 1 });
         else if (refs[j].n < x.max) refs[j].n++;
         else refs.splice(j, 1);
@@ -793,7 +801,7 @@ $('mk-body').addEventListener('click', e => {
     if (t.id === 'mk-list' && mkSell) {
         const num = id => Number(($(id) || {}).value) || 0;
         const ref = { ...mkSell.ref };
-        if (ref.k === 'card') ref.n = Math.max(1, Math.min(mkSell.max, Math.floor(num('mk-n')) || 1));
+        if (MK_COUNTED.has(ref.k)) ref.n = Math.max(1, Math.min(mkSell.max, Math.floor(num('mk-n')) || 1));
         const kind = mkSell.kind === 'auction' ? 'auction' : 'bin';
         const msg = { type: 'mkList', ref, kind, bin: num('mk-bin'), start: num('mk-start'), hours: num('mk-hours') };
         if (kind === 'bin' && msg.bin < 1) return showMsg('mk-msg', 'Set a price', 'err');

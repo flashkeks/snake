@@ -197,7 +197,12 @@ const PACKS = {
     film: { name: 'Heroes & Series Booster', icon: '🎬', sets: ['hero', 'tv'], price: 10000, size: 5, sure: 1 },
     // 5.1b (Max): nur weibliche Figuren aus Anime und Comics (Geschlecht aus AniList/Superhero-API)
     waifu: { name: 'Waifu Booster', icon: '💖', sets: ['anime', 'hero'], only: 'f', price: 10000, size: 5, sure: 1 },
-    mixed: { name: 'Kek Mega Booster', icon: '🃏', sets: ['anime', 'hero', 'tv'], price: 50000, size: 8, sure: 3, mega: true }
+    mixed: { name: 'Kek Mega Booster', icon: '🃏', sets: ['anime', 'hero', 'tv'], price: 50000, size: 8, sure: 3, mega: true },
+    // 6.1 (Max): nur aus dem Daily Pack Wheel, nicht im Shop (wheel: true).
+    // Daily: alles moeglich, Chancen wie die 10k-Packs. Jackpot: Chancen wie
+    // der Mega Booster, 50 % mehr Karten (12 statt 8, 5 statt 3 sicher Rare+)
+    daily: { name: 'Daily Booster', icon: '🎁', sets: ['anime', 'hero', 'tv'], price: 10000, size: 5, sure: 1, wheel: true },
+    jackpot: { name: 'Jackpot Booster', icon: '🌟', sets: ['anime', 'hero', 'tv'], price: 75000, size: 12, sure: 5, mega: true, wheel: true }
 };
 // Gewichte je Platz (Summe egal, wird normiert)
 const ODDS = {

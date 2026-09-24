@@ -5,7 +5,7 @@
 // Staerke: Seltenheit der Leiter-Karten, Multiplikator auf HP/Schaden, KI-Stufe
 // (0 greift nur an, 1 laedt klug auf, 2 wechselt auch bei schlechter Paarung).
 //
-// Belohnung: erster Sieg = Coins + Gratis-Pack (wird im Browser geoeffnet);
+// Belohnung: erster Sieg = Coins + Gratis-Pack (seit 6.1 ins Pack-Inventar);
 // danach 15 % der Coins, hoechstens 3 belohnte Siege je Arena und Tag.
 // Fortschritt je Konto in u.kmGyms = { gymId: { cleared, day, today, wins } }.
 //
@@ -126,14 +126,10 @@ module.exports = function createGyms(h) {
                 s.cleared = Date.now();
                 res.first = true;
                 res.coins = g.coins;
-                const got = cards.openPack(cardDb, g.pack);
-                u.cards = u.cards || {};
-                const fresh = got.map(x => !Object.keys(u.cards).some(k => cards.parseKey(k).id === x.id && u.cards[k] > 0));
-                for (const x of got) {
-                    const k = cards.keyOf(x.id, x.v);
-                    u.cards[k] = (u.cards[k] || 0) + 1;
-                }
-                res.pack = { pack: g.pack, cards: got, fresh };
+                // Seit 6.1 ungeoeffnet ins Pack-Inventar (Tab "Packs")
+                u.packs = u.packs || {};
+                u.packs[g.pack] = (u.packs[g.pack] || 0) + 1;
+                res.pack = { pack: g.pack };
                 h.feed(`🏆 ${u.name} beat ${g.icon} ${g.name}!`, g.id === 'champ' ? 'gold' : 'good');
             } else if ((s.today || 0) < REPEAT_PER_DAY) {
                 s.today = (s.today || 0) + 1;

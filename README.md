@@ -1126,6 +1126,31 @@ der Statistik unter `earned.cards`.
 | Mythic | 1 in 20 000 | 1 in 3 478 | 1 in 1000 |
 | Ultra | 1 in 200 000 | 1 in 34 783 | 1 in 10 000 |
 
+## 🎡 Inventar fuer Packs und Cases, Tages-Raeder (6.1)
+
+Max (24.09.2026, Vorschlag SINTHSBen „daily kekmon free pack"):
+
+- **Packs landen im Inventar** `u.packs = { packId: n }`: gekauft (`kmBuy {pack,
+  n}`), Gym-Erstsieg, Rad. Geoeffnet wird im Tab 📦 Packs (`kmOpen {pack}`).
+  Tabs jetzt: 🛒 Pack Shop · 📦 Packs · 📖 Collection · 🏟️ Gyms · ⚔️ Duels (der
+  alte Trade-Tab ist weg – Handel laeuft im Markt).
+- **Neue Packs, nur aus dem Rad** (`wheel: true`, nicht kaeuflich): Daily
+  Booster (alle Reihen, Chancen wie die 10k-Packs, 5 Karten) und Jackpot
+  Booster (Mega-Chancen, 12 statt 8 Karten, 5 statt 3 sicher Rare+).
+- **Daily Pack Wheel** / **Daily Case Wheel** (`wheels.js`), je einmal pro Tag
+  (Europe/Berlin, `u.dailyPackDay` / `u.dailyCaseDay`): 40 % 1×, 25 % 2×,
+  10 % 3× Grundpreis (Daily Booster bzw. Elite case General), 20 % gross
+  (Kek Mega Booster bzw. Elite+ case General), 5 % Jackpot (Jackpot Booster
+  bzw. Jackpot case – Sovereign-Chancen, nur aus dem Rad). 12 Felder als Optik,
+  gezogen wird nach Gewicht. Nachrichten `kmWheel`, `arWheel`.
+- **Cases** genauso: `arCase {id, n}` kauft nach `arena.cases`, `arCaseOpen {id}`
+  oeffnet (Band-Animation wie bisher).
+- **Handelbar:** `assets.js` kennt `{ k: 'pack' | 'case', id, n }` – direkter
+  Handel und Auktionshaus, mit Stueckzahl wie Karten; Name/Icon kommen vom
+  Server mit.
+- **Beim Aufdecken** rechts Kurzinfo: Seltenheit, Wert, Pokéball/Masterball
+  (×3 / ×20), Shiny (×25). Wert = Grundwert der Seltenheit (`SELL`) × Ball × Shiny.
+
 ## ⚔️ Kekémon-Kampfsystem 6.0 (nach Pokémon Showdown)
 
 Max (24.09.2026): „das Karten Fighting System ist ein wenig boring … jeder hat

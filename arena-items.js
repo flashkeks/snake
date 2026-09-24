@@ -224,7 +224,9 @@ const CASES = {
     elite_w50: { name: 'Elite+ case Weapons', icon: '🎯', price: 50000, currency: 'coins', source: 'elite_w50', desc: 'Better odds than Elite – weapons only' },
     elite_a50: { name: 'Elite+ case Armor', icon: '🏰', price: 50000, currency: 'coins', source: 'elite_a50', desc: 'Better odds than Elite – armor and backpacks only' },
     sovereign: { name: 'Sovereign case', icon: '👑', price: 100000, currency: 'coins', source: 'sovereign', desc: 'Rare or better – the only real shot at Mythic and Ultra' },
-    scrap: { name: 'Scrap case', icon: '🧰', price: 60, currency: 'scrap', source: 'scrapcase', desc: 'Cheap, paid with scrap' }
+    scrap: { name: 'Scrap case', icon: '🧰', price: 60, currency: 'scrap', source: 'scrapcase', desc: 'Cheap, paid with scrap' },
+    // 6.1: nur aus dem Daily Case Wheel (wheel: true), Chancen wie der Sovereign case
+    jackpot: { name: 'Jackpot case', icon: '🎰', price: 100000, currency: 'coins', source: 'sovereign', desc: 'Only from the Daily Case Wheel – Sovereign odds', wheel: true }
 };
 
 // Shop: Grundwaffen und Grund-Verbrauchsgut (keine Ruestung – die gibt es nur

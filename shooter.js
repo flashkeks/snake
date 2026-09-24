@@ -476,7 +476,9 @@ module.exports = function createArena(h, opts = {}) {
         const u = h.accounts.get(c.account);
         h.send(c, {
             type: 'arHub', inv: a.inv.map(it => ({ ...it, sv: I.salvageValue(it) })), loadout: a.loadout,
-            scrap: a.scrap, coins: u.coins, inRaid: players.has(c.id), prog: progView(c, a), pvp: a.pvp || null, zombies: a.zombies || null, ...extra
+            scrap: a.scrap, coins: u.coins, inRaid: players.has(c.id), prog: progView(c, a), pvp: a.pvp || null, zombies: a.zombies || null,
+            // 6.1: ungeoeffnete Cases und Daily Case Wheel
+            cases: a.cases || {}, wheel: h.wheels ? { ready: h.wheels.ready('case', u), segs: h.wheels.segments('case') } : null, ...extra
         });
     }
 
@@ -548,12 +550,38 @@ module.exports = function createArena(h, opts = {}) {
             addItems(c, items);
             return sendHub(c, { got: { ...items[0], n } });
         }
+        // Kaufen (6.1): landet ungeoeffnet bei "Your cases"
         if (d.type === 'arCase') {
             const cs = Object.prototype.hasOwnProperty.call(I.CASES, d.id) ? I.CASES[d.id] : null;
-            if (!cs) return;
-            if (a.inv.length >= I.INV_MAX) return h.send(c, { type: 'arError', error: 'Your stash is full – salvage something first' });
-            const err = pay(c, cs.price, cs.currency);
+            if (!cs || cs.wheel) return;
+            const n = Math.max(1, Math.min(10, Math.floor(Number(d.n)) || 1));
+            const err = pay(c, cs.price * n, cs.currency);
             if (err) return h.send(c, { type: 'arError', error: err });
+            a.cases = a.cases || {};
+            a.cases[d.id] = (a.cases[d.id] || 0) + n;
+            h.accounts.touch();
+            return sendHub(c, { caseBought: { id: d.id, n } });
+        }
+        // Daily Case Wheel (6.1)
+        if (d.type === 'arWheel') {
+            const r = h.wheels ? h.wheels.spin('case', c.account) : { err: 'No wheel' };
+            if (r.err) return h.send(c, { type: 'arError', error: r.err });
+            const [cid, n] = r.prize;
+            a.cases = a.cases || {};
+            a.cases[cid] = (a.cases[cid] || 0) + n;
+            h.accounts.stat(c.account, s => { s.caseWheels = (s.caseWheels || 0) + 1; });
+            h.accounts.touch();
+            if (r.slot === 'jackpot') h.feed(`🎰 ${h.accounts.get(c.account).name} hit the JACKPOT on the Daily Case Wheel!`, 'gold');
+            return sendHub(c, { wheelSpin: { index: r.index, prize: r.prize } });
+        }
+        // Oeffnen aus dem Inventar (6.1)
+        if (d.type === 'arCaseOpen') {
+            const cs = Object.prototype.hasOwnProperty.call(I.CASES, d.id) ? I.CASES[d.id] : null;
+            a.cases = a.cases || {};
+            if (!cs || !(a.cases[d.id] > 0)) return h.send(c, { type: 'arError', error: 'You have no such case' });
+            if (a.inv.length >= I.INV_MAX) return h.send(c, { type: 'arError', error: 'Your stash is full – salvage something first' });
+            a.cases[d.id]--;
+            if (!a.cases[d.id]) delete a.cases[d.id];
             const item = I.generate(cs.source);
             addItems(c, [item]);
             h.accounts.stat(c.account, s => { s.casesOpened = (s.casesOpened || 0) + 1; });
