@@ -2361,3 +2361,15 @@ Thorns, Dodge). `fuse()`/`fuseUseless()` nehmen die Effekt-Tabelle nach
 und Basis. Der Tab zeigt Waffen und Ruestungsteile in zwei Abschnitten.
 Test im Browser: Scout cap Plating I + Scout cap Plating I -> Plating II, −500 Scrap;
 Rare-Cap ohne Effekt ausgegraut.
+
+## 🪟 6.12: Eigenes Bestaetigungs-Overlay (Max: Browser-Popups sehen schlecht aus)
+
+`uiConfirm(text, { title, ok, danger })` -> `Promise<boolean>` und
+`uiPrompt(text, value, { title, ok })` -> `Promise<string|null>` in `index.html`
+(global, auch von `kekemon.js` und `market.js` genutzt). Enter bestaetigt, Esc
+oder Klick daneben bricht ab; Tasten gehen waehrend des Dialogs nicht ans Spiel
+(Capture-Listener mit `stopPropagation`, gehaltene Bewegungstasten werden
+zurueckgesetzt). Alle 20 `confirm()`/`prompt()` im Spiel ersetzt: Aufgeben/
+Verlassen, Fuse, Salvage, Loadouts, Skill-Reset, Karten verkaufen/fuettern,
+Duell aufgeben, Team umbenennen, Markt kaufen/bieten, Konto loeschen, Bonus-Kauf.
+Das Admin-Panel ist nicht betroffen.

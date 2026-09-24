@@ -6327,6 +6327,16 @@ body.watch-mode #world-switch {
 #rs-banner.hot { background: linear-gradient(135deg, #4a0a0a, #8a1a1a); border-color: #ff5b5b; color: #ffd0d0; animation: rsPulse 1s ease-in-out infinite; }
 @keyframes rsPulse { 50% { box-shadow: 0 6px 30px rgba(255,91,91,.7); } }
 .fav-tag { position: absolute; top: 3px; right: 5px; font-size: 13px; filter: drop-shadow(0 0 3px rgba(255,210,63,.8)); pointer-events: none; }
+
+/* 6.12 (Max): eigenes Bestaetigungs-Overlay statt Browser-confirm/prompt */
+#ui-dlg { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; background: rgba(4,6,10,.62); backdrop-filter: blur(3px); animation: uiDlgIn .12s ease-out; }
+#ui-dlg .box { width: min(420px, calc(100vw - 32px)); background: linear-gradient(180deg, #1a1f2b, #11141c); border: 1px solid rgba(255,91,214,.45); border-radius: 14px; box-shadow: 0 18px 60px rgba(0,0,0,.6), 0 0 24px rgba(255,91,214,.18); padding: 18px 18px 14px; color: #e8ecf4; }
+#ui-dlg .ttl { font-weight: 800; font-size: 17px; margin-bottom: 8px; }
+#ui-dlg .txt { font-size: 14.5px; line-height: 1.5; color: #c9d1de; white-space: pre-line; }
+#ui-dlg input { width: 100%; margin-top: 12px; box-sizing: border-box; }
+#ui-dlg .btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+#ui-dlg .btns button { min-width: 96px; }
+@keyframes uiDlgIn { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
 </style>
 <link rel="stylesheet" href="/kekemon.css">
 <link rel="stylesheet" href="/market.css">
@@ -7295,6 +7305,51 @@ function esc(s) {
     return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+// 6.12 (Max: Browser-Popups sehen „ueber arsch aus"): eigenes Overlay.
+// uiConfirm(text, { title, ok, danger }) -> Promise<boolean>
+// uiPrompt(text, value, { title, ok }) -> Promise<string|null>
+// Enter bestaetigt, Esc bricht ab; Tasten gehen nicht ans Spiel durch.
+let uiDlgDone = null;
+function uiDialog(text, o, input) {
+    if (uiDlgDone) uiDlgDone(null);
+    return new Promise(res => {
+        const el = document.createElement('div');
+        el.id = 'ui-dlg';
+        el.innerHTML = `<div class="box" role="dialog" aria-modal="true">${o.title ? `<div class="ttl">${esc(o.title)}</div>` : ''}<div class="txt">${esc(text)}</div>` +
+            (input ? `<input type="text" maxlength="40" value="${esc(o.value || '')}">` : '') +
+            `<div class="btns"><button type="button" class="ghost" data-dlg="0">${esc(o.cancel || 'Cancel')}</button><button type="button" class="${o.danger ? 'danger' : 'gold'}" data-dlg="1">${esc(o.ok || 'OK')}</button></div></div>`;
+        const inp = el.querySelector('input');
+        const key = e => {
+            e.stopPropagation();
+            if (e.key === 'Escape') { e.preventDefault(); done(false); }
+            else if (e.key === 'Enter') { e.preventDefault(); done(true); }
+        };
+        const done = ok => {
+            if (!el.isConnected) return;
+            el.remove();
+            document.removeEventListener('keydown', key, true);
+            document.removeEventListener('keyup', stop, true);
+            uiDlgDone = null;
+            res(input ? (ok ? inp.value : null) : !!ok);
+        };
+        const stop = e => e.stopPropagation();
+        uiDlgDone = () => done(false);
+        el.addEventListener('click', e => {
+            const b = e.target.closest('[data-dlg]');
+            if (b) done(b.dataset.dlg === '1');
+            else if (e.target === el) done(false);
+        });
+        document.addEventListener('keydown', key, true);
+        document.addEventListener('keyup', stop, true);
+        if (typeof shKeysReset === 'function') shKeysReset();
+        document.body.appendChild(el);
+        (inp || el.querySelector('[data-dlg="1"]')).focus();
+        if (inp) inp.select();
+    });
+}
+const uiConfirm = (text, o = {}) => uiDialog(text, o, false);
+const uiPrompt = (text, value, o = {}) => uiDialog(text, { ...o, value }, true);
+
 function showMsg(id, text, kind) {
     const el = $(id);
     el.textContent = text || '';
@@ -7425,7 +7480,7 @@ $('play-btn').onclick = () => {
 };
 
 $('leave-btn').onclick = () => {
-    if (confirm('Leave the game? Without cashing out your score is lost.')) wsSend({ type: 'leave' });
+    uiConfirm('Without cashing out your score is lost.', { title: 'Leave the game?', ok: 'Leave', danger: true }).then(ok => ok && wsSend({ type: 'leave' }));
 };
 
 $('slots-btn').onclick = () => {
@@ -7455,9 +7510,11 @@ $('pw-form').addEventListener('submit', e => {
 
 $('del-form').addEventListener('submit', e => {
     e.preventDefault();
-    if (!confirm('Really delete your account and all coins?')) return;
-    wsSend({ type: 'deleteAccount', password: $('del-pass').value });
-    $('del-pass').value = '';
+    uiConfirm('Your account and all coins are gone for good.', { title: 'Delete account?', ok: 'Delete', danger: true }).then(ok => {
+        if (!ok) return;
+        wsSend({ type: 'deleteAccount', password: $('del-pass').value });
+        $('del-pass').value = '';
+    });
 });
 
 // Konto-Seite: Ueberblick plus Tabelle je Spiel (#5)
@@ -10065,7 +10122,7 @@ function s2Error(msg) {
     s2Done();
 }
 
-function s2Start(buy) {
+function s2Start(buy, sure) {
     if (s2Busy || !me || !s2Info) return;
     sfxInit();
     const cost = buy ? s2Bet * s2Info.buyCost : s2Bet;
@@ -10073,7 +10130,7 @@ function s2Start(buy) {
         $('s2-log').textContent = 'Not enough coins';
         return;
     }
-    if (buy && !confirm(`Buy the bonus for ${cost} coins?`)) return;
+    if (buy && !sure) return uiConfirm(`Buy the bonus for ${cost.toLocaleString('en-US')} coins?`, { title: 'Bonus buy', ok: 'Buy' }).then(ok => ok && s2Start(true, true));
     s2Busy = true;
     $('s2-spin').disabled = true;
     $('s2-buy').disabled = true;
@@ -10953,7 +11010,7 @@ function profClick(t, ds, e) {
     if (ds.prof === 'reset') {
         const stats = ds.what === 'stats';
         const c = stats ? pr.resetCost : pr.trees[hubMode].resetCost;
-        if (confirm(`Reset ${stats ? 'ALL stat points (they count for every mode)' : `your ${HUB_MODES[hubMode]} skill tree`}?\nCosts ${c.coins.toLocaleString('en-US')} coins and ${c.scrap.toLocaleString('en-US')} scrap. You get the points back to spend again.`)) wsSend({ type: 'arProg', op: 'reset', mode: hubMode, what: stats ? 'stats' : 'tree' });
+        uiConfirm(`Reset ${stats ? 'ALL stat points (they count for every mode)' : `your ${HUB_MODES[hubMode]} skill tree`}?\nCosts ${c.coins.toLocaleString('en-US')} coins and ${c.scrap.toLocaleString('en-US')} scrap. You get the points back to spend again.`, { title: 'Reset points', ok: 'Reset', danger: true }).then(ok => ok && wsSend({ type: 'arProg', op: 'reset', mode: hubMode, what: stats ? 'stats' : 'tree' }));
     }
 }
 
@@ -11357,7 +11414,7 @@ $('hub-lv').onclick = () => { if (!hubCaseBusy) { hubTab = 'profile'; hubDraw();
 $('hub-body').addEventListener('change', e => {
     if (e.target.id === 'lo-copyfrom' && e.target.value) {
         const from = e.target.value;
-        if (confirm(`Replace your ${HUB_MODES[hubMode]} loadout with your ${HUB_MODES[from]} loadout?`)) wsSend({ type: 'arPreset', mode: hubMode, op: 'copy', from });
+        uiConfirm(`Replace your ${HUB_MODES[hubMode]} loadout with your ${HUB_MODES[from]} loadout?`, { title: 'Copy loadout', ok: 'Replace' }).then(ok => ok && wsSend({ type: 'arPreset', mode: hubMode, op: 'copy', from }));
         e.target.value = '';
     }
 });
@@ -11449,8 +11506,9 @@ function fuseClick(t, ds) {
     if (t.id === 'fuse-go') {
         const picked = hub.inv.filter(x => fuseSel.has(x.uid));
         const eq = picked.filter(x => hubEquippedAs(x.uid)).length, rare = picked.filter(x => tierIdx(x.tier) >= 3).length;
-        if (!confirm(`Fuse ${picked.length} item${picked.length > 1 ? 's' : ''} into ${hub.inv.find(x => x.uid === fuseMain).name} for ${arenaCat.fuse.cost * picked.length} scrap? They are gone afterwards.${eq ? `\n${eq} of them are in your loadout.` : ''}${rare ? `\n${rare} of them are Epic or better.` : ''}`)) return true;
-        wsSend({ type: 'arFuse', main: fuseMain, with: [...fuseSel] });
+        const main = fuseMain, sel = [...fuseSel];
+        uiConfirm(`Fuse ${picked.length} item${picked.length > 1 ? 's' : ''} into ${hub.inv.find(x => x.uid === fuseMain).name} for ${arenaCat.fuse.cost * picked.length} scrap? They are gone afterwards.${eq ? `\n${eq} of them are in your loadout.` : ''}${rare ? `\n${rare} of them are Epic or better.` : ''}`, { title: '🔥 Fuse', ok: 'Fuse' })
+            .then(ok => ok && wsSend({ type: 'arFuse', main, with: sel }));
         return true;
     }
     return false;
@@ -11470,9 +11528,11 @@ function hubSalvage(uids) {
     // Mehrfach-Salvage fragt immer nach (Wunsch Max), einzelne Items nur ab Rare
     if (!uids.length) return;
     const scrap = hub.inv.filter(x => uids.includes(x.uid)).reduce((s, x) => s + (x.sv || 0), 0);
-    if (!confirm(`Really salvage ${uids.length} item${uids.length === 1 ? '' : 's'}?${scrap ? ` You get ${scrap.toLocaleString('en')} scrap.` : ''}${rare ? `\n${rare} of them are Rare or better.` : ''}${eq ? `\n${eq} are in your loadout.` : ''}`)) return;
-    hubMulti.clear();
-    wsSend({ type: 'arSalvage', uids });
+    uiConfirm(`Really salvage ${uids.length} item${uids.length === 1 ? '' : 's'}?${scrap ? ` You get ${scrap.toLocaleString('en')} scrap.` : ''}${rare ? `\n${rare} of them are Rare or better.` : ''}${eq ? `\n${eq} are in your loadout.` : ''}`, { title: '♻️ Salvage', ok: 'Salvage', danger: true }).then(ok => {
+        if (!ok) return;
+        hubMulti.clear();
+        wsSend({ type: 'arSalvage', uids });
+    });
 }
 
 $('hub-body').addEventListener('click', e => {
@@ -11488,13 +11548,15 @@ $('hub-body').addEventListener('click', e => {
     if (ds.preset) {
         const i = ds.i === undefined ? undefined : Number(ds.i);
         const list = (hub.presets && hub.presets[hubMode]) || [];
+        const mode = hubMode;
         if (ds.preset === 'save') {
-            const name = i === undefined ? prompt('Name for this loadout:', `Loadout ${list.length + 1}`) : list[i].name;
-            if (name === null) return;
-            if (i !== undefined && !confirm(`Overwrite "${list[i].name}" with the current loadout?`)) return;
-            return wsSend({ type: 'arPreset', mode: hubMode, op: 'save', i, name });
+            if (i === undefined) return uiPrompt('Name for this loadout:', `Loadout ${list.length + 1}`, { title: 'Save loadout', ok: 'Save' })
+                .then(name => name !== null && wsSend({ type: 'arPreset', mode, op: 'save', i, name }));
+            return uiConfirm(`Overwrite "${list[i].name}" with the current loadout?`, { title: 'Save loadout', ok: 'Overwrite' })
+                .then(ok => ok && wsSend({ type: 'arPreset', mode, op: 'save', i, name: list[i].name }));
         }
-        if (ds.preset === 'delete' && !confirm(`Delete "${list[i].name}"?`)) return;
+        if (ds.preset === 'delete') return uiConfirm(`Delete "${list[i].name}"?`, { title: 'Delete loadout', ok: 'Delete', danger: true })
+            .then(ok => ok && wsSend({ type: 'arPreset', mode, op: 'delete', i }));
         return wsSend({ type: 'arPreset', mode: hubMode, op: ds.preset, i });
     }
     if (ds.pvp) return pvpClick(ds);
@@ -11521,9 +11583,9 @@ $('hub-body').addEventListener('click', e => {
     if (ds.fav) return wsSend({ type: 'arFav', uid: ds.fav, on: ds.on === '1' });
     if (ds.salvage) {
         const it = hub.inv.find(x => x.uid === ds.salvage) || (hub.overflow || []).find(x => x.uid === ds.salvage);
-        if (it && tierIdx(it.tier) >= 2 && it.kind !== 'util' && !confirm(`Salvage ${it.name} (${tierName(it.tier)})?`)) return;
-        hubSel = null;
-        return wsSend({ type: 'arSalvage', uids: [ds.salvage] });
+        const uid = ds.salvage, go = () => { hubSel = null; wsSend({ type: 'arSalvage', uids: [uid] }); };
+        if (it && tierIdx(it.tier) >= 2 && it.kind !== 'util') return uiConfirm(`Salvage ${it.name} (${tierName(it.tier)})?`, { title: '♻️ Salvage', ok: 'Salvage', danger: true }).then(ok => ok && go());
+        return go();
     }
     if (ds.case) return wsSend({ type: 'arCase', id: ds.case });
     if (ds.caseopen) return wsSend({ type: 'arCaseOpen', id: ds.caseopen });
@@ -13802,7 +13864,7 @@ $('hub-back').onclick = () => { if (!hubCaseBusy) setWorld('snake'); };
 $('sh-leave').onclick = () => {
     const q = sh && sh.mode === 'pvp' ? 'Leave the match? It counts as a loss (−20 rating). You keep all your items.'
         : sh && sh.mode === 'zombies' ? 'Leave the zombies game? Your waves so far count, you keep all your items.' : 'Leave the raid? You lose everything you carry – like dying.';
-    if (confirm(q)) wsSend({ type: 'shLeave' });
+    uiConfirm(q, { title: sh && sh.mode === 'extract' ? 'Give up the raid?' : 'Leave?', ok: 'Leave', danger: true }).then(ok => ok && wsSend({ type: 'shLeave' }));
 };
 $('sh-med').onclick = () => shUse(0);
 $('sh-use').onclick = () => wsSend({ type: 'shInteract' });

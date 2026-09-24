@@ -765,7 +765,7 @@ $('km-body').addEventListener('click', e => {
             if (kmCat.ridx[c.rarity] >= 2) rare += k;
         }
         if (!n) return showMsg('km-msg', 'No duplicates to sell', 'err');
-        if (confirm(`Sell ${n} duplicate card${n === 1 ? '' : 's'} for ${coins.toLocaleString('en-US')} coins?\nYou keep one of each, Pokéball/Masterball/Shiny cards are not sold.${rare ? `\n${rare} of them are Rare or better.` : ''}`)) wsSend({ type: 'kmSellDupes' });
+        uiConfirm(`Sell ${n} duplicate card${n === 1 ? '' : 's'} for ${coins.toLocaleString('en-US')} coins?\nYou keep one of each, Pokéball/Masterball/Shiny cards are not sold.${rare ? `\n${rare} of them are Rare or better.` : ''}`, { title: 'Sell duplicates', ok: 'Sell' }).then(ok => ok && wsSend({ type: 'kmSellDupes' }));
     }
 });
 
@@ -784,8 +784,9 @@ $('km-view').addEventListener('click', e => {
         const { id, v } = kmParse(fd.dataset.kmfeed);
         const c = kmCat.byId[id];
         const n = Number(fd.dataset.n);
-        if ((v || kmCat.ridx[c.rarity] >= 3 || n > 1) && !confirm(`Feed ${n}× ${kmVName(v)} ${c.name} to your ${kmVName(kmParse(fd.dataset.to).v)} copy? They are gone for good.`)) return;
-        return wsSend({ type: 'kmFeed', source: fd.dataset.kmfeed, target: fd.dataset.to, n });
+        const go = () => wsSend({ type: 'kmFeed', source: fd.dataset.kmfeed, target: fd.dataset.to, n });
+        if (v || kmCat.ridx[c.rarity] >= 3 || n > 1) return uiConfirm(`Feed ${n}× ${kmVName(v)} ${c.name} to your ${kmVName(kmParse(fd.dataset.to).v)} copy? They are gone for good.`, { title: 'Feed cards', ok: 'Feed', danger: true }).then(ok => ok && go());
+        return go();
     }
     const s = e.target.closest('[data-kmsell]');
     if (s) {
@@ -793,8 +794,9 @@ $('km-view').addEventListener('click', e => {
         const c = kmCat.byId[id];
         const n = Number(s.dataset.n);
         // Teure Karten nochmal bestaetigen
-        if ((v || kmCat.ridx[c.rarity] >= 3) && !confirm(`Sell ${n}× ${kmVName(v)} ${c.name} for ${(n * kmValue(c, v)).toLocaleString('en-US')} coins?`)) return;
-        return wsSend({ type: 'kmSell', key: s.dataset.kmsell, n });
+        const go = () => wsSend({ type: 'kmSell', key: s.dataset.kmsell, n });
+        if (v || kmCat.ridx[c.rarity] >= 3) return uiConfirm(`Sell ${n}× ${kmVName(v)} ${c.name} for ${(n * kmValue(c, v)).toLocaleString('en-US')} coins?`, { title: 'Sell card', ok: 'Sell' }).then(ok => ok && go());
+        return go();
     }
     const sh = e.target.closest('[data-kmshow]');
     if (sh) return kmView($('km-view').dataset.id, sh.dataset.kmshow);
@@ -1572,7 +1574,7 @@ $('km-body').addEventListener('click', e => {
     if (ds.kbunpick !== undefined) { kbPick.team.splice(Number(ds.kbunpick), 1); return kmDraw(); }
     if (t.id === 'kb-fight') { kbP.gym.lastTeam = kbPick.team.slice(); return wsSend({ type: 'kbStart', gym: kbPick.gym, team: kbPick.team }); }
     if (t.id === 'kd-ready') return wsSend({ type: 'kdTeam', team: kbPick.team });
-    if (t.id === 'kd-leave') { if (confirm('Leave this duel?')) { kbPick = null; wsSend({ type: 'kdCancel' }); } return; }
+    if (t.id === 'kd-leave') { uiConfirm('Leave this duel?', { ok: 'Leave', danger: true }).then(ok => { if (ok) { kbPick = null; wsSend({ type: 'kdCancel' }); } }); return; }
     if (t.id === 'kd-cancel') return wsSend({ type: 'kdCancel' });
     if (ds.kdto) { kdForm.target = ds.kdto; return kmDraw(); }
     if (t.id === 'kd-create') {
@@ -1582,7 +1584,7 @@ $('km-body').addEventListener('click', e => {
     }
     if (ds.kdjoin) return wsSend({ type: 'kdJoin', id: Number(ds.kdjoin) });
     if (ds.kddecline) return wsSend({ type: 'kdDecline', id: Number(ds.kddecline) });
-    if (ds.kbff) { if (confirm(duel && kd.duel && kd.duel.stake ? `Give up? You lose your stake of ${kd.duel.stake.toLocaleString('en-US')} coins.` : 'Give up this battle?')) act({ a: 'forfeit' }); return; }
+    if (ds.kbff) { uiConfirm(duel && kd.duel && kd.duel.stake ? `You lose your stake of ${kd.duel.stake.toLocaleString('en-US')} coins.` : 'This battle counts as lost.', { title: 'Give up?', ok: 'Give up', danger: true }).then(ok => ok && act({ a: 'forfeit' })); return; }
     if (t.id === 'kb-openpack') {
         Object.assign(kbP.gym, kbNewPlayer());
         wsSend({ type: 'kbGyms' });
@@ -1598,8 +1600,9 @@ $('km-body').addEventListener('click', e => {
     }
     if (ds.kbrename) {
         const cur = ((km && km.teams) || [])[kbSlot];
-        const name = prompt('Name for this team slot:', cur ? cur.name : 'Team ' + (kbSlot + 1));
-        if (name !== null) wsSend({ type: 'kmTeamSave', slot: kbSlot, name: name.trim(), keys: cur ? cur.keys : kbPick ? kbPick.team : [] });
+        uiPrompt('Name for this team slot:', cur ? cur.name : 'Team ' + (kbSlot + 1), { title: 'Rename team', ok: 'Save' }).then(name => {
+            if (name !== null) wsSend({ type: 'kmTeamSave', slot: kbSlot, name: name.trim(), keys: cur ? cur.keys : kbPick ? kbPick.team : [] });
+        });
         return;
     }
     if (t.id === 'kb-again') {

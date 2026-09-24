@@ -804,14 +804,14 @@ $('mk-body').addEventListener('click', e => {
     }
     if (ds.mkbuy) {
         const l = mk.listings.find(x => x.id === Number(ds.mkbuy));
-        if (l && confirm(`Buy ${mkAssetName(l.asset)} for ${mkFmt(l.bin)} coins?`)) wsSend({ type: 'mkBuy', id: l.id });
+        if (l) uiConfirm(`Buy ${mkAssetName(l.asset)} for ${mkFmt(l.bin)} coins?`, { title: 'Buy now', ok: 'Buy' }).then(ok => ok && wsSend({ type: 'mkBuy', id: l.id }));
         return;
     }
     if (ds.mkbid) {
         const inp = document.querySelector(`[data-bidin="${ds.mkbid}"]`);
         const n = Math.floor(Number(inp && inp.value) || 0);
         const l = mk.listings.find(x => x.id === Number(ds.mkbid));
-        if (l && n && confirm(`Bid ${mkFmt(n)} coins on ${mkAssetName(l.asset)}? The coins are taken now and come back if someone outbids you.`)) wsSend({ type: 'mkBid', id: l.id, amount: n });
+        if (l && n) uiConfirm(`Bid ${mkFmt(n)} coins on ${mkAssetName(l.asset)}? The coins are taken now and come back if someone outbids you.`, { title: 'Place bid', ok: 'Bid' }).then(ok => ok && wsSend({ type: 'mkBid', id: l.id, amount: n }));
         return;
     }
     if (ds.mkcancel) return wsSend({ type: 'mkCancel', id: Number(ds.mkcancel) });
