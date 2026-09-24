@@ -2482,3 +2482,18 @@ body.world-cards #kekemon > .card {
 .kb-xp span { background: rgba(255,255,255,.08); padding: 3px 8px; border-radius: 99px; }
 .kb-xp span.up { background: linear-gradient(90deg, rgba(255,210,63,.35), rgba(124,255,178,.25)); color: #fff; font-weight: 800; animation: kbLvUp 1.2s ease 2; }
 @keyframes kbLvUp { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); box-shadow: 0 0 14px rgba(255,210,63,.8); } }
+
+/* 6.7 Training + Booster-Teile */
+.kb-zones { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin: 8px 0 12px; }
+.kb-zone { background: linear-gradient(160deg, rgba(125,255,176,.10), rgba(0,0,0,.25)); border: 1px solid rgba(125,255,176,.35); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.kb-zone.z-canyon { background: linear-gradient(160deg, rgba(255,177,61,.12), rgba(0,0,0,.25)); border-color: rgba(255,177,61,.4); }
+.kb-zone.z-summit { background: linear-gradient(160deg, rgba(176,79,255,.14), rgba(0,0,0,.25)); border-color: rgba(176,79,255,.45); }
+.kb-zone .kb-gym-head small { display: block; }
+.kb-zone-rw { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 13px; opacity: .9; }
+.kb-zone button { align-self: flex-start; }
+.kb-frag { display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,.25); border: 1px dashed rgba(125,255,176,.4); border-radius: 12px; padding: 10px 14px; margin: 6px 0 14px; flex-wrap: wrap; }
+.kb-frag .ico { font-size: 28px; }
+.kb-frag > div { flex: 1; min-width: 160px; }
+.kb-frag small { display: block; opacity: .75; }
+.kb-fragbar { display: block; height: 7px; border-radius: 9px; background: rgba(255,255,255,.1); margin-top: 5px; overflow: hidden; }
+.kb-fragbar i { display: block; height: 100%; background: linear-gradient(90deg, #3ddc84, #7dffb0); }

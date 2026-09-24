@@ -612,7 +612,7 @@ function kmState(c, extra) {
     send(c, {
         type: 'kmState', v: cardHash, have: u.cards || {}, packs: (u.stats && u.stats.packs) || 0,
         // 6.7: XP je Kopie { key: [xp, …] } und die Kurve
-        xp: kmLevel.normalizeAll(u), lvCurve: kmLevel.catalog(),
+        xp: kmLevel.normalizeAll(u), lvCurve: kmLevel.catalog(), frag: u.kmFrag || 0, fragPer: gyms.FRAG_PER_PACK,
         inv: u.packs || {}, wheel: { ready: wheels.ready('pack', u), segs: wheels.segments('pack') }, ...extra
     });
 }
@@ -638,6 +638,16 @@ function kmHandle(c, d) {
         accounts.touch();
         sendAccount(c);
         return kmState(c, { bought: { pack: d.pack, n } });
+    }
+    // Booster-Teile einloesen (6.7): 10 Teile = 1 Trainer Booster
+    if (d.type === 'kmFragBuy') {
+        const per = gyms.FRAG_PER_PACK;
+        const n = Math.max(1, Math.min(99, Math.floor(Number(d.n)) || 1));
+        if ((u.kmFrag || 0) < per * n) return send(c, { type: 'kmError', error: `You need ${per * n} booster pieces` });
+        u.kmFrag -= per * n;
+        u.packs.train = (u.packs.train || 0) + n;
+        accounts.touch();
+        return kmState(c, { bought: { pack: 'train', n } });
     }
     // Daily Pack Wheel (6.1)
     if (d.type === 'kmWheel') {
@@ -1513,6 +1523,7 @@ async function handle(c, data) {
         case 'kmBuy':
         case 'kmOpen':
         case 'kmWheel':
+        case 'kmFragBuy':
         case 'kmSell':
         case 'kmSellDupes':
             kmHandle(c, data);

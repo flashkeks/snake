@@ -14,7 +14,7 @@ let kmShown = 60;            // Album: so viele Karten gerade sichtbar
 const kmFilter = { set: '', type: '', rarity: '', own: '', q: '', sort: 'num' };
 let kmOpening = null;        // offenes Pack { pack, cards: [{id, v}], fresh, order, idx }
 
-const KM_PACK_COLOR = { anime: '#ff7ac8', film: '#3da5ff', waifu: '#ff4f8b', mixed: '#ffb13d' };
+const KM_PACK_COLOR = { anime: '#ff7ac8', film: '#3da5ff', waifu: '#ff4f8b', mixed: '#ffb13d', train: '#7dffb0' };
 const KM_VLABEL = { p: 'Pokéball', m: 'Masterball', s: 'Shiny' };
 
 // Klang nie das Oeffnen blockieren lassen
@@ -115,6 +115,7 @@ function kmOpen(tab) {
 
 function onKmState(d) {
     km = d;
+    if (kb && d.frag !== undefined) kb.frag = d.frag;
     kmLoadCat(d.v).then(() => {
         if (d.opened) {
             try {
@@ -326,6 +327,7 @@ function kmDrawInv() {
                 <button type="button" class="gold" id="km-spin" ${ready && !pwBusy['km-wheel'] ? '' : 'disabled'}>${ready ? '🎡 Spin for free' : '✔ Spun today – come back tomorrow'}</button>
             </div>
         </div>
+        ${kbFragBox()}
         <h3 class="kd-h">Your packs</h3>
         <div class="km-packs">${tiles || '<div class="km-note" style="grid-column:1/-1">No unopened packs. Buy some in 🛒 Pack Shop, spin the wheel or beat a gym.</div>'}</div>
         <div class="km-odds">Packs can be traded and sold in the 🏛️ Market like cards.</div>`;
@@ -720,6 +722,7 @@ $('km-back').onclick = () => setWorld('snake');
 $('km-body').addEventListener('click', e => {
     const buy = e.target.closest('[data-kmbuy]');
     if (buy) return wsSend({ type: 'kmBuy', pack: buy.dataset.kmbuy });
+    if (e.target.closest('[data-kmfrag]')) return wsSend({ type: 'kmFragBuy', n: 1 });
     const opn = e.target.closest('[data-kmopen]');
     if (opn) return wsSend({ type: 'kmOpen', pack: opn.dataset.kmopen });
     if (e.target.closest('#km-spin')) {
@@ -836,7 +839,7 @@ function kbNewPlayer() {
 const kbP = { gym: kbNewPlayer(), duel: kbNewPlayer() };
 
 function kbGymOf(id) {
-    return kb && kb.gyms.find(g => g.id === id);
+    return kb && (kb.gyms.find(g => g.id === id) || (kb.zones || []).find(z => z.id === id));
 }
 
 // Frischer Kampf: alle voll, kein Status, volle PP, erste Karte vorne
@@ -856,7 +859,8 @@ function kbFresh(view) {
 // Neuer Stand vom Server in einen Abspieler (Arena oder Duell)
 function kbFeed(bp, kind, d, view) {
     if (d.started) {
-        Object.assign(bp, kbNewPlayer());
+        const last = bp.lastTeam;
+        Object.assign(bp, kbNewPlayer(), { lastTeam: last });
         bp.shown = kbFresh(view);
         kbPick = null;
     }
@@ -878,6 +882,7 @@ function kbVisible(tab) {
 
 function onKbState(d) {
     kb = d;
+    if (km && d.frag !== undefined) km.frag = d.frag;
     kbFeed(kbP.gym, 'gym', d, d.battle ? d.battle.view : null);
     if (kbVisible('battle') && !kbP.gym.busy) kmDraw();
 }
@@ -1167,7 +1172,31 @@ function kbDrawGyms() {
             </div>
         </div>`;
     }).join('');
-    return KB_RULES.replace('</ul>', `<li>First win against a gym: coins + a free pack. After that 15 % of the coins, 3 times per gym and day.</li></ul>`) + `<div class="kb-gyms">${tiles}</div>`;
+    return KB_RULES.replace('</ul>', `<li>First win against a gym: coins + a free pack. After that 15 % of the coins, 3 times per gym and day.</li><li>Every card in your team earns XP. Higher level = more HP, attack, defense and speed.</li></ul>`) +
+        kbDrawTrain() + `<h3 class="kd-h">🏟️ Gyms</h3><div class="kb-gyms">${tiles}</div>`;
+}
+
+// Training (6.7): wilde Teams, unbegrenzt, fuer XP; Coins und Teile fallen ab
+function kbFragBox() {
+    const f = (kb && kb.frag) ?? (km && km.frag) ?? 0, per = (kb && kb.fragPer) || (km && km.fragPer) || 10;
+    return `<div class="kb-frag"><span class="ico">🧩</span><div><b>${f} / ${per} booster pieces</b><small>${per} pieces = 1 ${kmCat.packs.train ? esc(kmCat.packs.train.name) : 'booster'}</small>
+        <span class="kb-fragbar"><i style="width:${Math.min(100, f / per * 100)}%"></i></span></div>
+        <button type="button" class="gold" data-kmfrag="1" ${f >= per ? '' : 'disabled'}>🎁 Get booster</button></div>`;
+}
+
+function kbDrawTrain() {
+    const zs = (kb && kb.zones) || [];
+    if (!zs.length) return '';
+    const R = kmCat.rarities, ri = kmCat.ridx;
+    const tiles = zs.map(z => `<div class="kb-zone z-${z.id}">
+        <div class="kb-gym-head"><span class="ico">${z.icon}</span><div><b>${esc(z.name)}</b><small>Wild Lv ${z.lv[0]}–${z.lv[1]} · ${z.rar.map(r => `<span style="color:${R[ri[r]].color}">${esc(R[ri[r]].name)}</span>`).join(' / ')}</small></div></div>
+        <div class="kb-zone-rw"><span>✨ ${z.xp} XP per card</span><span>🪙 ${z.coins.toLocaleString('en-US')}</span><span>🧩 ${z.fragChance >= 1 ? '+' + z.frag : Math.round(z.fragChance * 100) + ' % for +' + z.frag}</span></div>
+        <button type="button" class="gold" data-kbgym="${z.id}">🌿 Train</button>
+    </div>`).join('');
+    const full = zs[0].full;
+    return `<h3 class="kd-h">🌿 Training</h3>
+        <div class="hint">Unlimited fights against wild teams around your own level. XP is always full${full ? '' : ' – coins and pieces are lower for the rest of today'}.</div>
+        <div class="kb-zones">${tiles}</div>${kbFragBox()}`;
 }
 
 // Team-Auswahl, fuer Arena (mit Typ-Hinweisen) und Duell
@@ -1214,7 +1243,12 @@ function kbDrawPick() {
         return `<div class="kb-cand ${on ? 'on' : ''} ${blocked ? 'off' : ''}" data-kbpick="${esc(x.key)}">${kmCard(x.c, { mini: true, v: x.v, lv: kmBestLv(x.key), showLv: true })}${good ? '<span class="kb-tag good">Strong</span>' : bad ? '<span class="kb-tag bad">Weak</span>' : ''}</div>`;
     }).join('');
     let head, go, sub;
-    if (g) {
+    if (g && g.train) {
+        head = `<button type="button" class="ghost" id="kb-back">← Back</button>
+            <b>${g.icon} ${esc(g.name)}</b> <span class="hint">Wild teams Lv ${g.lv[0]}–${g.lv[1]}, matched to your team's level · random types</span>`;
+        go = `<button type="button" class="gold" id="kb-fight" ${chosen.length === KB_TEAM ? '' : 'disabled'}>🌿 Train!</button>`;
+        sub = `Pick ${KB_TEAM} different cards. All five earn ${g.xp} XP on a win.`;
+    } else if (g) {
         head = `<button type="button" class="ghost" id="kb-back">← Gyms</button>
             <b>${g.icon} ${esc(g.name)}</b> <span class="hint">${t ? `Leader uses ${t.icon} ${t.name} – ${kmWeakTo(g.type).map(x => T[x].icon + ' ' + T[x].name).join(', ')} moves hit it ×2` : 'The champion uses every type'}</span>`;
         go = `<button type="button" class="gold" id="kb-fight" ${chosen.length === KB_TEAM ? '' : 'disabled'}>⚔️ Fight!</button>`;
@@ -1298,8 +1332,9 @@ function kbDrawBattle(bp, kind) {
     if (kind === 'gym') {
         const gym = kbGymOf(kb.battle ? kb.battle.gym : bp.result ? bp.result.gym : null) || kb.gyms[0];
         const t = gym.type ? kmCat.types[gym.type] : null;
+        if (gym.train) color = '#7dffb0';
         title = `${gym.icon} ${esc(gym.name)}`;
-        color = t ? t.color : '#ffd23f';
+        color = color || (t ? t.color : '#ffd23f');
     } else {
         const d = kd.duel || kd.duelDone || {};
         title = `⚔️ vs ${esc(foeLabel)}${d.foeRating ? ` <small>(${d.foeRating})</small>` : ''}${d.stake ? ` · <span class="kb-pot">🪙 ${(d.stake * 2).toLocaleString('en-US')}</span>` : ''}`;
@@ -1334,7 +1369,8 @@ function kbDrawBattle(bp, kind) {
     if (v.over && !bp.busy) {
         const r = bp.result || { win: v.winner === 0 };
         let line;
-        if (kind === 'gym') line = r.win ? `${r.coins ? `+🪙 ${r.coins.toLocaleString('en-US')}` : 'No coins left from this gym today'}${r.first ? (r.already ? ' · gym cleared again (first-clear reward was paid before)' : ' · first clear!') : ''}` : 'Try another team – type matchups matter.';
+        if (kind === 'gym' && r.train) line = r.win ? `${r.coins ? `+🪙 ${r.coins.toLocaleString('en-US')}` : 'no coins'}${r.frag ? ` · 🧩 +${r.frag} booster piece${r.frag > 1 ? 's' : ''} (${r.fragTotal})` : ''} · win ${r.today} today` : 'Lost – your cards still learned something.';
+        else if (kind === 'gym') line = r.win ? `${r.coins ? `+🪙 ${r.coins.toLocaleString('en-US')}` : 'No coins left from this gym today'}${r.first ? (r.already ? ' · gym cleared again (first-clear reward was paid before)' : ' · first clear!') : ''}` : 'Try another team – type matchups matter.';
         else line = `${r.stake ? (r.win ? `+🪙 ${r.pot.toLocaleString('en-US')}` : `−🪙 ${r.stake.toLocaleString('en-US')}`) + ' · ' : ''}rating ${r.rating || '?'} (${r.delta >= 0 ? '+' : ''}${r.delta || 0})`;
         // 6.7: XP je Karte, Level-ups hervorgehoben
         const xpLine = (r.xp || []).length ? `<div class="kb-xp">${r.xp.map(x => {
@@ -1344,7 +1380,7 @@ function kbDrawBattle(bp, kind) {
         bar = `<div class="kb-result ${r.win ? 'win' : 'lose'}">
             <div class="big">${r.win ? '🏆 VICTORY' : '💀 DEFEAT'}</div><div>${line}</div>${xpLine}
             <div class="kb-result-btns">${r.pack ? `<button type="button" class="gold" id="kb-openpack">🎁 Free ${esc(kmCat.packs[r.pack.pack].name)} added – go to 📦 Packs</button>` : ''}
-            <button type="button" id="${kind === 'gym' ? 'kb-done' : 'kd-done'}">${kind === 'gym' ? 'Back to gyms' : 'Back to duels'}</button></div>
+            ${kind === 'gym' && r.train ? `<button type="button" class="gold" id="kb-again">🌿 Again</button>` : ''}<button type="button" id="${kind === 'gym' ? 'kb-done' : 'kd-done'}">${kind === 'gym' ? 'Back to gyms' : 'Back to duels'}</button></div>
         </div>`;
     } else if (myTurn && v.need === 'switch') {
         bar = `<div class="kb-ask">${esc(kmCat.byId[me.id].name)} fainted – who's next?</div>` + switches('Switch in:');
@@ -1460,7 +1496,7 @@ setInterval(() => {
 
 $('km-body').addEventListener('click', e => {
     if (kmTab !== 'battle' && kmTab !== 'duel') return;
-    const t = e.target.closest('[data-kbgym],[data-kbpick],[data-kbunpick],[data-kbatk],[data-kbsw],[data-kbff],[data-kdjoin],[data-kddecline],[data-kdto],#kb-back,#kb-fight,#kb-done,#kb-openpack,#kd-create,#kd-cancel,#kd-leave,#kd-ready,#kd-done');
+    const t = e.target.closest('[data-kbgym],[data-kbpick],[data-kbunpick],[data-kbatk],[data-kbsw],[data-kbff],[data-kdjoin],[data-kddecline],[data-kdto],#kb-back,#kb-fight,#kb-done,#kb-again,[data-kmfrag],#kb-openpack,#kd-create,#kd-cancel,#kd-leave,#kd-ready,#kd-done');
     if (!t) return;
     e.stopPropagation();
     const ds = t.dataset;
@@ -1477,7 +1513,7 @@ $('km-body').addEventListener('click', e => {
         return kmDraw();
     }
     if (ds.kbunpick !== undefined) { kbPick.team.splice(Number(ds.kbunpick), 1); return kmDraw(); }
-    if (t.id === 'kb-fight') return wsSend({ type: 'kbStart', gym: kbPick.gym, team: kbPick.team });
+    if (t.id === 'kb-fight') { kbP.gym.lastTeam = kbPick.team.slice(); return wsSend({ type: 'kbStart', gym: kbPick.gym, team: kbPick.team }); }
     if (t.id === 'kd-ready') return wsSend({ type: 'kdTeam', team: kbPick.team });
     if (t.id === 'kd-leave') { if (confirm('Leave this duel?')) { kbPick = null; wsSend({ type: 'kdCancel' }); } return; }
     if (t.id === 'kd-cancel') return wsSend({ type: 'kdCancel' });
@@ -1495,6 +1531,14 @@ $('km-body').addEventListener('click', e => {
         wsSend({ type: 'kbGyms' });
         kmTab = 'packs';
         wsSend({ type: 'kmState' });
+        return kmDraw();
+    }
+    if (ds.kmfrag) return wsSend({ type: 'kmFragBuy', n: 1 });
+    if (t.id === 'kb-again') {
+        // Gleiches Team nochmal
+        const last = kbP.gym.lastTeam, zone = kbP.gym.result && kbP.gym.result.gym;
+        Object.assign(kbP.gym, kbNewPlayer());
+        if (last && zone) { kbP.gym.lastTeam = last; wsSend({ type: 'kbStart', gym: zone, team: last }); }
         return kmDraw();
     }
     if (t.id === 'kb-done') { Object.assign(kbP.gym, kbNewPlayer()); wsSend({ type: 'kbGyms' }); return kmDraw(); }

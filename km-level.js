@@ -76,7 +76,9 @@ function totalFor(lv) {
 const XP = {
     // Gym: nach Nummer der Arena (0 = Sprout … 7 = Champion)
     gym: (idx, win) => Math.round((30 + 12 * idx) * (win ? 1 : 0.4)),
-    duel: win => win ? 60 : 30
+    duel: win => win ? 60 : 30,
+    // Training: fest je Bereich, Niederlage 40 %
+    train: (zone, win) => Math.round(zone.xp * (win ? 1 : 0.4))
 };
 // Duelle: volle XP fuer die ersten DUEL_FULL am Tag, danach DUEL_LATE
 const DUEL_FULL = 10, DUEL_LATE = 0.2;

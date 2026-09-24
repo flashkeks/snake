@@ -202,6 +202,8 @@ const PACKS = {
     // Daily: alles moeglich, Chancen wie die 10k-Packs. Jackpot: Chancen wie
     // der Mega Booster, 50 % mehr Karten (12 statt 8, 5 statt 3 sicher Rare+)
     daily: { name: 'Daily Booster', icon: '🎁', sets: ['anime', 'hero', 'tv'], price: 10000, size: 5, sure: 1, wheel: true },
+    // 6.7: nur aus 10 Booster-Teilen (Training), nicht im Shop. Chancen wie die 10k-Packs
+    train: { name: 'Trainer Booster', icon: '🧩', sets: ['anime', 'hero', 'tv'], price: 10000, size: 5, sure: 1, wheel: true },
     jackpot: { name: 'Jackpot Booster', icon: '🌟', sets: ['anime', 'hero', 'tv'], price: 75000, size: 12, sure: 5, mega: true, wheel: true }
 };
 // Gewichte je Platz (Summe egal, wird normiert)

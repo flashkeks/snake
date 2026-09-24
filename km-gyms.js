@@ -28,6 +28,19 @@ const GYMS = [
 // Zielkurve ~85 % bei der ersten bis ~30 % beim Champion.
 const REPEAT_SHARE = 0.15, REPEAT_PER_DAY = 3;
 
+// Training (6.7, Karten-Level Schritt 2): wilde KI-Teams, unbegrenzt.
+// Gegner-Level = Durchschnitt des eigenen Teams (+-), eingeklemmt in den
+// Bereich. XP immer voll; Coins und Booster-Teile fallen mit den Siegen am
+// Tag ab (TRAIN_FALL). 10 Teile = 1 Trainer Booster (server.js kmFragBuy).
+const ZONES = [
+    { id: 'meadow', name: 'Wild Meadow', icon: '🌾', lv: [1, 10], rar: ['common', 'uncommon'], smart: 0, xp: 25, coins: 250, frag: 1 },
+    { id: 'canyon', name: 'Wild Canyon', icon: '🏜️', lv: [10, 30], rar: ['uncommon', 'rare'], smart: 1, xp: 70, coins: 600, frag: 1 },
+    { id: 'summit', name: 'Wild Summit', icon: '🏔️', lv: [30, 50], rar: ['rare', 'epic'], smart: 2, xp: 150, coins: 1200, frag: 2 }
+];
+// [bis Sieg Nr., Anteil Coins, Chance auf Teile]
+const TRAIN_FALL = [[10, 1, 1], [30, 0.25, 0.3], [Infinity, 0.05, 0.05]];
+const FRAG_PER_PACK = 10;
+
 function seeded(str) {
     let h = 2166136261;
     for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619);
@@ -114,39 +127,103 @@ module.exports = function createGyms(h) {
 
     function send(c, extra) {
         const u = accounts.get(c.account);
-        h.send(c, { type: 'kbState', gyms: list(u), battle: c.kb ? { gym: c.kb.gym, view: B.view(c.kb.b) } : null, ...extra });
+        h.send(c, { type: 'kbState', gyms: list(u), zones: zones(u), frag: u.kmFrag || 0, fragPer: FRAG_PER_PACK, battle: c.kb ? { gym: c.kb.gym, view: B.view(c.kb.b) } : null, ...extra });
     }
 
-    function start(c, d) {
-        const u = accounts.get(c.account);
-        const g = Object.prototype.hasOwnProperty.call(byId, d.gym) ? byId[d.gym] : null;
-        if (!g) return 'Unknown gym';
-        if (c.kb && !c.kb.b.over) return 'Finish your current battle first';
-        const row = list(u).find(x => x.id === g.id);
-        if (!row.unlocked) return 'Beat the previous gym first';
-        const keys = Array.isArray(d.team) ? d.team.map(String).slice(0, B.TEAM_SIZE) : [];
-        if (keys.length !== B.TEAM_SIZE) return `Pick ${B.TEAM_SIZE} cards`;
+    // Eigenes Team pruefen -> { mine, keys } oder { err }
+    function teamOf(u, team) {
+        const keys = Array.isArray(team) ? team.map(String).slice(0, B.TEAM_SIZE) : [];
+        if (keys.length !== B.TEAM_SIZE) return { err: `Pick ${B.TEAM_SIZE} cards` };
         const own = u.cards || {};
         const ids = new Set();
         const mine = [];
         for (const k of keys) {
             const { id, v } = cards.parseKey(k);
             const card = cardDb.byId[id];
-            if (!card || !(own[k] > 0)) return 'You do not own one of those cards';
-            if (ids.has(id)) return `Pick ${B.TEAM_SIZE} different cards`;
+            if (!card || !(own[k] > 0)) return { err: 'You do not own one of those cards' };
+            if (ids.has(id)) return { err: `Pick ${B.TEAM_SIZE} different cards` };
             ids.add(id);
             // 6.7: mit dem Level der besten Kopie
             mine.push(B.fighter(card, v, 1, LV.bestLv(u, k)));
         }
-        const foes = g.team.map(id => B.fighter(cardDb.byId[id], '', g.mul));
-        const { b, ev } = B.createBattle(mine, foes, { nameA: u.name, nameB: g.leader, smart: g.smart });
-        c.kb = { b, gym: g.id, keys };
+        return { mine, keys };
+    }
+
+    function trainDay(u) {
+        if (!u.kmTrain || u.kmTrain.day !== day()) u.kmTrain = { day: day(), wins: 0 };
+        return u.kmTrain;
+    }
+    const fallOf = n => TRAIN_FALL.find(([upTo]) => n <= upTo);
+
+    function zones(u) {
+        const t = trainDay(u);
+        const [, share, chance] = fallOf(t.wins + 1);
+        return ZONES.map(z => ({ id: z.id, name: z.name, icon: z.icon, lv: z.lv, rar: z.rar, xp: z.xp, train: true,
+            coins: Math.round(z.coins * share), frag: z.frag, fragChance: chance, full: share === 1 }));
+    }
+
+    function start(c, d) {
+        const u = accounts.get(c.account);
+        if (c.kb && !c.kb.b.over) return 'Finish your current battle first';
+        const z = ZONES.find(x => x.id === d.gym);
+        const g = z ? null : Object.prototype.hasOwnProperty.call(byId, d.gym) ? byId[d.gym] : null;
+        if (!g && !z) return 'Unknown gym';
+        if (g && !list(u).find(x => x.id === g.id).unlocked) return 'Beat the previous gym first';
+        const t = teamOf(u, d.team);
+        if (t.err) return t.err;
+        let foes, leader, smart;
+        if (z) {
+            // Zufallsteam der Bereichs-Seltenheit, Level um das eigene herum
+            const avg = t.mine.reduce((n, f) => n + f.lv, 0) / t.mine.length;
+            const clamp = x => Math.max(z.lv[0], Math.min(z.lv[1], Math.round(x)));
+            const base = clamp(avg);
+            let pool = cardDb.cards.filter(x => z.rar.includes(x.rarity));
+            if (pool.length < B.TEAM_SIZE) pool = cardDb.cards.slice();
+            const pick = new Set();
+            while (pick.size < Math.min(B.TEAM_SIZE, pool.length)) pick.add(pool[Math.floor(Math.random() * pool.length)]);
+            foes = [...pick].map(card => B.fighter(card, '', 1, clamp(base - 1 + Math.floor(Math.random() * 5))));
+            leader = `Wild team (Lv ${Math.min(...foes.map(f => f.lv))}–${Math.max(...foes.map(f => f.lv))})`;
+            smart = z.smart;
+        } else {
+            foes = g.team.map(id => B.fighter(cardDb.byId[id], '', g.mul));
+            leader = g.leader;
+            smart = g.smart;
+        }
+        const { b, ev } = B.createBattle(t.mine, foes, { nameA: u.name, nameB: leader, smart });
+        c.kb = { b, gym: (z || g).id, keys: t.keys, zone: z || null };
         send(c, { ev, started: true });
         return null;
     }
 
+    // Training zu Ende: XP immer, Coins/Teile nur beim Sieg und abfallend
+    function finishTrain(c) {
+        const kb = c.kb, z = kb.zone;
+        const u = accounts.get(c.account);
+        const win = kb.b.winner === 0;
+        const res = { win, coins: 0, frag: 0, gym: z.id, train: true };
+        if (win) {
+            const t = trainDay(u);
+            t.wins++;
+            const [, share, chance] = fallOf(t.wins);
+            res.coins = Math.round(z.coins * share);
+            if (Math.random() < chance) res.frag = z.frag;
+            if (res.coins) {
+                accounts.addCoins(c.account, res.coins);
+                accounts.earn(c.account, 'cards', res.coins);
+            }
+            if (res.frag) u.kmFrag = (u.kmFrag || 0) + res.frag;
+            res.today = t.wins;
+        }
+        if (win || kb.b.turn >= 3) res.xp = kb.keys.map(k => LV.addXp(u, k, LV.XP.train(z, win))).filter(Boolean);
+        res.fragTotal = u.kmFrag || 0;
+        accounts.touch();
+        accounts.stat(c.account, st => { st.kmTrain = (st.kmTrain || 0) + 1; });
+        return res;
+    }
+
     function finish(c) {
         const kb = c.kb;
+        if (kb.zone) return finishTrain(c);
         const u = accounts.get(c.account);
         const g = byId[kb.gym];
         const win = kb.b.winner === 0;
@@ -221,5 +298,5 @@ module.exports = function createGyms(h) {
         if (err) h.send(c, { type: 'kmError', error: err });
     }
 
-    return { handle, GYMS };
+    return { handle, GYMS, ZONES, FRAG_PER_PACK };
 };
