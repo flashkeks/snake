@@ -46,6 +46,15 @@ input:focus, textarea:focus { border-color: var(--acc); }
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: 7px 8px; border-bottom: 1px solid rgba(255,255,255,.06); text-align: left; white-space: nowrap; }
 th { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+th[data-sort] { cursor: pointer; user-select: none; }
+th[data-sort]:hover { color: #fff; }
+th.sorted { color: var(--gold); }
+th.sorted::after { content: ' ▼'; font-size: 10px; }
+th.sorted.asc::after { content: ' ▲'; }
+.now { font-size: 12px; }
+.now .on { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #3ddc84; box-shadow: 0 0 6px #3ddc84; margin-right: 5px; }
+.now small { color: var(--dim); margin-left: 4px; }
+button.watch { background: #3da5ff; color: #04121f; }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 tr:hover td { background: rgba(0,255,140,.03); }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 7px; vertical-align: -1px; }
@@ -111,19 +120,13 @@ dialog h2 { margin: 0 0 10px; }
     <section id="tab-users">
         <div class="toolbar">
             <input id="u-search" placeholder="Search name…" autocomplete="off">
-            <select id="u-sort">
-                <option value="coins">sort: coins</option>
-                <option value="lastSeen">sort: last seen</option>
-                <option value="name">sort: name</option>
-                <option value="spins">sort: spins</option>
-            </select>
             <span class="muted" id="u-count"></span>
         </div>
         <div class="panel" style="overflow-x:auto">
             <table>
-                <thead><tr>
-                    <th>Name</th><th class="num">Coins</th><th>Last seen</th><th class="num">Spins</th>
-                    <th class="num">Biggest win</th><th class="num">Best score</th><th class="num">Kills</th><th class="num">Achievements</th><th>Daily</th><th></th>
+                <thead><tr id="u-head">
+                    <th data-sort="name">Name</th><th data-sort="now">Now</th><th class="num" data-sort="coins">Coins</th><th data-sort="lastSeen">Last seen</th><th class="num" data-sort="spins">Spins</th>
+                    <th class="num" data-sort="biggestWin">Biggest win</th><th class="num" data-sort="bestScore">Best score</th><th class="num" data-sort="kills">Kills</th><th class="num" data-sort="achievements">Achievements</th><th data-sort="daily">Daily</th><th></th>
                 </tr></thead>
                 <tbody id="u-body"></tbody>
             </table>
@@ -258,17 +261,39 @@ async function loadUsers() {
     drawUsers();
 }
 
+// Sortieren per Klick auf die Spaltenkoepfe (6.3); nochmal klicken dreht um.
+// Standard: zuletzt online oben (wer gerade online ist, zaehlt als "jetzt")
+let uSort = { key: 'lastSeen', dir: -1 };
+const uVal = {
+    name: u => u.name.toLowerCase(),
+    now: u => u.now ? 1e15 - (u.now.idle || 0) : (u.lastSeen || 0),
+    coins: u => u.coins,
+    lastSeen: u => u.now ? Date.now() + 1e9 : (u.lastSeen || 0),
+    spins: u => u.stats.spins || 0,
+    biggestWin: u => u.stats.biggestWin || 0,
+    bestScore: u => u.stats.bestScore || 0,
+    kills: u => u.stats.kills || 0,
+    achievements: u => u.achievements || 0,
+    daily: u => u.daily || ''
+};
+
 function drawUsers() {
     const q = $('u-search').value.trim().toLowerCase();
-    const key = $('u-sort').value;
-    const list = users.filter(u => !q || u.name.toLowerCase().includes(q)).sort((a, b) =>
-        key === 'name' ? a.name.localeCompare(b.name) :
-        key === 'spins' ? b.stats.spins - a.stats.spins :
-        (b[key] || 0) - (a[key] || 0));
+    const get = uVal[uSort.key] || uVal.lastSeen;
+    const list = users.filter(u => !q || u.name.toLowerCase().includes(q)).sort((a, b) => {
+        const x = get(a), y = get(b);
+        const c = typeof x === 'string' ? x.localeCompare(y) : x - y;
+        return c * (uSort.key === 'name' ? -uSort.dir : uSort.dir) || a.name.localeCompare(b.name);
+    });
+    document.querySelectorAll('#u-head th[data-sort]').forEach(th => {
+        th.classList.toggle('sorted', th.dataset.sort === uSort.key);
+        th.classList.toggle('asc', th.dataset.sort === uSort.key && (uSort.key === 'name' ? uSort.dir === -1 : uSort.dir === 1));
+    });
     $('u-count').textContent = `${list.length} of ${users.length}`;
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date());
     $('u-body').innerHTML = list.map(u => `<tr>
         <td><span class="dot" style="background:${esc(u.color || '#555')}"></span><b>${esc(u.name)}</b>${u.title ? ` <span class="muted">« ${esc(u.title)} »</span>` : ''}</td>
+        <td class="now">${u.now ? `<span class="on"></span>${esc(u.now.what)}${u.now.idle > 60 ? `<small>idle ${Math.round(u.now.idle / 60)} min</small>` : ''}${u.now.tabs > 1 ? `<small>${u.now.tabs} tabs</small>` : ''}${u.now.watchers ? '<small>👁</small>' : ''}` : '<span class="muted">offline</span>'}</td>
         <td class="num" style="color:var(--gold);font-weight:800">${fmt(u.coins)}</td>
         <td>${ago(u.lastSeen)}</td>
         <td class="num">${fmt(u.stats.spins)}</td>
@@ -277,12 +302,31 @@ function drawUsers() {
         <td class="num">${fmt(u.stats.kills)}</td>
         <td class="num">🏆 ${u.achievements || 0}</td>
         <td>${u.daily === today ? '✔ spun' : '<span class="muted">ready</span>'}</td>
-        <td><button type="button" data-user="${esc(u.key)}">Manage</button></td>
+        <td>${u.now ? `<button type="button" class="watch" data-watch="${esc(u.key)}" title="Watch live (read-only)">👁 Watch</button> ` : ''}<button type="button" data-user="${esc(u.key)}">Manage</button></td>
     </tr>`).join('');
 }
 $('u-search').oninput = drawUsers;
-$('u-sort').onchange = drawUsers;
-$('u-body').onclick = e => {
+$('u-head').onclick = e => {
+    const th = e.target.closest('th[data-sort]');
+    if (!th) return;
+    uSort = uSort.key === th.dataset.sort ? { key: uSort.key, dir: -uSort.dir } : { key: th.dataset.sort, dir: -1 };
+    drawUsers();
+};
+$('u-body').onclick = async e => {
+    const w = e.target.closest('[data-watch]');
+    if (w) {
+        // Fenster sofort oeffnen (sonst blockt der Popup-Blocker nach dem await)
+        const win = window.open('about:blank', '_blank');
+        try {
+            const r = await api(`/api/users/${encodeURIComponent(w.dataset.watch)}/watch`, { method: 'POST', body: {} });
+            if (win) win.location = r.url;
+            else location.href = r.url;
+        } catch (err) {
+            if (win) win.close();
+            alert('Watch: ' + err.message);
+        }
+        return;
+    }
     const b = e.target.closest('[data-user]');
     if (b) openUser(b.dataset.user);
 };

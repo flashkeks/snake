@@ -193,7 +193,20 @@ module.exports = function startAdmin(h) {
                 });
             }
 
-            if (m === 'GET' && p === '/api/users') return json(res, 200, { users: h.accounts.adminList() });
+            // now (6.3): was der Spieler gerade macht, null = offline
+            if (m === 'GET' && p === '/api/users') return json(res, 200, { users: h.accounts.adminList().map(u => ({ ...u, now: h.activity ? h.activity(u.key) : null })) });
+
+            // Zuschauen (6.3): Einmal-Link, 60 s gueltig
+            let mw = p.match(/^\/api\/users\/([^/]+)\/watch$/);
+            if (m === 'POST' && mw) {
+                const key = decodeURIComponent(mw[1]);
+                const u = h.accounts.get(key);
+                if (!u) return json(res, 404, { error: 'no such user' });
+                const url = h.watchUrl ? h.watchUrl(key) : null;
+                if (!url) return json(res, 400, { error: 'player is offline' });
+                log(email, 'watch', u.name);
+                return json(res, 200, { url });
+            }
 
             let mm = p.match(/^\/api\/users\/([^/]+)\/(coins|reset-daily|reset-all|reset-soft|logout-all)$/);
             if (m === 'POST' && mm) {

@@ -6250,6 +6250,31 @@ body.co-shake #case-open .co-box {
     font-size: 13px;
     white-space: nowrap;
 }
+
+/* Zuschauen (6.3, Admin) */
+#watch-banner {
+    position: fixed;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 4000;
+    padding: 6px 16px;
+    border-radius: 999px;
+    background: #3da5ff;
+    color: #04121f;
+    font-weight: 700;
+    box-shadow: 0 4px 20px rgba(0,0,0,.5);
+    pointer-events: none;
+}
+
+#watch-banner.bad {
+    background: #ff4d4d;
+    color: #200;
+}
+
+body.watch-mode #world-switch {
+    pointer-events: none;
+}
 </style>
 <link rel="stylesheet" href="/kekemon.css">
 <link rel="stylesheet" href="/market.css">
@@ -6903,8 +6928,13 @@ const wsUrl = new URL('ws', location.href);
 wsUrl.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
 const ws = new WebSocket(wsUrl);
 
+// Zuschauen (6.3, Admin): /?watch=TOKEN – dieser Tab zeigt, was der Spieler
+// sieht, und sendet selbst nichts (wsSend laesst nur 'watch' durch)
+const WATCH = new URLSearchParams(location.search).get('watch');
+
 ws.onopen = () => {
     status.textContent = '🟢 Connected';
+    if (WATCH) return wsSend({ type: 'watch', token: WATCH });
     try { token = localStorage.getItem('snake-token'); } catch {}
     if (token) wsSend({ type: 'resume', token });
     // Schirm, den wir vor dem Verbinden schon gemeldet haben wollten
@@ -6937,8 +6967,15 @@ ws.onmessage = event => {
     const data = JSON.parse(event.data);
 
     switch (data.type) {
+        case 'watchStart':
+        case 'watchAuth':
+        case 'watchUi':
+        case 'watchEnd':
+        case 'watchError':
+            onWatch(data);
+            break;
         case 'welcome':
-            myId = data.id;
+            if (!WATCH) myId = data.id;
             arena = data.arena;
             viewCells = data.view;
             cashoutMs = data.cashoutMs;
@@ -7088,8 +7125,81 @@ ws.onmessage = event => {
 };
 
 function wsSend(obj) {
+    if (WATCH && obj.type !== 'watch') return;
     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
 }
+
+// ---------- Zuschauen (6.3) ----------
+
+function watchBanner(text, bad) {
+    let b = $('watch-banner');
+    if (!b) {
+        b = document.createElement('div');
+        b.id = 'watch-banner';
+        document.body.appendChild(b);
+    }
+    b.className = bad ? 'bad' : '';
+    b.innerHTML = text;
+}
+
+// Bildschirm und Tabs des Spielers uebernehmen
+function watchApply(ui) {
+    if (!ui) return;
+    try {
+        if (ui.kmTab) kmTab = ui.kmTab;
+        if (ui.hubTab) hubTab = ui.hubTab;
+        if (ui.mkTab) mkTab = ui.mkTab;
+        if (ui.mkSub) mkSub = ui.mkSub;
+    } catch {}
+    world = ui.world || 'snake';
+    document.body.classList.toggle('world-arena', world === 'arena');
+    document.body.classList.toggle('world-cards', world === 'cards');
+    document.body.classList.toggle('world-market', world === 'market');
+    document.querySelectorAll('#world-switch [data-world]').forEach(b => b.classList.toggle('on', b.dataset.world === world));
+    joined = !!ui.joined;
+    if (joined) {
+        showScreen(null);
+        $('hud').classList.remove('hidden');
+        return;
+    }
+    $('hud').classList.add('hidden');
+    if (ui.screen === 'kekemon') kmOpen();
+    else if (ui.screen === 'arenahub') hubOpen();
+    else if (ui.screen === 'market') mkOpen();
+    else if (ui.screen === 'shooter' && !sh) showScreen('menu');
+    else showScreen(ui.screen || 'menu');
+}
+
+function onWatch(d) {
+    if (d.type === 'watchStart') {
+        myId = d.id;
+        watchName = d.name;
+        setMe(d.user);
+        document.body.classList.add('watch-mode');
+        watchBanner(`👁 Watching <b>${esc(d.name)}</b> live · read-only`);
+        watchApply(d.ui || { world: 'snake', screen: d.joined ? null : 'menu', joined: d.joined });
+    } else if (d.type === 'watchAuth') setMe(d.user);
+    else if (d.type === 'watchUi') watchApply(d.ui);
+    else if (d.type === 'watchEnd') watchBanner(`👁 ${esc(watchName || 'Player')}: ${esc(d.reason)}`, true);
+    else if (d.type === 'watchError') watchBanner(`👁 ${esc(d.error)}`, true);
+}
+let watchName = '';
+
+// Eigener Bildschirm/Tab an den Server (6.3: Admin sieht, was man gerade macht)
+let uiSent = '';
+setInterval(() => {
+    if (WATCH || !me || ws.readyState !== WebSocket.OPEN) return;
+    let ui;
+    try {
+        ui = { world, screen: curScreen, joined, kmTab, hubTab, mkTab, mkSub };
+    } catch {
+        return;
+    }
+    const j = JSON.stringify(ui);
+    if (j === uiSent) return;
+    uiSent = j;
+    wsSend({ type: 'ui', ...ui });
+}, 700);
 
 // Wie server.js: Score -> Coins beim Cashout (1:1 bis 10k, dann flacher)
 function cashCoins(score) {
@@ -7110,7 +7220,9 @@ function showMsg(id, text, kind) {
 
 // ---------- Screens ----------
 
+let curScreen = 'menu';
 function showScreen(name) {
+    curScreen = name;
     whereReport(name);
     ['menu', 'casino', 'daily', 'cross', 'plinko', 'pokerlobby', 'shooter', 'arenahub', 'kekemon', 'market', 'shop', 'support', 'slots', 'slots2', 'konto', 'event', 'offer'].forEach(s => $(s).classList.toggle('hidden', s !== name));
 }

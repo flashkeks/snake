@@ -787,7 +787,12 @@ module.exports = function createArena(h, opts = {}) {
     }
 
     function sendJoined(c) {
-        h.send(c, {
+        h.send(c, joinedMsg(c));
+    }
+
+    // Auch fuer Zuschauer (Admin, 6.3): Einstiegsdaten des Raids ohne Senden
+    function joinedMsg(c) {
+        return {
             type: 'shJoined', id: c.id,
             map: {
                 w: W, h: H, walls: MAP.walls, buildings: MAP.buildings, doors: MAP.doors, bushes: MAP.bushes, wallT: WALL_T,
@@ -798,7 +803,7 @@ module.exports = function createArena(h, opts = {}) {
             },
             packMax: p0PackMax(c), feed: pvp ? [] : feedLog.slice(-6), mode, team: players.get(c.id) ? players.get(c.id).team : undefined,
             mapName: MAP.name || null
-        });
+        };
     }
 
     function p0PackMax(c) {
@@ -2518,7 +2523,7 @@ module.exports = function createArena(h, opts = {}) {
     }
 
     return {
-        join, leave, input, action, tick, refundAll, hubAction,
+        join, leave, input, action, tick, refundAll, hubAction, joinedMsg,
         startPvp: () => pvpRound(Date.now()), pvpState: () => pvp,
         startZombies: () => zStart(), zState: () => zb,
         has: c => players.has(c.id),

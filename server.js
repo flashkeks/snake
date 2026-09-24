@@ -466,6 +466,70 @@ function send(c, obj) {
     const msg = JSON.stringify(obj);
     count(obj.type, msg.length);
     c.ws.send(msg);
+    if (c.watchers && c.watchers.size) mirror(c, obj, msg);
+}
+
+// ---------- Zuschauen (Admin, 6.3) ----------
+// Das Admin-Interface erzeugt einen Einmal-Link (/?watch=TOKEN, 60 s gueltig).
+// Die Zuschauer-Verbindung bekommt dann alles, was der Server dem Spieler
+// schickt (send), dazu dessen Bildschirm/Tab ('ui' vom Spieler-Client). Sie
+// ist nur lesend: der Server ignoriert alles von ihr ausser 'watch'.
+// Das Snake-Feld bekommt sie ohnehin (geht an alle), der Browser zentriert
+// auf die Id des Spielers.
+
+const watchTokens = new Map();      // token -> { key, exp }
+
+function createWatch(key) {
+    for (const [t, w] of watchTokens) if (w.exp < Date.now()) watchTokens.delete(t);
+    const token = crypto.randomBytes(24).toString('hex');
+    watchTokens.set(token, { key, exp: Date.now() + 60000 });
+    return token;
+}
+
+// Session-Token des Spielers nie weitergeben; Abmelde-Nachrichten nicht spiegeln
+function mirror(c, obj, msg) {
+    let out = msg;
+    if (obj.type === 'auth') out = JSON.stringify({ type: 'watchAuth', user: obj.user });
+    else if (obj.type === 'authExpired' || obj.type === 'kicked') out = JSON.stringify({ type: 'watchEnd', reason: 'Player was logged out' });
+    for (const w of c.watchers) if (w.ws.readyState === WebSocket.OPEN) w.ws.send(out);
+}
+
+function watchStart(c, token) {
+    const t = watchTokens.get(String(token || ''));
+    watchTokens.delete(String(token || ''));
+    if (!t || t.exp < Date.now()) return send(c, { type: 'watchError', error: 'Link expired – start watching again from the admin page' });
+    // Mehrere Tabs: der zuletzt aktive
+    const target = [...clients.values()].filter(x => x.account === t.key && !x.watching).sort((a, b) => (b.lastActive || 0) - (a.lastActive || 0))[0];
+    if (!target) return send(c, { type: 'watchError', error: 'Player is offline' });
+    c.watching = target;
+    c.where = 'watch';
+    target.watchers = target.watchers || new Set();
+    target.watchers.add(c);
+    const u = accounts.get(t.key);
+    send(c, { type: 'watchStart', name: u.name, id: target.id, user: accounts.publicUser(u), ui: target.ui || null, joined: !!target.joined, guest: !!target.guest });
+    // Laufender Raid/Match: Einstiegsdaten nur an den Zuschauer
+    const ar = rooms.arenaOf(target) || (shooter.has(target) ? shooter : null);
+    if (ar && ar.joinedMsg) send(c, ar.joinedMsg(target));
+    // Frische Staende (Konto, Kekemon, Markt, Arena) – gehen an den Spieler und werden gespiegelt
+    if (target.account) mkRefresh(target);
+    console.log(`watch: Admin schaut ${u.name} zu`);
+}
+
+// Was macht ein Konto gerade? (Admin-Liste)
+function activityOf(key) {
+    const conns = [...clients.values()].filter(x => x.account === key && !x.watching);
+    if (!conns.length) return null;
+    const c = conns.sort((a, b) => (b.lastActive || 0) - (a.lastActive || 0))[0];
+    const p = players.get(c.id);
+    let what = whereOf(c);
+    if (p) what = `🐍 Snake · length ${p.len} · score ${scoreOf(p).toLocaleString("en-US")}`;
+    const ui = c.ui || {};
+    if (!what) {
+        const tab = { kekemon: ui.kmTab, arenahub: ui.hubTab, market: ui.mkTab }[ui.screen];
+        const SCREEN = { menu: '🏠 Menu', casino: '🎰 Casino', daily: '🎡 Daily Wheel', cross: '🐔 Crossy Road', plinko: '🔻 Plinko', slots: '🎰 Slots', slots2: '🌟 Starlight', kekemon: '🃏 Kekémon', arenahub: '🔫 Arena', market: '🏛️ Market', shop: '🎨 Shop', support: '💬 Support', konto: '👤 Account', pokerlobby: '♠️ Poker lobby', event: '🎪 Event', offer: '🎲 Offer' };
+        what = (SCREEN[ui.screen] || ui.screen || '…') + (tab ? ' · ' + tab : '');
+    }
+    return { what, tabs: conns.length, idle: Math.round((Date.now() - (c.lastActive || Date.now())) / 1000), watchers: c.watchers ? c.watchers.size : 0 };
 }
 
 function broadcast(obj) {
@@ -1072,6 +1136,9 @@ const DIRS = {
 };
 
 async function handle(c, data) {
+    // Zuschauer (6.3): nur lesen
+    if (data.type === 'watch') return c.watching ? null : watchStart(c, data.token);
+    if (c.watching) return;
     switch (data.type) {
         // --- Konto ---
 
@@ -1409,6 +1476,14 @@ async function handle(c, data) {
         case 'where':
             c.where = String(data.w || '').slice(0, 20);
             return;
+
+        // Bildschirm und Tabs (6.3, fuer Admin-Liste und Zuschauer)
+        case 'ui': {
+            const str = v => typeof v === 'string' ? v.slice(0, 20) : null;
+            c.ui = { world: str(data.world), screen: str(data.screen), joined: !!data.joined, kmTab: str(data.kmTab), hubTab: str(data.hubTab), mkTab: str(data.mkTab), mkSub: str(data.mkSub), csTab: str(data.csTab) };
+            if (c.watchers && c.watchers.size) for (const w of c.watchers) send(w, { type: 'watchUi', ui: c.ui });
+            return;
+        }
 
         // Kekemon (5.0): Sammlung, Packs, Doppelte verkaufen
         case 'kmState':
@@ -1778,10 +1853,17 @@ wss.on('connection', (ws, req) => {
             return;
         }
         if (!data || typeof data.type !== 'string') return;
+        if (data.type !== 'ui' && data.type !== 'where' && data.type !== 'shPing') c.lastActive = Date.now();
         handle(c, data).catch(err => console.error('handle', data.type, err));
     });
 
     ws.on('close', () => {
+        // Zuschauen (6.3): aufraeumen bzw. Zuschauern Bescheid geben
+        if (c.watching && c.watching.watchers) c.watching.watchers.delete(c);
+        if (c.watchers) for (const w of c.watchers) {
+            send(w, { type: 'watchEnd', reason: 'Player went offline or closed the tab' });
+            w.watching = { watchers: new Set() };
+        }
         trade.gone(c);
         duels.gone(c);
         lobby.leave(c);
@@ -2039,6 +2121,13 @@ function clientsOf(key) {
 }
 
 startAdmin({
+    // Zuschauen (6.3)
+    watchUrl: key => {
+        if (!clientsOf(key).some(x => !x.watching)) return null;
+        const base = CANONICAL ? `https://${CANONICAL}` : `http://127.0.0.1:${PORT}`;
+        return `${base}/?watch=${createWatch(key)}`;
+    },
+    activity: key => activityOf(key),
     accounts,
     shop,
     arenaItems,

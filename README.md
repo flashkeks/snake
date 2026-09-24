@@ -1620,6 +1620,27 @@ API (alles JSON): `GET /api/overview`, `GET /api/users`,
 `POST /api/users/KEY/arena {op: give|delete|scrap|clear, …}`. Alles davon
 landet im Admin-Log.
 
+
+### Zuschauen und „Now" (6.3, nicht in den Patchnotes)
+
+- Spalte **Now**: was der Spieler gerade macht (Snake mit Laenge/Score, Raid,
+  PvP, Zombies, Tisch, sonst Bildschirm + Tab, z. B. „🃏 Kekémon · packs"),
+  dazu „idle N min", Anzahl Tabs und 👁, wenn gerade jemand zuschaut. Quelle:
+  `activityOf(key)` in server.js; der Spiel-Client meldet dafuer alle 0,7 s
+  bei Aenderung `ui` (world, screen, joined, kmTab, hubTab, mkTab, mkSub).
+- Alle Spaltenkoepfe sortieren per Klick, nochmal klicken dreht um. Standard:
+  zuletzt online oben (wer online ist, zaehlt als „jetzt").
+- **👁 Watch**: `POST /api/users/KEY/watch` erzeugt einen Einmal-Link
+  (`https://game.flashkeks.com/?watch=TOKEN`, 60 s gueltig), der im neuen Tab
+  aufgeht. Dieser Tab bekommt alles, was der Server dem Spieler schickt
+  (`send()` spiegelt an `c.watchers`), plus dessen Bildschirm/Tab
+  (`watchUi`). Session-Token wird nie mitgeschickt (`auth` -> `watchAuth`),
+  Abmelden des Spielers beendet nur das Zuschauen. Der Zuschauer sendet
+  nichts ausser `watch` (Server ignoriert den Rest). Einstieg mitten im
+  Raid/Match: `joinedMsg()` der Arena geht nur an den Zuschauer. Mehrere Tabs:
+  der zuletzt aktive. Der Spieler merkt davon nichts. Jeder Start steht im
+  Admin-Protokoll (`watch`).
+
 ## Tests
 
 Nur lokal, nie auf `edge` setzen:
