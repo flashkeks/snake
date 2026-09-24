@@ -128,6 +128,41 @@ module.exports = function createMinigame(kind, members) {
         return { x: Math.floor(W / 2), y: Math.floor(H / 2) };
     }
 
+    // Wie viele Felder geradeaus frei sind (Waende, Koerper, Koepfe im Umkreis)
+    function runway(x, y, d, occ, max) {
+        let n = 0;
+        for (let k = 1; k <= max; k++) {
+            const nx = x + d[0] * k, ny = y + d[1] * k;
+            if (!free(nx, ny) || occ.has(ny * W + nx)) break;
+            n++;
+        }
+        return n;
+    }
+
+    // Spawnplatz mit Auslauf (6.4, Max: bei Coin Rush spawnte man oft vor
+    // einer Wand und war sofort wieder tot). Nimmt die Richtung mit dem
+    // laengsten freien Weg, bevorzugt zur Mitte; kein anderer Kopf in der Naehe.
+    function safeSpawn(margin, prefer) {
+        const occ = occupied();
+        const heads = [...snakes.values()].filter(s => s.alive).map(s => s.body[0]);
+        let best = null;
+        for (let k = 0; k < 300; k++) {
+            const p = k === 0 && prefer ? prefer : {
+                x: margin + Math.floor(Math.random() * (W - 2 * margin)),
+                y: margin + Math.floor(Math.random() * (H - 2 * margin))
+            };
+            if (!free(p.x, p.y) || occ.has(p.y * W + p.x)) continue;
+            if (heads.some(([hx, hy]) => Math.abs(hx - p.x) + Math.abs(hy - p.y) < 4)) continue;
+            const toMid = Math.abs(p.x - W / 2) > Math.abs(p.y - H / 2) ? (p.x > W / 2 ? 'left' : 'right') : (p.y > H / 2 ? 'up' : 'down');
+            for (const name of [toMid, ...Object.keys(DIRS).filter(n => n !== toMid)]) {
+                const r = runway(p.x, p.y, DIRS[name], occ, 8);
+                if (!best || r > best.r) best = { x: p.x, y: p.y, dir: name, r };
+                if (r >= 6) return best;
+            }
+        }
+        return best || { x: Math.floor(W / 2), y: Math.floor(H / 2), dir: 'right' };
+    }
+
     // Startplaetze: Labyrinth alle oben links, sonst im Kreis verteilt mit Blick zur Mitte
     members.forEach((m, i) => {
         let x, y, dir;
@@ -139,8 +174,8 @@ module.exports = function createMinigame(kind, members) {
             y = Math.round(H / 2 + Math.sin(a) * (H / 2 - 4));
             // Richtung zur Mitte
             dir = Math.abs(Math.cos(a)) > Math.abs(Math.sin(a)) ? (Math.cos(a) > 0 ? 'left' : 'right') : (Math.sin(a) > 0 ? 'up' : 'down');
-            // Start auf einer Wand (Bloecke): freien Platz daneben suchen
-            if (!free(x, y)) ({ x, y } = randomFree(3));
+            // Start auf/vor einer Wand (Bloecke): sicheren Platz suchen
+            if (!free(x, y) || runway(x, y, DIRS[dir], occupied(), 6) < 6) ({ x, y, dir } = safeSpawn(3, free(x, y) ? { x, y } : null));
         }
         const len = kind === 'tron' ? 1 : kind === 'maze' ? 3 : 4;
         snakes.set(m.id, {
@@ -169,7 +204,8 @@ module.exports = function createMinigame(kind, members) {
     function kill(s, now) {
         s.alive = false;
         s.diedAt = now;
-        if (kind === 'coinrush') s.respawnAt = now + 2000 / SPEED;
+        // 6.4: 1 s statt 2 s (Max: dauerte zu lange)
+        if (kind === 'coinrush') s.respawnAt = now + 1000 / SPEED;
     }
 
     function step(now) {
@@ -249,13 +285,11 @@ module.exports = function createMinigame(kind, members) {
         if (kind !== 'coinrush') return;
         for (const s of snakes.values()) {
             if (s.alive || now < s.respawnAt) continue;
-            const p = randomFree(3);
+            const p = safeSpawn(3);
             s.body = Array.from({ length: 4 }, () => [p.x, p.y]);
             s.alive = true;
             s.grow = 0;
-            // Neu gespawnt: Richtung zur Mitte
-            const d = Math.abs(p.x - W / 2) > Math.abs(p.y - H / 2) ? (p.x > W / 2 ? 'left' : 'right') : (p.y > H / 2 ? 'up' : 'down');
-            s.dir = s.next = s.moved = DIRS[d];
+            s.dir = s.next = s.moved = DIRS[p.dir];
         }
     }
 
@@ -314,13 +348,15 @@ module.exports = function createMinigame(kind, members) {
     }
 
     // Je Schritt, kompakt
-    function frame() {
+    // intro: vor dem Start, damit jeder seinen Startplatz und die Richtung sieht
+    function frame(intro) {
         return {
             type: 'mg',
+            intro: !!intro,
             left: Math.max(0, ends - Date.now()),
             snakes: [...snakes.values()].map(s => ({
                 id: s.id, n: s.name, c: s.color, a: s.alive, f: s.finishedAt !== null,
-                b: s.body.flat(), k: s.coins, r: s.resets
+                b: s.body.flat(), k: s.coins, r: s.resets, d: s.dir
             })),
             coins: coins.flatMap(c => [c.x, c.y]),
             fin: finished

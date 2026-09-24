@@ -683,6 +683,27 @@ module.exports = function createAccounts(dataDir) {
             return before;
         },
 
+        // Passwort-Reset durch den Admin (6.4): neues Passwort setzen, alle
+        // Sessions weg. Ohne Vorgabe ein zufaelliges, gut abtippbares Passwort
+        // (ohne 0/O/1/l/I). Es wird nur einmal an den Admin zurueckgegeben.
+        async adminSetPassword(key, pw) {
+            const u = db.users[key];
+            if (!u) return { error: 'Account not found' };
+            if (pw === undefined || pw === null || pw === '') {
+                const abc = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+                pw = Array.from(crypto.randomBytes(12), b => abc[b % abc.length]).join('');
+            }
+            pw = String(pw);
+            if (pw.length < 6) return { error: 'Password: at least 6 characters' };
+            if (pw.length > 200) return { error: 'Password too long' };
+            u.salt = crypto.randomBytes(16).toString('hex');
+            u.hash = (await scrypt(pw, u.salt)).toString('hex');
+            let sessions = 0;
+            for (const [k, s] of Object.entries(db.sessions)) if (s.user === key) { delete db.sessions[k]; sessions++; }
+            touch();
+            return { password: pw, sessions };
+        },
+
         adminResetDaily(key) {
             const u = db.users[key];
             if (!u) return false;

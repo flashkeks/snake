@@ -191,6 +191,7 @@ dialog h2 { margin: 0 0 10px; }
     <div class="row">
         <button type="button" id="d-daily">Reset daily wheel</button>
         <button type="button" id="d-logout">Log out everywhere</button>
+        <button type="button" id="d-pw">🔑 Reset password</button>
         <button type="button" class="danger" id="d-reset-soft">Reset (keep achievements + cosmetics)…</button>
         <button type="button" class="danger" id="d-reset">Reset EVERYTHING…</button>
         <button type="button" class="danger" id="d-delete">Delete account…</button>
@@ -587,6 +588,16 @@ $('d-logout').onclick = async () => {
     if (!confirm(`Log ${cur.name} out on all devices?`)) return;
     try { const r = await api(`/api/users/${encodeURIComponent(cur.key)}/logout-all`, { method: 'POST', body: {} }); msg('d-msg', `${r.sessions} sessions ended`, 'ok'); }
     catch (e) { msg('d-msg', e.message, 'err'); }
+};
+$('d-pw').onclick = async () => {
+    const own = prompt(`New password for ${cur.name}.\nLeave empty for a random one. They are logged out everywhere.`);
+    if (own === null) return;
+    try {
+        const r = await api(`/api/users/${encodeURIComponent(cur.key)}/password`, { method: 'POST', body: { password: own } });
+        $('d-msg').innerHTML = `New password for <b>${esc(cur.name)}</b>: <code id="d-pwval" style="user-select:all;font-size:1.1em;padding:2px 6px;background:#0006;border-radius:4px">${esc(r.password)}</code> <button type="button" id="d-pwcopy">Copy</button> · shown once, ${r.sessions} sessions ended`;
+        $('d-msg').className = 'msg ok';
+        $('d-pwcopy').onclick = () => navigator.clipboard.writeText(r.password).then(() => $('d-pwcopy').textContent = 'Copied');
+    } catch (e) { msg('d-msg', e.message, 'err'); }
 };
 $('d-delete').onclick = async () => {
     const typed = prompt(`Delete ${cur.name} for good? Coins and stats are gone.\nType the name to confirm:`);

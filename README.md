@@ -1174,6 +1174,19 @@ Koennen: 5 statt 3 Karten je Seite.
   sieht nur der Ausloeser; wen eine Box trifft (Swap, Eis, Schockwelle, Raub,
   Slow-all), der sieht sie auch (`hitIds` in `applyBox`). Fuer alle bleiben:
   Legenden-Fruechte, Box-Coins ab 10 000, Muenze ab ×10, Kills, Cashouts.
+- Map-Events (`minigames.js`): `safeSpawn` sucht einen Platz mit mind. 6
+  freien Feldern geradeaus (Richtung mit dem laengsten Auslauf, bevorzugt zur
+  Mitte, kein fremder Kopf im Umkreis 4) – fuer Coin-Rush-Respawn und fuer
+  Startplaetze, die vor einem Block liegen. Respawn 1 s statt 2 s. Messung
+  (30 Laeufe x 6 Bots, geradeaus): Tod nach hoechstens 3 Schritten vorher
+  16 %, jetzt 2 %. Im Intro schickt `events.js` schon ein Bild
+  (`frame(true)`, `intro: true`, Richtung `d` je Schlange); der Browser zeigt
+  den eigenen Start mit Ring, Pfeil und „YOU".
+- Admin: Passwort-Reset (`POST /api/users/:key/password`, Knopf „🔑 Reset
+  password" im Konto-Dialog). Leer = zufaelliges 12-Zeichen-Passwort ohne
+  verwechselbare Zeichen, sonst das eingegebene (mind. 6). Alle Sessions
+  weg, offene Verbindungen gekickt. Das Passwort wird einmal angezeigt und
+  nie geloggt (Admin-Log: `password` mit `own`, `sessions`).
 - Klang: Event-Fanfaren nur fuer Mitspieler oder wer auf dem Feld ist,
   Jackpot-Banner und fremde grosse Treffer nur mit `joined` – im Casino, in
   der Arena usw. bleibt es still.

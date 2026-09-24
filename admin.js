@@ -275,7 +275,7 @@ module.exports = function startAdmin(h) {
                 return json(res, 200, { url });
             }
 
-            let mm = p.match(/^\/api\/users\/([^/]+)\/(coins|reset-daily|reset-all|reset-soft|logout-all)$/);
+            let mm = p.match(/^\/api\/users\/([^/]+)\/(coins|reset-daily|reset-all|reset-soft|logout-all|password)$/);
             if (m === 'POST' && mm) {
                 const key = decodeURIComponent(mm[1]);
                 const u = h.accounts.get(key);
@@ -312,6 +312,14 @@ module.exports = function startAdmin(h) {
                     log(email, 'reset-daily', u.name);
                     h.pushAccount(key);
                     return json(res, 200, { ok: true });
+                }
+                if (mm[2] === 'password') {
+                    // Das Passwort selbst landet nie im Log
+                    const r = await h.accounts.adminSetPassword(key, b.password);
+                    if (r.error) return json(res, 400, { error: r.error });
+                    h.kickAccount(key);
+                    log(email, 'password', u.name, { own: !!b.password, sessions: r.sessions });
+                    return json(res, 200, r);
                 }
                 if (mm[2] === 'logout-all') {
                     const n = h.accounts.adminLogoutAll(key);

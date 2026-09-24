@@ -202,6 +202,8 @@ module.exports = function createEvents(h) {
         } else phase('intro', 4000);
         h.feed(`🎪 EVENT: ${KINDS[kind].title}!`, 'gold', null, true);
         push();
+        // Map-Event: Startplaetze schon im Intro zeigen (6.4, Max)
+        if (ev.mg) sendFrame(true);
         return true;
     }
 
@@ -314,8 +316,8 @@ module.exports = function createEvents(h) {
     // ---------- Ablauf ----------
 
     // Map-Event: Schritte an die Mitspieler, Rangliste einmal je Sekunde
-    function sendFrame() {
-        const f = ev.mg.frame();
+    function sendFrame(intro) {
+        const f = ev.mg.frame(intro);
         for (const m of ev.members.values()) h.send(m.player, f);
     }
 
