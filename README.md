@@ -2373,3 +2373,13 @@ zurueckgesetzt). Alle 20 `confirm()`/`prompt()` im Spiel ersetzt: Aufgeben/
 Verlassen, Fuse, Salvage, Loadouts, Skill-Reset, Karten verkaufen/fuettern,
 Duell aufgeben, Team umbenennen, Markt kaufen/bieten, Konto loeschen, Bonus-Kauf.
 Das Admin-Panel ist nicht betroffen.
+
+### 6.12: Homing traf keine Gegner (Max: „Homing scheint nicht zu funktionieren")
+
+Die Kugel-Lenkung suchte ihr Ziel nur unter **Spielern** (380 px Umkreis). Raid-
+Gegner, Zombies und Bosse wurden nie angesteuert – im PvE (Raid-Gegner, Zombie-
+Modus) war Homing damit wirkungslos, im PvP ging es. Jetzt suchen Spieler-Kugeln
+auch Gegner (Abstand bis zum Rand, `m.def.r` abgezogen); Gegner-Kugeln (`b.w.mob`)
+suchen weiter nur Spieler.
+Test: Gegner 120 px neben der Schusslinie, Gewehr, 1 s Dauerfeuer:
+ohne Homing 0 Schaden, Homing II vorher 0, jetzt 121.

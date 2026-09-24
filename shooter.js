@@ -3363,6 +3363,13 @@ module.exports = function createArena(h, opts = {}) {
                     const d = Math.hypot(q.x - b.x, q.y - b.y);
                     if (d < td) { tgt = q; td = d; }
                 }
+                // 6.12 (Max: Homing geht nicht): Spieler-Kugeln suchen auch Gegner
+                // (Raid-Gegner, Zombies, Bosse) – vorher nur Spieler, im PvE also nie
+                if (!b.w.mob) for (const m of mobs) {
+                    if (!(m.hp > 0) || b.hits.has(m.id)) continue;
+                    const d = Math.hypot(m.x - b.x, m.y - b.y) - m.def.r;
+                    if (d < td) { tgt = m; td = d; }
+                }
                 if (tgt) {
                     const cur = Math.atan2(b.vy, b.vx), want = Math.atan2(tgt.y - b.y, tgt.x - b.x);
                     let da = want - cur;
