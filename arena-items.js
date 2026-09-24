@@ -412,9 +412,33 @@ function plain(kind, base) {
 //   - Effekt hat die Hauptwaffe schon: gleiche Stufe -> garantiert +1,
 //     sonst die hoehere der beiden Stufen (hoechstens das Maximum des Effekts)
 //   - neuer Effekt: kommt mit FUSE_ADD[Anzahl bisher] dazu – als 2. Effekt 10 %,
-//     als 3. 1 %; der 1. Effekt (Waffe ohne Effekt) 50 %. Mehr als 3 gehen nicht.
+//     als 3. 1 %. Mehr als 3 gehen nicht.
 // Stufe (Seltenheit) der Hauptwaffe bleibt, Odds/Score werden neu gerechnet.
-const FUSE_COST = 500, FUSE_ADD = [0.5, 0.1, 0.01], FUSE_MAX_MODS = 3;
+// Verboten (Max: „nur minus machen"): Hauptwaffe ohne Effekt und jede Waffe,
+// die – nach den vorher gewaehlten – nichts mehr bringen kann (fuseUseless).
+const FUSE_COST = 500, FUSE_ADD = [0, 0.1, 0.01], FUSE_MAX_MODS = 3;
+
+// Index der ersten Waffe, die nichts bringen kann, sonst -1. Gerechnet mit den
+// garantierten Stufen-Aufstiegen der Waffen davor (Zufalls-Effekte zaehlen nicht,
+// die koennen ja ausbleiben).
+function fuseUseless(main, others) {
+    const mods = (main.mods || []).map(m => ({ ...m }));
+    if (!mods.length) return others.length ? 0 : -1;
+    for (let i = 0; i < others.length; i++) {
+        let useful = false;
+        for (const m of others[i].mods || []) {
+            const def = WEAPON_MODS[m.id];
+            if (!def) continue;
+            const have = mods.find(x => x.id === m.id);
+            if (have) {
+                const lvl = Math.min(def.max, have.lvl === m.lvl ? have.lvl + 1 : Math.max(have.lvl, m.lvl));
+                if (lvl > have.lvl) { have.lvl = lvl; useful = true; }
+            } else if (mods.length < FUSE_MAX_MODS && FUSE_ADD[mods.length] > 0) useful = true;
+        }
+        if (!useful) return i;
+    }
+    return -1;
+}
 function fuse(main, others, rnd = Math.random) {
     const mods = (main.mods || []).map(m => ({ ...m }));
     const log = [];
@@ -615,7 +639,7 @@ function catalog() {
 
 module.exports = {
     TIERS, TIER_IDX, TIER_ODDS, TIER_BONUS, WEAPONS, ARMORS, SETS, SLOTS, UTILS, PACKS, BASE_PACK, THROW_RANGE, WEAPON_MODS, ARMOR_MODS,
-    SOURCES, CASES, SHOP, INV_MAX, fuse, FUSE_COST, FUSE_ADD, FUSE_MAX_MODS, maxTierOf, generate, plain, craft, salvageValue, weaponStats, armorStats, catalog, migrate, effectFactor
+    SOURCES, CASES, SHOP, INV_MAX, fuse, fuseUseless, FUSE_COST, FUSE_ADD, FUSE_MAX_MODS, maxTierOf, generate, plain, craft, salvageValue, weaponStats, armorStats, catalog, migrate, effectFactor
 };
 
 // Nachrechnen: node arena-items.js [N] – Verteilung je Quelle

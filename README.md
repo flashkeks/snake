@@ -2326,7 +2326,8 @@ Logik in `arena-items.js` `fuse(main, others)`, Server-Nachricht `arFuse`
 | gleicher Effekt, gleiche Stufe | garantiert +1 (Sharp I + Sharp I = Sharp II), hoechstens das Maximum des Effekts |
 | gleicher Effekt, andere Stufe | die hoehere Stufe |
 | neuer Effekt als 2. / 3. | `FUSE_ADD` 10 % / 1 % |
-| neuer Effekt auf Waffe ohne Effekt | 50 % (von Max nicht vorgegeben, selbst gewaehlt) |
+| Hauptwaffe ohne Effekt | verboten (Max: „dummer Fuse, man kann nur minus machen") |
+| Waffe, die nichts bringt | verboten: kein Effekt, nur niedrigere Stufe (Sharp I in Sharp II), Effekt schon am Maximum, neuer Effekt bei 3 Effekten |
 | Effekte hoechstens | 3 (`FUSE_MAX_MODS`) |
 | Seltenheit der Hauptwaffe | bleibt, Odds/Score neu gerechnet |
 
@@ -2343,3 +2344,11 @@ Die Items kommen ueber `plain()` mit der Stufe ihrer Basis raus.
 
 **Shop:** „Weapon with a random effect" (`s_modded`, 600 Scrap) raus. Die Quelle
 `modded` bleibt definiert.
+
+Nachtrag 6.11 (Max): sinnlose Fuses verboten. `fuseUseless(main, others)` (Server
+und gleich gebaut im Client) liefert die erste Waffe, die nichts bringt – gerechnet
+in Auswahl-Reihenfolge mit den garantierten Aufstiegen davor (zwei Sharp I in eine
+Sharp-I-Waffe: die zweite bringt nach Sharp II nichts mehr). Zufalls-Effekte zaehlen
+dabei nicht, die koennen ausbleiben. Der Server lehnt ab, der Client graut solche
+Waffen aus und zeigt als Hauptwaffe nur Waffen, fuer die es mindestens einen
+sinnvollen Partner gibt. `FUSE_ADD[0]` ist 0.
