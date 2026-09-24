@@ -2312,3 +2312,34 @@ vorher, nur Anzeige, Salvage-Wert und Handelswert waren falsch.
   das einmal je Konto ueber Lager und Ueberlauf laufen (`a.fixTier1`).
 - Test: `plain('util','chidori')` -> legendary, bandage bleibt common,
   altes Common-Chidori -> legendary, zweiter Lauf aendert nichts.
+
+## 🔥 6.11: Fuse, Q/G droppen, Random-Effekt-Waffe raus (25.09.2026, Max)
+
+**Fuse** – neuer Hub-Tab zwischen Inventory und Cases. Hauptwaffe waehlen,
+dann beliebig viele Waffen **derselben Basis** hineinfusen; die sind danach weg.
+Logik in `arena-items.js` `fuse(main, others)`, Server-Nachricht `arFuse`
+(`{ main, with: [uids] }`, in `server.js` an `hubAction` geroutet).
+
+| Regel | Wert |
+|---|---|
+| Kosten | `FUSE_COST` = 500 Scrap je hineingefuster Waffe |
+| gleicher Effekt, gleiche Stufe | garantiert +1 (Sharp I + Sharp I = Sharp II), hoechstens das Maximum des Effekts |
+| gleicher Effekt, andere Stufe | die hoehere Stufe |
+| neuer Effekt als 2. / 3. | `FUSE_ADD` 10 % / 1 % |
+| neuer Effekt auf Waffe ohne Effekt | 50 % (von Max nicht vorgegeben, selbst gewaehlt) |
+| Effekte hoechstens | 3 (`FUSE_MAX_MODS`) |
+| Seltenheit der Hauptwaffe | bleibt, Odds/Score neu gerechnet |
+
+- Geschuetzte (⭐) Waffen koennen nicht hineingefust werden; ausgeruestete schon
+  (Rueckfrage im Client, `fixLoadout` raeumt danach auf) – wie beim Salvage.
+- Der Client zeigt eine Vorschau (garantiert / Chance) und fragt vor dem Fusen nach.
+- Test: Logik 200k Mal – 2. Effekt 9,98 %, 3. Effekt 1,00 %, Tesla bleibt bei max 1.
+  Im Browser gegen lokalen Server: Legendary-Railgun Sharp I + drei Epic-Railguns
+  -> Sharp II, −1500 Scrap, drei Waffen weg, Meldung korrekt.
+
+**Q/G droppen:** Verbrauchsgut laesst sich jetzt auch direkt aus den Q/G-Slots
+aus dem Fenster ziehen (ganzer Stapel, `shInv` `op: 'drop'`, `slot: 'util0'|'util1'`).
+Die Items kommen ueber `plain()` mit der Stufe ihrer Basis raus.
+
+**Shop:** „Weapon with a random effect" (`s_modded`, 600 Scrap) raus. Die Quelle
+`modded` bleibt definiert.

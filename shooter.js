@@ -790,6 +790,25 @@ module.exports = function createArena(h, opts = {}) {
             h.accounts.touch();
             return sendHub(c, {});
         }
+        // Fuse (6.11, Max): Hauptwaffe frisst Waffen derselben Basis, je Waffe FUSE_COST Scrap
+        if (d.type === 'arFuse') {
+            const main = a.inv.find(it => it.uid === String(d.main));
+            if (!main || main.kind !== 'weapon') return h.send(c, { type: 'arError', error: 'Pick a weapon to fuse into' });
+            const uids = [...new Set((Array.isArray(d.with) ? d.with : []).slice(0, 50).map(String))].filter(u => u !== main.uid);
+            const others = uids.map(u => a.inv.find(it => it.uid === u)).filter(Boolean);
+            if (!others.length || others.length !== uids.length) return h.send(c, { type: 'arError', error: 'Pick at least one weapon to fuse in' });
+            if (others.some(it => it.kind !== 'weapon' || it.base !== main.base)) return h.send(c, { type: 'arError', error: 'You can only fuse the same weapon' });
+            if (others.some(it => it.fav)) return h.send(c, { type: 'arError', error: '⭐ Protected weapons cannot be fused in – unprotect them first' });
+            const err = pay(c, I.FUSE_COST * others.length, 'scrap');
+            if (err) return h.send(c, { type: 'arError', error: err });
+            const { item, log } = I.fuse(main, others);
+            Object.assign(main, item);
+            const gone = new Set(uids);
+            a.inv = a.inv.filter(it => !gone.has(it.uid));
+            fixLoadout(a);
+            h.accounts.touch();
+            return sendHub(c, { fused: { uid: main.uid, n: others.length, log, cost: I.FUSE_COST * others.length } });
+        }
         if (d.type === 'arSalvage') {
             const uids = new Set((Array.isArray(d.uids) ? d.uids : []).slice(0, 300).map(String));
             const out = a.inv.filter(it => uids.has(it.uid) && !it.fav).concat((a.overflow || []).filter(it => uids.has(it.uid) && !it.fav));
@@ -1217,7 +1236,13 @@ module.exports = function createArena(h, opts = {}) {
         } else if (d.op === 'drop') {
             const at = [p.x + Math.cos(p.a) * 30, p.y + Math.sin(p.a) * 30];
             // Ausgeruestetes direkt fallen lassen (5.1b, per Drag & Drop aus dem Fenster)
-            if (d.slot) {
+            // 6.11 (Max): auch Q/G-Verbrauchsgut direkt aus der Hotbar, ganzer Stapel
+            if (d.slot === 'util0' || d.slot === 'util1') {
+                const k = d.slot === 'util0' ? 0 : 1, u = p.util[k];
+                if (!u) return;
+                p.util[k] = null;
+                dropBag(at[0], at[1], Array.from({ length: u.n }, () => I.plain('util', u.base)));
+            } else if (d.slot) {
                 const slot = String(d.slot);
                 const slots = ['primary', 'secondary', 'helmet', 'vest', 'pants', 'boots', 'backpack'];
                 if (!slots.includes(slot) || !p.gear[slot] || p.gear[slot].starter) return;

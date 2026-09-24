@@ -4041,6 +4041,10 @@ span.tier-common, span.tier-uncommon, span.tier-rare, span.tier-epic, span.tier-
     gap: 10px;
 }
 
+.fuse-main { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+.fuse-main .it { max-width: 220px; }
+.fuse-pv { flex: 1; min-width: 220px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,140,60,.35); border-radius: 10px; padding: 10px 12px; line-height: 1.6; }
+
 .inv-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
@@ -6560,6 +6564,7 @@ body.watch-mode #world-switch {
                     <div class="cs-tabs" id="hub-tabs">
                         <button type="button" data-hubtab="play" data-group="modes">🎮 Game Modes</button>
                         <button type="button" data-hubtab="inv" data-group="inv">🎒 Inventory</button>
+                        <button type="button" data-hubtab="fuse">🔥 Fuse</button>
                         <button type="button" data-hubtab="cases">🎁 Cases</button>
                         <button type="button" data-hubtab="shop">🛒 Shop</button>
                     </div>
@@ -10575,6 +10580,12 @@ function onArHub(d) {
     if (d.coins !== undefined && me) me.coins = d.coins;
     if (d.caseItem) hubCaseAnim(d.caseItem, d.reel, d.reelWin, d.caseId);
     if (d.got) showMsg('hub-msg', `Bought ${d.got.n > 1 ? d.got.n + '× ' : ''}${d.got.name}`, 'ok');
+    if (d.fused) {
+        const fm = arenaCat.weaponMods, parts = d.fused.log.filter(x => !x.fail).map(x => `${(fm[x.id] || {}).icon || ''} ${(fm[x.id] || {}).name || x.id} ${x.from ? ROMAN[x.from] + ' → ' : 'new '}${ROMAN[x.to]}`);
+        const fails = d.fused.log.filter(x => x.fail).length;
+        showMsg('hub-msg', `🔥 Fused ${d.fused.n} weapon${d.fused.n > 1 ? 's' : ''} (−${d.fused.cost} ⚙️)${parts.length ? ': ' + parts.join(', ') : ' – no effect changed'}${fails ? ` · ${fails} new effect${fails > 1 ? 's' : ''} didn't stick` : ''}`, parts.length ? 'ok' : '');
+        fuseSel.clear();
+    }
     if (d.salvaged) showMsg('hub-msg', `Salvaged ${d.salvaged.count} item${d.salvaged.count > 1 ? 's' : ''} for ${d.salvaged.scrap} scrap`, 'ok');
     for (const u of [...hubMulti]) if (!d.inv.some(x => x.uid === u)) hubMulti.delete(u);
     if (d.caseBought) showMsg('hub-msg', `${d.caseBought.n > 1 ? d.caseBought.n + '× ' : ''}${arenaCat.cases[d.caseBought.id].name} added – open it in 🎁 Cases`, 'ok');
@@ -11103,6 +11114,8 @@ function hubDrawRaw() {
             `<div class="inv-bar">${filters}<button type="button" class="ghost" data-pickall="none">Clear</button>` +
             `<button type="button" class="danger" id="hub-salvage-picked" ${picked.length ? '' : 'disabled'}>♻️ Salvage ${picked.length} selected (+${val} ⚙️)</button></div>` +
             `<div class="inv-grid">${hubStacks(list).map(({ it, uids }) => itemCard(it, { eq: hubEquippedAs(it.uid), n: uids.length, pick: uids.every(u => hubMulti.has(u)) })).join('') || '<div class="hint">Nothing here.</div>'}</div>`;
+    } else if (hubTab === 'fuse') {
+        html = hubFuse();
     } else if (hubTab === 'cases') {
         const chances = t => arenaCat.tiers.map((x, i) => t[i] > 0 ? `<span class="tier-${x.id} it-tier">${x.name} ${t[i] >= 0.1 ? Math.round(t[i] * 100) + '%' : '1 in ' + Math.round(1 / t[i]).toLocaleString('en-US')}</span>` : '').join('');
         // 6.1 (Max): Cases kaufen -> "Your cases", dort oeffnen; Daily Case Wheel
@@ -11348,6 +11361,70 @@ $('hub-body').addEventListener('change', e => {
     }
 });
 let hubInvLast = 'inv';
+
+// ---------- Fuse (6.11, Max) ----------
+// Hauptwaffe waehlen, dann beliebig viele gleiche Waffen hineinfusen.
+// Regeln stehen im Server (arena-items.js fuse), hier nur Vorschau.
+let fuseMain = null;            // uid der Hauptwaffe
+const fuseSel = new Set();      // uids, die hineinfusen
+function fusePreview(main, others) {
+    const mods = itMods(main).map(m => ({ ...m })), sure = [], maybe = [];
+    const fm = arenaCat.weaponMods, add = arenaCat.fuse.add, cap = arenaCat.fuse.maxMods;
+    for (const o of others) for (const m of itMods(o)) {
+        const def = fm[m.id];
+        if (!def) continue;
+        const have = mods.find(x => x.id === m.id);
+        if (have) {
+            const lvl = Math.min(def.max, have.lvl === m.lvl ? have.lvl + 1 : Math.max(have.lvl, m.lvl));
+            if (lvl > have.lvl) sure.push(`${def.icon} ${def.name} ${ROMAN[have.lvl]} → ${ROMAN[lvl]}`);
+            have.lvl = lvl;
+        } else if (mods.length < cap) maybe.push(`${def.icon} ${def.name} ${ROMAN[m.lvl]} (${Math.round(add[mods.length] * 100)}% as effect #${mods.length + 1})`);
+    }
+    return { sure, maybe };
+}
+function hubFuse() {
+    const cost = arenaCat.fuse.cost;
+    const weapons = hub.inv.filter(x => x.kind === 'weapon');
+    const count = b => weapons.filter(x => x.base === b).length;
+    const main = fuseMain && weapons.find(x => x.uid === fuseMain);
+    if (!main) {
+        fuseMain = null;
+        fuseSel.clear();
+        const can = weapons.filter(x => count(x.base) > 1).sort((a, b) => tierIdx(b.tier) - tierIdx(a.tier) || itMods(b).length - itMods(a).length);
+        return `<div class="hint">🔥 <b>Fuse</b>: pick a main weapon, then feed it copies of the same weapon. Same effect on the same level → guaranteed one level up (e.g. Sharp I + Sharp I = Sharp II). ` +
+            `A different effect only sticks as a <b>2nd</b> effect with ${Math.round(arenaCat.fuse.add[1] * 100)}% and as a <b>3rd</b> with ${Math.round(arenaCat.fuse.add[2] * 100)}% (on a weapon without effects: ${Math.round(arenaCat.fuse.add[0] * 100)}%). ` +
+            `Every weapon you fuse in costs <b>${cost} ⚙️</b> and is gone afterwards. The main weapon keeps its rarity.</div>` +
+            `<h4 style="margin:12px 0 6px">1 · Pick your main weapon</h4>` +
+            `<div class="inv-grid">${can.map(it => itemCard(it, { eq: hubEquippedAs(it.uid), n: 0 }).replace('class="it ', 'data-fusemain="' + esc(it.uid) + '" class="it ')).join('') || '<div class="hint">You need at least two of the same weapon.</div>'}</div>`;
+    }
+    const same = weapons.filter(x => x.base === main.base && x.uid !== main.uid).sort((a, b) => itMods(b).length - itMods(a).length);
+    for (const u of [...fuseSel]) if (!same.some(x => x.uid === u && !x.fav)) fuseSel.delete(u);
+    const picked = same.filter(x => fuseSel.has(x.uid));
+    const pv = fusePreview(main, picked), total = cost * picked.length;
+    return `<div class="fuse-main"><div><h4 style="margin:0 0 6px">Main weapon</h4>${itemCard(main, { eq: hubEquippedAs(main.uid) })}` +
+        `<button type="button" class="ghost" data-fuseback="1">↩ Pick another</button></div>` +
+        `<div class="fuse-pv"><h4 style="margin:0 0 6px">Result</h4>` +
+        (picked.length ? (pv.sure.length ? `<div><b>Guaranteed</b><br>${pv.sure.join('<br>')}</div>` : '<div class="hint">No guaranteed upgrade.</div>') +
+            (pv.maybe.length ? `<div style="margin-top:6px"><b>Chance</b><br>${pv.maybe.join('<br>')}</div>` : '') : '<div class="hint">Pick weapons below to fuse in.</div>') +
+        `<button type="button" class="gold" id="fuse-go" ${picked.length && hub.scrap >= total ? '' : 'disabled'} style="margin-top:10px">🔥 Fuse ${picked.length || ''} in (−${total} ⚙️)</button>` +
+        (picked.length && hub.scrap < total ? `<div class="hint">You have ${hub.scrap} ⚙️</div>` : '') + '</div></div>' +
+        `<h4 style="margin:14px 0 6px">2 · Weapons to fuse in (${same.length})</h4>` +
+        `<div class="inv-grid">${same.map(it => itemCard(it, { eq: hubEquippedAs(it.uid), pick: fuseSel.has(it.uid) }).replace('class="it ', (it.fav ? 'data-fusefav="1" ' : 'data-fusepick="' + esc(it.uid) + '" ') + 'class="it ')).join('')}</div>`;
+}
+function fuseClick(t, ds) {
+    if (ds.fusemain) { fuseMain = ds.fusemain; fuseSel.clear(); hubDraw(); return true; }
+    if (ds.fuseback) { fuseMain = null; fuseSel.clear(); hubDraw(); return true; }
+    if (ds.fusefav) { showMsg('hub-msg', '⭐ Protected – unprotect it in the Inventory first', ''); return true; }
+    if (ds.fusepick) { fuseSel.has(ds.fusepick) ? fuseSel.delete(ds.fusepick) : fuseSel.add(ds.fusepick); hubDraw(); return true; }
+    if (t.id === 'fuse-go') {
+        const picked = hub.inv.filter(x => fuseSel.has(x.uid));
+        const eq = picked.filter(x => hubEquippedAs(x.uid)).length, rare = picked.filter(x => tierIdx(x.tier) >= 3).length;
+        if (!confirm(`Fuse ${picked.length} weapon${picked.length > 1 ? 's' : ''} into ${hub.inv.find(x => x.uid === fuseMain).name} for ${arenaCat.fuse.cost * picked.length} scrap? They are gone afterwards.${eq ? `\n${eq} of them are in your loadout.` : ''}${rare ? `\n${rare} of them are Epic or better.` : ''}`)) return true;
+        wsSend({ type: 'arFuse', main: fuseMain, with: [...fuseSel] });
+        return true;
+    }
+    return false;
+}
 let hubModesLast = 'play';
 let hubMode = 'extract';        // Play-Tab: extract | pvp
 let pvpLobbies = [];
@@ -11377,6 +11454,7 @@ $('hub-body').addEventListener('click', e => {
         return hubDraw();
     }
     if (hubTab === 'profile') return profClick(t, ds, e);
+    if (hubTab === 'fuse' && fuseClick(t, ds)) return;
     if (ds.preset) {
         const i = ds.i === undefined ? undefined : Number(ds.i);
         const list = (hub.presets && hub.presets[hubMode]) || [];
@@ -11659,9 +11737,9 @@ $('sh-inv').addEventListener('dragend', () => {
 });
 
 // Aus dem Fenster ziehen = fallen lassen (5.1b, Max). Waffen/Ruestung aus den
-// Slots genauso, Q/G-Verbrauchsgut nicht.
+// Slots genauso, seit 6.11 auch das Q/G-Verbrauchsgut (ganzer Stapel).
 document.addEventListener('dragover', e => {
-    if (!shDrag || shDrag.where === 'util' || e.target.closest('#sh-inv')) {
+    if (!shDrag || e.target.closest('#sh-inv')) {
         if (shDrag) document.body.classList.remove('inv-drop-out');
         return;
     }
@@ -11669,7 +11747,7 @@ document.addEventListener('dragover', e => {
     document.body.classList.add('inv-drop-out');
 });
 document.addEventListener('drop', e => {
-    if (!shDrag || shDrag.where === 'util' || e.target.closest('#sh-inv')) return;
+    if (!shDrag || e.target.closest('#sh-inv')) return;
     e.preventDefault();
     const d = shDrag;
     shDrag = null;

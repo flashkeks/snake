@@ -1631,6 +1631,7 @@ async function handle(c, data) {
         case 'arWheel':
         case 'arSalvage':
         case 'arFav':
+        case 'arFuse':
         case 'arEquip':
         case 'arProg':
         case 'arPreset':

@@ -326,8 +326,9 @@ const SHOP = [
     ...Object.entries(WEAPON_PRICES).map(([k, p]) => ({ id: 'w_' + k, kind: 'weapon', base: k, price: p, currency: 'coins' })),
     ...Object.entries(UTIL_PRICES).map(([k, p]) => ({ id: 'u_' + k, kind: 'util', base: k, price: p, currency: 'coins' })),
     ...Object.entries(PACK_PRICES).map(([k, p]) => ({ id: 'p_' + k, kind: 'pack', base: k, price: p, currency: 'coins' })),
-    ...Object.entries(UTIL_SCRAP).map(([k, p]) => ({ id: 's_' + k, kind: 'util', base: k, price: p, currency: 'scrap' })),
-    { id: 's_modded', kind: 'gen', source: 'modded', price: 600, currency: 'scrap' }
+    ...Object.entries(UTIL_SCRAP).map(([k, p]) => ({ id: 's_' + k, kind: 'util', base: k, price: p, currency: 'scrap' }))
+    // 6.11 (Max): „Weapon with a random effect" (s_modded, 600 Scrap) raus –
+    // Effekte gibt es jetzt ueber Fuse; die Quelle 'modded' bleibt fuer alte Verweise
 ];
 
 // 6.10 (Max): Lager 100 -> 200
@@ -403,6 +404,40 @@ function generate(sourceId) {
 function plain(kind, base) {
     const tier = kind === 'util' || kind === 'pack' ? TIERS[defsOf(kind)[base].tier].id : 'common';
     return finish({ kind, base, tier, mods: [] }, true);
+}
+
+// ---------- Fuse (6.11, Max) ----------
+// Eine Hauptwaffe frisst beliebig viele Waffen derselben Basis. Je gefressener
+// Waffe und je Effekt darauf:
+//   - Effekt hat die Hauptwaffe schon: gleiche Stufe -> garantiert +1,
+//     sonst die hoehere der beiden Stufen (hoechstens das Maximum des Effekts)
+//   - neuer Effekt: kommt mit FUSE_ADD[Anzahl bisher] dazu – als 2. Effekt 10 %,
+//     als 3. 1 %; der 1. Effekt (Waffe ohne Effekt) 50 %. Mehr als 3 gehen nicht.
+// Stufe (Seltenheit) der Hauptwaffe bleibt, Odds/Score werden neu gerechnet.
+const FUSE_COST = 500, FUSE_ADD = [0.5, 0.1, 0.01], FUSE_MAX_MODS = 3;
+function fuse(main, others, rnd = Math.random) {
+    const mods = (main.mods || []).map(m => ({ ...m }));
+    const log = [];
+    for (const o of others) {
+        for (const m of o.mods || []) {
+            const def = WEAPON_MODS[m.id];
+            if (!def) continue;
+            const have = mods.find(x => x.id === m.id);
+            if (have) {
+                const lvl = Math.min(def.max, have.lvl === m.lvl ? have.lvl + 1 : Math.max(have.lvl, m.lvl));
+                if (lvl > have.lvl) log.push({ id: m.id, from: have.lvl, to: lvl });
+                have.lvl = lvl;
+            } else if (mods.length < FUSE_MAX_MODS) {
+                if (rnd() < FUSE_ADD[mods.length]) {
+                    mods.push({ id: m.id, lvl: m.lvl });
+                    log.push({ id: m.id, from: 0, to: m.lvl });
+                } else log.push({ id: m.id, fail: true });
+            }
+        }
+    }
+    mods.sort((a, b) => b.lvl - a.lvl);
+    const f = finish({ kind: main.kind, base: main.base, tier: main.tier, mods });
+    return { item: { ...main, mods, odds: f.odds, score: f.score }, log };
 }
 
 // Vom Admin gebaut: beliebige Basis, Stufe und Mods
@@ -573,14 +608,14 @@ function catalog() {
     return {
         weapons: WEAPONS, armors: ARMORS, sets: SETS, slots: SLOTS, slotNames: SLOT_NAMES, utils: UTILS, packs: PACKS, basePack: BASE_PACK, tierBonus: TIER_BONUS,
         weaponMods: mods(WEAPON_MODS), armorMods: mods(ARMOR_MODS),
-        cases, shop: SHOP, tiers: TIERS, invMax: INV_MAX,
+        cases, shop: SHOP, tiers: TIERS, invMax: INV_MAX, fuse: { cost: FUSE_COST, add: FUSE_ADD, maxMods: FUSE_MAX_MODS },
         maxTier: { weapon: Object.fromEntries(Object.entries(WEAPONS).map(([k, b]) => [k, maxTierOf(b)])), armor: Object.fromEntries(Object.entries(ARMORS).map(([k, b]) => [k, maxTierOf(b)])) }
     };
 }
 
 module.exports = {
     TIERS, TIER_IDX, TIER_ODDS, TIER_BONUS, WEAPONS, ARMORS, SETS, SLOTS, UTILS, PACKS, BASE_PACK, THROW_RANGE, WEAPON_MODS, ARMOR_MODS,
-    SOURCES, CASES, SHOP, INV_MAX, maxTierOf, generate, plain, craft, salvageValue, weaponStats, armorStats, catalog, migrate, effectFactor
+    SOURCES, CASES, SHOP, INV_MAX, fuse, FUSE_COST, FUSE_ADD, FUSE_MAX_MODS, maxTierOf, generate, plain, craft, salvageValue, weaponStats, armorStats, catalog, migrate, effectFactor
 };
 
 // Nachrechnen: node arena-items.js [N] – Verteilung je Quelle
