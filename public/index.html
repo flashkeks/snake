@@ -5885,6 +5885,371 @@ body.touch input, body.touch textarea {
         margin-right: 0;
     }
 }
+
+/* ---------- Case oeffnen (6.2): Vollbild-Overlay ---------- */
+#case-open {
+    position: fixed;
+    inset: 0;
+    z-index: 2500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--tc, #ffd23f) 22%, rgba(10,8,20,.9)), rgba(4,4,10,.96) 70%);
+    backdrop-filter: blur(6px);
+    overflow: hidden;
+    transition: background .6s;
+}
+
+#case-open[hidden] {
+    display: none;
+}
+
+.co-box {
+    position: relative;
+    z-index: 2;
+    width: min(1100px, 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.co-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 22px;
+}
+
+.co-case {
+    font-size: 64px;
+    display: inline-block;
+    animation: co-wobble .75s ease-in-out;
+    filter: drop-shadow(0 0 18px rgba(255,210,63,.6));
+}
+
+.co-case.pop {
+    animation: co-pop .5s ease-out forwards;
+}
+
+@keyframes co-wobble {
+    0%, 100% { transform: rotate(0) scale(1); }
+    15% { transform: rotate(-12deg) scale(1.05); }
+    30% { transform: rotate(12deg) scale(1.1); }
+    45% { transform: rotate(-10deg) scale(1.15); }
+    60% { transform: rotate(10deg) scale(1.2); }
+    80% { transform: rotate(-4deg) scale(1.28); }
+}
+
+@keyframes co-pop {
+    0% { transform: scale(1.28); }
+    40% { transform: scale(1.6); filter: drop-shadow(0 0 40px #fff); }
+    100% { transform: scale(.8); opacity: .55; }
+}
+
+.co-reel {
+    position: relative;
+    width: 100%;
+    height: 176px;
+    overflow: hidden;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #0c0f1a, #151a2b 50%, #0c0f1a);
+    border: 2px solid rgba(255,210,63,.7);
+    box-shadow: 0 0 40px rgba(0,0,0,.6), inset 0 0 30px rgba(0,0,0,.6);
+}
+
+.co-strip {
+    display: flex;
+    gap: 8px;
+    position: absolute;
+    top: 18px;
+    left: 0;
+    will-change: transform;
+}
+
+.co-item {
+    flex: none;
+    width: 128px;
+    height: 140px;
+    border-radius: 12px;
+    background: linear-gradient(165deg, color-mix(in srgb, var(--tc) 22%, #1d2436), #121726 70%);
+    border-bottom: 5px solid var(--tc, #cfd8e3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 48px;
+    text-align: center;
+    transition: opacity .5s, transform .5s, box-shadow .5s;
+}
+
+.co-item small {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--tc);
+    padding: 0 4px;
+    line-height: 1.15;
+}
+
+.co-strip.landed .co-item {
+    opacity: .28;
+}
+
+.co-strip.landed .co-item.won {
+    opacity: 1;
+    transform: scale(1.12);
+    box-shadow: 0 0 0 3px var(--tc), 0 0 36px var(--tc);
+    z-index: 2;
+}
+
+.co-pointer {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    transform: translateX(-50%);
+    background: #ffd23f;
+    box-shadow: 0 0 14px #ffd23f, 0 0 30px #ffb13d;
+    z-index: 3;
+}
+
+.co-pointer::before,
+.co-pointer::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 10px solid transparent;
+}
+
+.co-pointer::before {
+    top: 0;
+    border-top-color: #ffd23f;
+}
+
+.co-pointer::after {
+    bottom: 0;
+    border-bottom-color: #ffd23f;
+}
+
+.co-fade {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 18%;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.co-fade.l { left: 0; background: linear-gradient(90deg, #0c0f1a, transparent); }
+.co-fade.r { right: 0; background: linear-gradient(270deg, #0c0f1a, transparent); }
+
+.co-result {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    min-height: 10px;
+    max-width: 420px;
+    width: 100%;
+}
+
+.co-result:not(:empty) {
+    animation: co-rise .5s ease-out;
+}
+
+@keyframes co-rise {
+    from { opacity: 0; transform: translateY(20px) scale(.9); }
+}
+
+.co-tier {
+    font-size: 30px;
+    font-weight: 900;
+    color: var(--tc);
+    text-shadow: 0 0 18px var(--tc);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.co-t5 .co-tier,
+.co-t6 .co-tier {
+    font-size: 40px;
+    animation: co-glow 1s ease-in-out infinite alternate;
+}
+
+@keyframes co-glow {
+    to { text-shadow: 0 0 34px var(--tc), 0 0 60px #fff; }
+}
+
+.co-result .case-won {
+    width: 100%;
+    border: 1px solid color-mix(in srgb, var(--tc) 60%, transparent);
+    background: rgba(0,0,0,.45);
+}
+
+.co-btns {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* Strahlen ab Epic */
+.co-rays {
+    position: absolute;
+    inset: -50%;
+    z-index: 1;
+    opacity: 0;
+    pointer-events: none;
+    background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--tc) 35%, transparent) 0deg 8deg, transparent 8deg 22deg);
+    mask: radial-gradient(circle, #000 0%, transparent 55%);
+    -webkit-mask: radial-gradient(circle, #000 0%, transparent 55%);
+}
+
+.co-t3 .co-rays,
+.co-t4 .co-rays,
+.co-t5 .co-rays,
+.co-t6 .co-rays {
+    opacity: .8;
+    animation: co-spin 12s linear infinite, co-fadein .8s ease-out;
+}
+
+.co-t5 .co-rays,
+.co-t6 .co-rays {
+    opacity: 1;
+    animation: co-spin 6s linear infinite, co-fadein .5s ease-out;
+}
+
+@keyframes co-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes co-fadein {
+    from { opacity: 0; }
+}
+
+/* Konfetti ab Legendary */
+.co-confetti {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.co-confetti i {
+    position: absolute;
+    top: -20px;
+    width: 9px;
+    height: 14px;
+    border-radius: 2px;
+    background: var(--tc);
+    animation: co-fall linear forwards;
+}
+
+.co-confetti i:nth-child(3n) { background: #fff; }
+.co-confetti i:nth-child(3n+1) { background: #ffd23f; }
+
+@keyframes co-fall {
+    to { transform: translateY(110vh) rotate(var(--r)); opacity: .8; }
+}
+
+/* Wackeln ab Mythic */
+body.co-shake #case-open .co-box {
+    animation: co-shake .6s ease-in-out 2;
+}
+
+@keyframes co-shake {
+    0%, 100% { transform: translate(0); }
+    20% { transform: translate(-10px, 4px); }
+    40% { transform: translate(10px, -4px); }
+    60% { transform: translate(-6px, -3px); }
+    80% { transform: translate(6px, 3px); }
+}
+
+@media (max-width: 700px) {
+    .co-reel { height: 132px; }
+    .co-item { width: 96px; height: 106px; font-size: 36px; }
+    .co-strip { top: 12px; }
+    .co-case { font-size: 48px; }
+    .co-tier { font-size: 24px; }
+}
+
+/* ---------- Arena-Shop kompakt (6.2) ---------- */
+.shop-h {
+    margin: 12px 0 6px;
+    font-size: 15px;
+}
+
+.shop-h small {
+    font-weight: 400;
+    font-size: 11px;
+    opacity: .6;
+    margin-left: 6px;
+}
+
+.shop-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 6px;
+}
+
+.shop-row {
+    display: grid;
+    grid-template-columns: 34px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,91,214,.2);
+}
+
+.shop-row .it-ico {
+    font-size: 26px;
+    text-align: center;
+}
+
+.shop-txt {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
+.shop-txt b {
+    font-size: 14px;
+}
+
+.shop-txt small {
+    font-size: 11px;
+    opacity: .7;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.shop-chances {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 6px;
+    margin-top: 2px;
+    font-size: 10px;
+}
+
+.shop-btns {
+    display: flex;
+    gap: 4px;
+}
+
+.card .shop-btns button {
+    padding: 5px 10px;
+    font-size: 13px;
+    white-space: nowrap;
+}
 </style>
 <link rel="stylesheet" href="/kekemon.css">
 <link rel="stylesheet" href="/market.css">
@@ -9993,11 +10358,11 @@ function onArHub(d) {
         showMsg('hub-msg', 'All points reset – spend them again', 'ok');
     }
     if (d.coins !== undefined && me) me.coins = d.coins;
-    if (d.caseItem) hubCaseAnim(d.caseItem, d.reel);
+    if (d.caseItem) hubCaseAnim(d.caseItem, d.reel, d.reelWin, d.caseId);
     if (d.got) showMsg('hub-msg', `Bought ${d.got.n > 1 ? d.got.n + '× ' : ''}${d.got.name}`, 'ok');
     if (d.salvaged) showMsg('hub-msg', `Salvaged ${d.salvaged.count} item${d.salvaged.count > 1 ? 's' : ''} for ${d.salvaged.scrap} scrap`, 'ok');
     for (const u of [...hubMulti]) if (!d.inv.some(x => x.uid === u)) hubMulti.delete(u);
-    if (d.caseBought) showMsg('hub-msg', `${d.caseBought.n > 1 ? d.caseBought.n + '× ' : ''}${arenaCat.cases[d.caseBought.id].name} added to Your cases`, 'ok');
+    if (d.caseBought) showMsg('hub-msg', `${d.caseBought.n > 1 ? d.caseBought.n + '× ' : ''}${arenaCat.cases[d.caseBought.id].name} added – open it in 🎁 Cases`, 'ok');
     // Daily Case Wheel: erst drehen, dann neu zeichnen
     if (d.wheelSpin) {
         const [cid, n] = d.wheelSpin.prize;
@@ -10472,33 +10837,33 @@ function hubDraw() {
         const mine = Object.entries(hub.cases || {}).filter(([k, n]) => n > 0 && arenaCat.cases[k]);
         const ready = hub.wheel && hub.wheel.ready;
         const C = arenaCat.cases;
-        html = `<div class="case-view" id="hub-caseview" hidden><div class="sh-pointer"></div><div class="sh-strip" id="hub-strip"></div></div>` +
-            `<div id="hub-caseres"></div>` +
-            `<div class="km-wheelbox"><div class="pw-wrap"><canvas id="ar-wheel" width="340" height="340"></canvas><div class="pw-pointer">▼</div></div>` +
+        html = `<div class="km-wheelbox"><div class="pw-wrap"><canvas id="ar-wheel" width="340" height="340"></canvas><div class="pw-pointer">▼</div></div>` +
             `<div class="km-wheelside"><h3>🎡 Daily Case Wheel</h3><div>One free spin every day. Every prize is a case for your inventory.</div>` +
             `<button type="button" class="gold" id="ar-spin" ${ready && !pwBusy['ar-wheel'] ? '' : 'disabled'}>${ready ? '🎡 Spin for free' : '✔ Spun today – come back tomorrow'}</button>` +
-            `<small class="hint">40 % 1× · 25 % 2× · 10 % 3× ${C.elite.icon} ${esc(C.elite.name)} · 20 % ${C.elite50.icon} ${esc(C.elite50.name)} · 5 % ${C.jackpot.icon} ${esc(C.jackpot.name)} (only here, Sovereign odds)</small></div></div>` +
+            `</div></div>` +
             `<h3 class="kd-h">Your cases</h3><div class="cases">${mine.map(([k, n]) => {
                 const c = C[k];
                 return `<div class="case-card case-${k} case-own"><span class="km-invn">×${n}</span><span class="it-ico">${c.icon}</span><b>${esc(c.name)}</b><small>${esc(c.desc)}</small>` +
                     `<div class="chances">${chances(c.tiers)}</div><button type="button" class="gold" data-caseopen="${k}">Open</button></div>`;
-            }).join('') || '<div class="hint">No unopened cases – buy some below or spin the wheel. Cases can be traded in the 🏛️ Market.</div>'}</div>` +
-            `<h3 class="kd-h">Case shop</h3><div class="hint">Bought cases go to "Your cases" above.</div>` +
-            `<div class="cases">${Object.entries(C).filter(([, c]) => !c.wheel).map(([k, c]) =>
-            `<div class="case-card case-${k}"><span class="it-ico">${c.icon}</span><b>${esc(c.name)}</b><small>${esc(c.desc)}</small>` +
-            `<div class="chances">${chances(c.tiers)}</div>` +
-            `<button type="button" class="gold" data-case="${k}">Buy ${c.currency === 'scrap' ? '⚙️' : '🪙'} ${c.price.toLocaleString('en-US')}</button></div>`).join('')}</div>`;
+            }).join('') || '<div class="hint">No unopened cases – buy some in 🛒 Shop or spin the wheel. Cases can be traded in the 🏛️ Market.</div>'}</div>`;
     } else if (hubTab === 'shop') {
-        const btn = (o, n = 1) => `<button type="button" class="${o.currency === 'scrap' ? 'ghost' : 'gold'}" data-buy="${o.id}" data-n="${n}">${n > 1 ? n + '× ' : ''}${o.currency === 'scrap' ? '⚙️' : '🪙'} ${(o.price * n).toLocaleString('en-US')}</button>`;
-        const card = o => {
+        // 6.2 (Max): kompakt, Zeilen statt Karten; Cases gibt es jetzt hier
+        const cur = o => o.currency === 'scrap' ? '⚙️' : '🪙';
+        const btn = (o, n = 1) => `<button type="button" class="${o.currency === 'scrap' ? 'ghost' : 'gold'}" data-buy="${o.id}" data-n="${n}">${n > 1 ? n + '× ' : ''}${cur(o)} ${(o.price * n).toLocaleString('en-US')}</button>`;
+        const row = (icon, name, desc, btns, extra = '') => `<div class="shop-row"><span class="it-ico">${icon}</span><div class="shop-txt"><b>${esc(name)}</b>${desc ? `<small>${esc(desc)}</small>` : ''}${extra}</div><div class="shop-btns">${btns}</div></div>`;
+        const item = o => {
             const def = o.kind === 'gen' ? { name: 'Weapon with a random effect', icon: '🎲' } : o.kind === 'util' ? arenaCat.utils[o.base] : o.kind === 'pack' ? arenaCat.packs[o.base] : arenaCat.weapons[o.base];
             const desc = def.desc || (o.kind === 'pack' ? `${def.cap} slots instead of ${arenaCat.basePack}` : '');
-            return `<div class="case-card"><span class="it-ico">${def.icon}</span><b>${esc(def.name)}</b>${desc ? `<small>${esc(desc)}</small>` : ''}${btn(o)}${o.kind === 'util' ? btn(o, 5) : ''}</div>`;
+            return row(def.icon, def.name, desc, btn(o) + (o.kind === 'util' ? btn(o, 5) : ''));
         };
+        const tiny = t => arenaCat.tiers.map((x, i) => t[i] > 0 ? `<span class="tier-${x.id} it-tier" title="${x.name}">${t[i] >= 0.1 ? Math.round(t[i] * 100) + '%' : '1/' + Math.round(1 / t[i]).toLocaleString('en-US')}</span>` : '').join('');
+        const cases = Object.entries(arenaCat.cases).filter(([, c]) => !c.wheel).map(([k, c]) =>
+            row(c.icon, c.name, c.desc, `<button type="button" class="gold" data-case="${k}">${cur(c)} ${c.price.toLocaleString('en-US')}</button>`, `<div class="shop-chances">${tiny(c.tiers)}</div>`)).join('');
         const coins = arenaCat.shop.filter(o => o.currency === 'coins');
-        html = `<h3>Weapons</h3><div class="cases">${coins.filter(o => o.kind === 'weapon').map(card).join('')}</div>` +
-            `<h3>Gear</h3><div class="cases">${coins.filter(o => o.kind === 'util' || o.kind === 'pack').map(card).join('')}</div>` +
-            `<h3>For scrap</h3><div class="cases">${arenaCat.shop.filter(o => o.currency === 'scrap').map(card).join('')}</div>` +
+        html = `<h3 class="shop-h">🎁 Cases <small>go to your Cases tab, open them there</small></h3><div class="shop-list">${cases}</div>` +
+            `<h3 class="shop-h">🔫 Weapons</h3><div class="shop-list">${coins.filter(o => o.kind === 'weapon').map(item).join('')}</div>` +
+            `<h3 class="shop-h">🎒 Gear</h3><div class="shop-list">${coins.filter(o => o.kind === 'util' || o.kind === 'pack').map(item).join('')}</div>` +
+            `<h3 class="shop-h">⚙️ For scrap</h3><div class="shop-list">${arenaCat.shop.filter(o => o.currency === 'scrap').map(item).join('')}</div>` +
             `<div class="hint">Armor, bigger backpacks, rarer weapons and special consumables only come from cases and crates.</div>`;
     }
     if (['equip', 'inv', 'salvage'].includes(hubTab)) {
@@ -10532,27 +10897,154 @@ function hubActions(it) {
 }
 
 let hubCaseBusy = false;
-function hubCaseAnim(item, reel) {
-    hubTab = 'cases';
+// ---------- Case oeffnen (6.2): Vollbild-Overlay wie bei Kekemon ----------
+// Ablauf: Kiste wackelt und springt auf -> Band laeuft (Klick je Feld unter
+// dem Zeiger) und bremst aus -> Gewinner leuchtet, Effekt und Klang je Stufe.
+
+let caseOpen = null;        // { item, reel, win, caseId, raf, done }
+
+// Klang je Stufe: 0 Common … 6 Ultra
+function caseSound(t) {
+    if (t <= 0) return sfx.land(0);
+    if (t === 1) return sfx.win(1);
+    if (t === 2) return sfx.win(3);
+    if (t === 3) {
+        sfx.fanfare('end');
+        return sfx.orbLand(1);
+    }
+    if (t === 4) return sfx.fanfare('big');
+    sfx.orbEpic();
+    setTimeout(() => sfx.fanfare(t >= 6 ? 'bonus' : 'big'), 350);
+}
+
+function caseEl() {
+    let el = $('case-open');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'case-open';
+        el.hidden = true;
+        document.body.appendChild(el);
+        el.addEventListener('click', e => {
+            const t = e.target.closest('[data-co]');
+            if (!t) return;
+            if (t.dataset.co === 'skip') return caseFinish(true);
+            if (t.dataset.co === 'again') {
+                el.hidden = true;
+                return wsSend({ type: 'arCaseOpen', id: t.dataset.id });
+            }
+            if (t.dataset.co === 'close') caseClose();
+        });
+    }
+    return el;
+}
+
+function caseClose() {
+    if (caseOpen && caseOpen.raf) cancelAnimationFrame(caseOpen.raf);
+    caseOpen = null;
+    hubCaseBusy = false;
+    const el = caseEl();
+    el.hidden = true;
+    el.innerHTML = '';
+    document.body.classList.remove('co-shake');
     hubDraw();
+}
+
+function hubCaseAnim(item, reel, win, caseId) {
+    win = Number.isInteger(win) ? win : 29;
+    const c = arenaCat.cases[caseId] || { icon: '🎁', name: 'Case' };
+    const el = caseEl();
     hubCaseBusy = true;
-    const view = $('hub-caseview'), strip = $('hub-strip');
-    view.hidden = false;
-    strip.innerHTML = reel.map(r => `<div class="sh-item tier-${r.t}">${itemIcon(r)}<small>${esc(r.n)}</small></div>`).join('');
-    strip.style.transition = 'none';
-    strip.style.transform = 'translateX(0)';
-    void strip.offsetWidth;
-    const w = 106, target = 29 * w - (view.clientWidth / 2 - w / 2) + (Math.random() - .5) * 60;
-    strip.style.transition = 'transform 4s cubic-bezier(.12,.8,.2,1)';
-    strip.style.transform = `translateX(${-target}px)`;
-    sfx.spin();
+    caseOpen = { item, reel, win, caseId, done: false };
+    const tiles = reel.map((r, i) => `<div class="co-item tier-${r.t}" data-i="${i}">${itemIcon(r)}<small>${esc(r.n)}</small></div>`).join('');
+    el.innerHTML = `<div class="co-box">
+        <div class="co-head"><span class="co-case">${c.icon}</span><b>${esc(c.name)}</b></div>
+        <div class="co-reel" id="co-reel" hidden><div class="co-strip" id="co-strip">${tiles}</div><div class="co-pointer"></div><div class="co-fade l"></div><div class="co-fade r"></div></div>
+        <div class="co-result" id="co-result"></div>
+        <div class="co-btns" id="co-btns"><button type="button" class="ghost" data-co="skip">Skip ⏭</button></div>
+    </div><div class="co-rays" id="co-rays"></div><div class="co-confetti" id="co-confetti"></div>`;
+    el.className = '';
+    el.hidden = false;
+    // 1) Kiste wackelt und springt auf
+    sfx.charge();
     setTimeout(() => {
-        hubCaseBusy = false;
-        $('hub-caseres').innerHTML = `<div class="case-won">${itemDetail(item)}</div>`;
-        sfx.fanfare(tierIdx(item.tier) >= 3 ? 'big' : 'end');
-        $('hub-scrap').textContent = hub.scrap.toLocaleString('en-US');
-        $('hub-coins').textContent = me ? me.coins.toLocaleString('en-US') : '–';
-    }, 4100);
+        if (!caseOpen) return;
+        el.querySelector('.co-case').classList.add('pop');
+        sfx.spin();
+        $('co-reel').hidden = false;
+        caseSpin();
+    }, 750);
+}
+
+function caseSpin() {
+    const o = caseOpen;
+    const strip = $('co-strip'), reelEl = $('co-reel');
+    const first = strip.children[0];
+    const step = first.getBoundingClientRect().width + 8;
+    const center = reelEl.clientWidth / 2;
+    // Ziel: Gewinner unter dem Zeiger, etwas zufaellig versetzt (wie CS)
+    const end = o.win * step + step / 2 - center + (Math.random() - 0.5) * step * 0.7;
+    const tier = tierIdx(o.item.tier);
+    const dur = 5600 + (tier >= 4 ? 1200 : 0);
+    const t0 = performance.now();
+    let last = -1;
+    const ease = t => 1 - Math.pow(1 - t, 4.2);
+    (function frame() {
+        if (!caseOpen || o.done) return;
+        const t = Math.min(1, (performance.now() - t0) / dur);
+        const x = end * ease(t);
+        strip.style.transform = `translateX(${-x}px)`;
+        const idx = Math.floor((x + center) / step);
+        if (idx !== last) {
+            last = idx;
+            // Klick je Feld, zum Ende hin tiefer und leiser
+            try { sTone(1500 - t * 700, { dur: .035, type: 'triangle', vol: .07 * (1 - t * .6) + .015, rev: 0 }); } catch {}
+        }
+        if (t < 1) {
+            o.raf = requestAnimationFrame(frame);
+            return;
+        }
+        caseFinish(false);
+    })();
+}
+
+function caseFinish(skip) {
+    const o = caseOpen;
+    if (!o || o.done) return;
+    o.done = true;
+    if (o.raf) cancelAnimationFrame(o.raf);
+    const el = caseEl(), strip = $('co-strip'), reelEl = $('co-reel');
+    if (skip && strip) {
+        reelEl.hidden = false;
+        const step = strip.children[0].getBoundingClientRect().width + 8;
+        strip.style.transform = `translateX(${-(o.win * step + step / 2 - reelEl.clientWidth / 2)}px)`;
+    }
+    const it = o.item;
+    const tier = tierIdx(it.tier);
+    const tname = (arenaCat.tiers[tier] || {}).name || it.tier;
+    strip.querySelector(`[data-i="${o.win}"]`).classList.add('won');
+    strip.classList.add('landed');
+    el.className = `tier-${it.tier} co-t${tier}`;
+    caseSound(tier);
+    // Effekte: ab Epic Strahlen, ab Legendary Konfetti, ab Mythic Wackeln
+    if (tier >= 5) {
+        document.body.classList.remove('co-shake');
+        void document.body.offsetWidth;
+        document.body.classList.add('co-shake');
+    }
+    if (tier >= 4) {
+        const cf = $('co-confetti');
+        cf.innerHTML = Array.from({ length: tier >= 5 ? 90 : 50 }, () => {
+            const l = Math.random() * 100, d = Math.random() * .8, r = Math.random() * 720 - 360, dur = 1.8 + Math.random() * 1.6;
+            return `<i style="left:${l}%;animation-delay:${d}s;animation-duration:${dur}s;--r:${r}deg"></i>`;
+        }).join('');
+    }
+    $('co-result').innerHTML = `<div class="co-tier">${esc(tname)}</div><div class="case-won">${itemDetail(it)}</div>`;
+    hubCaseBusy = false;
+    const left = (hub && hub.cases && hub.cases[o.caseId]) || 0;
+    $('co-btns').innerHTML = (left ? `<button type="button" class="gold" data-co="again" data-id="${esc(o.caseId)}">Open another (${left} left)</button>` : '') +
+        '<button type="button" data-co="close">Close</button>';
+    $('hub-scrap').textContent = hub.scrap.toLocaleString('en-US');
+    $('hub-coins').textContent = me ? me.coins.toLocaleString('en-US') : '–';
 }
 
 $('hub-tabs').addEventListener('click', e => {

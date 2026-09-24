@@ -297,14 +297,12 @@ function kmDrawInv() {
             <button type="button" class="gold" data-kmopen="${id}">Open</button>
         </div>`;
     }).join('');
-    const odds = `<small class="hint">40 % 1× · 25 % 2× · 10 % 3× ${P.daily.icon} Daily Booster (10k odds) · 20 % ${P.mixed.icon} Mega Booster · 5 % ${P.jackpot.icon} Jackpot Booster (only here: Mega odds, 12 cards)</small>`;
     return `<div class="km-wheelbox">
             <div class="pw-wrap"><canvas id="km-wheel" width="340" height="340"></canvas><div class="pw-pointer">▼</div></div>
             <div class="km-wheelside">
                 <h3>🎡 Daily Pack Wheel</h3>
                 <div>One free spin every day. Every prize is a pack for your inventory.</div>
                 <button type="button" class="gold" id="km-spin" ${ready && !pwBusy['km-wheel'] ? '' : 'disabled'}>${ready ? '🎡 Spin for free' : '✔ Spun today – come back tomorrow'}</button>
-                ${odds}
             </div>
         </div>
         <h3 class="kd-h">Your packs</h3>

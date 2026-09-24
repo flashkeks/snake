@@ -586,14 +586,17 @@ module.exports = function createArena(h, opts = {}) {
             addItems(c, [item]);
             h.accounts.stat(c.account, s => { s.casesOpened = (s.casesOpened || 0) + 1; });
             // Band fuer die Animation: Zufallsware aus demselben Case
-            const reel = Array.from({ length: 34 }, () => brief(I.generate(cs.source)));
-            reel[29] = brief(item);
-            // Feed erst, wenn das Band im Browser steht (4 s)
+            // 6.2: laengeres Band (vorher 34, Gewinner auf 29 – auf breiten
+            // Schirmen endete es rechts sichtbar)
+            const REEL = 70, WIN = 55;
+            const reel = Array.from({ length: REEL }, () => brief(I.generate(cs.source)));
+            reel[WIN] = brief(item);
+            // Feed erst, wenn das Band im Browser steht (6.2: bis ~7,5 s)
             if (I.TIER_IDX[item.tier] >= 4) {
                 const line = `${cs.icon} ${h.accounts.get(c.account).name} unboxed a ${I.TIERS[I.TIER_IDX[item.tier]].name} ${item.name}!`;
-                setTimeout(() => h.feed(line, 'gold'), 4300);
+                setTimeout(() => h.feed(line, 'gold'), 8000);
             }
-            return sendHub(c, { caseItem: { ...item, sv: I.salvageValue(item) }, reel });
+            return sendHub(c, { caseItem: { ...item, sv: I.salvageValue(item) }, reel, reelWin: WIN, caseId: d.id });
         }
         if (d.type === 'arProg') {
             const pr = a.prog;

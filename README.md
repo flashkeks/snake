@@ -1126,6 +1126,18 @@ der Statistik unter `earned.cards`.
 | Mythic | 1 in 20 000 | 1 in 3 478 | 1 in 1000 |
 | Ultra | 1 in 200 000 | 1 in 34 783 | 1 in 10 000 |
 
+## 🎁 Case oeffnen neu (6.2)
+
+Max: Band endete rechts (Server schickte 34 Items, Gewinner auf 29), Animation
+langweilig, gleicher Klang fuer jede Stufe, Kauf gehoert in den Shop, Shop zu
+gross. Jetzt: Server schickt 70 Items, Gewinner auf 55 (`reelWin`), Feed-Zeile
+nach 8 s. Browser: Vollbild-Overlay `#case-open` (Kiste wackelt und springt
+auf, Band per requestAnimationFrame mit Klick je Feld, 5,6 s bzw. 6,8 s ab
+Legendary), Gewinner leuchtet, Rest abgedunkelt; ab Epic Strahlen, ab
+Legendary Konfetti, ab Mythic Wackeln; Klang je Stufe (`caseSound`: Common
+dumpf … Ultra orbEpic + Bonus-Fanfare). Skip-Knopf, „Open another (N left)".
+Case-Kauf im Shop-Tab, Shop als kompakte Zeilen (`.shop-row`).
+
 ## 🎡 Inventar fuer Packs und Cases, Tages-Raeder (6.1)
 
 Max (24.09.2026, Vorschlag SINTHSBen „daily kekmon free pack"):
