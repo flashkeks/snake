@@ -793,13 +793,14 @@ module.exports = function createArena(h, opts = {}) {
         // Fuse (6.11, Max): Hauptwaffe frisst Waffen derselben Basis, je Waffe FUSE_COST Scrap
         if (d.type === 'arFuse') {
             const main = a.inv.find(it => it.uid === String(d.main));
-            if (!main || main.kind !== 'weapon') return h.send(c, { type: 'arError', error: 'Pick a weapon to fuse into' });
+            // 6.11.1 (Max): auch Ruestung
+            if (!main || (main.kind !== 'weapon' && main.kind !== 'armor')) return h.send(c, { type: 'arError', error: 'Pick a weapon or armor piece to fuse into' });
             const uids = [...new Set((Array.isArray(d.with) ? d.with : []).slice(0, 50).map(String))].filter(u => u !== main.uid);
             const others = uids.map(u => a.inv.find(it => it.uid === u)).filter(Boolean);
-            if (!others.length || others.length !== uids.length) return h.send(c, { type: 'arError', error: 'Pick at least one weapon to fuse in' });
-            if (others.some(it => it.kind !== 'weapon' || it.base !== main.base)) return h.send(c, { type: 'arError', error: 'You can only fuse the same weapon' });
-            if (others.some(it => it.fav)) return h.send(c, { type: 'arError', error: '⭐ Protected weapons cannot be fused in – unprotect them first' });
-            if (!(main.mods || []).length) return h.send(c, { type: 'arError', error: 'The main weapon needs at least one effect' });
+            if (!others.length || others.length !== uids.length) return h.send(c, { type: 'arError', error: 'Pick at least one item to fuse in' });
+            if (others.some(it => it.kind !== main.kind || it.base !== main.base)) return h.send(c, { type: 'arError', error: 'You can only fuse the same item' });
+            if (others.some(it => it.fav)) return h.send(c, { type: 'arError', error: '⭐ Protected items cannot be fused in – unprotect them first' });
+            if (!(main.mods || []).length) return h.send(c, { type: 'arError', error: 'The main item needs at least one effect' });
             const bad = I.fuseUseless(main, others);
             if (bad >= 0) return h.send(c, { type: 'arError', error: `${others[bad].name} would not improve anything – take it out` });
             const err = pay(c, I.FUSE_COST * others.length, 'scrap');
@@ -810,7 +811,7 @@ module.exports = function createArena(h, opts = {}) {
             a.inv = a.inv.filter(it => !gone.has(it.uid));
             fixLoadout(a);
             h.accounts.touch();
-            return sendHub(c, { fused: { uid: main.uid, n: others.length, log, cost: I.FUSE_COST * others.length } });
+            return sendHub(c, { fused: { uid: main.uid, kind: main.kind, n: others.length, log, cost: I.FUSE_COST * others.length } });
         }
         if (d.type === 'arSalvage') {
             const uids = new Set((Array.isArray(d.uids) ? d.uids : []).slice(0, 300).map(String));

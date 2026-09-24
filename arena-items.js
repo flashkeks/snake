@@ -407,6 +407,7 @@ function plain(kind, base) {
 }
 
 // ---------- Fuse (6.11, Max) ----------
+// Seit 6.11.1 auch Ruestung (Effekte aus ARMOR_MODS), sonst gleiche Regeln.
 // Eine Hauptwaffe frisst beliebig viele Waffen derselben Basis. Je gefressener
 // Waffe und je Effekt darauf:
 //   - Effekt hat die Hauptwaffe schon: gleiche Stufe -> garantiert +1,
@@ -427,7 +428,7 @@ function fuseUseless(main, others) {
     for (let i = 0; i < others.length; i++) {
         let useful = false;
         for (const m of others[i].mods || []) {
-            const def = WEAPON_MODS[m.id];
+            const def = (main.kind === 'armor' ? ARMOR_MODS : WEAPON_MODS)[m.id];
             if (!def) continue;
             const have = mods.find(x => x.id === m.id);
             if (have) {
@@ -444,7 +445,7 @@ function fuse(main, others, rnd = Math.random) {
     const log = [];
     for (const o of others) {
         for (const m of o.mods || []) {
-            const def = WEAPON_MODS[m.id];
+            const def = (main.kind === 'armor' ? ARMOR_MODS : WEAPON_MODS)[m.id];
             if (!def) continue;
             const have = mods.find(x => x.id === m.id);
             if (have) {

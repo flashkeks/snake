@@ -10582,9 +10582,9 @@ function onArHub(d) {
     if (d.caseItem) hubCaseAnim(d.caseItem, d.reel, d.reelWin, d.caseId);
     if (d.got) showMsg('hub-msg', `Bought ${d.got.n > 1 ? d.got.n + '× ' : ''}${d.got.name}`, 'ok');
     if (d.fused) {
-        const fm = arenaCat.weaponMods, parts = d.fused.log.filter(x => !x.fail).map(x => `${(fm[x.id] || {}).icon || ''} ${(fm[x.id] || {}).name || x.id} ${x.from ? ROMAN[x.from] + ' → ' : 'new '}${ROMAN[x.to]}`);
+        const fm = d.fused.kind === 'armor' ? arenaCat.armorMods : arenaCat.weaponMods, parts = d.fused.log.filter(x => !x.fail).map(x => `${(fm[x.id] || {}).icon || ''} ${(fm[x.id] || {}).name || x.id} ${x.from ? ROMAN[x.from] + ' → ' : 'new '}${ROMAN[x.to]}`);
         const fails = d.fused.log.filter(x => x.fail).length;
-        showMsg('hub-msg', `🔥 Fused ${d.fused.n} weapon${d.fused.n > 1 ? 's' : ''} (−${d.fused.cost} ⚙️)${parts.length ? ': ' + parts.join(', ') : ' – no effect changed'}${fails ? ` · ${fails} new effect${fails > 1 ? 's' : ''} didn't stick` : ''}`, parts.length ? 'ok' : '');
+        showMsg('hub-msg', `🔥 Fused ${d.fused.n} item${d.fused.n > 1 ? 's' : ''} (−${d.fused.cost} ⚙️)${parts.length ? ': ' + parts.join(', ') : ' – no effect changed'}${fails ? ` · ${fails} new effect${fails > 1 ? 's' : ''} didn't stick` : ''}`, parts.length ? 'ok' : '');
         fuseSel.clear();
     }
     if (d.salvaged) showMsg('hub-msg', `Salvaged ${d.salvaged.count} item${d.salvaged.count > 1 ? 's' : ''} for ${d.salvaged.scrap} scrap`, 'ok');
@@ -11370,7 +11370,7 @@ let fuseMain = null;            // uid der Hauptwaffe
 const fuseSel = new Set();      // uids, die hineinfusen
 function fusePreview(main, others) {
     const mods = itMods(main).map(m => ({ ...m })), sure = [], maybe = [];
-    const fm = arenaCat.weaponMods, add = arenaCat.fuse.add, cap = arenaCat.fuse.maxMods;
+    const fm = modDefs(main), add = arenaCat.fuse.add, cap = arenaCat.fuse.maxMods;
     for (const o of others) for (const m of itMods(o)) {
         const def = fm[m.id];
         if (!def) continue;
@@ -11385,7 +11385,7 @@ function fusePreview(main, others) {
 }
 // Wie fuseUseless im Server: Index der ersten Waffe, die nichts bringt, sonst -1
 function fuseUseless(main, others) {
-    const fm = arenaCat.weaponMods, add = arenaCat.fuse.add, cap = arenaCat.fuse.maxMods;
+    const fm = modDefs(main), add = arenaCat.fuse.add, cap = arenaCat.fuse.maxMods;
     const mods = itMods(main).map(m => ({ ...m }));
     if (!mods.length) return others.length ? 0 : -1;
     for (let i = 0; i < others.length; i++) {
@@ -11405,21 +11405,22 @@ function fuseUseless(main, others) {
 }
 function hubFuse() {
     const cost = arenaCat.fuse.cost;
-    const weapons = hub.inv.filter(x => x.kind === 'weapon');
-    const count = b => weapons.filter(x => x.base === b).length;
-    const main = fuseMain && weapons.find(x => x.uid === fuseMain);
+    // 6.11.1 (Max): Waffen und Ruestung
+    const items = hub.inv.filter(x => x.kind === 'weapon' || x.kind === 'armor');
+    const main = fuseMain && items.find(x => x.uid === fuseMain);
     if (!main) {
         fuseMain = null;
         fuseSel.clear();
-        const can = weapons.filter(x => count(x.base) > 1 && weapons.some(o => o.uid !== x.uid && o.base === x.base && !o.fav && fuseUseless(x, [o]) < 0)).sort((a, b) => tierIdx(b.tier) - tierIdx(a.tier) || itMods(b).length - itMods(a).length);
-        return `<div class="hint">🔥 <b>Fuse</b>: pick a main weapon, then feed it copies of the same weapon. Same effect on the same level → guaranteed one level up (e.g. Sharp I + Sharp I = Sharp II). ` +
-            `A different effect only sticks as a <b>2nd</b> effect with ${Math.round(arenaCat.fuse.add[1] * 100)}% and as a <b>3rd</b> with ${Math.round(arenaCat.fuse.add[2] * 100)}% (on a weapon without effects: ${Math.round(arenaCat.fuse.add[0] * 100)}%). ` +
-            `Every weapon you fuse in costs <b>${cost} ⚙️</b> and is gone afterwards. The main weapon keeps its rarity. ` +
-            `The main weapon needs at least one effect, and you can only fuse in weapons that actually improve it.</div>` +
-            `<h4 style="margin:12px 0 6px">1 · Pick your main weapon</h4>` +
-            `<div class="inv-grid">${can.map(it => itemCard(it, { eq: hubEquippedAs(it.uid), n: 0 }).replace('class="it ', 'data-fusemain="' + esc(it.uid) + '" class="it ')).join('') || '<div class="hint">Nothing to fuse yet – you need a weapon with an effect and a copy that can improve it.</div>'}</div>`;
+        const can = items.filter(x => items.some(o => o.uid !== x.uid && o.kind === x.kind && o.base === x.base && !o.fav && fuseUseless(x, [o]) < 0)).sort((a, b) => tierIdx(b.tier) - tierIdx(a.tier) || itMods(b).length - itMods(a).length);
+        const grid = list => `<div class="inv-grid">${list.map(it => itemCard(it, { eq: hubEquippedAs(it.uid), n: 0 }).replace('class="it ', 'data-fusemain="' + esc(it.uid) + '" class="it ')).join('') || '<div class="hint">Nothing to fuse yet – you need one with an effect and a copy that can improve it.</div>'}</div>`;
+        return `<div class="hint">🔥 <b>Fuse</b>: pick a main weapon or armor piece, then feed it copies of the same item. Same effect on the same level → guaranteed one level up (e.g. Sharp I + Sharp I = Sharp II, Plating I + Plating I = Plating II). ` +
+            `A different effect only sticks as a <b>2nd</b> effect with ${Math.round(arenaCat.fuse.add[1] * 100)}% and as a <b>3rd</b> with ${Math.round(arenaCat.fuse.add[2] * 100)}%. ` +
+            `Every item you fuse in costs <b>${cost} ⚙️</b> and is gone afterwards. The main item keeps its rarity. ` +
+            `The main item needs at least one effect, and you can only fuse in items that actually improve it.</div>` +
+            `<h4 style="margin:12px 0 6px">1 · Pick your main weapon</h4>` + grid(can.filter(x => x.kind === 'weapon')) +
+            `<h4 style="margin:12px 0 6px">… or your main armor piece</h4>` + grid(can.filter(x => x.kind === 'armor'));
     }
-    const same = weapons.filter(x => x.base === main.base && x.uid !== main.uid).sort((a, b) => itMods(b).length - itMods(a).length);
+    const same = items.filter(x => x.kind === main.kind && x.base === main.base && x.uid !== main.uid).sort((a, b) => itMods(b).length - itMods(a).length);
     for (const u of [...fuseSel]) if (!same.some(x => x.uid === u && !x.fav)) fuseSel.delete(u);
     // Reihenfolge = Auswahl-Reihenfolge; was nach dem Abwaehlen nichts mehr bringt, fliegt raus
     let picked = [...fuseSel].map(u => same.find(x => x.uid === u));
@@ -11429,26 +11430,26 @@ function hubFuse() {
     }
     const useless = it => !fuseSel.has(it.uid) && fuseUseless(main, [...picked, it]) >= 0;
     const pv = fusePreview(main, picked), total = cost * picked.length;
-    return `<div class="fuse-main"><div><h4 style="margin:0 0 6px">Main weapon</h4>${itemCard(main, { eq: hubEquippedAs(main.uid) })}` +
+    return `<div class="fuse-main"><div><h4 style="margin:0 0 6px">Main ${main.kind === 'armor' ? 'armor' : 'weapon'}</h4>${itemCard(main, { eq: hubEquippedAs(main.uid) })}` +
         `<button type="button" class="ghost" data-fuseback="1">↩ Pick another</button></div>` +
         `<div class="fuse-pv"><h4 style="margin:0 0 6px">Result</h4>` +
         (picked.length ? (pv.sure.length ? `<div><b>Guaranteed</b><br>${pv.sure.join('<br>')}</div>` : '<div class="hint">No guaranteed upgrade.</div>') +
-            (pv.maybe.length ? `<div style="margin-top:6px"><b>Chance</b><br>${pv.maybe.join('<br>')}</div>` : '') : '<div class="hint">Pick weapons below to fuse in.</div>') +
+            (pv.maybe.length ? `<div style="margin-top:6px"><b>Chance</b><br>${pv.maybe.join('<br>')}</div>` : '') : '<div class="hint">Pick copies below to fuse in.</div>') +
         `<button type="button" class="gold" id="fuse-go" ${picked.length && hub.scrap >= total ? '' : 'disabled'} style="margin-top:10px">🔥 Fuse ${picked.length || ''} in (−${total} ⚙️)</button>` +
         (picked.length && hub.scrap < total ? `<div class="hint">You have ${hub.scrap} ⚙️</div>` : '') + '</div></div>' +
-        `<h4 style="margin:14px 0 6px">2 · Weapons to fuse in (${same.length})</h4>` +
+        `<h4 style="margin:14px 0 6px">2 · Copies to fuse in (${same.length})</h4>` +
         `<div class="inv-grid">${same.map(it => itemCard(it, { eq: hubEquippedAs(it.uid), pick: fuseSel.has(it.uid) }).replace('class="it ', (it.fav ? 'data-fusefav="1" ' : useless(it) ? 'data-fusenope="1" ' : 'data-fusepick="' + esc(it.uid) + '" ') + 'class="it ' + (useless(it) || it.fav ? 'fuse-no ' : ''))).join('')}</div>`;
 }
 function fuseClick(t, ds) {
     if (ds.fusemain) { fuseMain = ds.fusemain; fuseSel.clear(); hubDraw(); return true; }
     if (ds.fuseback) { fuseMain = null; fuseSel.clear(); hubDraw(); return true; }
     if (ds.fusefav) { showMsg('hub-msg', '⭐ Protected – unprotect it in the Inventory first', ''); return true; }
-    if (ds.fusenope) { showMsg('hub-msg', 'That one would not improve your weapon', ''); return true; }
+    if (ds.fusenope) { showMsg('hub-msg', 'That one would not improve your item', ''); return true; }
     if (ds.fusepick) { fuseSel.has(ds.fusepick) ? fuseSel.delete(ds.fusepick) : fuseSel.add(ds.fusepick); hubDraw(); return true; }
     if (t.id === 'fuse-go') {
         const picked = hub.inv.filter(x => fuseSel.has(x.uid));
         const eq = picked.filter(x => hubEquippedAs(x.uid)).length, rare = picked.filter(x => tierIdx(x.tier) >= 3).length;
-        if (!confirm(`Fuse ${picked.length} weapon${picked.length > 1 ? 's' : ''} into ${hub.inv.find(x => x.uid === fuseMain).name} for ${arenaCat.fuse.cost * picked.length} scrap? They are gone afterwards.${eq ? `\n${eq} of them are in your loadout.` : ''}${rare ? `\n${rare} of them are Epic or better.` : ''}`)) return true;
+        if (!confirm(`Fuse ${picked.length} item${picked.length > 1 ? 's' : ''} into ${hub.inv.find(x => x.uid === fuseMain).name} for ${arenaCat.fuse.cost * picked.length} scrap? They are gone afterwards.${eq ? `\n${eq} of them are in your loadout.` : ''}${rare ? `\n${rare} of them are Epic or better.` : ''}`)) return true;
         wsSend({ type: 'arFuse', main: fuseMain, with: [...fuseSel] });
         return true;
     }

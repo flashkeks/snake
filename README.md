@@ -2352,3 +2352,12 @@ Sharp-I-Waffe: die zweite bringt nach Sharp II nichts mehr). Zufalls-Effekte zae
 dabei nicht, die koennen ausbleiben. Der Server lehnt ab, der Client graut solche
 Waffen aus und zeigt als Hauptwaffe nur Waffen, fuer die es mindestens einen
 sinnvollen Partner gibt. `FUSE_ADD[0]` ist 0.
+
+### 6.11.1: Fuse fuer Ruestung (Max)
+
+Gleiche Regeln wie bei Waffen, Effekte aus `ARMOR_MODS` (Plating, Swift, Regen,
+Thorns, Dodge). `fuse()`/`fuseUseless()` nehmen die Effekt-Tabelle nach
+`main.kind`, der Server erlaubt `weapon` und `armor` und verlangt gleiche Art
+und Basis. Der Tab zeigt Waffen und Ruestungsteile in zwei Abschnitten.
+Test im Browser: Scout cap Plating I + Scout cap Plating I -> Plating II, −500 Scrap;
+Rare-Cap ohne Effekt ausgegraut.
