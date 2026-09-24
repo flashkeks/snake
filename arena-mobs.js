@@ -40,9 +40,10 @@ const MOBS = {
         name: 'Mutant', icon: '🧬', color: '#7dff6a', r: 21, hp: 520, speed: 150, chase: 300, aggro: 620,
         melee: 60, lab: true, xp: 'npc', xpMul: 3, drop: { chance: 0.55, src: 'npcdrop', n: 1 }
     },
+    // 6.12.1 (Max: zu op): HP 300 -> 220, Nachsetzen 390 -> 300, Biss 48 -> 30/s, Sicht 560 -> 460
     stalker: {
-        name: 'Stalker', icon: '🦎', color: '#b6ff3a', r: 16, hp: 300, speed: 210, chase: 390, aggro: 560,
-        melee: 48, lab: true, xp: 'npc', xpMul: 2.5, drop: { chance: 0.45, src: 'npcdrop', n: 1 }
+        name: 'Stalker', icon: '🦎', color: '#b6ff3a', r: 16, hp: 220, speed: 190, chase: 300, aggro: 460,
+        melee: 30, lab: true, xp: 'npc', xpMul: 2.5, drop: { chance: 0.45, src: 'npcdrop', n: 1 }
     },
     horror: {
         name: 'Acid Horror', icon: '🦠', color: '#35ffc0', r: 23, hp: 460, speed: 120, aggro: 700, range: 560, keep: 330, lab: true,

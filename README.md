@@ -2448,3 +2448,14 @@ und Besitzer auf dem Server. Cosmetic: Besitzer, im Shop ja/nein. Pack/Case: Tab
 
 Gemessen mit 1,5 Mio. Ziehungen je Quelle. Weil weniger `rand()`-Aufrufe im Keller
 stattfinden, verschiebt sich auch das Labor-Layout leicht (nichts davon wird gespeichert).
+
+Nachtrag 6.12.1 (Max: „Stalker zu op, man kann ihn nicht hitten, wenn er an einem dran ist"):
+- **Nahkampf-Treffer:** Kugeln entstehen `R + 6` = 24 px vor der Spielermitte und
+  pruefen Treffer erst ab dem ersten Teilschritt. Ein Gegner, der sich in den Spieler
+  schiebt (Stalker: klein und schnell), stand dahinter und wurde nie getroffen – das
+  galt fuer alle Nahkaempfer. Jetzt trifft ein Schuss sofort jeden Gegner, der am
+  Spieler klebt (`< R + r + 8`) und nicht hinter ihm steht; Durchschlag/Explosion wie
+  bei normalen Treffern. Test: Gegner 10 px neben der Mitte, 1 s Feuer: vorher 0
+  Schaden, jetzt 169 (bei 20 und 34 px unveraendert 169).
+- **Stalker:** HP 300 -> 220, Nachsetzen 390 -> 300, Tempo 210 -> 190, Biss 48 -> 30/s,
+  Sicht 560 -> 460.

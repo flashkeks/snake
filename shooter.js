@@ -1720,7 +1720,7 @@ module.exports = function createArena(h, opts = {}) {
                 a = Math.atan2(ty - oy, tx - ox) + (Math.random() - 0.5) * 0.06;
                 fxAt(ox, oy, { type: 'shFx', kind: 'portal', x: Math.round(ox), y: Math.round(oy) });
             }
-            bullets.push({
+            const b = {
                 id: ++seqId, owner: p.id,
                 x: ox, y: oy,
                 vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed,
@@ -1728,7 +1728,25 @@ module.exports = function createArena(h, opts = {}) {
                 fx: (w.explode ? 1 : 0) | (w.burn ? 2 : 0) | (w.frost ? 4 : 0) | (w.tesla ? 8 : 0) | (w.homing ? 16 : 0) | (w.flame ? 32 : 0) | (w.nukeShell ? 64 : 0) | (w.hole ? 128 : 0) |
                     (w.rocket ? 256 : 0) | (w.magic ? 512 : 0),
                 tier: I.TIER_IDX[item.tier] || 0
-            });
+            };
+            // 6.12.1 (Max: Stalker kann man nicht treffen, wenn er an einem dran ist):
+            // Kugeln starten vor dem Lauf – wer schon am Spieler klebt, steht dahinter
+            // und wurde nie getroffen. Solche Gegner trifft der Schuss sofort.
+            if (!w.portals) {
+                const dx = Math.cos(a), dy = Math.sin(a);
+                const close = mobs.find(m => m.hp > 0 && Math.hypot(m.x - p.x, m.y - p.y) < R + m.def.r + 8 && (m.x - p.x) * dx + (m.y - p.y) * dy > -m.def.r);
+                if (close) {
+                    b.hits.add(close.id);
+                    const crit = w.crit && Math.random() < w.crit;
+                    hurtMob(close, p, w.dmg * (crit ? p.b.critMul : 1), now, close.x, close.y, crit, w);
+                    if (w.explode) explode({ ...b, x: close.x, y: close.y }, now, null);
+                    if (!(w.wave || w.erase)) {
+                        if (b.pierce > 0) b.pierce--;
+                        else continue;
+                    }
+                }
+            }
+            bullets.push(b);
         }
     }
 
