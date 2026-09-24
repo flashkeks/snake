@@ -345,7 +345,12 @@ const Z_COINS = { kill: 3, tank: 12, boss: 200, wave: 30 };
 const zHp = w => 1 + 0.3 * (w - 1) + 0.015 * (w - 1) * (w - 1);
 const zDmg = w => 1 + 0.06 * (w - 1);
 // 6.5.1: halbiert (Punkte fuer Waffen/Perks kamen zu schnell)
-const Z_PTS_PER_DMG = 0.5;
+// 6.8 (Max, Bens Runde bis Welle 24): Schaden zaehlt geteilt durch zHp(Welle).
+// Vorher wuchsen die Punkte je Zombie mit seinen HP (Welle 20: x12), die
+// Preise aber nicht – normaler Zombie Welle 1 ~90, Welle 20 ~420 Punkte.
+// Jetzt ist ein Zombie auf jeder Welle gleich viel wert (~80); mehr Punkte
+// gibt es nur ueber mehr Zombies. Solo je Welle: W10 ~12k -> ~4,6k, W20 ~46k -> ~8,6k.
+const Z_PTS_PER_DMG = 0.5, Z_PTS_KILL = 50;
 // Kugel-Optik der Zombie-Bosse (tier-Feld der Kugel, 1024 = Boss-Kugel)
 const BOSS_LOOK = { abomination: 5, necro: 11, brood: 12, inferno: 13, storm: 14, overlord: 15 };
 // 6.5.1: von Anfang an 12 % schneller
@@ -2332,7 +2337,7 @@ module.exports = function createArena(h, opts = {}) {
         }
         // Punkte nach Schaden statt je Treffer (6.5, Feedback Schmoggi: mit der SMG
         // liess sich Geld farmen, mit allem anderen nicht). Nur echter Schaden zaehlt.
-        if (zb && attacker && players.has(attacker.id)) attacker.pts += real * Z_PTS_PER_DMG * zPtsMul(attacker, now);
+        if (zb && attacker && players.has(attacker.id)) attacker.pts += real / zHp(zb.wave) * Z_PTS_PER_DMG * zPtsMul(attacker, now);
         if (m.hp <= 0) mobDies(m, attacker && players.has(attacker.id) ? attacker : null, now);
     }
 
@@ -2345,7 +2350,7 @@ module.exports = function createArena(h, opts = {}) {
             if (m.id === bossId) bossId = null;
             if (killer) {
                 const bi = def.boss ? (m.bossIdx || 0) + 1 : 0;
-                killer.pts += (def.boss ? 1000 * bi : m.kind === 'tank' ? 150 : def.pts || 60) * zPtsMul(killer, now);
+                killer.pts += (def.boss ? 1000 * bi : m.kind === 'tank' ? 150 : def.pts || Z_PTS_KILL) * zPtsMul(killer, now);
                 // Kettenreaktion (Zombie-Baum): der Tote explodiert
                 if (killer.b.zChain && !def.boss && Math.random() < killer.b.zChain) {
                     fxAt(m.x, m.y, { type: 'shBoom', x: Math.round(m.x), y: Math.round(m.y), r: 90, nuke: false });
