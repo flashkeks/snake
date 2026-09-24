@@ -2459,3 +2459,5 @@ Nachtrag 6.12.1 (Max: „Stalker zu op, man kann ihn nicht hitten, wenn er an ei
   Schaden, jetzt 169 (bei 20 und 34 px unveraendert 169).
 - **Stalker:** HP 300 -> 220, Nachsetzen 390 -> 300, Tempo 210 -> 190, Biss 48 -> 30/s,
   Sicht 560 -> 460.
+- **Brutes** (Max: zu stark fuers Early Game) laufen oben nicht mehr herum
+  (`ROAMERS` ohne `brute`), nur noch im Keller.

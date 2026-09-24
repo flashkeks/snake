@@ -203,7 +203,8 @@ const BOSSES = Object.keys(MOBS).filter(k => MOBS[k].boss && !MOBS[k].zombie);
 // 30 Judge Bones, 35 Solaris, 40 Omega, 45 Kek Eye – danach von vorn (staerker)
 const ZBOSSES = ['abomination', 'necro', 'brood', 'inferno', 'storm', 'judge', 'seraph', 'omega', 'overlord'];
 // Wer normal auf der Map herumlaeuft (Gewichte); Enforcer bewachen das Militaerlager
-const ROAMERS = [['scav', 55], ['brute', 18], ['sniper', 14], ['drone', 13]];
+// 6.12.1 (Max: Brutes oben zu stark fuers Early Game): nur noch im Keller (UNDER_MOBS)
+const ROAMERS = [['scav', 55], ['sniper', 14], ['drone', 13]];
 
 // Fuer den Browser: was er zum Zeichnen braucht
 function catalog() {
