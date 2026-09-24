@@ -33,7 +33,9 @@ const cardLv = g => {
     return Math.max(1, Math.min(50, m ? g.lv + Number(m[1] || 0) : Number(CARD_LV) || 1));
 };
 // auto: was ein Spieler bei dieser Arena realistisch hat
-const AUTO_RAR = { sprout: ['rare'], tide: ['rare'], blaze: ['rare'], volt: ['rare'], dojo: ['rare', 'epic'], mind: ['rare', 'epic'], shadow: ['epic'], champ: ['epic', 'legendary'] };
+const AUTO_RAR = { sprout: ['rare'], tide: ['rare'], blaze: ['rare'], volt: ['rare'], dojo: ['rare', 'epic'], mind: ['rare', 'epic'], shadow: ['epic'], champ: ['epic', 'legendary'],
+    // 6.8 Ace League: gleicher Pool wie das Typ-Gym auf demselben Level
+    ace1: ['rare'], ace2: ['rare'], ace3: ['rare'], ace4: ['rare'], ace5: ['rare', 'epic'], ace6: ['rare', 'epic'], ace7: ['epic'] };
 const playerRar = g => process.env.PLAYER_RAR && process.env.PLAYER_RAR !== 'auto' ? process.env.PLAYER_RAR.split(',') : AUTO_RAR[g.id] || ['rare'];
 const { GYMS } = createGyms({ accounts: {}, cards, cardDb, battle: B, send() {}, feed() {} });
 

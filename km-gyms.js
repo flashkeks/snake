@@ -12,17 +12,34 @@
 // h: { accounts, cards, cardDb, battle, send, kmState(c, extra), feed(text, kind), log(line) }
 
 const LV = require('./km-level');
+const K = require('./km-moves');
 
+// series: 'type' = Typ-Gyms (eins nach dem anderen), 'ace' = Ace League (6.8,
+// gleiche Level, gemischte Teams mit Typ-Abdeckung, KI-Stufe 3). after: welches
+// Gym vorher geschafft sein muss. Der Champion bleibt der Abschluss der Typ-Reihe.
 const GYMS = [
-    { id: 'sprout', lv: 5, name: 'Sprout Gym', icon: '🌱', leader: 'Scout Mika', type: 'nature', rar: ['uncommon'], mul: 0.72, smart: 1, coins: 3000, pack: 'anime' },
-    { id: 'tide', lv: 10, name: 'Tide Gym', icon: '💧', leader: 'Captain Ren', type: 'water', rar: ['uncommon', 'rare'], mul: 0.75, smart: 2, coins: 4000, pack: 'film' },
-    { id: 'blaze', lv: 15, name: 'Blaze Gym', icon: '🔥', leader: 'Pyra', type: 'fire', rar: ['rare'], mul: 0.78, smart: 2, coins: 5000, pack: 'anime' },
-    { id: 'volt', lv: 20, name: 'Volt Gym', icon: '⚡', leader: 'Sparky', type: 'electric', rar: ['rare'], mul: 0.95, smart: 2, coins: 6500, pack: 'waifu' },
-    { id: 'dojo', lv: 26, name: 'Iron Dojo', icon: '👊', leader: 'Master Ken', type: 'fighting', rar: ['rare', 'epic'], mul: 0.82, smart: 2, coins: 8000, pack: 'film' },
-    { id: 'mind', lv: 33, name: 'Mind Tower', icon: '🔮', leader: 'Oracle Lua', type: 'psychic', rar: ['epic'], mul: 1, smart: 2, coins: 11000, pack: 'anime' },
-    { id: 'shadow', lv: 41, name: 'Shadow Gym', icon: '🌑', leader: 'Noct', type: 'dark', rar: ['epic', 'legendary'], mul: 0.73, smart: 2, coins: 15000, pack: 'waifu' },
-    { id: 'champ', lv: 50, name: 'Kek Champion', icon: '👑', leader: 'The Kek', type: null, rar: ['legendary', 'secret'], mul: 0.66, smart: 2, coins: 30000, pack: 'mixed' }
+    { id: 'sprout', series: 'type', lv: 5, name: 'Sprout Gym', icon: '🌱', leader: 'Scout Mika', type: 'nature', rar: ['rare'], mul: 0.72, smart: 1, coins: 3000, pack: 'anime' },
+    { id: 'tide', series: 'type', lv: 10, name: 'Tide Gym', icon: '💧', leader: 'Captain Ren', type: 'water', rar: ['rare', 'epic'], mul: 0.75, smart: 2, coins: 4000, pack: 'film' },
+    { id: 'blaze', series: 'type', lv: 15, name: 'Blaze Gym', icon: '🔥', leader: 'Pyra', type: 'fire', rar: ['epic'], mul: 0.78, smart: 2, coins: 5000, pack: 'anime' },
+    { id: 'volt', series: 'type', lv: 20, name: 'Volt Gym', icon: '⚡', leader: 'Sparky', type: 'electric', rar: ['epic'], mul: 0.95, smart: 2, coins: 6500, pack: 'film' },
+    { id: 'dojo', series: 'type', lv: 26, name: 'Iron Dojo', icon: '👊', leader: 'Master Ken', type: 'fighting', rar: ['epic', 'legendary'], mul: 0.82, smart: 2, coins: 8000, pack: 'film' },
+    { id: 'mind', series: 'type', lv: 33, name: 'Mind Tower', icon: '🔮', leader: 'Oracle Lua', type: 'psychic', rar: ['legendary'], mul: 1, smart: 2, coins: 11000, pack: 'anime' },
+    { id: 'shadow', series: 'type', lv: 41, name: 'Shadow Gym', icon: '🌑', leader: 'Noct', type: 'dark', rar: ['legendary', 'secret'], mul: 0.73, smart: 2, coins: 15000, pack: 'mixed' },
+    { id: 'champ', series: 'type', lv: 50, name: 'Kek Champion', icon: '👑', leader: 'The Kek', type: null, rar: ['legendary', 'secret'], mul: 0.66, smart: 2, coins: 30000, pack: 'mixed' },
+    { id: 'ace1', series: 'ace', after: 'sprout', lv: 5, name: 'Rookie Cup', icon: '🥊', leader: 'Rival Kai', type: null, rar: ['rare', 'epic'], mul: 1, smart: 3, coins: 4500, pack: 'anime' },
+    { id: 'ace2', series: 'ace', lv: 10, name: 'Ace Arena', icon: '🎯', leader: 'Ace Mira', type: null, rar: ['epic'], mul: 1, smart: 3, coins: 6000, pack: 'film' },
+    { id: 'ace3', series: 'ace', lv: 15, name: 'Chess Club', icon: '♟️', leader: 'Tactician Rook', type: null, rar: ['epic'], mul: 1, smart: 3, coins: 7500, pack: 'anime' },
+    { id: 'ace4', series: 'ace', lv: 20, name: 'Veteran Hall', icon: '🛡️', leader: 'Veteran Sol', type: null, rar: ['epic', 'legendary'], mul: 1, smart: 3, coins: 10000, pack: 'mixed' },
+    { id: 'ace5', series: 'ace', lv: 26, name: 'War Room', icon: '🧠', leader: 'Strategist Vex', type: null, rar: ['legendary'], mul: 1, smart: 3, coins: 12000, pack: 'mixed' },
+    { id: 'ace6', series: 'ace', lv: 33, name: 'Elite Spire', icon: '💫', leader: 'Elite Nova', type: null, rar: ['legendary', 'secret'], mul: 1, smart: 3, coins: 16500, pack: 'mixed' },
+    { id: 'ace7', series: 'ace', lv: 41, name: 'Grandmaster Throne', icon: '🏆', leader: 'Grandmaster Zed', type: null, rar: ['secret', 'legendary'], mul: 1, smart: 3, coins: 22500, pack: 'mixed' }
 ];
+// Vorgaenger: sonst das vorige Gym derselben Reihe
+GYMS.forEach((g, i) => {
+    if (g.after !== undefined) return;
+    const prev = GYMS.slice(0, i).reverse().find(x => x.series === g.series);
+    g.after = prev ? prev.id : null;
+});
 // Staerke per Simulation (24.09.2026, Kampfsystem 6.0, tools/km-sim.js auf edge
 // mit den echten Karten; Spieler = KI-Stufe 1, Zufallsteam der Arena-Seltenheit).
 // Zielkurve ~85 % bei der ersten bis ~30 % beim Champion.
@@ -68,11 +85,12 @@ module.exports = function createGyms(h) {
         const t = c.bt.stats;
         return t.hp + 1.3 * Math.max(t.atk, t.spa) + 0.8 * (t.def + t.spd) + 0.9 * t.spe;
     };
-    for (const g of GYMS) {
-        let pool = cardDb.cards.filter(c => g.rar.includes(c.rarity) && (!g.type || c.type === g.type));
-        if (pool.length < B.TEAM_SIZE) pool = cardDb.cards.filter(c => g.rar.includes(c.rarity));
-        if (pool.length < B.TEAM_SIZE) pool = cardDb.cards.slice();
-        pool = pool.slice().sort((a, b) => power(b) - power(a) || a.id.localeCompare(b.id));
+    // Typ-Gyms: staerkste Karten des Typs in der Seltenheit; reicht die nicht,
+    // fuellt die naechst-niedrigere Seltenheit desselben Typs auf (6.8)
+    const RORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'secret'];
+    const byPower = (a, b) => power(b) - power(a) || a.id.localeCompare(b.id);
+    function typeTeam(g) {
+        const pool = cardDb.cards.filter(c => g.rar.includes(c.rarity) && (!g.type || c.type === g.type)).sort(byPower);
         const team = [];
         for (const c of pool) {
             if (team.length >= B.TEAM_SIZE) break;
@@ -80,8 +98,43 @@ module.exports = function createGyms(h) {
             team.push(c.id);
         }
         for (const c of pool) if (team.length < B.TEAM_SIZE && !team.includes(c.id)) team.push(c.id);
-        g.team = team;
+        let r = Math.min(...g.rar.map(x => RORDER.indexOf(x))) - 1;
+        while (team.length < B.TEAM_SIZE && r >= 0) {
+            const more = cardDb.cards.filter(c => c.rarity === RORDER[r] && (!g.type || c.type === g.type) && !team.includes(c.id)).sort(byPower);
+            for (const c of more) if (team.length < B.TEAM_SIZE) team.push(c.id);
+            r--;
+        }
+        for (const c of cardDb.cards.slice().sort(byPower)) if (team.length < B.TEAM_SIZE && !team.includes(c.id)) team.push(c.id);
+        return team;
     }
+    // Ace League (6.8): Team wie ein guter Spieler es baut – stark, jeder Typ
+    // nur einmal, Attacken, die moeglichst viele Typen hart treffen, und nicht
+    // drei Karten mit derselben Schwaeche
+    const TYPES = [...new Set(cardDb.cards.map(c => c.type))];
+    const hits = c => new Set(TYPES.filter(t => (c.bt.moves || []).some(m => m.pow && K.eff(m.type, t) > 1)));
+    function aceTeam(g) {
+        const pool = cardDb.cards.filter(c => g.rar.includes(c.rarity)).sort(byPower).slice(0, 80);
+        const team = [], covered = new Set(), weak = {};
+        while (team.length < B.TEAM_SIZE && pool.length) {
+            let best = null, bv = -1e9;
+            for (const c of pool) {
+                if (team.includes(c) || team.some(x => x.type === c.type)) continue;
+                const neu = [...hits(c)].filter(t => !covered.has(t)).length;
+                const w = TYPES.filter(t => K.eff(t, c.type) > 1).reduce((n, t) => n + (weak[t] || 0), 0);
+                const v = power(c) * (1 + 0.12 * neu - 0.1 * w);
+                if (v > bv) { bv = v; best = c; }
+            }
+            if (!best) break;
+            team.push(best);
+            hits(best).forEach(t => covered.add(t));
+            TYPES.filter(t => K.eff(t, best.type) > 1).forEach(t => { weak[t] = (weak[t] || 0) + 1; });
+        }
+        const ids = team.map(c => c.id);
+        for (const c of pool) if (ids.length < B.TEAM_SIZE && !ids.includes(c.id)) ids.push(c.id);
+        for (const c of cardDb.cards.slice().sort(byPower)) if (ids.length < B.TEAM_SIZE && !ids.includes(c.id)) ids.push(c.id);
+        return ids;
+    }
+    for (const g of GYMS) g.team = g.series === 'ace' ? aceTeam(g) : typeTeam(g);
     const byId = Object.fromEntries(GYMS.map(g => [g.id, g]));
 
     // Reset 6.4 (Max, einmalig) und nochmal 6.7 (Gyms mit Level): Fortschritt
@@ -115,18 +168,15 @@ module.exports = function createGyms(h) {
 
     function list(u) {
         const p = progress(u);
-        let open = true;
         return GYMS.map(g => {
             const s = p[g.id] || {};
             const today = s.day === day() ? s.today || 0 : 0;
-            const row = {
-                id: g.id, lv: g.lv, name: g.name, icon: g.icon, leader: g.leader, type: g.type, rar: g.rar, mul: g.mul, smart: g.smart,
+            return {
+                id: g.id, series: g.series, lv: g.lv, name: g.name, icon: g.icon, leader: g.leader, type: g.type, rar: g.rar, mul: g.mul, smart: g.smart,
                 coins: g.coins, repeat: Math.round(g.coins * REPEAT_SHARE), pack: g.pack, team: g.team,
-                unlocked: open, cleared: !!s.cleared, wins: s.wins || 0, rewardsLeft: s.cleared ? Math.max(0, REPEAT_PER_DAY - today) : 1,
+                unlocked: !g.after || !!(p[g.after] || {}).cleared, after: g.after, cleared: !!s.cleared, wins: s.wins || 0, rewardsLeft: s.cleared ? Math.max(0, REPEAT_PER_DAY - today) : 1,
                 paid: !!(u.kmGymsPaid || {})[g.id]
             };
-            if (!s.cleared) open = false;
-            return row;
         });
     }
 

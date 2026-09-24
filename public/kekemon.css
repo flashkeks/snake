@@ -2508,3 +2508,4 @@ body.world-cards #kekemon > .card {
 .kb-tslot small { font-size: 10px; opacity: .7; font-weight: 600; }
 .kb-teambar .kb-tslot.empty { opacity: .6; }
 .kb-teambar .kb-tslot.on { opacity: 1; color: #ffd23f; border-color: #ffd23f; box-shadow: 0 0 0 1px #ffd23f inset; background: rgba(255,210,63,.14); }
+.kb-aces .kb-gym { --gc: #ff5bd6 !important; }

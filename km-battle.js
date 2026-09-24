@@ -485,30 +485,37 @@ function cloneBattle(b) {
 }
 
 const LOOK_SAMPLES = 8, LOOK_TURNS = 3;
+// Stufe 3 (6.8, neue Gym-Reihe): doppelt so viele Stichproben, einen Zug
+// tiefer, und auch die Einwechsel-Wahl nach einem K.o. per Vorausschau
+const LOOK3 = { samples: 16, turns: 4 };
 
-function lookahead(b, s) {
+function lookahead(b, s, opt = { samples: LOOK_SAMPLES, turns: LOOK_TURNS }) {
     const me = act(b, s);
     const side = b.sides[s];
     const cands = [];
-    me.moves.forEach((m, i) => { if (m.ppLeft > 0) cands.push({ a: 'move', i }); });
-    if (!cands.length) cands.push({ a: 'move', i: -1 });
-    side.cards.forEach((c, i) => { if (i !== side.active && c.hp > 0) cands.push({ a: 'switch', to: i }); });
+    const switching = b.phase === 'switch';
+    if (!switching) {
+        me.moves.forEach((m, i) => { if (m.ppLeft > 0) cands.push({ a: 'move', i }); });
+        if (!cands.length) cands.push({ a: 'move', i: -1 });
+    }
+    side.cards.forEach((c, i) => { if ((switching || i !== side.active) && i !== side.active && c.hp > 0) cands.push({ a: 'switch', to: i }); });
+    if (!cands.length) return { a: 'switch', to: bestSwitch(b, s, -1) };
     let best = null, bv = -1e9;
     for (const c of cands) {
         let sum = 0;
-        for (let k = 0; k < LOOK_SAMPLES; k++) {
+        for (let k = 0; k < opt.samples; k++) {
             const x = cloneBattle(b);
             x.sides[s].choice = c;
-            x.sides[1 - s].choice = greedy(x, 1 - s, 1);
+            if (!switching) x.sides[1 - s].choice = greedy(x, 1 - s, 1);
             const start = x.turn;
             let g = 0;
-            while (!x.over && x.turn < start + LOOK_TURNS && g++ < 20) {
-                if (x.phase === 'move' && !x.sides[0].choice && !x.sides[1].choice && x.turn === start) break;
+            while (!x.over && x.turn < start + opt.turns && g++ < 24) {
+                if (!switching && x.phase === 'move' && !x.sides[0].choice && !x.sides[1].choice && x.turn === start) break;
                 step(x, []);
             }
             sum += evalSide(x, s);
         }
-        const v = sum / LOOK_SAMPLES;
+        const v = sum / opt.samples;
         if (v > bv) { bv = v; best = c; }
     }
     return best;
@@ -518,12 +525,13 @@ function lookahead(b, s) {
 function aiChoose(b, s, level) {
     const lv = b.sides[s].level;
     const smart = level !== undefined ? level : lv !== undefined ? lv : b.smart;
-    if (b.phase === 'switch') return { a: 'switch', to: bestSwitch(b, s, -1) };
+    if (b.phase === 'switch') return smart >= 3 ? lookahead(b, s, LOOK3) : { a: 'switch', to: bestSwitch(b, s, -1) };
     if (smart < 0) {
         // nur fuer Tests: rein zufaellig
         const ok = act(b, s).moves.map((m, i) => i).filter(i => act(b, s).moves[i].ppLeft > 0);
         return { a: 'move', i: ok.length ? ok[Math.floor(b.rnd() * ok.length)] : -1 };
     }
+    if (smart >= 3) return lookahead(b, s, LOOK3);
     if (smart >= 2) return lookahead(b, s);
     return greedy(b, s, smart);
 }

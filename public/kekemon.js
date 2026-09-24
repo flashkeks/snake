@@ -1186,8 +1186,9 @@ function kbPlay(bp, kind) {
 }
 
 function kbStars(g) {
-    const n = kb.gyms.indexOf(g) + 1;
-    return '★'.repeat(Math.ceil(n / 2)) + '☆'.repeat(4 - Math.ceil(n / 2));
+    // 6.8: nach Level, dazu ein Stern fuer die Ace League
+    const n = Math.min(4, Math.ceil((g.lv || 5) / 12.5)) + (g.series === 'ace' ? 1 : 0);
+    return '★'.repeat(n) + '☆'.repeat(Math.max(0, 5 - n));
 }
 
 const KB_RULES = `<details class="kb-rules"><summary>📖 How battles work</summary><ul>
@@ -1201,23 +1202,26 @@ const KB_RULES = `<details class="kb-rules"><summary>📖 How battles work</summ
 
 function kbDrawGyms() {
     const T = kmCat.types;
-    const tiles = kb.gyms.map(g => {
+    const tile = g => {
         const t = g.type ? T[g.type] : null;
         const weakTo = t ? kmWeakTo(g.type).map(x => T[x]) : null;
         const team = g.team.map(id => kmCard(kmCat.byId[id], { mini: true, lv: g.lv, showLv: !!g.lv })).join('');
         return `<div class="kb-gym ${g.unlocked ? '' : 'locked'} ${g.cleared ? 'cleared' : ''}" style="--gc:${t ? t.color : '#ffd23f'}">
             <div class="kb-gym-head"><span class="ico">${g.icon}</span><div><b>${esc(g.name)}</b><small>Leader ${esc(g.leader)}${g.lv ? ` · <b class="kb-glv">Lv ${g.lv}</b>` : ''} · ${t ? t.icon + ' ' + t.name : '🌈 All types'} · <span class="kb-stars">${kbStars(g)}</span></small></div>
             ${g.cleared ? '<span class="kb-badge">✔ Cleared</span>' : ''}</div>
-            <div class="kb-team">${g.unlocked ? team : '<div class="km-note">🔒 Beat the previous gym first</div>'}</div>
+            <div class="kb-team">${g.unlocked ? team : `<div class="km-note">🔒 Beat ${esc((kbGymOf(g.after) || {}).name || 'the previous gym')} first</div>`}</div>
             <div class="kb-gym-foot">
                 <span>${g.cleared ? `🪙 ${g.repeat.toLocaleString('en-US')} per win · ${g.rewardsLeft} left today` : g.paid ? `🪙 ${g.repeat.toLocaleString('en-US')} · first-clear reward already received` : `🪙 ${g.coins.toLocaleString('en-US')} + ${kmCat.packs[g.pack].icon} free ${esc(kmCat.packs[g.pack].name)}`}</span>
                 ${weakTo ? `<span class="hint">Weak to ${weakTo.map(w => w.icon + ' ' + w.name).join(', ')}</span>` : ''}
                 <button type="button" class="gold" data-kbgym="${g.id}" ${g.unlocked ? '' : 'disabled'}>⚔️ Challenge</button>
             </div>
         </div>`;
-    }).join('');
+    };
+    const tiles = kb.gyms.filter(g => g.series !== 'ace').map(tile).join('');
+    const aces = kb.gyms.filter(g => g.series === 'ace').map(tile).join('');
     return KB_RULES.replace('</ul>', `<li>First win against a gym: coins + a free pack. After that 15 % of the coins, 3 times per gym and day.</li><li>Every card in your team earns XP for each foe you knock out – more for stronger foes, a bonus for winning. Higher level = more HP, attack, defense and speed.</li></ul>`) +
-        kbDrawTrain() + `<h3 class="kd-h">🏟️ Gyms</h3><div class="kb-gyms">${tiles}</div>`;
+        kbDrawTrain() + `<h3 class="kd-h">🏟️ Type Gyms</h3><div class="kb-gyms">${tiles}</div>` +
+        (aces ? `<h3 class="kd-h">🏆 Ace League</h3><div class="hint">Mixed teams built to cover each other, and trainers that think ahead. Same levels as the type gyms – much harder. Unlocks after Sprout Gym.</div><div class="kb-gyms kb-aces">${aces}</div>` : '');
 }
 
 // Training (6.7): wilde Teams, unbegrenzt, fuer XP; Coins und Teile fallen ab
@@ -1292,6 +1296,11 @@ function kbDrawPick() {
             <b>${g.icon} ${esc(g.name)}</b> <span class="hint">Wild teams Lv ${g.lv[0]}–${g.lv[1]}, matched to your team's level · random types</span>`;
         go = `<button type="button" class="gold" id="kb-fight" ${chosen.length === KB_TEAM ? '' : 'disabled'}>🌿 Train!</button>`;
         sub = `Pick ${KB_TEAM} different cards. All five earn XP for every foe you knock out (~${g.xp} for a full win).`;
+    } else if (g && g.series === 'ace') {
+        head = `<button type="button" class="ghost" id="kb-back">← Gyms</button>
+            <b>${g.icon} ${esc(g.name)}</b> <span class="hint">${esc(g.leader)} · mixed team Lv ${g.lv} · plans ahead</span>`;
+        go = `<button type="button" class="gold" id="kb-fight" ${chosen.length === KB_TEAM ? '' : 'disabled'}>⚔️ Fight!</button>`;
+        sub = `Pick ${KB_TEAM} different cards. The first one starts.`;
     } else if (g) {
         head = `<button type="button" class="ghost" id="kb-back">← Gyms</button>
             <b>${g.icon} ${esc(g.name)}</b> <span class="hint">${t ? `Leader uses ${t.icon} ${t.name} – ${kmWeakTo(g.type).map(x => T[x].icon + ' ' + T[x].name).join(', ')} moves hit it ×2` : 'The champion uses every type'}</span>`;
