@@ -23,6 +23,8 @@
 //
 // h: { accounts, cards, cardDb, battle, send, clientsOf(key), refresh(c), feed(text, kind), log(line) }
 
+const LV = require('./km-level');
+
 const STAKE_MAX = 100000;
 const PICK_MS = 90000;
 const TURN_MS = 45000;
@@ -194,7 +196,7 @@ module.exports = function createDuels(h) {
             const { id, v } = cards.parseKey(k);
             // Karte kann seit der Auswahl verkauft/gehandelt worden sein
             if (!cardDb.byId[id] || !(own[k] > 0)) return null;
-            out.push(B.fighter(cardDb.byId[id], v, 1));
+            out.push(B.fighter(cardDb.byId[id], v, 1, LV.bestLv(accounts.get(key), k)));
         }
         return out;
     }
@@ -223,7 +225,7 @@ module.exports = function createDuels(h) {
             accounts.touch();
         }
         const { b: battle, ev } = B.createBattle(ta, tb, { nameA: ua.name, nameB: ub.name, ai: false });
-        const d = { id: l.id, keys: [a, b], b: battle, stake: l.stake, turnAt: Date.now() + TURN_MS, afk: [0, 0], point: battle.turn + battle.phase };
+        const d = { id: l.id, keys: [a, b], teams: [l.teams[a], l.teams[b]], b: battle, stake: l.stake, turnAt: Date.now() + TURN_MS, afk: [0, 0], point: battle.turn + battle.phase };
         duels.set(d.id, d);
         h.log(`kmduel: #${d.id} ${ua.name} gegen ${ub.name}, Einsatz ${l.stake}`);
         for (const [i, k] of d.keys.entries()) {
@@ -287,8 +289,22 @@ module.exports = function createDuels(h) {
         if (d.stake >= 10000) h.feed(`⚔️ ${uw.name} beat ${ul.name} in a Kekémon duel and won ${pot.toLocaleString('en-US')} coins`, 'gold');
         else h.feed(`⚔️ ${uw.name} beat ${ul.name} in a Kekémon duel`, 'good');
         h.log(`kmduel: #${d.id} ${uw.name} schlaegt ${ul.name}${forfeit ? ' (Aufgabe)' : ''}, Einsatz ${d.stake}, Elo +-${delta}`);
+        // Karten-XP (6.7): echte Level zaehlen; volle XP fuer DUEL_FULL Duelle am Tag
+        const xpOf = (i, win) => {
+            const k = d.keys[i], u = accounts.get(k);
+            if (!win && d.b.turn < 3) return [];
+            const today = new Date().toISOString().slice(0, 10);
+            u.kmXpDay = u.kmXpDay && u.kmXpDay.day === today ? u.kmXpDay : { day: today, duels: 0 };
+            const f = u.kmXpDay.duels++ < LV.DUEL_FULL ? 1 : LV.DUEL_LATE;
+            return (d.teams[i] || []).map(key => LV.addXp(u, key, LV.XP.duel(win) * f)).filter(Boolean);
+        };
+        const xp = [xpOf(0, w === 0), xpOf(1, w === 1)];
+        accounts.touch();
         const res = win => ({ win, pot: win ? pot : 0, stake: d.stake, delta: win ? delta : -delta, rating: (win ? rw : rl).rating });
-        return w === 0 ? [res(true), res(false)] : [res(false), res(true)];
+        const out = w === 0 ? [res(true), res(false)] : [res(false), res(true)];
+        out[0].xp = xp[0];
+        out[1].xp = xp[1];
+        return out;
     }
 
     function act(c, data) {

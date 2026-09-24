@@ -1126,7 +1126,7 @@ der Statistik unter `earned.cards`.
 | Mythic | 1 in 20 000 | 1 in 3 478 | 1 in 1000 |
 | Ultra | 1 in 200 000 | 1 in 34 783 | 1 in 10 000 |
 
-## 📈 Plan: Karten-Level (noch nicht gebaut, Stand 24.09.2026)
+## 📈 Karten-Level (Plan 24.09.2026, Schritt 1 gebaut in 6.7)
 
 Ideen aus „vorschlaege kek games" (Flashkeks = Max, SINTHSBen): Level fuer
 Karten als Grind-Faktor, normale Gegner zum Leveln, Gyms mit Level, Geld von
@@ -1152,6 +1152,23 @@ Reihenfolge: 1) Level-Datenmodell, XP aus Gyms/Duellen, Werte, Anzeige;
 2) Training + Coins + Booster-Teile; 3) Gym-Level + Sim + Reset;
 4) Verfuettern; Handel/Markt mit Level. Spaeter, eigene Runden: Skill-Punkte
 auf Attacken, PP-Item im Kampf, zwei Elemente je Karte, Videospiel-Set.
+
+**Schritt 1 (6.7, gebaut):**
+
+- `km-level.js`: Kurve `need(L) = round(20 * L^1.5)` XP fuer L -> L+1
+  (Summe Lv 10 = 2.222, Lv 30 = 37.806, Lv 50 = 137.901). `statMul`:
+  HP/Angriff +4 %/Lv, Def/Tempo +2 %/Lv. `node km-level.js` zeigt die Summen.
+- Speicher `u.cardXp['id~v'] = [xp, …]` absteigend, `normalize()` kuerzt auf
+  `u.cards[key]` — geht eine Kopie weg (Verkauf, Handel, Markt, Admin), faellt
+  die schwaechste raus. Handel/Markt waehlen die Kopie noch **nicht** (Schritt 4).
+- Kampf: `B.fighter(card, v, mul, lv)`; es kaempft und lernt immer die beste Kopie.
+- XP je Karte im Team: Gym `(30 + 12 * Gym-Nr.) * (Sieg ? 1 : 0,4)`,
+  Duell 60/30; Niederlage vor Zug 3 gibt nichts (kein Aufgeben-Farmen).
+  Duelle: volle XP fuer die ersten 10 am Tag (`u.kmXpDay`), danach 20 %.
+- Anzeige: Lv-Badge unten links im Kartenbild (ab Lv 2 in der Sammlung,
+  immer in der Auswahl), Level-Zeile mit XP-Balken in der Detailansicht,
+  `Lv N` im Kampf, `+XP` / `⬆ Lv a → b` im Ergebnis. Sortierung „Level".
+- Test: `gymws.js` (Sprout-Sieg -> 5 Karten je +30 XP, Lv 1 -> 2), `gym.js lv`.
 
 ## 🔫 Arena 6.6: Items, Uniques, Kisten-Stufen, Boss-Wege
 

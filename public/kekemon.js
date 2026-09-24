@@ -33,6 +33,26 @@ function kmParse(k) {
 // Rang einer Variante (fuer "beste zuerst"): Masterball > Pokeball, Shiny zaehlt am meisten
 const kmVRank = v => (v.includes('s') ? 4 : 0) + (v.includes('m') ? 2 : v.includes('p') ? 1 : 0);
 
+// ---------- Karten-Level (6.7, Formel wie km-level.js) ----------
+function kmLvOf(xp) {
+    const C = (km && km.lvCurve) || { max: 50, curve: { base: 20, exp: 1.5 } };
+    const need = l => l >= C.max ? 0 : Math.round(C.curve.base * Math.pow(l, C.curve.exp));
+    let lv = 1, rest = Math.max(0, Math.floor(xp || 0));
+    while (lv < C.max && rest >= need(lv)) { rest -= need(lv); lv++; }
+    return { lv, into: rest, need: need(lv) };
+}
+// XP-Liste einer Variante (absteigend, je Kopie) und Level der besten Kopie
+const kmXpList = key => ((km && km.xp) || {})[key] || [];
+const kmBestLv = key => kmLvOf(kmXpList(key)[0] || 0).lv;
+// Bestes Level ueber alle Varianten einer Karte
+function kmCardLv(id) {
+    let best = 1;
+    const o = kmOwn()[id];
+    if (o) for (const v of Object.keys(o.vars)) best = Math.max(best, kmBestLv(kmKeyOf(id, v)));
+    return best;
+}
+const kmLvMul = lv => 1 + 0.04 * (Math.max(1, lv) - 1);
+
 function kmValue(c, v) {
     let n = kmCat.sell[c.rarity];
     for (const ch of v || '') n *= kmCat.sellMul[ch] || 1;
@@ -158,11 +178,12 @@ function kmCard(c, opt = {}) {
     const W = kmCat.types[c.weak];
     const img = esc(c.img);
     // Bild ganz zeigen (contain), dahinter dieselbe Grafik unscharf als Fuellung
+    const lvTag = opt.lv && (opt.lv > 1 || opt.showLv) ? `<span class="kc-lv ${opt.lv >= 50 ? 'max' : opt.lv >= 30 ? 'hi' : ''}">Lv ${opt.lv}</span>` : '';
     return `<div class="${cls}" style="--tc:${T.color}" data-kmcard="${esc(c.id)}">
         ${opt.count > 1 ? `<span class="kc-count">×${opt.count}</span>` : ''}
         <div class="kc-inner">
             <div class="kc-top"><span class="kc-name">${v.includes('s') ? '✦ ' : ''}${opt.missing ? '???' : esc(c.name)}</span><span class="kc-hp"><small>HP</small>${c.hp} ${T.icon}</span></div>
-            <div class="kc-art"><span class="ph">${T.icon}</span><img class="bg" src="${img}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"><img class="fg" src="${img}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">${ball ? kmBall(ball) : ''}${v.includes('s') ? '<span class="kc-sparkle"></span>' : ''}${v ? `<span class="kc-vtags">${ball === 'm' ? '<i class="vm">MASTERBALL</i>' : ball === 'p' ? '<i class="vp">POKÉBALL</i>' : ''}${v.includes('s') ? '<i class="vs">✦ SHINY</i>' : ''}</span>` : ''}</div>
+            <div class="kc-art"><span class="ph">${T.icon}</span><img class="bg" src="${img}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"><img class="fg" src="${img}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">${ball ? kmBall(ball) : ''}${v.includes('s') ? '<span class="kc-sparkle"></span>' : ''}${v ? `<span class="kc-vtags">${ball === 'm' ? '<i class="vm">MASTERBALL</i>' : ball === 'p' ? '<i class="vp">POKÉBALL</i>' : ''}${v.includes('s') ? '<i class="vs">✦ SHINY</i>' : ''}</span>` : ''}${lvTag}</div>
             <div class="kc-from">${opt.missing ? set.icon + ' ' + esc(set.name) : esc(c.from)}</div>
             ${atk}
             <div class="kc-stats"><span>⚔️ ${c.atk}</span><span>🛡️ ${c.def}</span><span>💨 ${c.spd}</span></div>
@@ -424,6 +445,7 @@ function kmList() {
     if (kmFilter.sort === 'rarity') list = list.slice().sort((a, b) => kmCat.ridx[b.rarity] - kmCat.ridx[a.rarity]);
     else if (kmFilter.sort === 'name') list = list.slice().sort((a, b) => a.name.localeCompare(b.name));
     else if (kmFilter.sort === 'hp') list = list.slice().sort((a, b) => b.hp - a.hp);
+    else if (kmFilter.sort === 'level') list = list.slice().sort((a, b) => (own[b.id] ? kmCardLv(b.id) : 0) - (own[a.id] ? kmCardLv(a.id) : 0));
     return list;
 }
 
@@ -435,7 +457,7 @@ function kmDrawAlbum() {
         <select data-kmf="type">${opt('', 'All types', kmFilter.type)}${Object.entries(kmCat.types).map(([k, t]) => opt(k, t.icon + ' ' + t.name, kmFilter.type)).join('')}</select>
         <select data-kmf="rarity">${opt('', 'All rarities', kmFilter.rarity)}${kmCat.rarities.map(r => opt(r.id, r.name, kmFilter.rarity)).join('')}</select>
         <select data-kmf="own">${opt('', 'Owned + missing', kmFilter.own)}${opt('have', 'Owned', kmFilter.own)}${opt('missing', 'Missing', kmFilter.own)}${opt('dupes', 'Duplicates', kmFilter.own)}${opt('special', 'Pokéball / Masterball / Shiny', kmFilter.own)}</select>
-        <select data-kmf="sort">${opt('num', 'Sort: number', kmFilter.sort)}${opt('rarity', 'Sort: rarity', kmFilter.sort)}${opt('hp', 'Sort: HP', kmFilter.sort)}${opt('name', 'Sort: name', kmFilter.sort)}</select>
+        <select data-kmf="sort">${opt('num', 'Sort: number', kmFilter.sort)}${opt('rarity', 'Sort: rarity', kmFilter.sort)}${opt('hp', 'Sort: HP', kmFilter.sort)}${opt('name', 'Sort: name', kmFilter.sort)}${opt('level', 'Sort: level', kmFilter.sort)}</select>
         <input data-kmf="q" placeholder="Search name or series…" value="${esc(kmFilter.q)}">
         <button type="button" id="km-selldupes">💰 Sell duplicates</button>
     </div>`;
@@ -445,7 +467,7 @@ function kmDrawAlbum() {
         return `<div>${s.icon} ${esc(s.name)} <b style="float:right">${n} / ${all.length}</b><div class="bar"><i style="width:${(n / Math.max(1, all.length) * 100).toFixed(1)}%"></i></div></div>`;
     }).join('');
     const list = kmList();
-    const grid = list.slice(0, kmShown).map(c => { const o = own[c.id]; return kmCard(c, { mini: true, missing: !o, count: o ? o.total : 0, v: o ? o.best : '' }); }).join('');
+    const grid = list.slice(0, kmShown).map(c => { const o = own[c.id]; return kmCard(c, { mini: true, missing: !o, count: o ? o.total : 0, v: o ? o.best : '', lv: o ? kmCardLv(c.id) : 0 }); }).join('');
     return `<div class="km-prog">${prog}</div>${bar}
         <div class="km-grid">${grid || '<div class="km-note" style="grid-column:1/-1">No cards match.</div>'}</div>
         ${list.length > kmShown ? `<button type="button" class="km-more" id="km-more">Show more (${(list.length - kmShown).toLocaleString('en-US')} left)</button>` : ''}`;
@@ -480,13 +502,18 @@ function kmView(id, showV) {
     const vars = o ? Object.entries(o.vars).sort((a, b) => kmVRank(b[0]) - kmVRank(a[0])).map(([vv, n]) => {
         const val = kmValue(c, vv);
         const canSell = Math.min(n, o.total - 1);
+        // 6.7: Level je Kopie; die beste kaempft
+        const xs = kmXpList(kmKeyOf(id, vv));
+        const L = kmLvOf(xs[0] || 0);
+        const lvRow = `<div class="km-lvrow"><b>Lv ${L.lv}</b>${L.need ? `<span class="km-xpbar"><i style="width:${(L.into / L.need * 100).toFixed(1)}%"></i></span><small>${L.into.toLocaleString('en-US')} / ${L.need.toLocaleString('en-US')} XP</small>` : '<small>max level</small>'}` +
+            `${n > 1 ? `<small class="hint">copies: ${Array.from({ length: n }, (_, i) => 'Lv ' + kmLvOf(xs[i] || 0).lv).join(', ')} · selling or trading gives away the lowest first</small>` : ''}</div>`;
         return `<div class="km-var ${vv === cur ? 'on' : ''}" data-kmshow="${vv}">
-            <b>${kmVName(vv)}</b> ×${n} <small>· worth 🪙 ${val.toLocaleString('en-US')}</small>
+            <b>${kmVName(vv)}</b> ×${n} <small>· worth 🪙 ${val.toLocaleString('en-US')}</small>${lvRow}
             ${canSell > 0 ? `<button type="button" data-kmsell="${esc(kmKeyOf(id, vv))}" data-n="1">Sell 1</button>` : ''}
             ${canSell > 1 ? `<button type="button" data-kmsell="${esc(kmKeyOf(id, vv))}" data-n="${canSell}">Sell ${canSell} (🪙 ${(canSell * val).toLocaleString('en-US')})</button>` : ''}
         </div>`;
     }).join('') : '';
-    v.innerHTML = kmCard(c, { missing: !o, v: cur }) + `<div class="km-info">
+    v.innerHTML = kmCard(c, { missing: !o, v: cur, lv: o ? kmBestLv(kmKeyOf(id, cur)) : 0 }) + `<div class="km-info">
         <h3>${o ? esc(c.name) : '???'}</h3>
         <div>${o ? esc(c.from) + '<br>' : ''}${kmCat.sets[c.set].icon} ${esc(kmCat.sets[c.set].name)} · ${esc(c.num)}</div>
         <div>${T.icon} ${esc(T.name)} · <b style="color:${R.color}">${esc(R.name)}</b> · weak to ${kmWeakTo(c.type).map(t => kmCat.types[t].icon + ' ' + esc(kmCat.types[t].name)).join(', ')}</div>
@@ -796,7 +823,7 @@ let kbPick = null;           // Team-Auswahl { gym | duel, team: [keys] }
 let kbSort = (() => { try { return localStorage.getItem('kbSort') || 'power'; } catch (e) { return 'power'; } })();
 let kbTypeFilter = '';
 // Kampfkraft wie bei den Arenaleitern (km-gyms.js), Variante als Aufschlag
-const kbPower = (c, v) => (c.bst.hp + 1.3 * Math.max(c.bst.atk, c.bst.spa) + 0.8 * (c.bst.def + c.bst.spd) + 0.9 * c.bst.spe) *
+const kbPower = (c, v) => (c.bst.hp + 1.3 * Math.max(c.bst.atk, c.bst.spa) + 0.8 * (c.bst.def + c.bst.spd) + 0.9 * c.bst.spe) * kmLvMul(kmBestLv(kmKeyOf(c.id, v))) *
     (1 + (v.includes('s') ? 0.1 : 0) + (v.includes('m') ? 0.08 : v.includes('p') ? 0.03 : 0));
 let kdForm = { stake: 0, target: '' };
 let kdTimerEnd = 0;          // Zugzeit-Ende (Duell), lokal gerechnet
@@ -833,7 +860,11 @@ function kbFeed(bp, kind, d, view) {
         bp.shown = kbFresh(view);
         kbPick = null;
     }
-    if (d.result) bp.result = d.result;
+    if (d.result) {
+        bp.result = d.result;
+        // 6.7: neue XP holen (Level in Sammlung und Auswahl)
+        if (d.result.xp && d.result.xp.length) wsSend({ type: 'kmState' });
+    }
     if (view && !bp.shown) bp.shown = view;
     if (d.ev && d.ev.length) {
         bp.queue.push(...d.ev);
@@ -1172,7 +1203,7 @@ function kbDrawPick() {
         const k = chosen[i];
         if (!k) return '<div class="kb-slot empty">?</div>';
         const { id, v } = kmParse(k);
-        return `<div class="kb-slot" data-kbunpick="${i}">${kmCard(kmCat.byId[id], { mini: true, v })}</div>`;
+        return `<div class="kb-slot" data-kbunpick="${i}">${kmCard(kmCat.byId[id], { mini: true, v, lv: kmBestLv(k), showLv: true })}</div>`;
     }).join('');
     const grid = shown.map(x => {
         const on = chosen.includes(x.key);
@@ -1180,7 +1211,7 @@ function kbDrawPick() {
         // Typ-Tabelle 6.0: eigene Attacken treffen den Leiter-Typ stark / Leiter trifft uns stark
         const good = t && kbEff(x.c.type, g.type) > 1;
         const bad = t && kbEff(g.type, x.c.type) > 1;
-        return `<div class="kb-cand ${on ? 'on' : ''} ${blocked ? 'off' : ''}" data-kbpick="${esc(x.key)}">${kmCard(x.c, { mini: true, v: x.v })}${good ? '<span class="kb-tag good">Strong</span>' : bad ? '<span class="kb-tag bad">Weak</span>' : ''}</div>`;
+        return `<div class="kb-cand ${on ? 'on' : ''} ${blocked ? 'off' : ''}" data-kbpick="${esc(x.key)}">${kmCard(x.c, { mini: true, v: x.v, lv: kmBestLv(x.key), showLv: true })}${good ? '<span class="kb-tag good">Strong</span>' : bad ? '<span class="kb-tag bad">Weak</span>' : ''}</div>`;
     }).join('');
     let head, go, sub;
     if (g) {
@@ -1233,7 +1264,7 @@ function kbSide(bp, s) {
         </div>
         <div class="kb-info">
             <div class="kb-who">${s === 0 ? '🧑' : bp === kbP.gym ? '🏟️' : '⚔️'} ${esc(side.name)} <span class="kb-dots">${dots}</span></div>
-            <div class="kb-nm"><b>${esc(c.name)}</b> <span class="kb-type" style="--tc:${T[c.type].color}">${T[c.type].icon}<span class="tn"> ${T[c.type].name}</span></span> ${st}</div>
+            <div class="kb-nm"><b>${esc(c.name)}</b> <span class="kb-lvt">Lv ${act.lv || 1}</span> <span class="kb-type" style="--tc:${T[c.type].color}">${T[c.type].icon}<span class="tn"> ${T[c.type].name}</span></span> ${st}</div>
             <div class="kb-hp ${pct < 20 ? 'low' : pct < 50 ? 'mid' : ''}"><i style="width:${pct}%"></i><span>${hpTxt}</span></div>
             ${boosts ? `<div class="kb-status">${boosts}</div>` : ''}
         </div>
@@ -1305,8 +1336,13 @@ function kbDrawBattle(bp, kind) {
         let line;
         if (kind === 'gym') line = r.win ? `${r.coins ? `+🪙 ${r.coins.toLocaleString('en-US')}` : 'No coins left from this gym today'}${r.first ? (r.already ? ' · gym cleared again (first-clear reward was paid before)' : ' · first clear!') : ''}` : 'Try another team – type matchups matter.';
         else line = `${r.stake ? (r.win ? `+🪙 ${r.pot.toLocaleString('en-US')}` : `−🪙 ${r.stake.toLocaleString('en-US')}`) + ' · ' : ''}rating ${r.rating || '?'} (${r.delta >= 0 ? '+' : ''}${r.delta || 0})`;
+        // 6.7: XP je Karte, Level-ups hervorgehoben
+        const xpLine = (r.xp || []).length ? `<div class="kb-xp">${r.xp.map(x => {
+            const nm = esc((kmCat.byId[kmParse(x.key).id] || {}).name || '?');
+            return `<span class="${x.to > x.from ? 'up' : ''}">${nm} +${x.xp} XP${x.to > x.from ? ` · ⬆ Lv ${x.from} → ${x.to}` : ''}</span>`;
+        }).join('')}</div>` : '';
         bar = `<div class="kb-result ${r.win ? 'win' : 'lose'}">
-            <div class="big">${r.win ? '🏆 VICTORY' : '💀 DEFEAT'}</div><div>${line}</div>
+            <div class="big">${r.win ? '🏆 VICTORY' : '💀 DEFEAT'}</div><div>${line}</div>${xpLine}
             <div class="kb-result-btns">${r.pack ? `<button type="button" class="gold" id="kb-openpack">🎁 Free ${esc(kmCat.packs[r.pack.pack].name)} added – go to 📦 Packs</button>` : ''}
             <button type="button" id="${kind === 'gym' ? 'kb-done' : 'kd-done'}">${kind === 'gym' ? 'Back to gyms' : 'Back to duels'}</button></div>
         </div>`;

@@ -11,6 +11,8 @@
 //
 // h: { accounts, cards, cardDb, battle, send, kmState(c, extra), feed(text, kind), log(line) }
 
+const LV = require('./km-level');
+
 const GYMS = [
     { id: 'sprout', name: 'Sprout Gym', icon: '🌱', leader: 'Scout Mika', type: 'nature', rar: ['uncommon'], mul: 0.85, smart: 1, coins: 3000, pack: 'anime' },
     { id: 'tide', name: 'Tide Gym', icon: '💧', leader: 'Captain Ren', type: 'water', rar: ['uncommon', 'rare'], mul: 0.9, smart: 2, coins: 4000, pack: 'film' },
@@ -133,11 +135,12 @@ module.exports = function createGyms(h) {
             if (!card || !(own[k] > 0)) return 'You do not own one of those cards';
             if (ids.has(id)) return `Pick ${B.TEAM_SIZE} different cards`;
             ids.add(id);
-            mine.push(B.fighter(card, v, 1));
+            // 6.7: mit dem Level der besten Kopie
+            mine.push(B.fighter(card, v, 1, LV.bestLv(u, k)));
         }
         const foes = g.team.map(id => B.fighter(cardDb.byId[id], '', g.mul));
         const { b, ev } = B.createBattle(mine, foes, { nameA: u.name, nameB: g.leader, smart: g.smart });
-        c.kb = { b, gym: g.id };
+        c.kb = { b, gym: g.id, keys };
         send(c, { ev, started: true });
         return null;
     }
@@ -183,6 +186,10 @@ module.exports = function createGyms(h) {
             }
             accounts.touch();
         }
+        // Karten-XP (6.7): jede Karte im Team; Niederlage 40 %, sofortiges Aufgeben nichts
+        const idx = GYMS.indexOf(g);
+        if (win || kb.b.turn >= 3) res.xp = kb.keys.map(k => LV.addXp(u, k, LV.XP.gym(idx, win))).filter(Boolean);
+        accounts.touch();
         accounts.stat(c.account, st => { st.kmBattles = (st.kmBattles || 0) + 1; if (win) st.kmWins = (st.kmWins || 0) + 1; });
         if (h.log) h.log(`kekemon: ${u.name} ${win ? 'schlaegt' : 'verliert gegen'} ${g.name}${res.coins ? ` (+${res.coins})` : ''}`);
         return res;

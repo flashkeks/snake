@@ -4,6 +4,7 @@ const path = require('path');
 const WebSocket = require('ws');
 
 const createAccounts = require('./accounts');
+const kmLevel = require('./km-level');
 const slots = require('./slots');
 const slots2 = require('./slots2');
 
@@ -610,6 +611,8 @@ function kmState(c, extra) {
     // inv (6.1): ungeoeffnete Packs { packId: Anzahl }; wheel: Daily Pack Wheel
     send(c, {
         type: 'kmState', v: cardHash, have: u.cards || {}, packs: (u.stats && u.stats.packs) || 0,
+        // 6.7: XP je Kopie { key: [xp, …] } und die Kurve
+        xp: kmLevel.normalizeAll(u), lvCurve: kmLevel.catalog(),
         inv: u.packs || {}, wheel: { ready: wheels.ready('pack', u), segs: wheels.segments('pack') }, ...extra
     });
 }

@@ -25,6 +25,7 @@
 // Wahl c: { a: 'move', i } | { a: 'switch', to } | { a: 'forfeit' }
 
 const K = require('./km-moves');
+const LV = require('./km-level');
 
 const TEAM_SIZE = 5;
 const LEVEL_F = 22;           // floor(2 · 50 / 5 + 2)
@@ -43,15 +44,17 @@ const stage = n => n >= 0 ? (2 + n) / 2 : 2 / (2 - n);
 const freshBoosts = () => ({ atk: 0, def: 0, spa: 0, spd: 0, spe: 0 });
 
 // Kampfkarte aus einer Katalogkarte. mul: Staerke (Arenen)
-function fighter(card, v, mul = 1) {
+// lv (6.7): Karten-Level, siehe km-level.js
+function fighter(card, v, mul = 1, lv = 1) {
+    const L = LV.statMul(lv);
     const m = varMul(v) * mul;
     const st = card.bt.stats;
-    const hp = Math.round(st.hp * m);
-    const dm = 0.8 + 0.2 * mul;
+    const hp = Math.round(st.hp * m * L.hp);
+    const dm = (0.8 + 0.2 * mul) * L.def;
     return {
-        id: card.id, v: v || '', name: card.name, type: card.type, style: card.bt.style,
+        id: card.id, v: v || '', name: card.name, type: card.type, style: card.bt.style, lv: Math.max(1, lv || 1),
         hp, maxHp: hp,
-        st: { atk: Math.round(st.atk * m), spa: Math.round(st.spa * m), def: Math.round(st.def * dm), spd: Math.round(st.spd * dm), spe: st.spe },
+        st: { atk: Math.round(st.atk * m * L.atk), spa: Math.round(st.spa * m * L.atk), def: Math.round(st.def * dm), spd: Math.round(st.spd * dm), spe: Math.round(st.spe * L.spe) },
         moves: card.bt.moves.map(x => ({ ...x, ppLeft: x.pp })),
         status: null, slp: 0, boosts: freshBoosts(), protecting: false, protectCount: 0
     };
@@ -532,7 +535,7 @@ function view(b, me = 0) {
     const sides = b.sides.map(side => ({
         name: side.name, active: side.active,
         cards: side.cards.map(c => ({
-            id: c.id, v: c.v, type: c.type, hp: c.hp, maxHp: c.maxHp, status: c.status, boosts: c.boosts, st: c.st,
+            id: c.id, v: c.v, lv: c.lv || 1, type: c.type, hp: c.hp, maxHp: c.maxHp, status: c.status, boosts: c.boosts, st: c.st,
             moves: c.moves.map(m => ({ name: m.name, type: m.type, cat: m.cat, pow: m.pow, acc: m.acc, pp: m.ppLeft, ppMax: m.pp, pri: m.pri || 0, desc: m.desc }))
         }))
     }));
