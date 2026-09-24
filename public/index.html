@@ -11486,7 +11486,18 @@ function onShInv(d) {
     if (shInvOpen) shInvDraw();
 }
 
+// 6.9 (Max: Taste halten, Inventar auf -> man laeuft endlos weiter): waehrend
+// Drag & Drop feuert der Browser kein keyup, das Loslassen ging verloren. Beim
+// Oeffnen/Schliessen und bei jedem Drag die gehaltenen Tasten vergessen – wer
+// weiter drueckt, bekommt sie ueber die Tastenwiederholung sofort zurueck.
+function shKeysReset() {
+    shKeys.clear();
+    if (typeof shSendInput === 'function' && sh) shSendInput();
+}
+document.addEventListener('dragstart', shKeysReset, true);
+document.addEventListener('dragend', shKeysReset, true);
 function shInvToggle(open) {
+    shKeysReset();
     shInvOpen = open === undefined ? !shInvOpen : open;
     $('sh-inv').hidden = !shInvOpen;
     if (shInvOpen) shInvDraw();
