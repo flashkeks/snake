@@ -58,6 +58,13 @@ const BOSS_LIFE = 8 * 60e3;
 const BOSS_CALM = 60e3, BOSS_NEAR = 1100;
 // Leerer Raid mit lebendem Boss: so lange bleibt alles stehen (6.10, Max)
 const EMPTY_KEEP = 30e3;
+// 6.12 (Max: bei Disconnect Items droppen): kommt so lange nichts mehr vom
+// Browser (Handy im Standby, Tunnel weg, ohne sauberes Schliessen), gilt der
+// Spieler als weg – wie Verlassen, die Items fallen als Beutel. Grosszuegig,
+// weil Browser Timer in Hintergrund-Tabs drosseln (App-Ping alle 5 s).
+const SILENT_MS = 90e3;
+// Beutel eines Verlassenen/Getrennten liegen mindestens so lange (Max: min. 2 min)
+const BAG_LIFE_LEFT = Math.max(BAG_LIFE, 2 * 60e3);
 // Gegner (4.1): so viele laufen herum, geweckt nur in der Naehe von Spielern
 const MOB_BASE = 45, MOB_PER_PLAYER = 8, MOB_MAX = 120;
 const MOB_WAKE = 1700;
@@ -1126,6 +1133,7 @@ module.exports = function createArena(h, opts = {}) {
             sendInv(killer);
         }
         dropBag(p.x, p.y, rest);
+        if (how === 'left' && bags.length && bags[bags.length - 1].items === rest) bags[bags.length - 1].expires = Date.now() + BAG_LIFE_LEFT;
         if (p.account) {
             h.accounts.stat(p.account, s => { s.shooterDeaths = (s.shooterDeaths || 0) + 1; });
             if (killer && killer.account) {
@@ -3343,6 +3351,10 @@ module.exports = function createArena(h, opts = {}) {
             const sm = smokes.find(s => Math.hypot(s.x - p.x, s.y - p.y) < s.r);
             p.smoke = sm ? sm.id : null;
             if (p.fire) shoot(p, now);
+            if (!pvp && !zb && p.c.lastMsg && now - p.c.lastMsg > SILENT_MS) {
+                die(p, null, 'left', 'lost connection');
+                continue;
+            }
             // Extraction: lange genug in einer Zone stehen
             const zone = MAP.extracts.find(e => Math.hypot(e.x - p.x, e.y - p.y) < EXTRACT_R);
             if (!zone) p.extractAt = null;

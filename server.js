@@ -1997,6 +1997,7 @@ wss.on('connection', (ws, req) => {
     send(c, { type: 'chatlog', list: chatLog });
 
     ws.on('message', msg => {
+        c.lastMsg = Date.now();     // 6.12: Raid erkennt stille (halb tote) Verbindungen
         let data;
         try {
             data = JSON.parse(msg);

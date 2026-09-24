@@ -2383,3 +2383,18 @@ auch Gegner (Abstand bis zum Rand, `m.def.r` abgezogen); Gegner-Kugeln (`b.w.mob
 suchen weiter nur Spieler.
 Test: Gegner 120 px neben der Schusslinie, Gewehr, 1 s Dauerfeuer:
 ohne Homing 0 Schaden, Homing II vorher 0, jetzt 121.
+
+### 6.12: Disconnect im Raid (Max: Items sollen droppen und min. 2 min liegen)
+
+Sauberes Schliessen (Tab zu, Verbindung weg) lief schon: `ws close` -> `shooter.leave`
+-> `die(..., 'left')` -> Beutel mit allem, `BAG_LIFE` 5 min, auch im leeren Raid.
+Nicht erkannt wurden **stille** Verbindungen (Handy im Standby, Tunnel weg ohne
+Schliessen): die Figur stand weiter im Raid. Jetzt merkt `server.js` die Zeit der
+letzten Nachricht (`c.lastMsg`); kommt im Raid `SILENT_MS` = 90 s nichts (der
+Browser schickt sonst mindestens alle 5 s einen App-Ping, im Spiel alle 250 ms
+Eingaben), gilt der Spieler als weg: `die(p, null, 'left', 'lost connection')`,
+Items als Beutel. Beutel von Verlassenen liegen `BAG_LIFE_LEFT` = max(BAG_LIFE, 2 min).
+Nur Extraction (PvP/Zombies haben eigene Regeln). 90 s statt weniger, weil Browser
+Timer in Hintergrund-Tabs drosseln.
+Test: Spieler 91 s still -> raus, Beutel mit seinen Items, 300 s Lebenszeit,
+der andere Spieler bleibt.
