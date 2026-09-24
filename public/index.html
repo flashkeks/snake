@@ -6951,7 +6951,12 @@ const WATCH = new URLSearchParams(location.search).get('watch');
 
 ws.onopen = () => {
     status.textContent = '🟢 Connected';
-    if (WATCH) return wsSend({ type: 'watch', token: WATCH });
+    // Zuschauen: erst anmelden, wenn alle Skripte (kekemon.js usw.) geladen sind,
+    // sonst treffen gespiegelte Nachrichten auf noch fehlende Funktionen
+    if (WATCH) {
+        const go = () => wsSend({ type: 'watch', token: WATCH });
+        return document.readyState === 'complete' ? go() : window.addEventListener('load', go, { once: true });
+    }
     try { token = localStorage.getItem('snake-token'); } catch {}
     if (token) wsSend({ type: 'resume', token });
     // Schirm, den wir vor dem Verbinden schon gemeldet haben wollten
@@ -11802,6 +11807,16 @@ function shPredict(dt) {
     const s = shSnaps[shSnaps.length - 1];
     const me = shMeServer();
     if (!me || !s) return;
+    // 6.5 Zuschauen (Admin): keine Vorhersage – der Zuschauer hat keine eigenen
+    // Eingaben; der beobachtete Spieler wird wie alle anderen weich zwischen
+    // zwei Server-Staenden gezeigt (vorher: Vorhersage mit Null-Eingabe gegen
+    // den Server -> Ruckeln und Springen)
+    if (WATCH) {
+        const w = shOthers().find(p => p.id === sh.id) || me;
+        shPred = { x: w.x, y: w.y, a: w.a };
+        shHist = [];
+        return;
+    }
     if (!shPred) {
         shPred = { x: me.x, y: me.y };
         shHist = [];
@@ -11822,7 +11837,7 @@ function shPredict(dt) {
 // Server-Stand mit der eigenen Position von vor einer Laufzeit vergleichen;
 // beim Laufen Totzone, im Stand ganz angleichen, grosse Abweichung sofort
 function shReconcile(d) {
-    if (!sh || !shPred) return;
+    if (!sh || !shPred || WATCH) return;
     const me = d.players.find(p => p.id === sh.id);
     if (!me) return;
     const t = performance.now() - shRtt - 35;
@@ -12302,7 +12317,7 @@ function shFrame() {
     // Kugeln (Farbe nach Effekt)
     const age = (now - latest.recv) / 1000;
     for (const [, x, y, vx, vy, owner, fx, bt] of latest.bullets) {
-        const t = owner === sh.id ? age + shRtt / 2000 : Math.max(0, age - SH_INTERP / 1000);
+        const t = owner === sh.id && !WATCH ? age + shRtt / 2000 : Math.max(0, age - SH_INTERP / 1000);
         const bx = x + vx * t, by = y + vy * t;
         const sp = Math.hypot(vx, vy) || 1;
         if (fx & 2048) {
@@ -12487,7 +12502,7 @@ function shFrame() {
         const mine = p.id === sh.id;
         const x = mine && shPred ? shPred.x : p.x;
         const y = mine && shPred ? shPred.y : p.y;
-        shDrawPlayer(c, p, x, y, mine ? shIn.a : p.a, mine, now, my);
+        shDrawPlayer(c, p, x, y, mine && !WATCH ? shIn.a : p.a, mine, now, my);
     }
 
     // Granaten im Flug
@@ -13278,6 +13293,7 @@ function shAim() {
 }
 
 function shLocalFire(now) {
+    if (WATCH) return;
     const s = shSnaps[shSnaps.length - 1];
     if (!shIn.f || !s) return;
     if (now - shLastLocalShot < s.me.ms) return;
