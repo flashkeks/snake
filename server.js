@@ -1180,7 +1180,7 @@ async function handle(c, data) {
             // Beim Cashout faehrt man stur geradeaus, im Event steht alles
             if (p.cashout || paused) return;
 
-            let dir = DIRS[data.direction];
+            let dir = Object.prototype.hasOwnProperty.call(DIRS, data.direction) ? DIRS[data.direction] : null;
             if (!dir) return;
 
             // Verdreht: alle Richtungen gespiegelt
@@ -1531,7 +1531,8 @@ async function handle(c, data) {
             if (c.cross) return;
             const bet = Number(data.bet);
             const diff = String(data.diff);
-            if (!validBet(bet) || !casino.DIFFS[diff]) return send(c, { type: 'crossError', error: 'Invalid bet' });
+            // Nur echte Schwierigkeiten (Object.prototype.hasOwnProperty.call: '__proto__' waere sonst ein Treffer)
+            if (!validBet(bet) || !Object.prototype.hasOwnProperty.call(casino.DIFFS, diff)) return send(c, { type: 'crossError', error: 'Invalid bet' });
             const u = accounts.get(c.account);
             if (!u || u.coins < bet) return send(c, { type: 'crossError', error: 'Not enough coins' });
             const balance = accounts.addCoins(c.account, -bet);

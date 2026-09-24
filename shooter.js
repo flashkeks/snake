@@ -616,7 +616,7 @@ module.exports = function createArena(h, opts = {}) {
                 const b = d.base === null ? null : String(d.base);
                 if (b === null) a.loadout.util[i] = null;
                 else {
-                    if (!I.UTILS[b]) return;
+                    if (!Object.prototype.hasOwnProperty.call(I.UTILS, b)) return;
                     const other = a.loadout.util[1 - i];
                     const free = count(a, b) - (other && other.base === b ? other.n : 0);
                     const n = Math.max(0, Math.min(I.UTILS[b].stack, free, Math.floor(Number(d.n)) || 0));
@@ -1078,7 +1078,7 @@ module.exports = function createArena(h, opts = {}) {
         if (!nearStation(p, 'trader')) return h.send(p.c, { type: 'shTrader', close: true });
         const a = st(p.c);
         if (d.op === 'buy') {
-            const price = TRADER_BUY[d.base];
+            const price = Object.prototype.hasOwnProperty.call(TRADER_BUY, d.base) ? TRADER_BUY[d.base] : 0;
             if (!price) return;
             if (a.scrap < price) return h.send(p.c, { type: 'shEvent', text: `🏪 You need ${price} scrap`, kind: 'self' });
             const it = I.plain('util', d.base);

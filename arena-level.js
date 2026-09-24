@@ -118,14 +118,14 @@ function pointsOf(p) {
 function validate(p, stats, skills) {
     const { level } = levelOf(p.xp);
     for (const [k, n] of Object.entries(stats)) {
-        if (!STATS[k] || !Number.isInteger(n) || n < 0 || n > STAT_MAX) return 'Invalid stat';
+        if (!Object.prototype.hasOwnProperty.call(STATS, k) || !Number.isInteger(n) || n < 0 || n > STAT_MAX) return 'Invalid stat';
         if (n < ((p.stats || {})[k] || 0)) return 'Points can only be removed with a reset';
     }
     for (const k of Object.keys(p.stats || {})) if (!(k in stats) && p.stats[k] > 0) return 'Points can only be removed with a reset';
     const statUsed = Object.values(stats).reduce((s, n) => s + n, 0);
     if (statUsed > (level - 1) * STAT_POINTS_PER_LEVEL) return 'Not enough stat points';
     for (const [k, n] of Object.entries(skills)) {
-        const d = SKILLS[k];
+        const d = Object.prototype.hasOwnProperty.call(SKILLS, k) ? SKILLS[k] : null;
         if (!d || !Number.isInteger(n) || n < 0 || n > d.max) return 'Invalid skill';
         if (n < ((p.skills || {})[k] || 0)) return 'Skills can only be removed with a reset';
         if (!n) continue;

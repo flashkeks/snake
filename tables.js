@@ -307,7 +307,7 @@ module.exports = function createTables(h) {
     // ---------- Sitzen und gehen ----------
 
     function join(c, kind) {
-        const t = tables[kind];
+        const t = Object.prototype.hasOwnProperty.call(tables, kind) ? tables[kind] : null;
         if (!t) return;
         const old = tableOf(c);
         if (old === t) return push(t);
@@ -638,7 +638,7 @@ module.exports = function createTables(h) {
             if (!ROULETTE_TYPES.has(bet.type) || !validBet(amount)) return;
             const n = Number(bet.n);
             if (bet.type === 'number' && !(Number.isInteger(n) && n >= 0 && n <= 36)) return;
-            if ((bet.type === 'dozen' || bet.type === 'column') && !(n >= 1 && n <= 3)) return;
+            if ((bet.type === 'dozen' || bet.type === 'column') && !(Number.isInteger(n) && n >= 1 && n <= 3)) return;
             if (t.bets.filter(b => b.id === c.id).length >= 12) return h.send(c, { type: 'tableError', error: 'Max 12 bets' });
             if (u.coins < amount) return h.send(c, { type: 'tableError', error: 'Not enough coins' });
             h.accounts.addCoins(c.account, -amount);

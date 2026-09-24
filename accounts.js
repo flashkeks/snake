@@ -429,6 +429,13 @@ module.exports = function createAccounts(dataDir) {
         addCoins(key, n) {
             const u = db.users[key];
             if (!u) return null;
+            // Schutz (Sicherheits-Check 24.09.2026): nur endliche Zahlen buchen.
+            // Ein NaN-Kontostand wuerde jede Pruefung "genug Coins?" aushebeln.
+            if (typeof n !== 'number' || !Number.isFinite(n)) {
+                console.error('accounts: addCoins mit ungueltigem Betrag', key, n, new Error().stack.split('\n')[2]);
+                return u.coins;
+            }
+            if (!Number.isFinite(u.coins)) u.coins = 0;
             u.coins = Math.max(0, Math.floor(u.coins + n));
             touch();
             if (n > 0 && u.coins >= 1000000) checkAch(key);
@@ -531,6 +538,7 @@ module.exports = function createAccounts(dataDir) {
         adminSetCoins(key, n) {
             const u = db.users[key];
             if (!u) return null;
+            if (!Number.isFinite(Number(n))) return u.coins;
             u.coins = Math.max(0, Math.floor(n));
             touch();
             return u.coins;

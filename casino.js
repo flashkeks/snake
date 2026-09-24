@@ -43,7 +43,8 @@ const DIFFS = {
 
 function crossMult(diff, k) {
     if (k <= 0) return 1;
-    const d = DIFFS[diff];
+    const d = Object.prototype.hasOwnProperty.call(DIFFS, diff) ? DIFFS[diff] : null;
+    if (!d) return 0;
     return Math.floor(100 * CROSS_RTP / Math.pow(1 - d.p, k)) / 100;
 }
 
