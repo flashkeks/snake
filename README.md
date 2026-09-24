@@ -2052,7 +2052,30 @@ Typ-Abdeckung, keine gehaeufte Schwaeche, jede Stufe eigene Karten) und
 KI-Stufe 3 (`km-battle.js`: Vorausschau mit 16 Stichproben, 4 Zuege, auch
 beim Einwechseln; gegen Stufe 1 37/60 statt 29/60 bei Stufe 2).
 
-SIMTABLE68
+Messung auf edge (1990 Karten ohne Game-Set, je 80 Kaempfe, Spieler-KI 2,
+Spielerteam auf Gym-Level, Pool wie 6.4). „vorteil" = Team mit Typvorteil –
+das ist bei den Typ-Gyms der Massstab, bei der Ace League „zufall":
+
+| Gym | Lv | mul | zufall | vorteil |
+|---|---|---|---|---|
+| Sprout | 5 | 0,81 | 45 % | 54 % |
+| Tide | 10 | 0,97 | 23 % | 71 % |
+| Blaze | 15 | 0,87* | 6 % | 29 % (bei 0,91) |
+| Volt | 20 | 0,94 | 26 % | 53 % |
+| Dojo | 26 | 1,02 | 5 % | 30 % |
+| Mind | 33 | 1,25 | 15 % | 31 % |
+| Shadow | 41 | 0,84* | 14 % | 40 % (bei 0,80) |
+| Champion | 50 | 0,66 | unveraendert |  |
+| Ace 1 Rookie Cup | 5 | 0,65 | 46 % | 57 % |
+| Ace 2 Ace Arena | 10 | 0,62 | 53 % | 53 % |
+| Ace 3 Chess Club | 15 | 0,77* | 26 % (bei 0,80) | 39 % |
+| Ace 4 Veteran Hall | 20 | 0,58 | 28 % | 24 % |
+| Ace 5 War Room | 26 | 0,62 | 25 % | 23 % |
+| Ace 6 Elite Spire | 33 | 0,63 | 19 % | 24 % |
+| Ace 7 Grandmaster | 41 | 0,88* | 6 % (bei 0,92) | 8 % |
+
+\* nach der Kontrollmessung zwischen zwei Messpunkten nachgezogen. `mul` ist
+steil (wirkt auf HP und Schaden): Ace 1 bei 0,5 -> 98 %, bei 0,7 -> 28 %.
 
 **Game-Set** (`tools/cards/games.js` -> `DATA_DIR/cards-games.json`, von
 `cards.js` dazugeladen; `cards-raw.json` bleibt unberuehrt): 1033 Figuren aus

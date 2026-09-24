@@ -20,19 +20,19 @@ const K = require('./km-moves');
 const GYMS = [
     { id: 'sprout', series: 'type', lv: 5, name: 'Sprout Gym', icon: '🌱', leader: 'Scout Mika', type: 'nature', rar: ['rare'], mul: 0.81, smart: 1, coins: 3000, pack: 'anime' },
     { id: 'tide', series: 'type', lv: 10, name: 'Tide Gym', icon: '💧', leader: 'Captain Ren', type: 'water', rar: ['rare', 'epic'], mul: 0.97, smart: 2, coins: 4000, pack: 'film' },
-    { id: 'blaze', series: 'type', lv: 15, name: 'Blaze Gym', icon: '🔥', leader: 'Pyra', type: 'fire', rar: ['epic'], mul: 0.91, smart: 2, coins: 5000, pack: 'anime' },
+    { id: 'blaze', series: 'type', lv: 15, name: 'Blaze Gym', icon: '🔥', leader: 'Pyra', type: 'fire', rar: ['epic'], mul: 0.87, smart: 2, coins: 5000, pack: 'anime' },
     { id: 'volt', series: 'type', lv: 20, name: 'Volt Gym', icon: '⚡', leader: 'Sparky', type: 'electric', rar: ['epic'], mul: 0.94, smart: 2, coins: 6500, pack: 'game' },
     { id: 'dojo', series: 'type', lv: 26, name: 'Iron Dojo', icon: '👊', leader: 'Master Ken', type: 'fighting', rar: ['epic', 'legendary'], mul: 1.02, smart: 2, coins: 8000, pack: 'film' },
     { id: 'mind', series: 'type', lv: 33, name: 'Mind Tower', icon: '🔮', leader: 'Oracle Lua', type: 'psychic', rar: ['legendary'], mul: 1.25, smart: 2, coins: 11000, pack: 'anime' },
-    { id: 'shadow', series: 'type', lv: 41, name: 'Shadow Gym', icon: '🌑', leader: 'Noct', type: 'dark', rar: ['legendary', 'secret'], mul: 0.8, smart: 2, coins: 15000, pack: 'mixed' },
+    { id: 'shadow', series: 'type', lv: 41, name: 'Shadow Gym', icon: '🌑', leader: 'Noct', type: 'dark', rar: ['legendary', 'secret'], mul: 0.84, smart: 2, coins: 15000, pack: 'mixed' },
     { id: 'champ', series: 'type', lv: 50, name: 'Kek Champion', icon: '👑', leader: 'The Kek', type: null, rar: ['legendary', 'secret'], mul: 0.66, smart: 2, coins: 30000, pack: 'mixed' },
     { id: 'ace1', series: 'ace', after: 'sprout', lv: 5, name: 'Rookie Cup', icon: '🥊', leader: 'Rival Kai', type: null, rar: ['rare', 'epic'], mul: 0.65, smart: 3, coins: 4500, pack: 'anime' },
     { id: 'ace2', series: 'ace', lv: 10, name: 'Ace Arena', icon: '🎯', leader: 'Ace Mira', type: null, rar: ['epic'], mul: 0.62, smart: 3, coins: 6000, pack: 'film' },
-    { id: 'ace3', series: 'ace', lv: 15, name: 'Chess Club', icon: '♟️', leader: 'Tactician Rook', type: null, rar: ['epic'], mul: 0.8, smart: 3, coins: 7500, pack: 'game' },
+    { id: 'ace3', series: 'ace', lv: 15, name: 'Chess Club', icon: '♟️', leader: 'Tactician Rook', type: null, rar: ['epic'], mul: 0.77, smart: 3, coins: 7500, pack: 'game' },
     { id: 'ace4', series: 'ace', lv: 20, name: 'Veteran Hall', icon: '🛡️', leader: 'Veteran Sol', type: null, rar: ['epic', 'legendary'], mul: 0.58, smart: 3, coins: 10000, pack: 'mixed' },
     { id: 'ace5', series: 'ace', lv: 26, name: 'War Room', icon: '🧠', leader: 'Strategist Vex', type: null, rar: ['legendary'], mul: 0.62, smart: 3, coins: 12000, pack: 'mixed' },
     { id: 'ace6', series: 'ace', lv: 33, name: 'Elite Spire', icon: '💫', leader: 'Elite Nova', type: null, rar: ['legendary', 'secret'], mul: 0.63, smart: 3, coins: 16500, pack: 'mixed' },
-    { id: 'ace7', series: 'ace', lv: 41, name: 'Grandmaster Throne', icon: '🏆', leader: 'Grandmaster Zed', type: null, rar: ['secret', 'legendary'], mul: 0.92, smart: 3, coins: 22500, pack: 'mixed' }
+    { id: 'ace7', series: 'ace', lv: 41, name: 'Grandmaster Throne', icon: '🏆', leader: 'Grandmaster Zed', type: null, rar: ['secret', 'legendary'], mul: 0.88, smart: 3, coins: 22500, pack: 'mixed' }
 ];
 // Vorgaenger: sonst das vorige Gym derselben Reihe
 GYMS.forEach((g, i) => {
