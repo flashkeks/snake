@@ -254,17 +254,19 @@ const SOURCES = {
     // Item, gratis); jetzt ~0,4 %. Was wegfaellt, geht an Epic.
     //   crate2 Leg 3,7 -> 0,8 %, Myth 0,3 -> 0,03 %
     //   crate3 Leg 10 -> 3 %, Myth 1,8 -> 0,2 %, Ultra 0,2 -> 0,02 %
-    crate2: { t: [0.15, 0.38, 0.3, 0.1617, 0.008, 0.0003, 0], kinds: { util: 1 }, uses: ['heal', 'throw'] },
-    crate3: { t: [0, 0.15, 0.4, 0.4178, 0.03, 0.002, 0.0002], kinds: { util: 0.5, weapon: 0.25, armor: 0.2, pack: 0.05 } },
+    // 6.10.2 (Max, Legendary+ je Ereignis): blau 0,84 -> ~0,3 %, gold 6,6 -> ~0,9 %,
+    // Militaerkiste 1,2 -> ~0,75 %, Supply Drop 4,6 -> ~1,1 %; Rest jeweils an Epic
+    crate2: { t: [0.15, 0.38, 0.3, 0.167037, 0.002856, 0.000107, 0], kinds: { util: 1 }, uses: ['heal', 'throw'] },
+    crate3: { t: [0, 0.15, 0.4, 0.445672, 0.004032, 0.000269, 2.7e-05], kinds: { util: 0.5, weapon: 0.25, armor: 0.2, pack: 0.05 } },
     // Seltene Gegner-Beute (Stufe 2 von 3); Stufe 3 zieht aus 'boss'
     // 6.10: wie crate2 gekappt (Leg 3,7 -> 0,8 %, Myth 0,3 -> 0,03 %)
     npcrare: { t: [0.1, 0.35, 0.33, 0.2117, 0.008, 0.0003, 0], kinds: { util: 0.4, weapon: 0.3, armor: 0.25, pack: 0.05 } },
     // Versorgungsabwurf: Ausruestung, etwas besser als eine Standard-Case
-    airdrop: { t: [0.3, 0.38, 0.2, 0.1, 0.0195, 0.0005, 0], kinds: { weapon: 0.45, armor: 0.45, pack: 0.1 } },
+    airdrop: { t: [0.3, 0.38, 0.2, 0.115232, 0.004649, 0.000119, 0], kinds: { weapon: 0.45, armor: 0.45, pack: 0.1 } },
     // Normale Gegner (4.1): meist Verbrauchsgut, selten Ausruestung
     npcdrop: { t: [0.62, 0.27, 0.09, 0.0189, 0.001, 0.00001, 0], kinds: { util: 0.55, weapon: 0.22, armor: 0.18, pack: 0.05 }, uses: null },
     // Militaerkisten im Lager der Enforcer: nur Ausruestung, wie eine Standard-Case
-    military: { t: [0.45, 0.33, 0.15, 0.06, 0.0095, 0.0005, 0], kinds: { weapon: 0.5, armor: 0.45, pack: 0.05 } },
+    military: { t: [0.45, 0.33, 0.15, 0.06386, 0.005833, 0.000307, 0], kinds: { weapon: 0.5, armor: 0.45, pack: 0.05 } },
     // Boss: Sovereign-Stufen, aber nur Ausruestung
     // 6.10.1 (Max: Boss seit 6.9 viel oefter -> Legendarys am laufenden Band):
     // Legendary+ je Item 1,78 % -> 0,4 % (etwa 1/250), Rest an Epic.
@@ -285,6 +287,9 @@ const SOURCES = {
     elite_w50: { t: [0, 0.3, 0.3875, 0.30614583, 0.00604167, 0.0002875, 0.00002875], kinds: { weapon: 1 } },
     elite_a50: { t: [0, 0.3, 0.3875, 0.30614583, 0.00604167, 0.0002875, 0.00002875], kinds: { armor: 0.85, pack: 0.15 } },
     sovereign: { t: [0, 0, 0.35, 0.6322333, 1 / 60, 0.001, 0.0001], kinds: { weapon: 0.45, armor: 0.33, util: 0.15, pack: 0.07 } },
+    // 6.10.2 (Max, Legendary+ je Ereignis): Capture the Flag eigene Quelle mit
+    // Sovereign-Arten, aber Legendary+ nur ~1 % je Beutel (vorher 3,9 %)
+    ctf: { t: [0, 0, 0.35, 0.645446, 0.004272, 0.000256, 2.6e-05], kinds: { weapon: 0.45, armor: 0.33, util: 0.15, pack: 0.07 } },
     // Mystery Box im Zombie-Modus (6.10, Max: jetzt wo sie teuer ist): nur
     // Waffen, Legendary und hoeher doppelt so oft wie Elite/Sovereign; der
     // Aufschlag kommt aus der untersten Stufe

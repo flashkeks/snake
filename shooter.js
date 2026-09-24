@@ -69,7 +69,7 @@ const TRADER_BUY = { bandage: 12, medkit: 30, frag: 35, smoke: 25, stim: 45, mol
 const TRADER_SELL = 0.6;          // Anteil des Salvage-Werts beim Verkauf im Raid
 const DROP_EVERY = [3 * 60e3, 6 * 60e3];
 const DROP_WARN = 15000;
-// Capture the Flag (6.9, Max): Flagge taucht auf, ins Ziel tragen = Sovereign-Beute
+// Capture the Flag (6.9, Max): Flagge taucht auf, ins Ziel tragen = Beute (Quelle 'ctf', seit 6.10.2 ~1 % Leg+)
 const CTF_EVERY = [4 * 60e3, 9 * 60e3], CTF_LIFE = 6 * 60e3, CTF_PICK = 50, CTF_GOAL = 120, CTF_MIN_DIST = 1600;
 
 // ---------- Map (fester Seed, damit sie nach jedem Neustart gleich ist) ----------
@@ -3064,7 +3064,7 @@ module.exports = function createArena(h, opts = {}) {
             }
             if (!g) { nextCtfAt = now + 60e3 / SPEED; return; }
             ctf = { x: f.x, y: f.y, carrier: null, bx: g.x, by: g.y, until: now + CTF_LIFE / SPEED };
-            announce('🚩 Capture the Flag! Grab the flag and carry it to the 🏁 goal for Sovereign loot', 'drop');
+            announce('🚩 Capture the Flag! Grab the flag and carry it to the 🏁 goal for top loot', 'drop');
             return;
         }
         if (now > ctf.until) {
@@ -3084,9 +3084,9 @@ module.exports = function createArena(h, opts = {}) {
             ctf.y = c.y;
             if (Math.hypot(c.x - ctf.bx, c.y - ctf.by) < CTF_GOAL) {
                 const n = 2 + (Math.random() < 0.35 ? 1 : 0);
-                dropBag(ctf.bx, ctf.by, Array.from({ length: n }, () => I.generate('sovereign')), 'ctf');
+                dropBag(ctf.bx, ctf.by, Array.from({ length: n }, () => I.generate('ctf')), 'ctf');
                 fxAt(ctf.bx, ctf.by, { type: 'shBoom', x: Math.round(ctf.bx), y: Math.round(ctf.by), r: 160, nuke: false });
-                announce(`🏁 ${c.name} captured the flag – Sovereign loot at the goal!`, 'boss');
+                announce(`🏁 ${c.name} captured the flag – top loot at the goal!`, 'boss');
                 h.feed(`🏁 ${c.name} captured the flag in the raid`, 'good');
                 ctf = null;
                 nextCtfAt = now + randIn(CTF_EVERY) / SPEED;

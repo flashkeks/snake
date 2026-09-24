@@ -2276,3 +2276,26 @@ Trifft auch die Top-Gegner-Beute (1 in 50 zieht aus `boss`). CTF bleibt bei
 **Aufsammel-Anzeige** (`onShLoot`/Toast): jedes Item in der Farbe seiner
 Seltenheit (`TIER_COLOR`, Ultra schillert), Rahmentext bleibt gelb. Passt die
 Zeile nicht in die Breite, faellt sie auf den alten einfarbigen Text zurueck.
+
+### 6.10.2: Legendary+ je Ereignis nach Max' Vorgabe
+
+Max hat die Werte „Legendary+ pro Mal" (mindestens ein Legendary oder besser
+beim Oeffnen/Looten) direkt vorgegeben. Umgesetzt durch gleichmaessiges
+Skalieren von Legendary/Mythic/Ultra je Quelle, der Rest geht an Epic.
+Nachgemessen mit 1,5 Mio. Ziehungen je Quelle ueber `I.generate()` (also mit
+der echten Basis-Auswahl, nicht nur den `t`-Werten):
+
+| Quelle | Items | vorher | Vorgabe | gemessen |
+|---|---|---|---|---|
+| Kiste normal (`crate`) | 1,5 | 0,10 % | bleibt | 0,10 % |
+| Kiste blau (`crate2`) | 1,5 | 0,84 % | ~0,3 | 0,30 % |
+| Kiste gold (`crate3`) | 2,5 | 6,57 % | 0,9 | 0,90 % |
+| Militaerkiste (`military`) | 1,25 | 1,22 % | 0,75 | 0,76 % |
+| Supply Drop (`airdrop`) | 2,4 | 4,60 % | 1,1 | 1,12 % |
+| Capture the Flag (neu: `ctf`) | 2,35 | 3,87 % | 1,0 | 0,99 % |
+
+- CTF zog vorher aus `sovereign` – das ist auch die Quelle des 100k-Cases,
+  deshalb eigene Quelle `ctf` (Sovereign-Arten, gekappte Stufen). Die Ansagen
+  sagen jetzt „top loot" statt „Sovereign loot".
+- Unveraendert: Boss (1,16 % je Boss), Gegner-Drops (0,16 % je Beutel),
+  Enforcer (0,23 %), alle Cases.
