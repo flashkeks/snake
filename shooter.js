@@ -1176,7 +1176,13 @@ module.exports = function createArena(h, opts = {}) {
             } else {
                 const i = p.pack.findIndex(x => x.uid === d.uid);
                 if (i < 0) return;
-                dropBag(at[0], at[1], p.pack.splice(i, 1));
+                // 6.9 (Max): per Drag & Drop der ganze Stapel (gleiches Verbrauchsgut)
+                const it = p.pack[i];
+                if (d.all && it.kind === 'util') {
+                    const out = p.pack.filter(x => x.kind === 'util' && x.base === it.base);
+                    for (const x of out) p.pack.splice(p.pack.indexOf(x), 1);
+                    dropBag(at[0], at[1], out);
+                } else dropBag(at[0], at[1], p.pack.splice(i, 1));
             }
         } else return;
         gearStats(p);

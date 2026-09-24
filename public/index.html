@@ -11648,7 +11648,7 @@ document.addEventListener('drop', e => {
     shInvSel = null;
     dndClear($('sh-inv'));
     document.body.classList.remove('inv-drop-out');
-    if (d.where === 'pack') wsSend({ type: 'shInv', op: 'drop', uid: d.key });
+    if (d.where === 'pack') wsSend({ type: 'shInv', op: 'drop', uid: d.key, all: true });
     else wsSend({ type: 'shInv', op: 'drop', slot: d.key });
 });
 
