@@ -1199,7 +1199,21 @@ auf Attacken, PP-Item im Kampf, zwei Elemente je Karte, Videospiel-Set.
   der Champion auch mit Lv-50-Team kaum zu schlagen. Ziel jetzt: auf
   Gym-Level ~80 % Sprout bis ~25 % Champion, drueber leichter.
 
-SIMTABLE
+  Messung auf edge (1990 Karten, je 100 Kaempfe, Spieler-KI 2, Pool wie 6.4):
+
+  | Arena | Lv | mul | zufall | vorteil |
+  |---|---|---|---|---|
+  | Sprout | 5 | 0,72 | 87 % | 74 % |
+  | Tide | 10 | 0,75 | 58 % | 92 % |
+  | Blaze | 15 | 0,78 | 70 % | 92 % |
+  | Volt | 20 | 0,95 | 61 % | 69 % |
+  | Dojo | 26 | 0,82 | 49 % | 70 % |
+  | Mind | 33 | 1,00 | 39 % | 77 % |
+  | Shadow | 41 | 0,73 | 38 % | 56 % |
+  | Champion | 50 | 0,66 | 20 % | 26 % |
+
+  Frisches Team (alle Lv 1) gegen Sprout: 58 % / 38 %. `mul` ist sehr steil
+  (Sprout 0,7 -> 87 %, 0,8 -> 62 %), 60 Kaempfe streuen um ~10 Punkte.
 
 - Reset: `GYMS_V = 3` (vorher 2). Gleiche Migration wie 6.4: Geschafftes nach
   `u.kmGymsPaid`, `u.kmGyms = {}`; Erstsieg-Pack gibt es fuer bezahlte Gyms
