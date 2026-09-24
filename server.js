@@ -639,6 +639,26 @@ function kmHandle(c, d) {
         sendAccount(c);
         return kmState(c, { bought: { pack: d.pack, n } });
     }
+    // Verfuettern (6.7): Kopien derselben Karte opfern, XP fuer die beste Kopie von target
+    if (d.type === 'kmFeed') {
+        const target = String(d.target || ''), source = String(d.source || '');
+        const a = cards.parseKey(target), b = cards.parseKey(source);
+        const card = cardDb.byId[a.id];
+        if (!card || a.id !== b.id) return send(c, { type: 'kmError', error: 'You can only feed copies of the same card' });
+        if (!(u.cards[target] > 0) || !(u.cards[source] > 0)) return send(c, { type: 'kmError', error: 'You do not own that card' });
+        const want = Math.max(1, Math.min(99, Math.floor(Number(d.n)) || 1));
+        let res = null, n = 0;
+        for (let i = 0; i < want; i++) {
+            const r = kmLevel.feed(u, target, source, card.rarity);
+            if (!r) break;
+            n++;
+            res = res ? { ...r, xp: res.xp + r.xp, from: res.from } : r;
+        }
+        if (!n) return send(c, { type: 'kmError', error: 'Nothing to feed – you keep the card you feed into' });
+        accounts.stat(c.account, st => { st.kmFed = (st.kmFed || 0) + n; });
+        accounts.touch();
+        return kmState(c, { fed: { ...res, n, name: card.name } });
+    }
     // Booster-Teile einloesen (6.7): 10 Teile = 1 Trainer Booster
     if (d.type === 'kmFragBuy') {
         const per = gyms.FRAG_PER_PACK;
@@ -704,7 +724,9 @@ function kmHandle(c, d) {
             const { id, v } = cards.parseKey(key);
             const card = cardDb.byId[id];
             if (!card || !(u.cards[key] > 0)) continue;
-            const k = Math.min(want, u.cards[key], total(id) - 1);
+            // 6.7: "Doppelte verkaufen" laesst gelevelte Kopien in Ruhe
+            const lvl = d.type === 'kmSellDupes' ? kmLevel.normalize(u, key).length : 0;
+            const k = Math.min(want, u.cards[key] - lvl, total(id) - 1);
             if (k <= 0) continue;
             u.cards[key] -= k;
             if (!u.cards[key]) delete u.cards[key];
@@ -1524,6 +1546,7 @@ async function handle(c, data) {
         case 'kmOpen':
         case 'kmWheel':
         case 'kmFragBuy':
+        case 'kmFeed':
         case 'kmSell':
         case 'kmSellDupes':
             kmHandle(c, data);

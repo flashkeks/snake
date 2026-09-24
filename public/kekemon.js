@@ -127,6 +127,7 @@ function onKmState(d) {
             }
         }
         if (d.sold) showMsg('km-msg', `Sold ${d.sold.n} card${d.sold.n === 1 ? '' : 's'} for 🪙 ${d.sold.coins.toLocaleString('en-US')}`, 'ok');
+        if (d.fed) showMsg('km-msg', `🍪 Fed ${d.fed.n}× – ${d.fed.name} +${d.fed.xp.toLocaleString('en-US')} XP${d.fed.to > d.fed.from ? ` · ⬆ Lv ${d.fed.from} → ${d.fed.to}` : ''}`, 'ok');
         if (d.bought) showMsg('km-msg', `${d.bought.n > 1 ? d.bought.n + '× ' : ''}${kmCat.packs[d.bought.pack].name} added to 📦 Packs`, 'ok');
         // Daily Pack Wheel: erst drehen, dann neu zeichnen
         if (d.wheelSpin) {
@@ -140,7 +141,7 @@ function onKmState(d) {
         }
         if (!$('kekemon').classList.contains('hidden') && !pwBusy['km-wheel']) kmDraw();
         const v = $('km-view');
-        if (v && !v.hidden && v.dataset.id) kmView(v.dataset.id);
+        if (v && !v.hidden && v.dataset.id) kmView(v.dataset.id, ((kmOwn()[v.dataset.id] || {}).vars || {})[v.dataset.v] ? v.dataset.v : undefined);
     }).catch(() => showMsg('km-msg', 'Could not load the card list', 'err'));
 }
 
@@ -499,6 +500,7 @@ function kmView(id, showV) {
     const v = $('km-view');
     v.dataset.id = id;
     const cur = showV !== undefined ? showV : o ? o.best : '';
+    v.dataset.v = cur;
     const T = kmCat.types[c.type], R = kmCat.rarities[kmCat.ridx[c.rarity]];
     // Je Variante: Anzahl, Wert, Verkaufen (nie das letzte Exemplar der Karte)
     const vars = o ? Object.entries(o.vars).sort((a, b) => kmVRank(b[0]) - kmVRank(a[0])).map(([vv, n]) => {
@@ -508,11 +510,19 @@ function kmView(id, showV) {
         const xs = kmXpList(kmKeyOf(id, vv));
         const L = kmLvOf(xs[0] || 0);
         const lvRow = `<div class="km-lvrow"><b>Lv ${L.lv}</b>${L.need ? `<span class="km-xpbar"><i style="width:${(L.into / L.need * 100).toFixed(1)}%"></i></span><small>${L.into.toLocaleString('en-US')} / ${L.need.toLocaleString('en-US')} XP</small>` : '<small>max level</small>'}` +
-            `${n > 1 ? `<small class="hint">copies: ${Array.from({ length: n }, (_, i) => 'Lv ' + kmLvOf(xs[i] || 0).lv).join(', ')} · selling or trading gives away the lowest first</small>` : ''}</div>`;
+            `${n > 1 ? `<small class="hint">copies: ${Array.from({ length: n }, (_, i) => 'Lv ' + kmLvOf(xs[i] || 0).lv).join(', ')} · selling gives away the lowest first</small>` : ''}</div>`;
+        // Verfuettern: Kopien dieser Variante in die gewaehlte (cur) stecken
+        const tKey = kmKeyOf(id, cur), sKey = kmKeyOf(id, vv);
+        const canFeed = o.vars[cur] ? (vv === cur ? n - 1 : n) : 0;
+        const fx = (km && km.lvCurve && km.lvCurve.feed) || {};
+        const gain = (fx[c.rarity] || 60) + Math.round((xs[n - 1] || 0) * ((km && km.lvCurve && km.lvCurve.feedKeep) || 0.5));
+        const feedBtns = canFeed > 0 ? `<button type="button" class="km-feed" data-kmfeed="${esc(sKey)}" data-to="${esc(tKey)}" data-n="1" title="Sacrifice the weakest copy">🍪 Feed 1 → ${kmVName(cur)} (+${gain} XP)</button>` +
+            (canFeed > 1 ? `<button type="button" class="km-feed" data-kmfeed="${esc(sKey)}" data-to="${esc(tKey)}" data-n="${canFeed}">🍪 Feed ${canFeed}</button>` : '') : '';
         return `<div class="km-var ${vv === cur ? 'on' : ''}" data-kmshow="${vv}">
             <b>${kmVName(vv)}</b> ×${n} <small>· worth 🪙 ${val.toLocaleString('en-US')}</small>${lvRow}
             ${canSell > 0 ? `<button type="button" data-kmsell="${esc(kmKeyOf(id, vv))}" data-n="1">Sell 1</button>` : ''}
             ${canSell > 1 ? `<button type="button" data-kmsell="${esc(kmKeyOf(id, vv))}" data-n="${canSell}">Sell ${canSell} (🪙 ${(canSell * val).toLocaleString('en-US')})</button>` : ''}
+            ${feedBtns}
         </div>`;
     }).join('') : '';
     v.innerHTML = kmCard(c, { missing: !o, v: cur, lv: o ? kmBestLv(kmKeyOf(id, cur)) : 0 }) + `<div class="km-info">
@@ -764,6 +774,15 @@ $('km-body').addEventListener('input', e => {
 });
 
 $('km-view').addEventListener('click', e => {
+    const fd = e.target.closest('[data-kmfeed]');
+    if (fd) {
+        e.stopPropagation();
+        const { id, v } = kmParse(fd.dataset.kmfeed);
+        const c = kmCat.byId[id];
+        const n = Number(fd.dataset.n);
+        if ((v || kmCat.ridx[c.rarity] >= 3 || n > 1) && !confirm(`Feed ${n}× ${kmVName(v)} ${c.name} to your ${kmVName(kmParse(fd.dataset.to).v)} copy? They are gone for good.`)) return;
+        return wsSend({ type: 'kmFeed', source: fd.dataset.kmfeed, target: fd.dataset.to, n });
+    }
     const s = e.target.closest('[data-kmsell]');
     if (s) {
         const { id, v } = kmParse(s.dataset.kmsell);
@@ -1160,9 +1179,9 @@ function kbDrawGyms() {
     const tiles = kb.gyms.map(g => {
         const t = g.type ? T[g.type] : null;
         const weakTo = t ? kmWeakTo(g.type).map(x => T[x]) : null;
-        const team = g.team.map(id => kmCard(kmCat.byId[id], { mini: true })).join('');
+        const team = g.team.map(id => kmCard(kmCat.byId[id], { mini: true, lv: g.lv, showLv: !!g.lv })).join('');
         return `<div class="kb-gym ${g.unlocked ? '' : 'locked'} ${g.cleared ? 'cleared' : ''}" style="--gc:${t ? t.color : '#ffd23f'}">
-            <div class="kb-gym-head"><span class="ico">${g.icon}</span><div><b>${esc(g.name)}</b><small>Leader ${esc(g.leader)} · ${t ? t.icon + ' ' + t.name : '🌈 All types'} · <span class="kb-stars">${kbStars(g)}</span></small></div>
+            <div class="kb-gym-head"><span class="ico">${g.icon}</span><div><b>${esc(g.name)}</b><small>Leader ${esc(g.leader)}${g.lv ? ` · <b class="kb-glv">Lv ${g.lv}</b>` : ''} · ${t ? t.icon + ' ' + t.name : '🌈 All types'} · <span class="kb-stars">${kbStars(g)}</span></small></div>
             ${g.cleared ? '<span class="kb-badge">✔ Cleared</span>' : ''}</div>
             <div class="kb-team">${g.unlocked ? team : '<div class="km-note">🔒 Beat the previous gym first</div>'}</div>
             <div class="kb-gym-foot">

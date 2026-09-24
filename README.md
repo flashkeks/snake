@@ -1126,7 +1126,7 @@ der Statistik unter `earned.cards`.
 | Mythic | 1 in 20 000 | 1 in 3 478 | 1 in 1000 |
 | Ultra | 1 in 200 000 | 1 in 34 783 | 1 in 10 000 |
 
-## 📈 Karten-Level (Plan 24.09.2026, Schritt 1 gebaut in 6.7)
+## 📈 Karten-Level (6.7, Plan und alle vier Schritte 24.09.2026)
 
 Ideen aus „vorschlaege kek games" (Flashkeks = Max, SINTHSBen): Level fuer
 Karten als Grind-Faktor, normale Gegner zum Leveln, Gyms mit Level, Geld von
@@ -1169,6 +1169,62 @@ auf Attacken, PP-Item im Kampf, zwei Elemente je Karte, Videospiel-Set.
   immer in der Auswahl), Level-Zeile mit XP-Balken in der Detailansicht,
   `Lv N` im Kampf, `+XP` / `⬆ Lv a → b` im Ergebnis. Sortierung „Level".
 - Test: `gymws.js` (Sprout-Sieg -> 5 Karten je +30 XP, Lv 1 -> 2), `gym.js lv`.
+
+**Schritt 2 – Training (`km-gyms.js` `ZONES`):**
+
+- Drei Bereiche: Wild Meadow (Lv 1–10, Common/Uncommon, KI 0), Wild Canyon
+  (10–30, Uncommon/Rare, KI 1), Wild Summit (30–50, Rare/Epic, KI 2). Gegner:
+  fuenf Zufallskarten der Seltenheit, Level = Schnitt des eigenen Teams -1…+3,
+  in den Bereich geklemmt. Laeuft ueber denselben `c.kb` wie die Gyms
+  (`c.kb.zone`), Nachrichten `kbStart` mit `gym: 'meadow'` usw.
+- XP je Karte immer voll: 25 / 70 / 150 (Niederlage ab Zug 3: 40 %).
+- Coins 250 / 600 / 1200 und Booster-Teile +1 / +1 / +2 nur beim Sieg, nach
+  Siegen am Tag gestaffelt (`TRAIN_FALL`, `u.kmTrain = { day, wins }`):
+  Sieg 1–10 voll, 11–30 25 % Coins und 30 % Chance auf Teile, danach 5 % / 5 %.
+- Booster-Teile `u.kmFrag`; `kmFragBuy` tauscht 10 gegen einen **Trainer
+  Booster** (`cards.js` `train`, `wheel: true` = nicht im Shop, Chancen wie
+  die 10k-Packs). Leiste im Gym-Tab und unter Packs.
+- Ergebnis-Knopf „Again" startet mit demselben Team (`kbP.gym.lastTeam`).
+- Test: `train.js meadow 30` -> 27/30 Siege, Coins ab Sieg 11 auf 63, 12 Teile,
+  `kmFragBuy` -> `inv.train = 1`.
+
+**Schritt 3 – Gyms mit Level:**
+
+- `GYMS[].lv`: Sprout 5, Tide 10, Blaze 15, Volt 20, Dojo 26, Mind 33,
+  Shadow 41, Champion 50. Leiter-Karten `B.fighter(card, '', g.mul, g.lv)`;
+  Kachel und Karten zeigen das Level.
+- `mul` neu eingestellt fuer ein Spielerteam **auf Gym-Level**
+  (`PLAYER_CARD_LV=gym` in `tools/km-sim.js`, neu: `gym-5`, feste Zahl).
+  Die 6.4-Kurve (55 % … 2 %) waere bei gleichem Level geblieben – dann waere
+  der Champion auch mit Lv-50-Team kaum zu schlagen. Ziel jetzt: auf
+  Gym-Level ~80 % Sprout bis ~25 % Champion, drueber leichter.
+
+SIMTABLE
+
+- Reset: `GYMS_V = 3` (vorher 2). Gleiche Migration wie 6.4: Geschafftes nach
+  `u.kmGymsPaid`, `u.kmGyms = {}`; Erstsieg-Pack gibt es fuer bezahlte Gyms
+  nicht nochmal. Journal: `Gym-Fortschritt von N Konten zurueckgesetzt (Stand 3)`.
+
+**Schritt 4 – Verfuettern, Handel und Markt mit Level:**
+
+- `km-level.js` `feed()`: opfert die schwaechste Kopie von `source` (ist
+  `source == target`, nie die beste) und bucht `FEED[Seltenheit]` (60 / 120 /
+  250 / 600 / 1500 / 4000) + 50 % ihrer XP auf die beste Kopie von `target`.
+  Nur dieselbe Karte, Variante egal. Nachricht `kmFeed { target, source, n }`,
+  Knoepfe in der Detailansicht je Variante („Feed 1 → gewaehlte Variante").
+- `assets.js`: Karten-Verweis traegt `xp` (0 = ungelevelte Kopien, sonst genau
+  diese XP). `take` nimmt die Kopie aus `u.cardXp`, das Gut traegt `xp: [..]`,
+  `give` haengt sie beim Empfaenger an. Handel und Markt laufen darueber,
+  Namen zeigen „(Lv N)". Ohne `xp` im Verweis gilt 0 – eine gelevelte Kopie
+  geht also nie aus Versehen weg.
+- Browser (`market.js` `mkMine`): jede gelevelte Kopie einzeln, die
+  ungelevelten als Stapel.
+- „Doppelte verkaufen" laesst gelevelte Kopien stehen; einzeln verkaufen
+  nimmt weiter die schwaechste.
+- Test `s4.js` (Kopien per `srvx.sh` vorbelegt): Verfuettern in sich selbst,
+  fremde Karte abgelehnt, Doppelte-Schutz, Handel mit `xp: 0` abgelehnt, mit
+  `xp: 800` kommt Lv 6 bei bobby an, Markt-Einstellen und Rueckkauf behalten
+  die 800 XP.
 
 ## 🔫 Arena 6.6: Items, Uniques, Kisten-Stufen, Boss-Wege
 

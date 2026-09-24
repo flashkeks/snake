@@ -50,7 +50,9 @@ function mkAsset(a, opt = {}) {
         const { id, v } = kmParse(a.key);
         const c = kmCat.byId[id];
         if (!c) return '<div class="mk-cos">❔<b>Unknown card</b></div>';
-        return `<div class="mk-cardwrap">${kmCard(c, { mini: true, v, count: a.n })}</div>`;
+        // 6.7: Level der Kopie (a.xp = XP-Liste der Kopien)
+        const lv = (a.xp || []).length ? kmLvOf(a.xp[0]).lv : 0;
+        return `<div class="mk-cardwrap">${kmCard(c, { mini: true, v, count: a.n, lv })}</div>`;
     }
     if (a.k === 'pack' || a.k === 'case') return `<div class="mk-cos mk-box ${a.k}"><span>${a.icon || '❔'}</span><b>${a.n > 1 ? a.n + '× ' : ''}${esc(a.name || a.id)}</b><small>${a.k === 'pack' ? 'Kekémon pack' : 'Arena case'} · unopened</small></div>`;
     const it = COS[a.id];
@@ -62,7 +64,7 @@ function mkAssetName(a) {
     if (a.k === 'item') return a.item.name;
     if (a.k === 'card') {
         const c = kmCat && kmCat.byId[kmParse(a.key).id];
-        return (a.n > 1 ? a.n + '× ' : '') + (c ? c.name : 'Card');
+        return (a.n > 1 ? a.n + '× ' : '') + (c ? c.name : 'Card') + ((a.xp || []).length ? ` (Lv ${kmLvOf(a.xp[0]).lv})` : '');
     }
     if (a.k === 'pack' || a.k === 'case') return (a.n > 1 ? a.n + '× ' : '') + (a.name || a.id);
     return (COS[a.id] || {}).name || a.id;
@@ -85,7 +87,17 @@ function mkMine(src, have) {
     if (!have) return [];
     if (src === 'item') return have.items.map(it => ({ ref: { k: 'item', uid: it.uid }, asset: { k: 'item', item: it } }));
     if (src === 'card') {
-        return Object.entries(have.cards).filter(([, n]) => n > 0).map(([key, n]) => ({ ref: { k: 'card', key, n: 1 }, asset: { k: 'card', key, n }, max: n }))
+        // 6.7: jede gelevelte Kopie einzeln (ref.xp), die ungelevelten zusammen (xp 0)
+        const out = [];
+        for (const [key, n] of Object.entries(have.cards)) {
+            if (!(n > 0)) continue;
+            const xs = ((have.cardXp || {})[key] || []).filter(x => x > 0);
+            const groups = {};
+            for (const x of xs) groups[x] = (groups[x] || 0) + 1;
+            for (const [x, m] of Object.entries(groups).sort((a, b) => b[0] - a[0])) out.push({ ref: { k: 'card', key, n: 1, xp: Number(x) }, asset: { k: 'card', key, n: m, xp: Array(m).fill(Number(x)) }, max: m });
+            if (n - xs.length > 0) out.push({ ref: { k: 'card', key, n: 1, xp: 0 }, asset: { k: 'card', key, n: n - xs.length }, max: n - xs.length });
+        }
+        return out
             .sort((a, b) => kmCat ? (kmRank({ id: kmParse(b.ref.key).id, v: kmParse(b.ref.key).v }) - kmRank({ id: kmParse(a.ref.key).id, v: kmParse(a.ref.key).v })) : 0);
     }
     if (src === 'pack' || src === 'case') {
@@ -307,7 +319,7 @@ function trDraw() {
             : `<div class="tr-money">⚙️ ${mkFmt(s.scrap)} scrap · 🪙 ${mkFmt(s.coins)} coins</div>`}
     </div>`;
     const offered = S.me.refs;
-    const has = r => offered.find(x => x.k === r.k && (r.k === 'item' ? x.uid === r.uid : r.k === 'card' ? x.key === r.key : x.id === r.id));
+    const has = r => offered.find(x => x.k === r.k && (r.k === 'item' ? x.uid === r.uid : r.k === 'card' ? x.key === r.key && (x.xp || 0) === (r.xp || 0) : x.id === r.id));
     const srcs = Object.entries(MK_KIND).map(([k, n]) => `<button type="button" class="${trSrc === k ? 'on' : ''}" data-trsrc="${k}">${n}</button>`).join('');
     const list = mkMine(trSrc);
     const pick = list.map((x, i) => {
@@ -331,7 +343,7 @@ function trPick(i) {
     const x = mkMine(trSrc)[i];
     if (!x) return;
     const refs = trState.me.refs.map(r => ({ ...r }));
-    const j = refs.findIndex(r => r.k === x.ref.k && (r.k === 'item' ? r.uid === x.ref.uid : r.k === 'card' ? r.key === x.ref.key : r.id === x.ref.id));
+    const j = refs.findIndex(r => r.k === x.ref.k && (r.k === 'item' ? r.uid === x.ref.uid : r.k === 'card' ? r.key === x.ref.key && (r.xp || 0) === (x.ref.xp || 0) : r.id === x.ref.id));
     if (MK_COUNTED.has(x.ref.k)) {
         if (j < 0) refs.push({ ...x.ref, n: 1 });
         else if (refs[j].n < x.max) refs[j].n++;

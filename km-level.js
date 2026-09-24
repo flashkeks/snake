@@ -80,14 +80,36 @@ const XP = {
     // Training: fest je Bereich, Niederlage 40 %
     train: (zone, win) => Math.round(zone.xp * (win ? 1 : 0.4))
 };
+// Verfuettern (Schritt 4): Grund-XP nach Seltenheit der geopferten Kopie,
+// dazu die Haelfte ihrer eigenen XP
+const FEED = { common: 60, uncommon: 120, rare: 250, epic: 600, legendary: 1500, secret: 4000 };
+const FEED_KEEP = 0.5;
+
+// Eine Kopie von source opfern (immer die schwaechste; ist source == target,
+// nie die beste) und die XP auf die beste Kopie von target buchen.
+// Rueckgabe wie addXp oder null
+function feed(u, target, source, rarity) {
+    const n = (u.cards || {})[source] || 0;
+    if (n < (source === target ? 2 : 1) || !((u.cards || {})[target] > 0)) return null;
+    const list = normalize(u, source);
+    const fed = n > list.length ? 0 : list.pop();
+    u.cards[source] = n - 1;
+    if (!u.cards[source]) delete u.cards[source];
+    if (u.cardXp && u.cardXp[source]) {
+        if (list.length) u.cardXp[source] = list;
+        else delete u.cardXp[source];
+    }
+    return addXp(u, target, (FEED[rarity] || FEED.common) + Math.round(fed * FEED_KEEP));
+}
+
 // Duelle: volle XP fuer die ersten DUEL_FULL am Tag, danach DUEL_LATE
 const DUEL_FULL = 10, DUEL_LATE = 0.2;
 
 function catalog() {
-    return { max: MAX_LV, curve: CURVE };
+    return { max: MAX_LV, curve: CURVE, feed: FEED, feedKeep: FEED_KEEP };
 }
 
-module.exports = { MAX_LV, CURVE, need, levelOf, statMul, normalize, normalizeAll, bestXp, bestLv, addXp, totalFor, XP, DUEL_FULL, DUEL_LATE, catalog };
+module.exports = { MAX_LV, CURVE, need, levelOf, statMul, normalize, normalizeAll, bestXp, bestLv, addXp, feed, FEED, totalFor, XP, DUEL_FULL, DUEL_LATE, catalog };
 
 // Nachsehen: node km-level.js
 if (require.main === module) {

@@ -14,14 +14,14 @@
 const LV = require('./km-level');
 
 const GYMS = [
-    { id: 'sprout', lv: 5, name: 'Sprout Gym', icon: '🌱', leader: 'Scout Mika', type: 'nature', rar: ['uncommon'], mul: 0.85, smart: 1, coins: 3000, pack: 'anime' },
-    { id: 'tide', lv: 10, name: 'Tide Gym', icon: '💧', leader: 'Captain Ren', type: 'water', rar: ['uncommon', 'rare'], mul: 0.9, smart: 2, coins: 4000, pack: 'film' },
-    { id: 'blaze', lv: 15, name: 'Blaze Gym', icon: '🔥', leader: 'Pyra', type: 'fire', rar: ['rare'], mul: 0.95, smart: 2, coins: 5000, pack: 'anime' },
-    { id: 'volt', lv: 20, name: 'Volt Gym', icon: '⚡', leader: 'Sparky', type: 'electric', rar: ['rare'], mul: 1, smart: 2, coins: 6500, pack: 'waifu' },
-    { id: 'dojo', lv: 26, name: 'Iron Dojo', icon: '👊', leader: 'Master Ken', type: 'fighting', rar: ['rare', 'epic'], mul: 0.9, smart: 2, coins: 8000, pack: 'film' },
-    { id: 'mind', lv: 33, name: 'Mind Tower', icon: '🔮', leader: 'Oracle Lua', type: 'psychic', rar: ['epic'], mul: 1.15, smart: 2, coins: 11000, pack: 'anime' },
-    { id: 'shadow', lv: 41, name: 'Shadow Gym', icon: '🌑', leader: 'Noct', type: 'dark', rar: ['epic', 'legendary'], mul: 1, smart: 2, coins: 15000, pack: 'waifu' },
-    { id: 'champ', lv: 50, name: 'Kek Champion', icon: '👑', leader: 'The Kek', type: null, rar: ['legendary', 'secret'], mul: 0.9, smart: 2, coins: 30000, pack: 'mixed' }
+    { id: 'sprout', lv: 5, name: 'Sprout Gym', icon: '🌱', leader: 'Scout Mika', type: 'nature', rar: ['uncommon'], mul: 0.72, smart: 1, coins: 3000, pack: 'anime' },
+    { id: 'tide', lv: 10, name: 'Tide Gym', icon: '💧', leader: 'Captain Ren', type: 'water', rar: ['uncommon', 'rare'], mul: 0.75, smart: 2, coins: 4000, pack: 'film' },
+    { id: 'blaze', lv: 15, name: 'Blaze Gym', icon: '🔥', leader: 'Pyra', type: 'fire', rar: ['rare'], mul: 0.78, smart: 2, coins: 5000, pack: 'anime' },
+    { id: 'volt', lv: 20, name: 'Volt Gym', icon: '⚡', leader: 'Sparky', type: 'electric', rar: ['rare'], mul: 0.95, smart: 2, coins: 6500, pack: 'waifu' },
+    { id: 'dojo', lv: 26, name: 'Iron Dojo', icon: '👊', leader: 'Master Ken', type: 'fighting', rar: ['rare', 'epic'], mul: 0.82, smart: 2, coins: 8000, pack: 'film' },
+    { id: 'mind', lv: 33, name: 'Mind Tower', icon: '🔮', leader: 'Oracle Lua', type: 'psychic', rar: ['epic'], mul: 1, smart: 2, coins: 11000, pack: 'anime' },
+    { id: 'shadow', lv: 41, name: 'Shadow Gym', icon: '🌑', leader: 'Noct', type: 'dark', rar: ['epic', 'legendary'], mul: 0.73, smart: 2, coins: 15000, pack: 'waifu' },
+    { id: 'champ', lv: 50, name: 'Kek Champion', icon: '👑', leader: 'The Kek', type: null, rar: ['legendary', 'secret'], mul: 0.66, smart: 2, coins: 30000, pack: 'mixed' }
 ];
 // Staerke per Simulation (24.09.2026, Kampfsystem 6.0, tools/km-sim.js auf edge
 // mit den echten Karten; Spieler = KI-Stufe 1, Zufallsteam der Arena-Seltenheit).

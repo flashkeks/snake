@@ -32,7 +32,7 @@ module.exports = function createTrade(h) {
                 const it = a.inv.find(x => x.uid === r.uid);
                 return it ? A.view({ k: 'item', item: it }) : null;
             }
-            if (r.k === 'card') return (u.cards || {})[r.key] >= r.n ? { k: 'card', key: r.key, n: r.n } : null;
+            if (r.k === 'card') return A.check(key, r) ? null : { k: 'card', key: r.key, n: r.n, ...(r.xp ? { xp: Array(r.n).fill(r.xp) } : {}) };
             if (r.k === 'pack' || r.k === 'case') return A.check(key, r) ? null : A.view({ k: r.k, id: r.id, n: r.n });
             return { k: 'cos', id: r.id };
         }).filter(Boolean);

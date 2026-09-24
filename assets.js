@@ -3,7 +3,10 @@
 //
 // Verweis (ref) aus dem Browser -> Gut (asset), das der Server verwahrt:
 //   { k: 'item', uid }          -> { k: 'item', item: {...volles Item} }
-//   { k: 'card', key, n }       -> { k: 'card', key, n }     (key = Id oder Id~Variante)
+//   { k: 'card', key, n, xp }   -> { k: 'card', key, n, xp: [..] }  (key = Id oder Id~Variante)
+//       6.7 (Karten-Level): ref.xp waehlt die Kopien – n Kopien mit genau diesen
+//       XP (0 = ungelevelt). Das Gut traegt die XP der Kopien mit (xp, nur > 0),
+//       der Empfaenger bekommt sie in u.cardXp.
 //   { k: 'cos', id }            -> { k: 'cos', id }
 //   { k: 'pack', id, n }        -> { k: 'pack', id, n }      (6.1: ungeoeffnete Kekemon-Packs, u.packs)
 //   { k: 'case', id, n }        -> { k: 'case', id, n }      (6.1: ungeoeffnete Arena-Cases, arena.cases)
@@ -11,6 +14,15 @@
 // weg (take) und kommt beim Empfaenger an (give) – nie doppelt.
 //
 // h: { accounts, cards, cardDb, shop, I }
+
+const LV = require('./km-level');
+
+// Wie viele Kopien eines Schluessels haben genau xp XP?
+function copiesWith(u, key, xp) {
+    const n = (u.cards || {})[key] || 0;
+    const list = LV.normalize(u, key);
+    return xp > 0 ? list.filter(x => x === xp).length : n - list.length;
+}
 
 module.exports = function createAssets(h) {
     const { accounts, shop, I } = h;
@@ -42,6 +54,7 @@ module.exports = function createAssets(h) {
             const { id } = h.cards.parseKey(String(ref.key || ''));
             if (!h.cardDb.byId[id]) return 'Unknown card';
             if (n < 1 || !u.cards || (u.cards[ref.key] || 0) < n) return 'You do not have that many of this card';
+            if (copiesWith(u, ref.key, ref.xp || 0) < n) return ref.xp ? 'You do not have that copy anymore' : 'Pick which copy (level) you want to give';
             return null;
         }
         if (ref.k === 'cos') {
@@ -72,9 +85,17 @@ module.exports = function createAssets(h) {
         }
         if (ref.k === 'card') {
             const n = Math.floor(Number(ref.n));
+            const xp = ref.xp || 0;
+            // Gelevelte Kopien aus der XP-Liste nehmen, dann den Zaehler senken
+            if (xp > 0) {
+                const list = LV.normalize(u, ref.key);
+                for (let i = 0; i < n; i++) list.splice(list.indexOf(xp), 1);
+                if (list.length) u.cardXp[ref.key] = list;
+                else delete u.cardXp[ref.key];
+            }
             u.cards[ref.key] -= n;
             if (!u.cards[ref.key]) delete u.cards[ref.key];
-            return { k: 'card', key: ref.key, n };
+            return xp > 0 ? { k: 'card', key: ref.key, n, xp: Array(n).fill(xp) } : { k: 'card', key: ref.key, n };
         }
         if (ref.k === 'pack' || ref.k === 'case') {
             const store = ref.k === 'pack' ? u.packs : accounts.arena(key).cases;
@@ -104,6 +125,12 @@ module.exports = function createAssets(h) {
         else if (asset.k === 'card') {
             u.cards = u.cards || {};
             u.cards[asset.key] = (u.cards[asset.key] || 0) + asset.n;
+            const xs = (asset.xp || []).filter(x => x > 0);
+            if (xs.length) {
+                u.cardXp = u.cardXp || {};
+                u.cardXp[asset.key] = (u.cardXp[asset.key] || []).concat(xs).sort((a, b) => b - a);
+                LV.normalize(u, asset.key);
+            }
         } else if (asset.k === 'pack') {
             u.packs = u.packs || {};
             u.packs[asset.id] = (u.packs[asset.id] || 0) + asset.n;
@@ -142,7 +169,8 @@ module.exports = function createAssets(h) {
         if (asset.k === 'card') {
             const { id, v } = h.cards.parseKey(asset.key);
             const c = h.cardDb.byId[id];
-            return `${asset.n > 1 ? asset.n + '× ' : ''}${v ? '[' + v + '] ' : ''}${c ? c.name : id}`;
+            const lv = (asset.xp || []).length ? ` (Lv ${LV.levelOf(asset.xp[0]).lv})` : '';
+            return `${asset.n > 1 ? asset.n + '× ' : ''}${v ? '[' + v + '] ' : ''}${c ? c.name : id}${lv}`;
         }
         const it = shop.BY_ID[asset.id];
         return it ? it.name : asset.id;
@@ -168,6 +196,7 @@ module.exports = function createAssets(h) {
         return {
             items: a.inv.filter(x => !inLoadout(a, x.uid)).map(it => ({ ...it, sv: I.salvageValue(it) })),
             cards: u.cards || {},
+            cardXp: LV.normalizeAll(u),
             cos: cosOwned(u),
             packs: Object.entries(u.packs || {}).filter(([, n]) => n > 0).map(([id, n]) => ({ id, n, ...meta('pack', id) })),
             cases: Object.entries(a.cases || {}).filter(([, n]) => n > 0).map(([id, n]) => ({ id, n, ...meta('case', id) })),
@@ -179,13 +208,13 @@ module.exports = function createAssets(h) {
     function clean(r) {
         if (!r || typeof r !== 'object') return null;
         if (r.k === 'item') return { k: 'item', uid: String(r.uid || '') };
-        if (r.k === 'card') return { k: 'card', key: String(r.key || '').slice(0, 40), n: Math.max(1, Math.min(999, Math.floor(Number(r.n) || 1))) };
+        if (r.k === 'card') return { k: 'card', key: String(r.key || '').slice(0, 40), n: Math.max(1, Math.min(999, Math.floor(Number(r.n) || 1))), xp: Math.max(0, Math.floor(Number(r.xp) || 0)) };
         if (r.k === 'cos') return { k: 'cos', id: String(r.id || '').slice(0, 40) };
         if (r.k === 'pack' || r.k === 'case') return { k: r.k, id: String(r.id || '').slice(0, 40), n: Math.max(1, Math.min(99, Math.floor(Number(r.n) || 1))) };
         return null;
     }
 
-    const same = (a, b) => a.k === b.k && (a.k === 'item' ? a.uid === b.uid : a.k === 'card' ? a.key === b.key : a.id === b.id);
+    const same = (a, b) => a.k === b.k && (a.k === 'item' ? a.uid === b.uid : a.k === 'card' ? a.key === b.key && (a.xp || 0) === (b.xp || 0) : a.id === b.id);
 
     return { check, take, give, room, view, label, text, mine, clean, same };
 };
