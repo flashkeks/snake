@@ -14,6 +14,8 @@
 // Item-Score = so viele Coins muesste man im Mittel ausgeben, um etwas
 // mindestens so Seltenes zu ziehen (guenstigster Case) × Effekt-Seltenheit.
 
+const PIERCE_MAX = 2;          // 6.5.1: Durchschlag hoechstens 2 (= 3 Treffer)
+
 const TIERS = [
     { id: 'common', name: 'Common' },
     { id: 'uncommon', name: 'Uncommon' },
@@ -161,7 +163,7 @@ const WEAPON_MODS = {
     velocity: { name: 'Velocity', icon: '💨', w: 22, max: 3, decay: 0.3, desc: l => `+${l * 25}% bullet speed and range` },
     crit: { name: 'Critical', icon: '🎯', w: 20, max: 3, decay: 0.25, desc: l => `${l * 12}% chance for double damage` },
     multishot: { name: 'Multishot', icon: '🔱', w: 12, max: 4, decay: 0.15, desc: l => `+${l} extra bullet${l > 1 ? 's' : ''} per shot` },
-    pierce: { name: 'Piercing', icon: '📌', w: 12, max: 3, decay: 0.2, desc: l => `bullets pass through ${l} target${l > 1 ? 's' : ''}` },
+    pierce: { name: 'Piercing', icon: '📌', w: 12, max: 3, decay: 0.2, desc: l => `bullets pass through ${Math.min(l, PIERCE_MAX)} target${l > 1 ? 's' : ''} (max ${PIERCE_MAX} per bullet)` },
     ricochet: { name: 'Ricochet', icon: '🔁', w: 10, max: 3, decay: 0.2, desc: l => `bullets bounce off walls ${l}×` },
     burn: { name: 'Incendiary', icon: '🔥', w: 10, max: 3, decay: 0.25, desc: l => `sets targets on fire (${l * 6} dmg/s for 3 s)` },
     frost: { name: 'Frost', icon: '❄️', w: 8, max: 2, decay: 0.2, desc: l => `slows targets by ${l * 25}% for 1.5 s` },
@@ -392,7 +394,8 @@ function weaponStats(item) {
         life: b.life * (1 + L('velocity') * 0.15),
         spread: b.spread,
         pellets: b.pellets + L('multishot'),
-        pierce: L('pierce'),
+        // 6.5.1 (Max): hoechstens 3 Gegner je Kugel – Flaechenschaden gibt es ueber Explosives
+        pierce: Math.min(PIERCE_MAX, L('pierce')),
         bounce: L('ricochet'),
         crit: L('crit') * 0.12,
         burn: L('burn') * 6,

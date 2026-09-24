@@ -297,13 +297,14 @@ module.exports = function createEvents(h) {
         });
         if (rows[0] && rows[0].value > 0) h.feed(`${KINDS[ev.kind].title}: ${rows[0].name} wins with ${rows[0].value} points`, 'good');
         ev.q = null;
-        phase('results', 8000);
+        // 6.5.1 (Max): Nachspann kuerzer – Ergebnis 8 -> 4 s, Podium 5 -> 3 s
+        phase('results', 4000);
     }
 
     // Podium der Top 3; daraus kommt danach Double or Nothing (server.js)
     function awards() {
         ev.podium = board().slice(0, 3).map(r => ({ ...r, ...(ev.rewards[r.id] || { coins: 0, length: 0 }) }));
-        phase('awards', 5000);
+        phase('awards', 3000);
     }
 
     function end() {

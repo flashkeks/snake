@@ -263,10 +263,23 @@ const ZMB_PERKS = {
     jug: { name: 'Juggernaut', icon: '🥤', price: 2500, desc: '+100 max HP' },
     speed: { name: 'Rapid Fire', icon: '🧃', price: 3000, desc: '+25% fire rate' },
     stamina: { name: 'Stamina', icon: '🍹', price: 2000, desc: '+15% movement speed' },
-    quick: { name: 'Regeneration', icon: '🧋', price: 1500, desc: 'Regeneration after 2 s, +2 HP/s' }
+    quick: { name: 'Regeneration', icon: '🧋', price: 1500, desc: 'Regeneration after 2 s, +2 HP/s' },
+    // 6.5.1 (Max: mehr mit dem Geld machen)
+    deadshot: { name: 'Deadshot', icon: '🎯', price: 3500, desc: '+12% crit chance' },
+    vulture: { name: 'Vulture', icon: '🦅', price: 4000, desc: '+25% points' }
+};
+// Weitere Stationen (6.5.1): Ruestung (bis 4x +25 max HP), Granaten, Power-up-Altar, Wiederbeleben
+const ZMB_ARMOR = 1200, ZMB_ARMOR_MAX = 4, ZMB_NADES = 800, ZMB_SHRINE = 3000, ZMB_REVIVE = 1500;
+const ZMB_POWERUPS = {
+    double: { name: 'Double Points', icon: '✖️2', ms: 30000, desc: 'double points for the whole team' },
+    insta: { name: 'Insta-Kill', icon: '💀', ms: 15000, desc: 'every zombie dies in one hit (not bosses)' },
+    nuke: { name: 'Nuke', icon: '☢️', ms: 0, desc: 'all zombies on the map die (not bosses)' },
+    sale: { name: 'Fire Sale', icon: '🏷️', ms: 30000, desc: 'mystery box and wall weapons half price' }
 };
 const ZMB_WALL = { smg: 750, shotgun: 1000, rifle: 1400, sniper: 1500 };
-const ZMB_BOX = 950, ZMB_PAP = 5000, ZMB_PAP_MAX = 3;
+// Pack-a-Punch seit 6.5.1 bis Stufe 5, jede Stufe +50 % teurer
+const ZMB_BOX = 950, ZMB_PAP = 5000, ZMB_PAP_MAX = 5;
+const zPapPrice = lvl => Math.round(ZMB_PAP * (1 + 0.5 * lvl));
 const ZMB_HEAL = 600, ZMB_HEAL_CD = 25000;
 function buildZombieMap() {
     const rand = rng(777);
@@ -295,7 +308,14 @@ function buildZombieMap() {
         st('perk', ZMB_W - 150, ZMB_H - 150, { perk: 'quick', price: ZMB_PERKS.quick.price }),
         // 4.6: Heilen fuer Punkte (Max: sonst keine Chance auf Leben)
         st('heal', ZMB_W / 2 - 360, ZMB_H / 2, { price: ZMB_HEAL }),
-        st('heal', ZMB_W / 2 + 360, ZMB_H / 2, { price: ZMB_HEAL })
+        st('heal', ZMB_W / 2 + 360, ZMB_H / 2, { price: ZMB_HEAL }),
+        // 6.5.1: mehr zum Ausgeben
+        st('perk', ZMB_W * 0.3, 110, { perk: 'deadshot', price: ZMB_PERKS.deadshot.price }),
+        st('perk', ZMB_W * 0.7, 110, { perk: 'vulture', price: ZMB_PERKS.vulture.price }),
+        st('armor', ZMB_W / 2 - 200, ZMB_H / 2 + 170, { price: ZMB_ARMOR }),
+        st('nades', ZMB_W / 2 + 200, ZMB_H / 2 + 170, { price: ZMB_NADES }),
+        st('shrine', ZMB_W / 2, ZMB_H / 2 - 170, { price: ZMB_SHRINE }),
+        st('revive', ZMB_W / 2, ZMB_H / 2 + 170, { price: ZMB_REVIVE })
     ];
     const zspawns = [];
     for (let i = 0; i < 12; i++) {
@@ -797,6 +817,11 @@ module.exports = function createArena(h, opts = {}) {
             p.healMul *= b.heal;
             p.packMax += b.pack;
         }
+        // Ruestungsplatten (Zombie-Station, 6.5.1)
+        if (p.armorN) {
+            p.hp = p.hp / p.maxHp * (p.maxHp + 25 * p.armorN);
+            p.maxHp += 25 * p.armorN;
+        }
         // Zombie-Perks
         if (p.perks && p.perks.length) {
             if (p.perks.includes('jug')) {
@@ -805,6 +830,7 @@ module.exports = function createArena(h, opts = {}) {
             }
             if (p.perks.includes('speed')) p.rateMul *= 1.25;
             if (p.perks.includes('stamina')) p.speedMul *= 1.15;
+            if (p.perks.includes('deadshot')) p.critBonus = 0.12;
             if (p.perks.includes('quick')) {
                 p.regen += 2;
                 p.b.regenDelay = 2000;
@@ -879,7 +905,7 @@ module.exports = function createArena(h, opts = {}) {
                 extracts: MAP.extracts, extractR: EXTRACT_R, r: R, move: MOVE, view: VIEW, throwRange: I.THROW_RANGE,
                 stations: MAP.stations, town: MAP.town, outpost: MAP.outpost, military: MAP.military, mobs: M.catalog(),
                 trader: { buy: TRADER_BUY, sell: TRADER_SELL }, medic: { cost: MEDIC_COST, cd: MEDIC_CD },
-                perks: ZMB_PERKS, arena: MAP.arena || null
+                perks: ZMB_PERKS, arena: MAP.arena || null, name: MAP.name || null
             },
             packMax: p0PackMax(c), feed: pvp ? [] : feedLog.slice(-6), mode, team: players.get(c.id) ? players.get(c.id).team : undefined,
             mapName: MAP.name || null
@@ -1416,7 +1442,7 @@ module.exports = function createArena(h, opts = {}) {
         w.dmg *= p.dmgMul;
         w.ms /= p.rateMul;
         w.homing += p.homing;
-        w.crit = (w.crit || 0) + p.b.crit;
+        w.crit = (w.crit || 0) + p.b.crit + (p.critBonus || 0);
         // Pack-a-Punch (Zombies): je Stufe ×1,6 Schaden, ×1,12 Feuerrate
         if (item && item.pap) {
             w.dmg *= Math.pow(1.6, item.pap);
@@ -1738,7 +1764,8 @@ module.exports = function createArena(h, opts = {}) {
     // Perks. Wer stirbt, ist bis zum Ende der Welle raus; sind alle tot, ist
     // Schluss. Wie im PvP mit Kopien des Loadouts: nichts geht verloren.
     // Coins (5.9): am Ende je Spieler Kill-Coins + Wellenbonus -> zCoins().
-    const zb = mode === 'zombies' ? { wave: 0, phase: 'wait', until: 0, toSpawn: 0, spawnAt: 0, over: false, kills: new Map(), kc: new Map(), dt: 0 } : null;
+    const zb = mode === 'zombies' ? { wave: 0, phase: 'wait', until: 0, toSpawn: 0, spawnAt: 0, over: false, kills: new Map(), kc: new Map(), dt: 0, fx: {} } : null;
+    const zfx = (k, now) => zb && now < (zb.fx[k] || 0);
 
     function joinZombies(c, name) {
         const a = st(c);
@@ -1947,7 +1974,7 @@ module.exports = function createArena(h, opts = {}) {
         const say = text => h.send(p.c, { type: 'shEvent', text, kind: 'self' });
         const pay = price => {
             // Bargain (Zombie-Baum): alle Stationen billiger
-            price = Math.round(price * p.b.zDisc * (s.kind === 'perk' ? p.b.zPerk : 1));
+            price = Math.round(price * p.b.zDisc * (s.kind === 'perk' ? p.b.zPerk : 1) * ((s.kind === 'box' || s.kind === 'wall') && zfx('sale', Date.now()) ? 0.5 : 1));
             if (p.pts < price) {
                 say(`💰 You need ${price} points`);
                 return false;
@@ -1982,7 +2009,7 @@ module.exports = function createArena(h, opts = {}) {
             const it = p.gear[p.slot];
             if (!it || it.starter && false) return;
             if ((it.pap || 0) >= ZMB_PAP_MAX) return say('⚡ That weapon is fully upgraded');
-            if (!pay(s.price)) return;
+            if (!pay(zPapPrice(it.pap || 0))) return;
             it.pap = (it.pap || 0) + 1;
             it.name = it.name.replace(/ ⚡+$/, '') + ' ' + '⚡'.repeat(it.pap);
             sendInv(p);
@@ -1999,6 +2026,54 @@ module.exports = function createArena(h, opts = {}) {
             p.healAt = now + ZMB_HEAL_CD / SPEED;
             fxAt(p.x, p.y, { type: 'shFx', kind: 'phoenix', x: Math.round(p.x), y: Math.round(p.y) });
             return say('💉 Fully healed');
+        }
+        if (s.kind === 'armor') {
+            if ((p.armorN || 0) >= ZMB_ARMOR_MAX) return say('🛡️ You already wear all armor plates');
+            if (!pay(Math.round(s.price * (1 + 0.5 * (p.armorN || 0))))) return;
+            p.armorN = (p.armorN || 0) + 1;
+            gearStats(p);
+            p.hp = Math.min(p.maxHp, p.hp + 25);
+            return say(`🛡️ Armor plate ${p.armorN}/${ZMB_ARMOR_MAX}: +25 max HP`);
+        }
+        if (s.kind === 'nades') {
+            const have = p.util.findIndex(u => u && u.base === 'frag');
+            const slot = have >= 0 ? have : p.util.findIndex(u => !u);
+            if (slot < 0) return say('💣 Both consumable slots are full');
+            if (have >= 0 && p.util[have].n >= I.UTILS.frag.stack) return say('💣 You carry as many grenades as you can');
+            if (!pay(s.price)) return;
+            p.util[slot] = { base: 'frag', n: Math.min(I.UTILS.frag.stack, (have >= 0 ? p.util[have].n : 0) + 2) };
+            sendInv(p);
+            return say('💣 +2 frag grenades');
+        }
+        if (s.kind === 'shrine') {
+            if (!pay(s.price)) return;
+            const keys = Object.keys(ZMB_POWERUPS);
+            const k = keys[Math.floor(Math.random() * keys.length)];
+            const d = ZMB_POWERUPS[k];
+            const now = Date.now();
+            if (k === 'nuke') {
+                for (const m of [...mobs]) if (!m.def.boss) {
+                    fxAt(m.x, m.y, { type: 'shFx', kind: 'mobdie', x: Math.round(m.x), y: Math.round(m.y), icon: m.def.icon, col: m.def.color });
+                    mobs.splice(mobs.indexOf(m), 1);
+                }
+                p.pts += 400;
+                fxAt(p.x, p.y, { type: 'shBoom', x: Math.round(p.x), y: Math.round(p.y), r: 900, nuke: true });
+            } else zb.fx[k] = now + d.ms / SPEED;
+            fxAt(s.x, s.y, { type: 'shFx', kind: 'nova', x: s.x, y: s.y, r: 220 });
+            for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `${d.icon} ${d.name}! ${d.desc}`, kind: 'drop' });
+            return;
+        }
+        if (s.kind === 'revive') {
+            const down = [...players.values()].filter(q => q.dead);
+            if (!down.length) return say('💖 Nobody is down');
+            if (!pay(s.price)) return;
+            const now = Date.now();
+            for (const q of down) {
+                Object.assign(q, { dead: false, hp: q.maxHp / 2, burn: null, protect: now + 2000 / SPEED, reviveAt: 0 });
+                fxAt(q.x, q.y, { type: 'shFx', kind: 'phoenix', x: Math.round(q.x), y: Math.round(q.y) });
+                h.send(q.c, { type: 'shEvent', text: `💖 ${p.name} brought you back!`, kind: 'drop' });
+            }
+            return say(`💖 Revived ${down.length} teammate${down.length > 1 ? 's' : ''}`);
         }
         if (s.kind === 'perk') {
             const d = ZMB_PERKS[s.perk];
@@ -2115,8 +2190,15 @@ module.exports = function createArena(h, opts = {}) {
     }
 
     // Spieler trifft Gegner
+    // Punkte-Faktor im Zombie-Modus: Baum, Vulture-Perk, Double Points
+    function zPtsMul(p, now) {
+        return p.b.zPts * (p.perks && p.perks.includes('vulture') ? 1.25 : 1) * (zfx('double', now) ? 2 : 1);
+    }
+
     function hurtMob(m, attacker, dmg, now, x, y, crit, w) {
         if (!(m.hp > 0) || dmg <= 0) return;
+        // Insta-Kill (Power-up): normale Zombies fallen mit einem Treffer
+        if (zb && attacker && !m.def.boss && zfx('insta', now)) dmg = Math.max(dmg, m.hp / (m.def.taken || 1) + 1);
         if (attacker && attacker.b) {
             dmg *= attacker.b.hunt;
             if (attacker.b.exec && m.hp < m.maxHp * 0.3) dmg *= 1 + attacker.b.exec;
@@ -2144,7 +2226,7 @@ module.exports = function createArena(h, opts = {}) {
         }
         // Punkte nach Schaden statt je Treffer (6.5, Feedback Schmoggi: mit der SMG
         // liess sich Geld farmen, mit allem anderen nicht). Nur echter Schaden zaehlt.
-        if (zb && attacker && players.has(attacker.id)) attacker.pts += real * Z_PTS_PER_DMG * attacker.b.zPts;
+        if (zb && attacker && players.has(attacker.id)) attacker.pts += real * Z_PTS_PER_DMG * zPtsMul(attacker, now);
         if (m.hp <= 0) mobDies(m, attacker && players.has(attacker.id) ? attacker : null, now);
     }
 
@@ -2157,7 +2239,7 @@ module.exports = function createArena(h, opts = {}) {
             if (m.id === bossId) bossId = null;
             if (killer) {
                 const bi = def.boss ? (m.bossIdx || 0) + 1 : 0;
-                killer.pts += (def.boss ? 1000 * bi : m.kind === 'tank' ? 150 : def.pts || 60) * killer.b.zPts;
+                killer.pts += (def.boss ? 1000 * bi : m.kind === 'tank' ? 150 : def.pts || 60) * zPtsMul(killer, now);
                 // Kettenreaktion (Zombie-Baum): der Tote explodiert
                 if (killer.b.zChain && !def.boss && Math.random() < killer.b.zChain) {
                     fxAt(m.x, m.y, { type: 'shBoom', x: Math.round(m.x), y: Math.round(m.y), r: 90, nuke: false });
@@ -2270,6 +2352,91 @@ module.exports = function createArena(h, opts = {}) {
             m.ty = m.y + (Math.random() - 0.5) * 500;
             m.strafe = -m.strafe;
         }
+    }
+
+    // ---------- Wegfeld fuer Zombies (6.5.1) ----------
+    // Max: Zombies blieben an Ecken haengen, weil sie stur geradeaus liefen.
+    // Raster aus NAV_CELL-Feldern, frei = Mittelpunkt mit NAV_R Abstand zu
+    // Waenden. Alle NAV_MS eine Breitensuche von allen lebenden Spielern aus
+    // (8 Richtungen, keine Diagonale durch Ecken); jeder Zombie geht zum
+    // Nachbarfeld mit kleinerem Abstand. Nah und mit freier Bahn: direkt.
+    const NAV_CELL = 40, NAV_R = 20, NAV_MS = 250;
+    const NAV_W = Math.ceil(W / NAV_CELL), NAV_H = Math.ceil(H / NAV_CELL);
+    let navFree = null, navDist = null, navAt = 0;
+    const NAV_DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+    function navBuild(now) {
+        if (!navFree) {
+            navFree = new Uint8Array(NAV_W * NAV_H);
+            for (let y = 0; y < NAV_H; y++) for (let x = 0; x < NAV_W; x++) {
+                navFree[y * NAV_W + x] = blocked((x + 0.5) * NAV_CELL, (y + 0.5) * NAV_CELL, NAV_R) ? 0 : 1;
+            }
+            navDist = new Float32Array(NAV_W * NAV_H);
+        }
+        if (now - navAt < NAV_MS) return;
+        navAt = now;
+        navDist.fill(Infinity);
+        // Dijkstra-light: Warteschlange nach Kosten (1 gerade, 1,41 schraeg), klein genug fuer ein Array
+        const q = [];
+        for (const p of players.values()) {
+            if (p.dead) continue;
+            const cx = Math.floor(p.x / NAV_CELL), cy = Math.floor(p.y / NAV_CELL);
+            if (cx < 0 || cy < 0 || cx >= NAV_W || cy >= NAV_H) continue;
+            navDist[cy * NAV_W + cx] = 0;
+            q.push(cy * NAV_W + cx);
+        }
+        for (let head = 0; head < q.length; head++) {
+            const i = q[head], x = i % NAV_W, y = (i - x) / NAV_W, d0 = navDist[i];
+            for (const [dx, dy] of NAV_DIRS) {
+                const nx = x + dx, ny = y + dy;
+                if (nx < 0 || ny < 0 || nx >= NAV_W || ny >= NAV_H) continue;
+                const j = ny * NAV_W + nx;
+                if (!navFree[j]) continue;
+                if (dx && dy && (!navFree[y * NAV_W + nx] || !navFree[ny * NAV_W + x])) continue;
+                const nd = d0 + (dx && dy ? 1.414 : 1);
+                if (nd < navDist[j] - 0.01) {
+                    navDist[j] = nd;
+                    q.push(j);
+                }
+            }
+        }
+    }
+    // Wegpunkt fuer einen Zombie: direkt, wenn nah und frei, sonst das beste Nachbarfeld
+    function zNav(m, tgt, d) {
+        if (d < 160 || (d < 500 && clearFor(m.x, m.y, tgt.x, tgt.y, m.def.r))) return tgt;
+        navBuild(Date.now());
+        const cx = Math.floor(m.x / NAV_CELL), cy = Math.floor(m.y / NAV_CELL);
+        if (cx < 0 || cy < 0 || cx >= NAV_W || cy >= NAV_H) return tgt;
+        let best = navDist[cy * NAV_W + cx], bx = -1, by = -1;
+        for (const [dx, dy] of NAV_DIRS) {
+            const nx = cx + dx, ny = cy + dy;
+            if (nx < 0 || ny < 0 || nx >= NAV_W || ny >= NAV_H) continue;
+            if (dx && dy && (!navFree[cy * NAV_W + nx] || !navFree[ny * NAV_W + cx])) continue;
+            const v = navDist[ny * NAV_W + nx];
+            if (v < best) {
+                best = v;
+                bx = nx;
+                by = ny;
+            }
+        }
+        if (bx < 0) return tgt;
+        // ein Feld weiter vorausschauen, damit die Bahn weicher wird
+        let fx = bx, fy = by;
+        for (const [dx, dy] of NAV_DIRS) {
+            const nx = bx + dx, ny = by + dy;
+            if (nx < 0 || ny < 0 || nx >= NAV_W || ny >= NAV_H) continue;
+            if (navDist[ny * NAV_W + nx] < navDist[fy * NAV_W + fx] && clearFor(m.x, m.y, (nx + 0.5) * NAV_CELL, (ny + 0.5) * NAV_CELL, m.def.r)) {
+                fx = nx;
+                fy = ny;
+            }
+        }
+        return { x: (fx + 0.5) * NAV_CELL, y: (fy + 0.5) * NAV_CELL };
+    }
+    // Freie Bahn fuer einen Koerper mit Radius r (nicht nur fuer einen Strahl)
+    function clearFor(x1, y1, x2, y2, r) {
+        const d = Math.hypot(x2 - x1, y2 - y1), n = Math.ceil(d / 16);
+        const rr = Math.max(4, r - 4);
+        for (let i = 1; i <= n; i++) if (blocked(x1 + (x2 - x1) * i / n, y1 + (y2 - y1) * i / n, rr)) return false;
+        return true;
     }
 
     // Faehigkeiten der Zombie-Bosse (6.5). true = Boss ist beschaeftigt (steht,
@@ -2531,11 +2698,13 @@ module.exports = function createArena(h, opts = {}) {
         if (tgt) {
             const d = Math.hypot(tgt.x - m.x, tgt.y - m.y);
             m.a = Math.atan2(tgt.y - m.y, tgt.x - m.x);
+            // Zombies (6.5.1): um Ecken herum ueber das Wegfeld statt geradeaus
+            const goal = zb && def.zombie ? zNav(m, tgt, d) : tgt;
             if (def.melee) {
-                mobMove(m, tgt.x, tgt.y, def.chase, dt);
+                mobMove(m, goal.x, goal.y, def.chase, dt);
             } else {
                 const keep = def.keep || 200, range = def.range || def.aggro;
-                if (d > range * 0.9) mobMove(m, tgt.x, tgt.y, def.speed * 1.1, dt);
+                if (d > range * 0.9 || goal !== tgt) mobMove(m, goal.x, goal.y, def.speed * 1.1, dt);
                 else if (d < keep) mobMove(m, m.x - (tgt.x - m.x), m.y - (tgt.y - m.y), def.speed, dt);
                 else {
                     // seitlich ausweichen
@@ -2777,7 +2946,9 @@ module.exports = function createArena(h, opts = {}) {
                         b.hits.add(m.id);
                         const shooter = players.get(b.owner) || null;
                         const crit = b.w.crit && Math.random() < b.w.crit;
-                        hurtMob(m, shooter, b.w.dmg * (crit ? (shooter ? shooter.b.critMul : 2) : 1), now, b.x, b.y, crit, b.w);
+                        // jeder durchschlagene Gegner vorher kostet 20 % Schaden (6.5.1)
+                        const fall = Math.pow(0.8, b.hits.size - 1);
+                        hurtMob(m, shooter, b.w.dmg * fall * (crit ? (shooter ? shooter.b.critMul : 2) : 1), now, b.x, b.y, crit, b.w);
                         if (b.w.hole) bulletHole(b, now);
                         if (b.w.explode) explode(b, now, null);
                         if (b.pierce > 0) b.pierce--;
@@ -2812,6 +2983,8 @@ module.exports = function createArena(h, opts = {}) {
                 pvp: pvp ? { round: pvp.round, score: pvp.score, phase: pvp.phase, left: Math.max(0, Math.round(pvp.until - now)), last: pvp.last, team: p.team } : undefined,
                 zmb: zb ? { wave: zb.wave, phase: zb.phase, left: Math.max(0, Math.round(zb.until - now)), zombies: mobs.length + zb.toSpawn, pts: Math.floor(p.pts), perks: p.perks,
                     disc: p.b.zDisc, perkDisc: p.b.zDisc * p.b.zPerk,
+                    fx: Object.fromEntries(Object.entries(zb.fx).filter(([, t]) => t > now).map(([k, t]) => [k, Math.round(t - now)])),
+                    pap: zPapPrice((p.gear[p.slot] && p.gear[p.slot].pap) || 0), armor: p.armorN || 0,
                     team: plist.map(q => [q.name, Math.floor(q.pts), zb.kills.get(q.id) || 0, q.dead ? 1 : 0]) } : undefined,
                 players: plist.filter(q => q === p || (inView(q.x, q.y) && canSee(p, q, now))).map(q => {
                     const qw = q.gear[q.slot] || q.gear.primary;

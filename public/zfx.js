@@ -975,3 +975,418 @@ function zBossIntro(d) {
     sTone(105, { t: .1, dur: 1.4, type: 'square', vol: .05, slide: 70, rev: .5 });
     [220, 207, 196].forEach((f, i) => sBell(f, .35 + i * .25, .09, 1.2));
 }
+
+// ---------- Kek Mall: Boden, Deko, Mauern, Shops (6.5.1, Max: "deutlich schoener, mehr Leben") ----------
+// Alles nur Optik: Deko blockiert nichts, Kollision bleibt wie gehabt.
+const zIsMall = m => m && m.name === 'Kek Mall';
+let zMallDeco = null;
+function zMallBuild(m) {
+    if (zMallDeco && zMallDeco.m === m) return zMallDeco;
+    let seed = 4242;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const inWall = (x, y, pad) => m.walls.some(([wx, wy, ww, wh]) => x > wx - pad && x < wx + ww + pad && y > wy - pad && y < wy + wh + pad);
+    const nearStation = (x, y, pad) => (m.stations || []).some(s => Math.hypot(s.x - x, s.y - y) < pad);
+    const pick = (n, pad, avoidMid) => {
+        const out = [];
+        for (let k = 0; k < n * 20 && out.length < n; k++) {
+            const x = 160 + rnd() * (m.w - 320), y = 160 + rnd() * (m.h - 320);
+            if (inWall(x, y, pad) || nearStation(x, y, 110)) continue;
+            if (avoidMid && Math.abs(x - m.w / 2) < 330 && Math.abs(y - m.h / 2) < 260) continue;
+            out.push({ x, y, r: rnd(), s: rnd() });
+        }
+        return out;
+    };
+    zMallDeco = {
+        m,
+        plants: pick(14, 50, true),
+        benches: pick(8, 60, true),
+        carts: pick(6, 40, true),
+        blood: pick(26, 10, false),
+        trash: pick(30, 10, false),
+        lights: pick(18, 0, false),
+        // Laeden am Rand: Name, Farbe
+        shops: [['KEK BURGER', '#ff7a3a'], ['PIXEL PHONES', '#3da5ff'], ['SNEAK PEAK', '#ff5bd6'], ['GAME ZONE', '#7cff6b'],
+            ['COFFEE BEAN', '#c68b59'], ['KEKFLIX', '#ff3b3b'], ['BOOK NOOK', '#ffd23f'], ['TOY LAND', '#b04fff']]
+    };
+    return zMallDeco;
+}
+
+function zMallFloor(c, m, cam, vw, vh, now) {
+    if (!zIsMall(m)) return false;
+    const D = zMallBuild(m);
+    // Fliesen: zwei Toene, grosse Platten
+    const T = 100;
+    c.fillStyle = '#1a1d24';
+    c.fillRect(0, 0, m.w, m.h);
+    c.fillStyle = '#20242c';
+    for (let x = Math.floor(cam.x / T) * T; x <= cam.x + vw; x += T) {
+        for (let y = Math.floor(cam.y / T) * T; y <= cam.y + vh; y += T) {
+            if (((x + y) / T) % 2 === 0) c.fillRect(x, y, T, T);
+        }
+    }
+    c.strokeStyle = 'rgba(255,255,255,.035)';
+    c.lineWidth = 2;
+    c.beginPath();
+    for (let x = Math.floor(cam.x / T) * T; x <= cam.x + vw; x += T) { c.moveTo(x, cam.y); c.lineTo(x, cam.y + vh); }
+    for (let y = Math.floor(cam.y / T) * T; y <= cam.y + vh; y += T) { c.moveTo(cam.x, y); c.lineTo(cam.x + vw, y); }
+    c.stroke();
+    // Laeufer-Teppich durch die Mitte (Kreuz)
+    c.fillStyle = 'rgba(120,30,50,.28)';
+    c.fillRect(0, m.h / 2 - 70, m.w, 140);
+    c.fillRect(m.w / 2 - 70, 0, 140, m.h);
+    c.strokeStyle = 'rgba(255,210,63,.18)';
+    c.lineWidth = 3;
+    c.strokeRect(-10, m.h / 2 - 62, m.w + 20, 124);
+    c.strokeRect(m.w / 2 - 62, -10, 124, m.h + 20);
+    // Platz in der Mitte: Mosaik-Kreis mit Brunnen
+    const cx = m.w / 2, cy = m.h / 2;
+    const g = c.createRadialGradient(cx, cy, 20, cx, cy, 250);
+    g.addColorStop(0, '#2a3140');
+    g.addColorStop(1, 'rgba(42,49,64,0)');
+    c.fillStyle = g;
+    c.beginPath();
+    c.arc(cx, cy, 250, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = 'rgba(255,210,63,.25)';
+    c.lineWidth = 3;
+    for (const rr of [150, 190]) {
+        c.beginPath();
+        c.arc(cx, cy, rr, 0, Math.PI * 2);
+        c.stroke();
+    }
+    for (let i = 0; i < 16; i++) {
+        const t = i / 16 * Math.PI * 2;
+        c.beginPath();
+        c.moveTo(cx + Math.cos(t) * 150, cy + Math.sin(t) * 150);
+        c.lineTo(cx + Math.cos(t) * 190, cy + Math.sin(t) * 190);
+        c.stroke();
+    }
+    // Brunnen (flach, Wasser bewegt sich)
+    c.fillStyle = '#39465a';
+    c.beginPath();
+    c.arc(cx, cy, 58, 0, Math.PI * 2);
+    c.fill();
+    const wg = c.createRadialGradient(cx, cy, 5, cx, cy, 50);
+    wg.addColorStop(0, '#9fe8ff');
+    wg.addColorStop(1, '#2a7fb8');
+    c.fillStyle = wg;
+    c.beginPath();
+    c.arc(cx, cy, 48, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.5)';
+    c.lineWidth = 2;
+    for (let i = 0; i < 3; i++) {
+        const k = (now / 1400 + i / 3) % 1;
+        c.globalAlpha = 1 - k;
+        c.beginPath();
+        c.arc(cx, cy, 8 + k * 40, 0, Math.PI * 2);
+        c.stroke();
+    }
+    c.globalAlpha = 1;
+    // Laeden am Rand: Schaufenster mit Leuchtschrift
+    const n = D.shops.length, per = 2;
+    D.shops.forEach(([name, col], i) => {
+        const side = i % 4, k = Math.floor(i / 4);
+        const along = (k + 1) / (per + 1);
+        let x, y, w, h;
+        if (side === 0) { w = 360; h = 34; x = m.w * along - w / 2 + (k ? 260 : -260); y = 8; }
+        else if (side === 1) { w = 360; h = 34; x = m.w * along - w / 2 + (k ? 260 : -260); y = m.h - 42; }
+        else if (side === 2) { w = 34; h = 300; x = 8; y = m.h * along - h / 2 + (k ? 160 : -160); }
+        else { w = 34; h = 300; x = m.w - 42; y = m.h * along - h / 2 + (k ? 160 : -160); }
+        if (x + w < cam.x || x > cam.x + vw || y + h < cam.y || y > cam.y + vh) return;
+        c.fillStyle = 'rgba(160,210,255,.1)';
+        c.fillRect(x, y, w, h);
+        c.fillStyle = col;
+        c.globalAlpha = .75 + .25 * (Math.sin(now / 90 + i * 7) > -.95 ? 1 : 0);
+        c.shadowColor = col;
+        c.shadowBlur = 14;
+        c.font = 'bold 20px system-ui';
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        if (side < 2) c.fillText(name, x + w / 2, y + h / 2 + 1);
+        else {
+            c.save();
+            c.translate(x + w / 2, y + h / 2);
+            c.rotate(side === 2 ? -Math.PI / 2 : Math.PI / 2);
+            c.fillText(name, 0, 1);
+            c.restore();
+        }
+        c.shadowBlur = 0;
+        c.globalAlpha = 1;
+    });
+    // Blut, Muell
+    for (const b of D.blood) {
+        if (b.x < cam.x - 60 || b.x > cam.x + vw + 60 || b.y < cam.y - 60 || b.y > cam.y + vh + 60) continue;
+        c.fillStyle = `rgba(${110 + b.s * 40},10,20,${.25 + b.r * .2})`;
+        c.beginPath();
+        for (let i = 0; i <= 10; i++) {
+            const t = i / 10 * Math.PI * 2, rr = (14 + b.s * 22) * (0.7 + 0.5 * Math.abs(Math.sin(t * 3 + b.r * 9)));
+            i ? c.lineTo(b.x + Math.cos(t) * rr, b.y + Math.sin(t) * rr * .7) : c.moveTo(b.x + Math.cos(t) * rr, b.y + Math.sin(t) * rr * .7);
+        }
+        c.fill();
+    }
+    for (const t of D.trash) {
+        if (t.x < cam.x - 20 || t.x > cam.x + vw + 20 || t.y < cam.y - 20 || t.y > cam.y + vh + 20) continue;
+        c.globalAlpha = .55;
+        drawEmojiC(c, ['📰', '🥤', '🍔', '🧾', '🛍️'][Math.floor(t.r * 5)], t.x, t.y, 14 + t.s * 8);
+        c.globalAlpha = 1;
+    }
+    return true;
+}
+
+// Deko ueber dem Boden, unter den Figuren: Pflanzen, Baenke, Wagen, Lichtkegel
+function zMallDecor(c, m, cam, vw, vh, now) {
+    if (!zIsMall(m)) return;
+    const D = zMallBuild(m);
+    const on = (o, p) => o.x > cam.x - p && o.x < cam.x + vw + p && o.y > cam.y - p && o.y < cam.y + vh + p;
+    for (const b of D.benches) {
+        if (!on(b, 60)) continue;
+        c.save();
+        c.translate(b.x, b.y);
+        c.rotate(b.r > .5 ? Math.PI / 2 : 0);
+        c.fillStyle = 'rgba(0,0,0,.3)';
+        c.fillRect(-36, -8, 76, 22);
+        c.fillStyle = '#7a5230';
+        c.fillRect(-38, -12, 76, 8);
+        c.fillRect(-38, 0, 76, 8);
+        c.fillStyle = '#3b3f46';
+        c.fillRect(-34, -14, 5, 24);
+        c.fillRect(29, -14, 5, 24);
+        c.restore();
+    }
+    for (const p of D.plants) {
+        if (!on(p, 60)) continue;
+        c.fillStyle = 'rgba(0,0,0,.3)';
+        c.beginPath();
+        c.ellipse(p.x + 4, p.y + 6, 24, 12, 0, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = '#6b4a2b';
+        c.beginPath();
+        c.arc(p.x, p.y, 18, 0, Math.PI * 2);
+        c.fill();
+        const sway = Math.sin(now / 900 + p.r * 10) * 2;
+        drawEmojiC(c, p.s > .5 ? '🪴' : '🌴', p.x + sway, p.y - 6, 40);
+    }
+    for (const w of D.carts) {
+        if (!on(w, 40)) continue;
+        c.save();
+        c.translate(w.x, w.y);
+        c.rotate(w.r * 6.28);
+        drawEmojiC(c, '🛒', 0, 0, 34);
+        c.restore();
+    }
+    // Deckenlichter: warme Lichtkegel, manche flackern
+    c.globalCompositeOperation = 'lighter';
+    for (const l of D.lights) {
+        if (!on(l, 200)) continue;
+        const flick = l.s > .75 ? (Math.sin(now / 37 + l.r * 50) > .2 && Math.sin(now / 211 + l.r * 9) > -.3 ? 1 : .15) : 1;
+        zGlow(c, l.x, l.y, 170, l.r > .5 ? '255,220,160' : '160,200,255', .07 * flick);
+    }
+    c.globalCompositeOperation = 'source-over';
+    // Staub in der Luft
+    c.fillStyle = 'rgba(255,255,255,.18)';
+    for (let i = 0; i < 40; i++) {
+        const t = now / 9000 + i * 0.37;
+        const x = cam.x + ((i * 173.7 + Math.sin(t) * 120 + now / 60) % vw + vw) % vw;
+        const y = cam.y + ((i * 97.3 + Math.cos(t * 1.3) * 80 + now / 90) % vh + vh) % vh;
+        c.fillRect(x, y, 2, 2);
+    }
+}
+
+// Mauern: Saeulen aus Marmor, lange Mauern als Schaufenster-Trennwaende
+function zMallWall(c, m, x, y, w, h) {
+    if (!zIsMall(m)) return false;
+    c.fillStyle = 'rgba(0,0,0,.4)';
+    c.fillRect(x + 8, y + 8, w, h);
+    if (w < 130 && h < 130) {
+        const g = c.createLinearGradient(x, y, x + w, y + h);
+        g.addColorStop(0, '#d9d4cc');
+        g.addColorStop(.5, '#b8b1a6');
+        g.addColorStop(1, '#8f877c');
+        c.fillStyle = g;
+        c.fillRect(x, y, w, h);
+        c.strokeStyle = 'rgba(90,80,70,.5)';
+        c.lineWidth = 1.5;
+        c.beginPath();
+        c.moveTo(x + w * .2, y); c.quadraticCurveTo(x + w * .5, y + h * .4, x + w * .3, y + h);
+        c.moveTo(x + w * .7, y); c.quadraticCurveTo(x + w * .9, y + h * .5, x + w * .6, y + h);
+        c.stroke();
+        c.strokeStyle = '#6d665d';
+        c.lineWidth = 3;
+        c.strokeRect(x + 2, y + 2, w - 4, h - 4);
+    } else {
+        // Glas mit Rahmen
+        c.fillStyle = '#2d3b4f';
+        c.fillRect(x, y, w, h);
+        c.fillStyle = 'rgba(150,210,255,.25)';
+        const hor = w > h;
+        const seg = 60;
+        for (let k = 0; k < (hor ? w : h); k += seg) {
+            if (hor) c.fillRect(x + k + 4, y + 3, Math.min(seg, w - k) - 8, h - 6);
+            else c.fillRect(x + 3, y + k + 4, w - 6, Math.min(seg, h - k) - 8);
+        }
+        c.fillStyle = 'rgba(255,255,255,.35)';
+        if (hor) c.fillRect(x, y, w, 3);
+        else c.fillRect(x, y, 3, h);
+        c.strokeStyle = '#9aa7b8';
+        c.lineWidth = 2;
+        c.strokeRect(x, y, w, h);
+    }
+    return true;
+}
+
+// Shops: jede Station als eigenes kleines Geschaeft
+function zDrawStation(c, m, s, L, now) {
+    if (!zIsMall(m)) return false;
+    const x = s.x, y = s.y, pulse = .5 + .5 * Math.sin(now / 400 + x);
+    const rgb = L.rgb;
+    const shadow = (w, h) => {
+        c.fillStyle = 'rgba(0,0,0,.35)';
+        c.fillRect(x - w / 2 + 6, y - h / 2 + 8, w, h);
+    };
+    zGlow(c, x, y, 80, rgb, .12 + .08 * pulse);
+    if (s.kind === 'perk') {
+        // Getraenkeautomat
+        shadow(52, 70);
+        c.fillStyle = `rgb(${rgb})`;
+        c.fillRect(x - 26, y - 36, 52, 70);
+        c.fillStyle = 'rgba(0,0,0,.35)';
+        c.fillRect(x - 20, y - 30, 30, 44);
+        c.fillStyle = `rgba(255,255,255,${.25 + .25 * pulse})`;
+        c.fillRect(x - 20, y - 30, 30, 6);
+        c.fillStyle = '#222';
+        c.fillRect(x + 14, y - 28, 8, 20);
+        c.fillStyle = '#111';
+        c.fillRect(x - 20, y + 20, 40, 8);
+        drawEmojiC(c, L.icon, x - 5, y - 6, 26);
+    } else if (s.kind === 'box') {
+        // Mystery Box: Truhe mit Lichtsaeule und ?
+        const beam = c.createLinearGradient(x, y - 160, x, y);
+        beam.addColorStop(0, 'rgba(184,132,255,0)');
+        beam.addColorStop(1, `rgba(184,132,255,${.25 + .2 * pulse})`);
+        c.fillStyle = beam;
+        c.fillRect(x - 18, y - 160, 36, 160);
+        shadow(72, 40);
+        c.fillStyle = '#6b4a2b';
+        c.fillRect(x - 36, y - 20, 72, 40);
+        c.fillStyle = '#8a6238';
+        c.fillRect(x - 36, y - 20, 72, 12);
+        c.strokeStyle = '#ffd23f';
+        c.lineWidth = 3;
+        c.strokeRect(x - 36, y - 20, 72, 40);
+        c.fillStyle = '#ffd23f';
+        c.fillRect(x - 5, y - 8, 10, 10);
+        c.font = 'bold 18px system-ui';
+        c.textAlign = 'center';
+        c.fillStyle = `rgba(230,210,255,${.5 + .5 * pulse})`;
+        c.fillText('?', x - 24, y + 12 - pulse * 6);
+        c.fillText('?', x + 24, y + 8 - (1 - pulse) * 6);
+    } else if (s.kind === 'pap') {
+        // Pack-a-Punch: Maschine mit Blitzen
+        shadow(90, 56);
+        c.fillStyle = '#3a2a4f';
+        c.fillRect(x - 45, y - 28, 90, 56);
+        c.fillStyle = '#5a3f7a';
+        c.fillRect(x - 45, y - 28, 90, 10);
+        c.fillStyle = `rgba(255,120,255,${.4 + .5 * pulse})`;
+        c.fillRect(x - 30, y - 10, 60, 18);
+        c.strokeStyle = 'rgba(255,200,255,.9)';
+        c.lineWidth = 2;
+        c.beginPath();
+        zBolt(c, x - 40, y - 34, x + 40, y - 34, 10, 7);
+        c.stroke();
+        drawEmojiC(c, '⚡', x, y, 24);
+    } else if (s.kind === 'wall') {
+        // Waffe an der Wand: Kreide-Umriss auf Holzbrett
+        shadow(80, 50);
+        c.fillStyle = '#4a3522';
+        c.fillRect(x - 40, y - 25, 80, 50);
+        c.strokeStyle = 'rgba(255,255,255,.55)';
+        c.setLineDash([4, 3]);
+        c.strokeRect(x - 34, y - 19, 68, 38);
+        c.setLineDash([]);
+        drawEmojiC(c, L.icon, x, y, 30);
+    } else if (s.kind === 'heal' || s.kind === 'revive') {
+        // Sani-Kiosk
+        shadow(64, 50);
+        c.fillStyle = '#e8eef3';
+        c.fillRect(x - 32, y - 25, 64, 50);
+        c.fillStyle = s.kind === 'heal' ? '#e03040' : '#ff6ea0';
+        c.fillRect(x - 6, y - 18, 12, 36);
+        c.fillRect(x - 18, y - 6, 36, 12);
+        if (s.kind === 'revive') {
+            c.strokeStyle = '#23c26b';
+            c.lineWidth = 2;
+            c.beginPath();
+            const t = (now / 12) % 64;
+            for (let i = 0; i <= 64; i += 2) {
+                const k = (i + t) % 64;
+                const yy = y + 20 + (k > 28 && k < 34 ? -10 * Math.sin((k - 28) / 6 * Math.PI) : 0);
+                i ? c.lineTo(x - 32 + i, yy) : c.moveTo(x - 32 + i, yy);
+            }
+            c.stroke();
+        }
+    } else if (s.kind === 'armor') {
+        // Waffenkammer-Spind
+        shadow(70, 60);
+        c.fillStyle = '#4a5566';
+        c.fillRect(x - 35, y - 30, 70, 60);
+        c.strokeStyle = '#2b323d';
+        c.lineWidth = 2;
+        c.beginPath();
+        c.moveTo(x, y - 30); c.lineTo(x, y + 30);
+        c.stroke();
+        for (const ox of [-25, 10]) for (let k = 0; k < 3; k++) c.fillRect(x + ox, y - 22 + k * 6, 14, 2);
+        drawEmojiC(c, '🛡️', x, y + 6, 26);
+    } else if (s.kind === 'nades') {
+        // Munitionskiste
+        shadow(66, 42);
+        c.fillStyle = '#4f5a2f';
+        c.fillRect(x - 33, y - 21, 66, 42);
+        c.strokeStyle = '#2f361c';
+        c.lineWidth = 3;
+        c.strokeRect(x - 33, y - 21, 66, 42);
+        c.fillStyle = '#e8d56a';
+        c.font = 'bold 10px system-ui';
+        c.textAlign = 'center';
+        c.fillText('EXPLOSIVE', x, y - 8);
+        drawEmojiC(c, '💣', x, y + 8, 22);
+    } else if (s.kind === 'shrine') {
+        // Altar mit kreisenden Runen
+        c.save();
+        c.translate(x, y);
+        c.rotate(now / 1500);
+        c.strokeStyle = `rgba(255,215,90,${.5 + .4 * pulse})`;
+        c.lineWidth = 2;
+        c.beginPath();
+        c.arc(0, 0, 44, 0, Math.PI * 2);
+        c.stroke();
+        for (let i = 0; i < 5; i++) {
+            const t = i / 5 * Math.PI * 2;
+            c.beginPath();
+            c.moveTo(Math.cos(t) * 44, Math.sin(t) * 44);
+            c.lineTo(Math.cos(t + Math.PI * .8) * 44, Math.sin(t + Math.PI * .8) * 44);
+            c.stroke();
+        }
+        c.restore();
+        c.fillStyle = '#6d665d';
+        c.fillRect(x - 22, y - 12, 44, 24);
+        drawEmojiC(c, '🔮', x, y - 14 - pulse * 4, 28);
+    } else {
+        return false;
+    }
+    // Schild mit Preis
+    c.font = 'bold 12px system-ui';
+    c.textAlign = 'center';
+    const tw = c.measureText(L.label).width + 14;
+    c.fillStyle = 'rgba(0,0,0,.72)';
+    c.fillRect(x - tw / 2, y + 40, tw, 18);
+    c.strokeStyle = `rgba(${rgb},.9)`;
+    c.lineWidth = 1.5;
+    c.strokeRect(x - tw / 2, y + 40, tw, 18);
+    c.fillStyle = '#fff';
+    c.textBaseline = 'middle';
+    c.fillText(L.label, x, y + 49);
+    c.textBaseline = 'alphabetic';
+    return true;
+}

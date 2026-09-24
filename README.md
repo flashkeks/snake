@@ -1185,6 +1185,21 @@ Menue-Umbau, Zuschauen ohne Ruckeln.
   Geld: `Z_COINS` kill 3 / tank 12 / boss 200 / wave 30, `Z_PTS_PER_DMG`
   0,5. Tempo: `zSpd` ab 1,12, Pause `zBreak` = 4 s + 0,6 s je Welle (max
   12 s), Start 4 s, Nachschub `max(160, 750 - 45w)` ms.
+- **6.5.1 Nachtrag:** Wegfeld (`navBuild`/`zNav`, Raster 40 px, Breitensuche
+  von allen lebenden Spielern alle 250 ms, 8 Richtungen ohne Ecken-Schnitt);
+  Zombies laufen direkt nur nah (< 160 px) oder mit freier Bahn fuer ihren
+  Radius (`clearFor`). Test: nach 20 s beim Spieler 50 % -> 71 %.
+  Durchschlag max 2 (`PIERCE_MAX` in `arena-items.js`, gilt ueberall), je
+  durchschlagenem Gegner -20 % Schaden. Neue Stationen: Ruestung (bis 4x
+  +25 max HP, +50 % Preis je Platte), Granaten (+2 Frag), Power-up-Altar
+  (Double Points 30 s, Insta-Kill 15 s, Nuke, Fire Sale 30 s; `zb.fx`),
+  Team wiederbeleben, Perks Deadshot (+12 % Krit) und Vulture (+25 %
+  Punkte), Pack-a-Punch bis 5 (Preis `zPapPrice`). Map-Optik fuer
+  „Kek Mall" in `zfx.js` (`zMallFloor`, `zMallDecor`, `zMallWall`,
+  `zDrawStation`) – nur Optik, Deko blockiert nichts. `shJoined.map.name`
+  traegt den Kartennamen.
+- Snake-Events: Nachspann kuerzer (Ergebnis 4 s, Podium 3 s, Double or
+  Nothing 10 s statt 8/5/15 s).
 - **Test** (nur `SNAKE_TEST=1`): `shTestEvent` mit `zwave` (naechste Welle),
   `god`, `zBossHp` (Anteil), `zmob` (Arten neben den Spieler).
 

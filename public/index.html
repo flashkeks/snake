@@ -11889,7 +11889,8 @@ function shOthers() {
 function zPrice(s) {
     const z = shSnaps.length && shSnaps[shSnaps.length - 1].zmb;
     if (!z || !s.price) return s.price;
-    return Math.round(s.price * (s.kind === 'perk' ? z.perkDisc || 1 : z.disc || 1));
+    const sale = (s.kind === 'box' || s.kind === 'wall') && z.fx && z.fx.sale ? 0.5 : 1;
+    return Math.round(s.price * sale * (s.kind === 'perk' ? z.perkDisc || 1 : z.disc || 1));
 }
 
 // Aussehen einer Station (Extraction: Sani/Haendler, Zombies: Kaufstationen)
@@ -11903,7 +11904,21 @@ function stationLook(s) {
     }
     if (s.kind === 'box') return { icon: '🎁', rgb: '184,132,255', label: `Mystery box · 💰 ${zPrice(s)}`, hint: `F · mystery box: random weapon (${zPrice(s)} points)` };
     if (s.kind === 'heal') return { icon: '💉', rgb: '0,214,122', label: `Heal · 💰 ${zPrice(s)}`, hint: `F · heal to full (${zPrice(s)} points)` };
-    if (s.kind === 'pap') return { icon: '⚡', rgb: '255,120,255', label: `Pack-a-Punch · 💰 ${zPrice(s)}`, hint: `F · upgrade your weapon: ×1.6 damage (${zPrice(s)} points)` };
+    if (s.kind === 'pap') {
+        const z = shSnaps.length && shSnaps[shSnaps.length - 1].zmb;
+        const pr = zPrice({ ...s, price: z && z.pap || s.price });
+        return { icon: '⚡', rgb: '255,120,255', label: `Pack-a-Punch · 💰 ${pr}`, hint: `F · upgrade your weapon: ×1.6 damage (${pr} points, up to 5 times)` };
+    }
+    // 6.5.1: neue Stationen im Zombie-Modus
+    if (s.kind === 'armor') {
+        const z = shSnaps.length && shSnaps[shSnaps.length - 1].zmb;
+        const n = z ? z.armor || 0 : 0;
+        const pr = zPrice({ ...s, price: Math.round(s.price * (1 + 0.5 * n)) });
+        return { icon: '🛡️', rgb: '140,190,255', label: n >= 4 ? 'Armor · full' : `Armor plate ${n + 1}/4 · 💰 ${pr}`, hint: n >= 4 ? 'All armor plates on' : `F · +25 max HP for this game (${pr} points)` };
+    }
+    if (s.kind === 'nades') return { icon: '💣', rgb: '255,170,80', label: `Grenades · 💰 ${zPrice(s)}`, hint: `F · +2 frag grenades (${zPrice(s)} points)` };
+    if (s.kind === 'shrine') return { icon: '🔮', rgb: '255,215,90', label: `Power-up altar · 💰 ${zPrice(s)}`, hint: `F · random power-up for the team: Double Points, Insta-Kill, Nuke or Fire Sale (${zPrice(s)} points)` };
+    if (s.kind === 'revive') return { icon: '💖', rgb: '255,110,160', label: `Revive team · 💰 ${zPrice(s)}`, hint: `F · bring every downed teammate back now (${zPrice(s)} points)` };
     if (s.kind === 'perk') {
         const d = (m.perks || {})[s.perk] || {};
         return { icon: d.icon || '🥤', rgb: '255,160,60', label: `${d.name} · 💰 ${zPrice(s)}`, hint: `F · ${d.name}: ${d.desc} (${zPrice(s)} points)` };
@@ -12177,15 +12192,17 @@ function shFrame() {
     c.fillRect(0, 0, cw, ch);
     c.setTransform(s, 0, 0, s, -shCam.x * s, -shCam.y * s);
 
-    // Boden mit Gitter (nur sichtbarer Teil)
-    c.fillStyle = '#11181f';
-    c.fillRect(0, 0, m.w, m.h);
-    c.strokeStyle = 'rgba(255,255,255,.045)';
-    c.lineWidth = 1;
-    c.beginPath();
-    for (let x = Math.floor(shCam.x / 50) * 50; x <= shCam.x + viewW; x += 50) { c.moveTo(x, shCam.y); c.lineTo(x, shCam.y + viewH); }
-    for (let y = Math.floor(shCam.y / 50) * 50; y <= shCam.y + viewH; y += 50) { c.moveTo(shCam.x, y); c.lineTo(shCam.x + viewW, y); }
-    c.stroke();
+    // Boden mit Gitter (nur sichtbarer Teil); Zombie-Map hat eigenen Boden (zfx.js)
+    if (!zMallFloor(c, m, shCam, viewW, viewH, now)) {
+        c.fillStyle = '#11181f';
+        c.fillRect(0, 0, m.w, m.h);
+        c.strokeStyle = 'rgba(255,255,255,.045)';
+        c.lineWidth = 1;
+        c.beginPath();
+        for (let x = Math.floor(shCam.x / 50) * 50; x <= shCam.x + viewW; x += 50) { c.moveTo(x, shCam.y); c.lineTo(x, shCam.y + viewH); }
+        for (let y = Math.floor(shCam.y / 50) * 50; y <= shCam.y + viewH; y += 50) { c.moveTo(shCam.x, y); c.lineTo(shCam.x + viewW, y); }
+        c.stroke();
+    }
     // Extraction-Zonen
     for (const e of m.extracts) {
         if (!vis(e.x, e.y, 200)) continue;
@@ -12202,8 +12219,10 @@ function shFrame() {
         drawEmojiC(c, '🚁', e.x, e.y, 44);
     }
     // Waende
+    zMallDecor(c, m, shCam, viewW, viewH, now);
     for (const [x, y, w, h] of m.walls) {
         if (!vis(x, y, Math.max(w, h))) continue;
+        if (zMallWall(c, m, x, y, w, h)) continue;
         c.fillStyle = 'rgba(0,0,0,.35)';
         c.fillRect(x + 6, y + 6, w, h);
         c.fillStyle = w < 90 && h < 90 ? '#474c55' : '#3a4658';
@@ -12248,6 +12267,7 @@ function shFrame() {
     for (const s of m.stations || []) {
         if (!vis(s.x, s.y, 120)) continue;
         const L = stationLook(s);
+        if (zDrawStation(c, m, s, L, now)) continue;
         const pulse = .5 + .5 * Math.sin(now / 400 + s.x);
         // 4.6: kleiner (Max: im Zombie-Modus im Weg)
         c.fillStyle = `rgba(${L.rgb},${.12 + .08 * pulse})`;
@@ -13092,7 +13112,9 @@ function shEventHud(c, latest, W, H, now, dpr) {
     if (zm) {
         const secs = Math.max(0, Math.ceil((zm.left - (now - latest.recv)) / 1000));
         const perks = (zm.perks || []).map(k => (sh.map.perks[k] || {}).icon).join('');
-        const text = zm.phase === 'break' ? `🧟 Wave ${zm.wave + 1} in ${secs} s · 💰 ${zm.pts.toLocaleString('en-US')} ${perks}` : `🧟 Wave ${zm.wave} · ${zm.zombies} left · 💰 ${zm.pts.toLocaleString('en-US')} ${perks}`;
+        const PU = { double: '✖️2 Double Points', insta: '💀 Insta-Kill', sale: '🏷️ Fire Sale' };
+        const fx = Object.entries(zm.fx || {}).map(([k, ms]) => `${PU[k] || k} ${Math.max(0, Math.ceil((ms - (now - latest.recv)) / 1000))}s`).join(' · ');
+        const text = (zm.phase === 'break' ? `🧟 Wave ${zm.wave + 1} in ${secs} s · 💰 ${zm.pts.toLocaleString('en-US')} ${perks}` : `🧟 Wave ${zm.wave} · ${zm.zombies} left · 💰 ${zm.pts.toLocaleString('en-US')} ${perks}`) + (fx ? ` · ${fx}` : '');
         c.font = 'bold 18px system-ui';
         c.textAlign = 'center';
         c.textBaseline = 'middle';

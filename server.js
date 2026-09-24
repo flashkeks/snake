@@ -2065,7 +2065,7 @@ const events = createEvents({
     }
 });
 
-const OFFER_MS = 15000;
+const OFFER_MS = 10000;   // 6.5.1: 15 -> 10 s
 
 // ---------- Casino ----------
 
