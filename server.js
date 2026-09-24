@@ -634,10 +634,13 @@ function kmState(c, extra) {
         type: 'kmState', v: cardHash, have: u.cards || {}, packs: (u.stats && u.stats.packs) || 0,
         // 6.7: XP je Kopie { key: [xp, …] } und die Kurve
         xp: kmLevel.normalizeAll(u), lvCurve: kmLevel.catalog(), frag: u.kmFrag || 0, fragPer: gyms.FRAG_PER_PACK,
+        // Team-Slots (6.8): [{ name, keys }]
+        teams: u.kmTeams || [],
         inv: u.packs || {}, wheel: { ready: wheels.ready('pack', u), segs: wheels.segments('pack') }, ...extra
     });
 }
 
+const KM_TEAM_SLOTS = 6;
 const KM_VNAME = { p: 'Pokeball', m: 'Masterball', s: 'Shiny' };
 
 function kmHandle(c, d) {
@@ -659,6 +662,17 @@ function kmHandle(c, d) {
         accounts.touch();
         sendAccount(c);
         return kmState(c, { bought: { pack: d.pack, n } });
+    }
+    // Team-Slots (6.8, Max): KM_TEAM_SLOTS gespeicherte Teams je Konto
+    if (d.type === 'kmTeamSave') {
+        const i = Math.floor(Number(d.slot));
+        if (!(i >= 0 && i < KM_TEAM_SLOTS)) return send(c, { type: 'kmError', error: 'Unknown slot' });
+        const keys = (Array.isArray(d.keys) ? d.keys : []).map(k => String(k).slice(0, 40)).filter(k => u.cards[k] > 0).slice(0, kmBattle.TEAM_SIZE);
+        const name = String(d.name || '').replace(/[<>]/g, '').trim().slice(0, 20) || `Team ${i + 1}`;
+        u.kmTeams = Array.from({ length: KM_TEAM_SLOTS }, (_, j) => (u.kmTeams || [])[j] || null);
+        u.kmTeams[i] = keys.length || d.name ? { name, keys } : null;
+        accounts.touch();
+        return kmState(c, { teamSaved: { slot: i, name } });
     }
     // Verfuettern (6.7): Kopien derselben Karte opfern, XP fuer die beste Kopie von target
     if (d.type === 'kmFeed') {
@@ -1570,6 +1584,7 @@ async function handle(c, data) {
         case 'kmWheel':
         case 'kmFragBuy':
         case 'kmFeed':
+        case 'kmTeamSave':
         case 'kmSell':
         case 'kmSellDupes':
             kmHandle(c, data);

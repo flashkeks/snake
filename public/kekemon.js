@@ -127,6 +127,7 @@ function onKmState(d) {
             }
         }
         if (d.sold) showMsg('km-msg', `Sold ${d.sold.n} card${d.sold.n === 1 ? '' : 's'} for 🪙 ${d.sold.coins.toLocaleString('en-US')}`, 'ok');
+        if (d.teamSaved) showMsg('km-msg', `💾 Saved as „${d.teamSaved.name}"`, 'ok');
         if (d.fed) showMsg('km-msg', `🍪 Fed ${d.fed.n}× – ${d.fed.name} +${d.fed.xp.toLocaleString('en-US')} XP${d.fed.to > d.fed.from ? ` · ⬆ Lv ${d.fed.from} → ${d.fed.to}` : ''}`, 'ok');
         if (d.bought) showMsg('km-msg', `${d.bought.n > 1 ? d.bought.n + '× ' : ''}${kmCat.packs[d.bought.pack].name} added to 📦 Packs`, 'ok');
         // Daily Pack Wheel: erst drehen, dann neu zeichnen
@@ -844,6 +845,30 @@ let kbPick = null;           // Team-Auswahl { gym | duel, team: [keys] }
 // Sortierung der Auswahl (6.5, Wunsch Schmoggi): bleibt im Browser gemerkt
 let kbSort = (() => { try { return localStorage.getItem('kbSort') || 'power'; } catch (e) { return 'power'; } })();
 let kbTypeFilter = '';
+// Team-Slots (6.8): gespeichert im Konto (km.teams), aktiver Slot im Browser
+const KB_SLOTS = 6;
+let kbSlot = (() => { try { return Number(localStorage.getItem('kbSlot')) || 0; } catch (e) { return 0; } })();
+function kbTeamBar() {
+    const ts = (km && km.teams) || [];
+    const btns = Array.from({ length: KB_SLOTS }, (_, i) => {
+        const t = ts[i];
+        return `<button type="button" class="kb-tslot ${i === kbSlot ? 'on' : ''} ${t && t.keys.length ? '' : 'empty'}" data-kbslot="${i}">${esc(t ? t.name : 'Team ' + (i + 1))}<small>${t ? t.keys.length : 0}/${KB_TEAM}</small></button>`;
+    }).join('');
+    return `<div class="kb-teambar"><span class="lbl">Teams</span>${btns}
+        <button type="button" class="gold" data-kbsave="1" ${kbPick.team.length ? '' : 'disabled'} title="Save the picked cards into the selected slot">💾 Save</button>
+        <button type="button" class="ghost" data-kbrename="1" title="Rename the selected slot">✏️</button></div>`;
+}
+// Slot laden: nur Karten, die man noch hat, jede Karte einmal
+function kbLoadSlot(i) {
+    const t = ((km && km.teams) || [])[i];
+    kbSlot = i;
+    try { localStorage.setItem('kbSlot', String(i)); } catch (e) { /* egal */ }
+    if (!t) return;
+    const have = (km && km.have) || {};
+    const team = [];
+    for (const k of t.keys) if (have[k] > 0 && !team.some(x => kmParse(x).id === kmParse(k).id)) team.push(k);
+    kbPick.team = team.slice(0, KB_TEAM);
+}
 // Kampfkraft wie bei den Arenaleitern (km-gyms.js), Variante als Aufschlag
 const kbPower = (c, v) => (c.bst.hp + 1.3 * Math.max(c.bst.atk, c.bst.spa) + 0.8 * (c.bst.def + c.bst.spd) + 0.9 * c.bst.spe) * kmLvMul(kmBestLv(kmKeyOf(c.id, v))) *
     (1 + (v.includes('s') ? 0.1 : 0) + (v.includes('m') ? 0.08 : v.includes('p') ? 0.03 : 0));
@@ -1282,6 +1307,7 @@ function kbDrawPick() {
         sub = `Pick ${KB_TEAM} different cards. The first one starts. You don't see ${esc(foe)}'s team until the fight.`;
     }
     return `<div class="kb-pick-head">${head}</div>
+        ${kbTeamBar()}
         <div class="kb-slots">${slots}${go}</div>
         <div class="hint">${sub}</div>
         <div class="kb-sortbar">
@@ -1515,7 +1541,7 @@ setInterval(() => {
 
 $('km-body').addEventListener('click', e => {
     if (kmTab !== 'battle' && kmTab !== 'duel') return;
-    const t = e.target.closest('[data-kbgym],[data-kbpick],[data-kbunpick],[data-kbatk],[data-kbsw],[data-kbff],[data-kdjoin],[data-kddecline],[data-kdto],#kb-back,#kb-fight,#kb-done,#kb-again,[data-kmfrag],#kb-openpack,#kd-create,#kd-cancel,#kd-leave,#kd-ready,#kd-done');
+    const t = e.target.closest('[data-kbgym],[data-kbpick],[data-kbunpick],[data-kbatk],[data-kbsw],[data-kbff],[data-kdjoin],[data-kddecline],[data-kdto],#kb-back,#kb-fight,#kb-done,#kb-again,[data-kmfrag],[data-kbslot],[data-kbsave],[data-kbrename],#kb-openpack,#kd-create,#kd-cancel,#kd-leave,#kd-ready,#kd-done');
     if (!t) return;
     e.stopPropagation();
     const ds = t.dataset;
@@ -1553,6 +1579,17 @@ $('km-body').addEventListener('click', e => {
         return kmDraw();
     }
     if (ds.kmfrag) return wsSend({ type: 'kmFragBuy', n: 1 });
+    if (ds.kbslot !== undefined && kbPick) { kbLoadSlot(Number(ds.kbslot)); return kmDraw(); }
+    if (ds.kbsave && kbPick) {
+        const cur = ((km && km.teams) || [])[kbSlot];
+        return wsSend({ type: 'kmTeamSave', slot: kbSlot, name: cur ? cur.name : 'Team ' + (kbSlot + 1), keys: kbPick.team });
+    }
+    if (ds.kbrename) {
+        const cur = ((km && km.teams) || [])[kbSlot];
+        const name = prompt('Name for this team slot:', cur ? cur.name : 'Team ' + (kbSlot + 1));
+        if (name !== null) wsSend({ type: 'kmTeamSave', slot: kbSlot, name: name.trim(), keys: cur ? cur.keys : kbPick ? kbPick.team : [] });
+        return;
+    }
     if (t.id === 'kb-again') {
         // Gleiches Team nochmal
         const last = kbP.gym.lastTeam, zone = kbP.gym.result && kbP.gym.result.gym;
