@@ -351,6 +351,16 @@ const ZOMBIE_WORLD = makeWorld(buildZombieMap(), ZMB_W, ZMB_H);
 // 6.5.1 (Max: zu viel Geld): Kill 5 -> 3, Welle 50 -> 30 (Welle 20 vorher ~15k Coins, jetzt ~8k)
 const Z_COINS = { kill: 3, tank: 12, boss: 200, wave: 30 };
 
+// Schwierigkeit (6.10, Max): waehlt der Host beim Erstellen der Lobby.
+// Normal = bisheriges Spiel. Punkte je Zombie bleiben gleich (Schaden wird
+// durch die HP geteilt), Coins und XP am Ende werden mit `reward` skaliert.
+// Easy zaehlt nicht fuer die beste Welle, sonst waere die nichts mehr wert.
+const Z_DIFF = {
+    easy: { name: 'Easy', icon: '🟢', hp: 0.65, dmg: 0.6, spd: 0.92, count: 0.8, reward: 0.5 },
+    normal: { name: 'Normal', icon: '🟡', hp: 1, dmg: 1, spd: 1, count: 1, reward: 1 },
+    hard: { name: 'Hard', icon: '🔴', hp: 1.5, dmg: 1.35, spd: 1.08, count: 1.2, reward: 1.75 }
+};
+
 // 6.5 (Max: bis Welle 10 viel zu einfach, auch mit Level 3 und Mystery-Box-
 // Waffen): Zombies werden je Welle zaeher, staerker und schneller.
 //   HP     Welle 5 ×2,4 · 10 ×5,3 · 15 ×8,1 · 20 ×12 · 25 ×17
@@ -1918,6 +1928,8 @@ module.exports = function createArena(h, opts = {}) {
     // Perks. Wer stirbt, ist bis zum Ende der Welle raus; sind alle tot, ist
     // Schluss. Wie im PvP mit Kopien des Loadouts: nichts geht verloren.
     // Coins (5.9): am Ende je Spieler Kill-Coins + Wellenbonus -> zCoins().
+    const zd = Z_DIFF[opts.diff] || Z_DIFF.normal;
+    const zdId = Z_DIFF[opts.diff] ? opts.diff : 'normal';
     const zb = mode === 'zombies' ? { wave: 0, phase: 'wait', until: 0, toSpawn: 0, spawnAt: 0, over: false, kills: new Map(), kc: new Map(), dt: 0, fx: {}, shrineN: 0 } : null;
     const zfx = (k, now) => zb && now < (zb.fx[k] || 0);
 
@@ -1958,7 +1970,7 @@ module.exports = function createArena(h, opts = {}) {
         zb.phase = 'wave';
         const bossWave = zb.wave % 5 === 0;
         // Bosswellen: weniger Fussvolk, der Boss ist die Welle
-        zb.toSpawn = Math.round((8 + 5 * zb.wave) * (1 + 0.6 * (players.size - 1)) * (bossWave ? 0.5 : 1));
+        zb.toSpawn = Math.round((8 + 5 * zb.wave) * (1 + 0.6 * (players.size - 1)) * (bossWave ? 0.5 : 1) * zd.count);
         zb.spawnAt = now + (bossWave ? 3500 / SPEED : 0);
         if (bossWave) {
             // Feste Reihenfolge (Max): 5 Abomination, 10 Necromancer, 15 Brood Mother,
@@ -1973,9 +1985,9 @@ module.exports = function createArena(h, opts = {}) {
             const m = spawnMob(kind, s.x, s.y, now);
             // Bullet-Hell-Bosse (6.9, Max): keine kleinen Mobs, nur der Boss
             if (m.def.pattern) zb.toSpawn = 0;
-            m.hp = m.maxHp = Math.round(m.maxHp * (1 + 1.2 * cycle));
-            m.dm = zDmg(zb.wave);
-            m.sp = 1 + 0.1 * cycle;
+            m.hp = m.maxHp = Math.round(m.maxHp * (1 + 1.2 * cycle) * zd.hp);
+            m.dm = zDmg(zb.wave) * zd.dmg;
+            m.sp = (1 + 0.1 * cycle) * zd.spd;
             m.bossIdx = idx;
             // Auftritt: erst nach der Vorstellung loslegen
             m.nextThink = m.nextShot = m.nextSlam = m.nextCharge = m.nextStrike = m.nextSummon = m.nextRing = now + 3000 / SPEED;
@@ -2002,9 +2014,9 @@ module.exports = function createArena(h, opts = {}) {
         let r = Math.random() * pool.reduce((a, [, n]) => a + n, 0), kind = 'zombie';
         for (const [k, n] of pool) if ((r -= n) < 0) { kind = k; break; }
         const m = spawnMob(kind, s.x + (Math.random() - 0.5) * 60, s.y + (Math.random() - 0.5) * 60, now);
-        m.hp = m.maxHp = Math.round(m.maxHp * zHp(w));
-        m.dm = zDmg(w);
-        m.sp = zSpd(w);
+        m.hp = m.maxHp = Math.round(m.maxHp * zHp(w) * zd.hp);
+        m.dm = zDmg(w) * zd.dmg;
+        m.sp = zSpd(w) * zd.spd;
     }
 
     function zTick(now, dt) {
@@ -2100,22 +2112,24 @@ module.exports = function createArena(h, opts = {}) {
         const a = st(p.c);
         a.zombies = a.zombies || { bestWave: 0, games: 0, kills: 0 };
         const reached = Math.max(0, zb.wave - (zb.phase === 'wave' ? 1 : 0));
-        a.zombies.bestWave = Math.max(a.zombies.bestWave, reached);
+        if (zdId !== 'easy') a.zombies.bestWave = Math.max(a.zombies.bestWave, reached);
+        a.zombies.bestBy = a.zombies.bestBy || {};
+        a.zombies.bestBy[zdId] = Math.max(a.zombies.bestBy[zdId] || 0, reached);
         a.zombies.games++;
         a.zombies.kills += zb.kills.get(p.id) || 0;
-        const xp = Math.round(40 * Math.pow(reached, 1.35));
+        const xp = Math.round(40 * Math.pow(reached, 1.35) * zd.reward);
         award(p, xp, `survived ${reached} wave${reached === 1 ? '' : 's'}`);
         // Coins (5.9): erst jetzt, am Ende des Spiels (alle tot oder verlassen)
-        const coins = Math.floor(zCoins(reached, zb.kc.get(p.id) || 0) * (p.b ? p.b.zCoins : 1));
+        const coins = Math.floor(zCoins(reached, zb.kc.get(p.id) || 0) * (p.b ? p.b.zCoins : 1) * zd.reward);
         if (coins > 0 && p.account) {
             h.accounts.addCoins(p.account, coins);
             h.accounts.earn(p.account, 'shooter', coins);
             a.zombies.coins = (a.zombies.coins || 0) + coins;
-            if (coins >= 5000) h.feed(`🧟 ${p.name} survived ${reached} waves and earned ${coins.toLocaleString('en-US')} coins`, 'gold');
+            if (coins >= 5000) h.feed(`🧟 ${p.name} survived ${reached} waves${zdId === 'normal' ? '' : ` (${zd.name})`} and earned ${coins.toLocaleString('en-US')} coins`, 'gold');
             h.refresh(p.c);
         }
         h.accounts.touch();
-        h.send(p.c, { type: 'shLeft', result: 'zombies', wave: reached, kills: zb.kills.get(p.id) || 0, best: a.zombies.bestWave, xp, coins });
+        h.send(p.c, { type: 'shLeft', result: 'zombies', wave: reached, kills: zb.kills.get(p.id) || 0, best: a.zombies.bestWave, xp, coins, diff: zdId });
     }
 
     function zFinish() {
@@ -2157,7 +2171,7 @@ module.exports = function createArena(h, opts = {}) {
             if (!pay(zBoxPrice(p.boxN || 0))) return;
             p.boxN = (p.boxN || 0) + 1;
             let it = null;
-            const src = Math.random() < p.b.zBox ? 'sovereign' : 'elite';
+            const src = Math.random() < p.b.zBox ? 'zbox_s' : 'zbox';
             for (let k = 0; k < 30 && (!it || it.kind !== 'weapon'); k++) it = I.generate(src);
             if (!it || it.kind !== 'weapon') it = I.plain('weapon', 'rifle');
             giveWeapon(it);
@@ -2379,7 +2393,9 @@ module.exports = function createArena(h, opts = {}) {
         if (attacker && players.has(attacker.id)) {
             m.tgt = attacker.id;
             m.seen = now;
-            h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: Math.round(dmg), kill: m.hp <= 0, crit: !!crit });
+            // 6.10 (Max: Amaterasu-Brand zu laut): Brand-Ticks kamen je Server-Tick
+            // als Treffer an und piepten im Dauerfeuer – wie bei Spielern nur noch der Kill
+            if (!(w && w.dot) || m.hp <= 0) h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: Math.round(dmg), kill: m.hp <= 0, crit: !!crit });
         }
         if (m.hp > 0 && w) {
             if (w.burn) m.burn = { dps: w.burn, until: now + 3000 / SPEED, from: attacker ? attacker.id : null };
@@ -2388,7 +2404,7 @@ module.exports = function createArena(h, opts = {}) {
         }
         // Punkte nach Schaden statt je Treffer (6.5, Feedback Schmoggi: mit der SMG
         // liess sich Geld farmen, mit allem anderen nicht). Nur echter Schaden zaehlt.
-        if (zb && attacker && players.has(attacker.id)) attacker.pts += real / zHp(zb.wave) * Z_PTS_PER_DMG * zPtsMul(attacker, now);
+        if (zb && attacker && players.has(attacker.id)) attacker.pts += real / (zHp(zb.wave) * zd.hp) * Z_PTS_PER_DMG * zPtsMul(attacker, now);
         if (m.hp <= 0) mobDies(m, attacker && players.has(attacker.id) ? attacker : null, now);
     }
 
@@ -2906,9 +2922,9 @@ module.exports = function createArena(h, opts = {}) {
                 const d = spawnMob(def.summon.kind, x, y, now);
                 // Im Zombie-Modus waechst die Brut mit der Welle (etwas schwaecher als normal)
                 if (zb) {
-                    d.hp = d.maxHp = Math.round(d.maxHp * (1 + (zHp(zb.wave) - 1) * 0.6));
-                    d.dm = zDmg(zb.wave);
-                    d.sp = zSpd(zb.wave);
+                    d.hp = d.maxHp = Math.round(d.maxHp * (1 + (zHp(zb.wave) - 1) * 0.6) * zd.hp);
+                    d.dm = zDmg(zb.wave) * zd.dmg;
+                    d.sp = zSpd(zb.wave) * zd.spd;
                 }
                 d.parent = m.id;
                 d.tgt = tgt.id;
@@ -3264,7 +3280,7 @@ module.exports = function createArena(h, opts = {}) {
                     hid: (!!(p.zone || p.smoke !== null) && now - p.lastShot >= REVEAL_MS * p.b.reveal) || stillHidden(p, now)
                 },
                 pvp: pvp ? { round: pvp.round, score: pvp.score, phase: pvp.phase, left: Math.max(0, Math.round(pvp.until - now)), last: pvp.last, team: p.team } : undefined,
-                zmb: zb ? { wave: zb.wave, phase: zb.phase, left: Math.max(0, Math.round(zb.until - now)), zombies: mobs.length + zb.toSpawn, pts: Math.floor(p.pts), perks: p.perks,
+                zmb: zb ? { diff: zdId, wave: zb.wave, phase: zb.phase, left: Math.max(0, Math.round(zb.until - now)), zombies: mobs.length + zb.toSpawn, pts: Math.floor(p.pts), perks: p.perks,
                     disc: p.b.zDisc, perkDisc: p.b.zDisc * p.b.zPerk,
                     fx: Object.fromEntries(Object.entries(zb.fx).filter(([, t]) => t > now).map(([k, t]) => [k, Math.round(t - now)])),
                     pap: zPapPrice((p.gear[p.slot] && p.gear[p.slot].pap) || 0), box: zBoxPrice(p.boxN || 0), shrine: zShrinePrice(zb.shrineN), armor: p.armorN || 0,

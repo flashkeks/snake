@@ -23,7 +23,7 @@ module.exports = function createRooms(h) {
     function view(l) {
         const team = t => [...l.members.values()].filter(m => m.team === t).map(m => ({ id: m.c.id, name: m.name, lv: m.level, rating: m.rating, best: m.best }));
         return {
-            id: l.id, kind: l.kind, size: l.size, host: l.hostName, state: l.state, a: team('a'), b: team('b'),
+            id: l.id, kind: l.kind, size: l.size, diff: l.diff, host: l.hostName, state: l.state, a: team('a'), b: team('b'),
             startIn: l.state === 'starting' ? Math.max(0, l.startAt - Date.now()) : null, map: l.mapName || null
         };
     }
@@ -62,11 +62,13 @@ module.exports = function createRooms(h) {
         } else if (!full) l.state = 'open';
     }
 
-    function create(c, size, kind) {
+    function create(c, size, kind, diff) {
         kind = kind === 'zombies' ? 'zombies' : 'pvp';
+        // Zombies: Schwierigkeit (6.10), sonst null
+        diff = kind === 'zombies' ? (['easy', 'normal', 'hard'].includes(diff) ? diff : 'normal') : null;
         size = kind === 'zombies' ? 4 : [1, 2, 3].includes(Number(size)) ? Number(size) : 1;
         if (lobbies.size >= MAX_LOBBIES) return 'Too many lobbies right now';
-        const l = { id: ++seq, kind, size, members: new Map(), state: 'open', startAt: 0, arena: null, hostName: '', go: false };
+        const l = { id: ++seq, kind, size, members: new Map(), state: 'open', startAt: 0, arena: null, hostName: '', go: false, diff };
         const m = member(c);
         l.hostName = m.name;
         l.members.set(c.id, m);
@@ -120,7 +122,7 @@ module.exports = function createRooms(h) {
         l.state = 'playing';
         l.mapName = world.map.name;
         l.arena = h.createArena({
-            mode: l.kind, world, size: l.size,
+            mode: l.kind, world, size: l.size, diff: l.diff,
             onDone: () => {
                 // Match vorbei: Lobby weg (die Spieler landen wieder im Hub)
                 lobbies.delete(l.id);
@@ -152,7 +154,7 @@ module.exports = function createRooms(h) {
         if (d.type === 'pvpCreate' || d.type === 'pvpJoin') {
             if (h.busy(c)) err = 'Leave your raid or game first';
             else if (lobbyOf(c)) err = 'You are already in a lobby';
-            else err = d.type === 'pvpCreate' ? create(c, d.size, d.kind) : join(c, d.id, d.team);
+            else err = d.type === 'pvpCreate' ? create(c, d.size, d.kind, d.diff) : join(c, d.id, d.team);
         } else if (d.type === 'pvpLeave') leave(c);
         else if (d.type === 'pvpStart') {
             // Zombies: der Host startet auch mit weniger als 4 Spielern

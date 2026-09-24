@@ -10788,6 +10788,12 @@ function hubPvp() {
 }
 
 // Zombies: Lobbys mit bis zu 4 Spielern, der Host startet
+// 6.10: drei Schwierigkeiten, der Host waehlt sie beim Erstellen
+const ZDIFF = {
+    easy: { name: 'Easy', icon: '🟢', desc: 'weaker zombies, half the coins and XP, no best wave' },
+    normal: { name: 'Normal', icon: '🟡', desc: 'the classic' },
+    hard: { name: 'Hard', icon: '🔴', desc: 'tougher, faster, more zombies – ×1.75 coins and XP' }
+};
 function hubZombies() {
     const r = hub.zombies || { bestWave: 0, games: 0, kills: 0 };
     const myLobby = me && pvpLobbies.find(l => [...l.a, ...l.b].some(x => x.name === me.name));
@@ -10795,14 +10801,16 @@ function hubZombies() {
     const lobby = l => {
         const isMine = myLobby && myLobby.id === l.id;
         const isHost = isMine && l.host === me.name;
-        return `<div class="pvp-lobby ${isMine ? 'mine' : ''}"><div class="pvp-head"><b>🧟 ${l.a.length}/4</b><span>host ${esc(l.host)}</span>` +
+        const dv = ZDIFF[l.diff] || ZDIFF.normal;
+        return `<div class="pvp-lobby ${isMine ? 'mine' : ''}"><div class="pvp-head"><b>🧟 ${l.a.length}/4</b><span title="${dv.desc}">${dv.icon} ${dv.name}</span><span>host ${esc(l.host)}</span>` +
             `<span class="pvp-state">${l.state === 'playing' ? '🧟 surviving…' : l.state === 'starting' ? `⏱️ starts in ${left(l)} s` : 'waiting'}</span></div>` +
             `<div class="pvp-team a">${l.a.map(x => `<div>${esc(x.name)} <small>Lv ${x.lv} · best wave ${x.best || 0}</small></div>`).join('')}` +
             (!myLobby && l.state !== 'playing' && l.a.length < 4 ? `<button type="button" data-pvp="join" data-id="${l.id}" data-team="a">Join</button>` : '') + '</div>' +
             (isMine && l.state === 'open' ? `<div class="pvp-acts">${isHost ? '<button type="button" class="gold" data-pvp="start">▶ Start now</button>' : '<span class="hint">Waiting for the host to start…</span>'}<button type="button" class="danger" data-pvp="leave">Leave lobby</button></div>` : '') + '</div>';
     };
     return `<div class="pvp-top"><div><b>🧟 Best wave ${r.bestWave}</b> <span class="hint">· ${r.games} games · ${r.kills} zombies killed</span></div>` +
-        (myLobby ? '' : '<div class="pvp-create"><button type="button" class="gold" data-pvp="create" data-kind="zombies">＋ Create a zombies lobby</button></div>') + '</div>' +
+        (myLobby ? '' : '<div class="pvp-create">Create a lobby: ' + Object.entries(ZDIFF).map(([k, d]) => `<button type="button" class="gold" data-pvp="create" data-kind="zombies" data-diff="${k}" title="${d.desc}">${d.icon} ${d.name}</button>`).join('') + '</div>') + '</div>' +
+        `<div class="hint">${Object.values(ZDIFF).map(d => `${d.icon} <b>${d.name}</b>: ${d.desc}`).join(' · ')}${r.bestBy ? ` · best: ${Object.entries(ZDIFF).map(([k, d]) => `${d.icon} ${(r.bestBy || {})[k] || 0}`).join(' ')}` : ''}</div>` +
         `<div class="hint">Survive as many waves as you can, up to 4 players. Points for every hit and kill – spend them on wall guns 🔫, the mystery box 🎁, Pack-a-Punch ⚡ (×1.6 damage per level) and perks 🥤. ` +
         `You bring <b>copies</b> of your loadout – nothing is lost. Fallen players come back after the wave. XP for every wave you survive.</div>` +
         `<div class="pvp-list">${pvpLobbies.filter(l => l.kind === 'zombies').map(lobby).join('') || '<div class="hint">No lobbies yet – create one!</div>'}</div>` +
@@ -10810,7 +10818,7 @@ function hubZombies() {
 }
 
 function pvpClick(ds) {
-    if (ds.pvp === 'create' && ds.kind === 'zombies') return wsSend({ type: 'pvpCreate', kind: 'zombies' });
+    if (ds.pvp === 'create' && ds.kind === 'zombies') return wsSend({ type: 'pvpCreate', kind: 'zombies', diff: ds.diff || 'normal' });
     if (ds.pvp === 'start') return wsSend({ type: 'pvpStart' });
     if (ds.pvp === 'create') wsSend({ type: 'pvpCreate', size: Number(ds.size) });
     if (ds.pvp === 'join') wsSend({ type: 'pvpJoin', id: Number(ds.id), team: ds.team });
@@ -13282,7 +13290,8 @@ function shEventHud(c, latest, W, H, now, dpr) {
         const perks = (zm.perks || []).map(k => (sh.map.perks[k] || {}).icon).join('');
         const PU = { double: '✖️2 Double Points', insta: '💀 Insta-Kill', sale: '🏷️ Fire Sale' };
         const fx = Object.entries(zm.fx || {}).map(([k, ms]) => `${PU[k] || k} ${Math.max(0, Math.ceil((ms - (now - latest.recv)) / 1000))}s`).join(' · ');
-        const text = (zm.phase === 'break' ? `🧟 Wave ${zm.wave + 1} in ${secs} s · 💰 ${zm.pts.toLocaleString('en-US')} ${perks}` : `🧟 Wave ${zm.wave} · ${zm.zombies} left · 💰 ${zm.pts.toLocaleString('en-US')} ${perks}`) + (fx ? ` · ${fx}` : '');
+        const dv = zm.diff && zm.diff !== 'normal' && ZDIFF[zm.diff] ? ZDIFF[zm.diff].icon + ' ' : '';
+        const text = dv + (zm.phase === 'break' ? `🧟 Wave ${zm.wave + 1} in ${secs} s · 💰 ${zm.pts.toLocaleString('en-US')} ${perks}` : `🧟 Wave ${zm.wave} · ${zm.zombies} left · 💰 ${zm.pts.toLocaleString('en-US')} ${perks}`) + (fx ? ` · ${fx}` : '');
         c.font = 'bold 18px system-ui';
         c.textAlign = 'center';
         c.textBaseline = 'middle';

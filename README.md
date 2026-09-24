@@ -2162,3 +2162,36 @@ teurer, insgesamt noch weniger Punkte.
   damit erst deutlich spaeter drin.
 - Test (lokal, `zStation` ueber `shInteract`): Box 2000/2500/3000/3500,
   Altar 6000/9000/12000, PaP 5k…25k, Stufe 6 abgelehnt; Snapshot-Preise stimmen.
+
+### 6.10, Teil 2: Schwierigkeit, Box-Chancen, Brand-Piep (Max)
+
+**Schwierigkeit.** Der Host waehlt sie beim Erstellen der Lobby
+(`pvpCreate` mit `diff: 'easy'|'normal'|'hard'`, `arena-rooms.js` merkt sie als
+`l.diff`, gibt sie als `opts.diff` an die Arena). In `shooter.js` steht `Z_DIFF`:
+
+| | HP | Schaden | Tempo | Anzahl | Coins + XP am Ende |
+|---|---|---|---|---|---|
+| 🟢 Easy | ×0,65 | ×0,6 | ×0,92 | ×0,8 | ×0,5 |
+| 🟡 Normal | ×1 | ×1 | ×1 | ×1 | ×1 |
+| 🔴 Hard | ×1,5 | ×1,35 | ×1,08 | ×1,2 | ×1,75 |
+
+- Gilt fuer normale Zombies, Bosse und die Brut der Bosse.
+- Punkte je Zombie bleiben auf jeder Stufe gleich: der Schaden wird durch
+  `zHp(Welle) * zd.hp` geteilt. Hard bringt nur ueber die Menge (×1,2) mehr Punkte.
+- Easy zaehlt nicht fuer `bestWave` (sonst waere die Bestenliste wertlos).
+  Neu ist `a.zombies.bestBy[stufe]` mit der besten Welle je Stufe; das Hub zeigt sie.
+- Snapshot `zmb.diff`, HUD zeigt das Symbol vor der Welle (nicht bei Normal).
+  `shLeft` traegt `diff`.
+- Test lokal (Welle 6): Easy 29 Zombies, Normal 37, Hard 45; Ende Welle 10
+  solo: XP 448/895/1567, Coins 825/1650/2887; Easy laesst `bestWave` auf 0.
+
+**Mystery Box.** Eigene Quellen `zbox` (statt `elite`) und `zbox_s` (statt
+`sovereign`, Lucky box aus dem Baum), nur Waffen. Legendary, Mythic und Ultra
+doppelt so oft, der Aufschlag geht von der untersten Stufe ab.
+Stichprobe 400k: Legendary 1030 -> 1957, Mythic 28 -> 42.
+
+**Brand-Piep (Amaterasu).** `hurtMob` hat bei jedem Brand-Tick (je Server-Tick,
+je brennendem Zombie) ein `shHit` geschickt, der Client piept bei jedem. Mit
+Amaterasus Dauerbrand auf vielen Zombies wurde das zum Dauerton. Jetzt schickt
+ein Brand-Tick (`w.dot`) nur beim Kill ein `shHit`, genau wie bei Spielern.
+Test: Zombie brennt ~1 s bis zum Tod -> genau ein `shHit` mit `kill: true`.

@@ -276,6 +276,11 @@ const SOURCES = {
     elite_w50: { t: [0, 0.3, 0.3875, 0.30614583, 0.00604167, 0.0002875, 0.00002875], kinds: { weapon: 1 } },
     elite_a50: { t: [0, 0.3, 0.3875, 0.30614583, 0.00604167, 0.0002875, 0.00002875], kinds: { armor: 0.85, pack: 0.15 } },
     sovereign: { t: [0, 0, 0.35, 0.6322333, 1 / 60, 0.001, 0.0001], kinds: { weapon: 0.45, armor: 0.33, util: 0.15, pack: 0.07 } },
+    // Mystery Box im Zombie-Modus (6.10, Max: jetzt wo sie teuer ist): nur
+    // Waffen, Legendary und hoeher doppelt so oft wie Elite/Sovereign; der
+    // Aufschlag kommt aus der untersten Stufe
+    zbox: { t: [0, 0.397445, 0.4, 0.19745, 0.005, 0.0001, 0.00001], kinds: { weapon: 1 } },
+    zbox_s: { t: [0, 0, 0.33223337, 0.6322333, 1 / 30, 0.002, 0.0002], kinds: { weapon: 1 } },
     // Scrap-Shop: Waffe mit garantiert einem Effekt
     modded: { t: [0.6, 0.3, 0.1, 0, 0, 0, 0], kinds: { weapon: 1 }, effects: [0, 0.9, 0.095, 0.005] }
 };
