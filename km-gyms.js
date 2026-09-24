@@ -18,8 +18,8 @@ const GYMS = [
     { id: 'volt', name: 'Volt Gym', icon: '⚡', leader: 'Sparky', type: 'electric', rar: ['uncommon', 'rare'], mul: 0.93, smart: 1, coins: 6500, pack: 'waifu' },
     { id: 'dojo', name: 'Iron Dojo', icon: '👊', leader: 'Master Ken', type: 'fighting', rar: ['rare'], mul: 1.07, smart: 1, coins: 8000, pack: 'film' },
     { id: 'mind', name: 'Mind Tower', icon: '🔮', leader: 'Oracle Lua', type: 'psychic', rar: ['rare', 'epic'], mul: 1.18, smart: 2, coins: 11000, pack: 'anime' },
-    { id: 'shadow', name: 'Shadow Gym', icon: '🌑', leader: 'Noct', type: 'dark', rar: ['epic'], mul: 1.07, smart: 2, coins: 15000, pack: 'waifu' },
-    { id: 'champ', name: 'Kek Champion', icon: '👑', leader: 'The Kek', type: null, rar: ['legendary', 'secret'], mul: 1.48, smart: 2, coins: 30000, pack: 'mixed' }
+    { id: 'shadow', name: 'Shadow Gym', icon: '🌑', leader: 'Noct', type: 'dark', rar: ['epic'], mul: 1.02, smart: 2, coins: 15000, pack: 'waifu' },
+    { id: 'champ', name: 'Kek Champion', icon: '👑', leader: 'The Kek', type: null, rar: ['legendary', 'secret'], mul: 1.44, smart: 2, coins: 30000, pack: 'mixed' }
 ];
 // Staerke per Simulation (24.09.2026, Kampfsystem 6.0, tools/km-sim.js auf edge
 // mit den echten Karten; Spieler = KI-Stufe 1, Zufallsteam der Arena-Seltenheit).
