@@ -314,7 +314,8 @@ const ZOMBIE_WORLD = makeWorld(buildZombieMap(), ZMB_W, ZMB_H);
 // am Spielende je Spieler: eigene Kills (Tank/Boss mehr) plus Wellenbonus,
 // der mit jeder ueberlebten Welle waechst (Welle n bringt 50·n).
 // Richtwerte solo: Welle 5 ~1,2k, Welle 10 ~4k, Welle 20 ~15k Coins.
-const Z_COINS = { kill: 5, tank: 20, boss: 250, wave: 50 };
+// 6.5.1 (Max: zu viel Geld): Kill 5 -> 3, Welle 50 -> 30 (Welle 20 vorher ~15k Coins, jetzt ~8k)
+const Z_COINS = { kill: 3, tank: 12, boss: 200, wave: 30 };
 
 // 6.5 (Max: bis Welle 10 viel zu einfach, auch mit Level 3 und Mystery-Box-
 // Waffen): Zombies werden je Welle zaeher, staerker und schneller.
@@ -323,10 +324,14 @@ const Z_COINS = { kill: 5, tank: 20, boss: 250, wave: 50 };
 //   Tempo  +1,5 % je Welle, hoechstens +40 %
 const zHp = w => 1 + 0.3 * (w - 1) + 0.015 * (w - 1) * (w - 1);
 const zDmg = w => 1 + 0.06 * (w - 1);
-const Z_PTS_PER_DMG = 1;
+// 6.5.1: halbiert (Punkte fuer Waffen/Perks kamen zu schnell)
+const Z_PTS_PER_DMG = 0.5;
 // Kugel-Optik der Zombie-Bosse (tier-Feld der Kugel, 1024 = Boss-Kugel)
 const BOSS_LOOK = { abomination: 5, necro: 11, brood: 12, inferno: 13, storm: 14, overlord: 15 };
-const zSpd = w => Math.min(1.4, 1 + 0.015 * (w - 1));
+// 6.5.1: von Anfang an 12 % schneller
+const zSpd = w => Math.min(1.5, 1.12 + 0.015 * (w - 1));
+// Pause zwischen Wellen: am Anfang kurz, spaeter mehr Zeit zum Einkaufen
+const zBreak = w => Math.min(12000, 4000 + 600 * w);
 function zCoins(reached, killCoins) {
     return Math.floor(killCoins + Z_COINS.wave * reached * (reached + 1) / 2);
 }
@@ -1762,8 +1767,8 @@ module.exports = function createArena(h, opts = {}) {
 
     function zStart() {
         zb.phase = 'break';
-        zb.until = Date.now() + 6000 / SPEED;
-        for (const p of players.values()) h.send(p.c, { type: 'shEvent', text: '🧟 The dead are coming – first wave in 6 s', kind: 'boss' });
+        zb.until = Date.now() + 4000 / SPEED;
+        for (const p of players.values()) h.send(p.c, { type: 'shEvent', text: '🧟 The dead are coming – first wave in 4 s', kind: 'boss' });
     }
 
     function zWave(now) {
@@ -1834,11 +1839,11 @@ module.exports = function createArena(h, opts = {}) {
             if (zb.toSpawn > 0 && now >= zb.spawnAt && mobs.length < cap) {
                 zSpawn(now);
                 zb.toSpawn--;
-                zb.spawnAt = now + Math.max(180, 1000 - 55 * zb.wave) / SPEED;
+                zb.spawnAt = now + Math.max(160, 750 - 45 * zb.wave) / SPEED;
             }
             if (zb.toSpawn === 0 && !mobs.length) {
                 zb.phase = 'break';
-                zb.until = now + 12000 / SPEED;
+                zb.until = now + zBreak(zb.wave) / SPEED;
                 bossId = null;
                 for (const p of players.values()) {
                     award(p, 20 * zb.wave, `wave ${zb.wave}`);
@@ -1848,13 +1853,40 @@ module.exports = function createArena(h, opts = {}) {
                         const sp = MAP.spawns.a[0];
                         Object.assign(p, { dead: false, x: sp.x, y: sp.y, hp: p.maxHp, burn: null, protect: now + 3000 / SPEED });
                     }
-                    h.send(p.c, { type: 'shEvent', text: `✅ Wave ${zb.wave} survived – fully healed, next one in 12 s`, kind: 'drop' });
+                    h.send(p.c, { type: 'shEvent', text: `✅ Wave ${zb.wave} survived – fully healed, next one in ${Math.round(zBreak(zb.wave) / 1000)} s`, kind: 'drop' });
                 }
             }
         }
         gridMobs();
         for (const m of [...mobs]) if (m.hp > 0 && mobs.includes(m)) mobTick(m, now, dt);
+        zSeparate();
         gridMobs();
+    }
+
+    // 6.5.1 (Max): Zombies haben untereinander Hitboxen. Vorher liefen alle auf
+    // einen Punkt und eine Armbrust (Durchschlag) erledigte die ganze Traube.
+    // Ueberlappende Paare werden auseinandergeschoben, schwere (grosser Radius,
+    // Bosse) bewegen sich dabei weniger. Geister (Shade) zaehlen nicht.
+    function zSeparate() {
+        const n = mobs.length;
+        for (let i = 0; i < n; i++) {
+            const a = mobs[i];
+            if (!(a.hp > 0) || a.def.ghost) continue;
+            for (let j = i + 1; j < n; j++) {
+                const b = mobs[j];
+                if (!(b.hp > 0) || b.def.ghost) continue;
+                const min = (a.def.r + b.def.r) * 0.92;
+                const dx = b.x - a.x, dy = b.y - a.y;
+                if (dx > min || dx < -min || dy > min || dy < -min) continue;
+                const d = Math.hypot(dx, dy);
+                if (d >= min) continue;
+                const ux = d > 0.01 ? dx / d : Math.cos(i * 2.4 + j), uy = d > 0.01 ? dy / d : Math.sin(i * 2.4 + j);
+                const ma = a.def.boss ? 1e4 : a.def.r * a.def.r, mb = b.def.boss ? 1e4 : b.def.r * b.def.r;
+                const push = min - d;
+                [a.x, a.y] = slide(a.x, a.y, -ux * push * mb / (ma + mb), -uy * push * mb / (ma + mb), a.def.r, mobBlocked);
+                [b.x, b.y] = slide(b.x, b.y, ux * push * ma / (ma + mb), uy * push * ma / (ma + mb), b.def.r, mobBlocked);
+            }
+        }
     }
 
     function zDown(p) {

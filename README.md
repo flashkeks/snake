@@ -1177,6 +1177,14 @@ Menue-Umbau, Zuschauen ohne Ruckeln.
 - **Zuschauen**: im `WATCH`-Modus keine Vorhersage (`shPredict` nimmt die
   interpolierte Server-Position), Sprung je Frame vorher bis 90 px, jetzt
   <= 6 px. Anmeldung erst nach `load`.
+- **6.5.1** (Max, nach ersten Runden bis Welle 20, ~15k Coins je Spiel):
+  Zombies mit Hitboxen untereinander (`zSeparate`, Paare werden nach
+  Radius^2 gewichtet auseinandergeschoben, Bosse fast unbeweglich, Shade
+  ausgenommen) – vorher klebte alles auf einem Punkt, eine Armbrust mit
+  Durchschlag raeumte ab (Messung: tiefe Ueberlappungen max 15 -> 2).
+  Geld: `Z_COINS` kill 3 / tank 12 / boss 200 / wave 30, `Z_PTS_PER_DMG`
+  0,5. Tempo: `zSpd` ab 1,12, Pause `zBreak` = 4 s + 0,6 s je Welle (max
+  12 s), Start 4 s, Nachschub `max(160, 750 - 45w)` ms.
 - **Test** (nur `SNAKE_TEST=1`): `shTestEvent` mit `zwave` (naechste Welle),
   `god`, `zBossHp` (Anteil), `zmob` (Arten neben den Spieler).
 
