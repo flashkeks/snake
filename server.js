@@ -30,6 +30,7 @@ const createGyms = require('./km-gyms');
 const createDuels = require('./km-duels');
 const createWheels = require('./wheels');
 const shop = require('./shop');
+const analyser = require('./analyser');
 const arenaItems = require('./arena-items');
 const arenaLevel = require('./arena-level');
 const luck = require('./luck');
@@ -1679,6 +1680,20 @@ async function handle(c, data) {
         case 'mkLeave':
             c.mkWatch = false;
             return;
+        // Analyser (6.12): eigene Sachen genau ansehen, Seltenheit der Kombination
+        case 'mkAna': {
+            if (!c.account) return;
+            let res = null;
+            try { res = analyser.analyse(accounts, cardDb, c.account, data.ref); } catch (e) { console.error('analyser', e); }
+            send(c, { type: 'mkAna', ref: data.ref, res });
+            return;
+        }
+        case 'mkAnaInv': {
+            if (!c.account) return;
+            const a = accounts.arena(c.account);
+            send(c, { type: 'mkAnaInv', items: a ? [...a.inv, ...(a.overflow || [])] : [] });
+            return;
+        }
 
         case 'lbJoin':
         case 'lbLeave':

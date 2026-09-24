@@ -130,7 +130,7 @@ function mkClose() {
 function onMkState(d) {
     mk = { ...d, at: performance.now() };
     const redraw = () => {
-        if (!$('market').classList.contains('hidden') && mkTab === 'hall') {
+        if (!$('market').classList.contains('hidden') && (mkTab === 'hall' || mkTab === 'ana')) {
             // Tippt jemand gerade (Preis, Gebot)? Dann erst nach dem Verlassen des Feldes
             const f = document.activeElement;
             if (f && f.closest && f.closest('#mk-body') && ['INPUT', 'SELECT'].includes(f.tagName) && f.id !== 'mk-q') mkLater = true;
@@ -161,6 +161,7 @@ function mkDrawRaw() {
         body.innerHTML = '<div class="km-note">Loading the market…</div>';
         return;
     }
+    if (mkTab === 'ana') { body.innerHTML = anaView(); return; }
     const claims = mk.claims.length;
     const sub = [['browse', '🔎 Browse'], ['sell', '📜 Sell'], ['mine', `🧾 My listings & bids`], ['collect', `📦 Collect${claims ? ` (${claims})` : ''}`]]
         .map(([k, n]) => `<button type="button" class="${mkSub === k ? 'on' : ''}" data-mksub="${k}">${n}</button>`).join('');
@@ -176,6 +177,43 @@ function mkDrawRaw() {
         $('mk-q').focus();
         $('mk-q').setSelectionRange(q, q);
     }
+}
+
+// ---------- Analyser (6.12, Max) ----------
+// Eigene Sachen auswaehlen und genau ansehen: alle Werte, wie selten genau diese
+// Kombination ist (Server rechnet, analyser.js) und wie viele es davon gibt.
+let anaSrc = 'item';
+let anaSel = null;              // JSON der gewaehlten ref
+let anaRes = null;              // Antwort des Servers
+let anaInv = null;              // alle Arena-Items (auch ausgeruestete)
+function anaList() {
+    if (anaSrc === 'item') return (anaInv || []).map(it => ({ ref: { k: 'item', uid: it.uid }, asset: { k: 'item', item: it } }))
+        .sort((a, b) => (b.asset.item.odds || 1) - (a.asset.item.odds || 1));
+    return mkMine(anaSrc).map(x => ({ ...x, ref: x.ref.k === 'card' ? { k: 'card', key: x.ref.key, xp: x.ref.xp } : x.ref }));
+}
+function anaView() {
+    if (anaSrc === 'item' && !anaInv) wsSend({ type: 'mkAnaInv' });
+    const srcs = Object.entries(MK_KIND).map(([k, n]) => `<button type="button" class="${anaSrc === k ? 'on' : ''}" data-anasrc="${k}">${n}</button>`).join('');
+    const list = anaList();
+    const pick = list.map((x, i) => `<div class="mk-pick ${anaSel === JSON.stringify(x.ref) ? 'sel' : ''}" data-anapick="${i}">${mkAsset(x.asset)}</div>`).join('');
+    let res = '<div class="hint">Pick something on the left to analyse it.</div>';
+    if (anaSel && anaRes === 'wait') res = '<div class="hint">Analysing…</div>';
+    else if (anaSel && anaRes === null) res = '<div class="hint">Nothing to analyse here.</div>';
+    else if (anaSel && anaRes) {
+        const r = anaRes;
+        const row = x => `<tr><td>${esc(x[0])}${x[2] ? `<small>${esc(x[2])}</small>` : ''}</td><td>${esc(x[1])}</td></tr>`;
+        res = `<h3><span>${r.icon || '🔬'}</span><span class="tier-${esc(r.tier || '')} it-tier" style="font-size:18px">${esc(r.title)}</span></h3>` +
+            (r.odds && r.odds !== null && isFinite(r.odds) ? `<div class="ana-big">1 in ${Number(r.odds).toLocaleString('en-US')}</div><div class="hint">${anaSrc === 'card' ? 'chance per pack in the best pack' : 'chance for exactly this item'}</div>` : '') +
+            `<table>${r.lines.map(x => row(x)).join('')}</table>` +
+            r.sections.map(s => `<h4>${esc(s.title)}</h4><table>${s.rows.map(row).join('')}${s.total ? `<tr class="total"><td>${esc(s.total[0])}</td><td>${esc(s.total[1])}</td></tr>` : ''}</table>`).join('');
+    }
+    return `<div class="cr-diffs mk-sub2">${srcs}</div><div class="hint">🔬 Pick anything you own and see exactly how rare it is – down to the effect levels – and how many exist on this server.</div>` +
+        `<div class="ana-wrap">${anaSel ? `<div class="ana-res">${res}</div>` : ''}<div class="mk-pickgrid">${pick || '<div class="hint">Nothing here.</div>'}</div>${anaSel ? '' : `<div class="ana-res">${res}</div>`}</div>`;
+}
+function onMkAna(d) {
+    if (JSON.stringify(d.ref) !== anaSel) return;
+    anaRes = d.res || null;
+    if (mkTab === 'ana') mkDraw();
 }
 
 // ---------- Auction Hall ----------
@@ -796,6 +834,16 @@ $('mk-body').addEventListener('click', e => {
     const t = e.target;
     const ds = (t.closest('[data-mksub],[data-mksrc],[data-mkpick],[data-mkbuy],[data-mkbid],[data-mkcancel]') || {}).dataset || {};
     if (ds.mksub) { mkSub = ds.mksub; return mkDraw(); }
+    const an = (t.closest('[data-anasrc],[data-anapick]') || {}).dataset || {};
+    if (an.anasrc) { anaSrc = an.anasrc; anaSel = null; anaRes = null; if (anaSrc === 'item') anaInv = null; return mkDraw(); }
+    if (an.anapick !== undefined) {
+        const x = anaList()[Number(an.anapick)];
+        if (!x) return;
+        anaSel = JSON.stringify(x.ref);
+        anaRes = 'wait';
+        wsSend({ type: 'mkAna', ref: x.ref });
+        return mkDraw();
+    }
     if (ds.mksrc) { mkSellSrc = ds.mksrc; mkSell = null; return mkDraw(); }
     if (ds.mkpick !== undefined) {
         const x = mkMine(mkSellSrc)[Number(ds.mkpick)];

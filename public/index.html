@@ -6337,6 +6337,19 @@ body.watch-mode #world-switch {
 #ui-dlg .btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 #ui-dlg .btns button { min-width: 96px; }
 @keyframes uiDlgIn { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+
+/* 6.12: Analyser im Markt */
+.ana-wrap { display: flex; flex-direction: column; gap: 12px; }
+.ana-wrap .mk-pickgrid { max-height: 340px; overflow-y: auto; }
+.ana-res { background: linear-gradient(180deg, #171b25, #11141b); border: 1px solid rgba(90,200,255,.35); border-radius: 12px; padding: 12px 14px; }
+.ana-res h3 { margin: 0 0 8px; display: flex; align-items: center; gap: 8px; font-size: 18px; }
+.ana-res h4 { margin: 12px 0 4px; font-size: 13px; color: #9fb4c8; text-transform: uppercase; letter-spacing: .06em; }
+.ana-res table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ana-res td { padding: 3px 0; vertical-align: top; }
+.ana-res td:last-child { text-align: right; font-weight: 700; white-space: nowrap; padding-left: 8px; }
+.ana-res td small { display: block; color: #8592a3; font-weight: 400; }
+.ana-res tr.total td { border-top: 1px solid rgba(255,255,255,.15); padding-top: 6px; font-size: 15px; color: #ffd23f; }
+.ana-big { font: 900 22px system-ui; color: #ffd23f; margin: 6px 0 2px; }
 </style>
 <link rel="stylesheet" href="/kekemon.css">
 <link rel="stylesheet" href="/market.css">
@@ -6615,6 +6628,7 @@ body.watch-mode #world-switch {
                     <div class="cs-tabs" id="mk-tabs">
                         <button type="button" data-mktab="hall">🏛️ Auction Hall</button>
                         <button type="button" data-mktab="lobby">🌆 Lobby</button>
+                        <button type="button" data-mktab="ana">🔬 Analyser</button>
                     </div>
                     <div class="msg" id="mk-msg"></div>
                     <div id="mk-body"></div>
@@ -7170,6 +7184,8 @@ ws.onmessage = event => {
         case 'kdInvite': onKdInvite(data); break;
         case 'kdInfo': onKdInfo(data); break;
         case 'mkState': onMkState(data); break;
+        case 'mkAna': onMkAna(data); break;
+        case 'mkAnaInv': anaInv = data.items || []; if (mkTab === 'ana') mkDraw(); break;
         case 'mkNote': mkToast(data.text, data.kind); if (!$('market').classList.contains('hidden')) showMsg('mk-msg', data.text, data.kind === 'err' ? 'err' : 'ok'); break;
         case 'lbJoined': onLbJoined(data); break;
         case 'lbState': onLbState(data); break;

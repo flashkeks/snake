@@ -643,7 +643,7 @@ function catalog() {
 
 module.exports = {
     TIERS, TIER_IDX, TIER_ODDS, TIER_BONUS, WEAPONS, ARMORS, SETS, SLOTS, UTILS, PACKS, BASE_PACK, THROW_RANGE, WEAPON_MODS, ARMOR_MODS,
-    SOURCES, CASES, SHOP, INV_MAX, fuse, fuseUseless, FUSE_COST, FUSE_ADD, FUSE_MAX_MODS, maxTierOf, generate, plain, craft, salvageValue, weaponStats, armorStats, catalog, migrate, effectFactor
+    SOURCES, CASES, SHOP, INV_MAX, fuse, fuseUseless, FUSE_COST, FUSE_ADD, FUSE_MAX_MODS, EFFECT_N, maxTierOf, generate, plain, craft, salvageValue, weaponStats, armorStats, catalog, migrate, effectFactor
 };
 
 // Nachrechnen: node arena-items.js [N] – Verteilung je Quelle

@@ -1,5 +1,17 @@
 [
   {
+    "version": "6.12",
+    "date": "25.09.2026",
+    "items": [
+      "🕳️ Raid: hatches lead down into an abandoned military base – and below it, a lab where something escaped",
+      "🎨 Raid got a new look: grass, rocks, brick walls, new enemy designs",
+      "🔬 New in the Market: the Analyser – see exactly how rare your stuff is",
+      "🧲 Homing bullets now chase enemies too",
+      "🔌 Losing connection in a raid drops your items like leaving",
+      "🪟 New confirmation dialogs"
+    ]
+  },
+  {
     "version": "6.11.1",
     "date": "25.09.2026",
     "items": [

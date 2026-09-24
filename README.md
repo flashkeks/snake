@@ -2406,3 +2406,33 @@ gibt es 14 Ruestungen ohne Set (Kevlar, Bike helmet, Knee pads, …) – dort wa
 das einen Fehler, die Liste wurde nie gezeichnet, beim Wechsel auf „Armor" passierte
 nichts. Jetzt wird das Set nur gezeigt, wenn es eins gibt. Die Server-Seite
 (`accounts.adminArena` op `give`) war in Ordnung.
+
+## 🕳️ 6.12: Untergrund, Raid-Optik, Analyser (25.09.2026, Max)
+
+**Untergrund** (`arena-under.js`): zwei Ebenen neben der Oberflaeche in derselben
+Welt (Abstand 2600 > Sichtweite), `MAP.regions` = surface/bunker/lab. `makeWorld`
+laesst nur innerhalb einer Ebene stehen (`outside()`), der Client (`shBlocked`)
+genauso. Treppen sind Stationen `kind: 'portal'` mit `to`; F teleportiert (1,5 s
+Sperre und Schutz, Flaggentraeger nicht). Oben 3 Luken -> Keller (Ebene −1,
+verlassener Militaerstuetzpunkt: 4 × 3 Betonraeume, Sandsaecke, Lampen, Munitionskisten
+aus `military`), dort eine Treppe ins Labor (Ebene −2: Halle mit 10 DNA-Tanks, einige
+zerbrochen, Fluegel mit Konsolen und Kryo-Liegen, Bio-Container aus `labcrate`).
+Gegner unten: eigener Bestand (`UNDER_MOBS`), zaehlt nicht zu den Streunern oben.
+Keller 16 (Scav/Brute/Sniper/Drone/Enforcer, HP ×2,5, Schaden ×1,7, Tempo ×1,1),
+Labor 13 Monster (Mutant, Stalker, Acid Horror, Failed Experiment – max 2).
+Nachschub nie naeher als 900 px an Spielern oder 400 px an Treppen. Extraktion nur oben.
+
+**Raid-Optik** (`public/rfx.js`): Boden je Ebene (Gras mit Erdflecken/Blumen, Beton
+mit Warnstreifen, Labor-Fliesen mit Leuchtleitungen), Felsen statt grauer Kloetze,
+Ziegelmauern, Holzboeden und Ziegeldaecher, Deko, Kisten und Treppen, eigene Figuren
+fuer alle Raid-Gegner (`rDrawMob`). Kamera, Rand und Minimap richten sich nach der Ebene.
+
+**Analyser** (Markt-Tab, `analyser.js`, Nachrichten `mkAna`/`mkAnaInv`): eigene
+Arena-Items (auch ausgeruestete), Karten, Cosmetics, Packs, Cases auswaehlen.
+Arena-Item: Stufe (1 in TIER_ODDS), Basis innerhalb der Stufe (Gewichte wie
+`pickBase`), genau n Effekte (`EFFECT_N`), genau diese Effekte (alle Zieh-Reihenfolgen,
+ohne Zuruecklegen), je Level (`decay`) -> „diese exakte Kombination 1 in N“, dazu
+Zaehler auf dem Server (gleiche Basis, gleiche Stufe, exakt gleiche Effekte).
+Formel gegen 2 Mio. echte Wuerfe geprueft (0,0233 % gerechnet, 0,0238 % gemessen).
+Karte: Chance je Pack fuer genau diese Karte samt Variante, Varianten-Chance, Kopien
+und Besitzer auf dem Server. Cosmetic: Besitzer, im Shop ja/nein. Pack/Case: Tabellen.
