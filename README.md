@@ -1126,6 +1126,50 @@ der Statistik unter `earned.cards`.
 | Mythic | 1 in 20 000 | 1 in 3 478 | 1 in 1000 |
 | Ultra | 1 in 200 000 | 1 in 34 783 | 1 in 10 000 |
 
+## ⚔️ Kekémon 6.4: 5 gegen 5, schwere Arenen, Gym-Reset
+
+Max (24.09.2026): Spieler (Avalon_Gold) schafften fuenf Arenen am Stueck,
+also „deutlich schwerer" – und nicht nur ueber Seltenheit, sondern ueber
+Koennen: 5 statt 3 Karten je Seite.
+
+- `km-battle.js`: `TEAM_SIZE = 5`, exportiert; Gyms, Duelle und Browser
+  (`KB_TEAM`) lesen den Wert. Auf dem Handy passen die fuenf Plaetze in eine
+  Reihe (`.kb-slot` in `kekemon.css`).
+- `km-gyms.js`: Arenaleiter nehmen ihre fuenf staerksten Karten (`power =
+  hp + 1.3*max(atk,spa) + 0.8*(def+spd) + 0.9*spe`), der Champion fuenf
+  verschiedene Typen. Seltenheiten angehoben (Sprout Uncommon … Champion
+  Legendary/Secret), ab Tide KI-Stufe 2 (Vorausschau). Staerke `mul` je
+  Arena per `tools/km-sim.js` auf edge mit echten 1990 Karten eingestellt,
+  Spieler-KI Stufe 2 mit realistischem Pool (siehe `AUTO_RAR` im Skript).
+  Messung (je 60 Kaempfe, Spieler-KI Stufe 2, „zufall" = fuenf zufaellige
+  Karten aus dem Spieler-Pool, „vorteil" = fuenf mit Typvorteil):
+
+  | Arena | mul | Spieler-Pool | zufall | vorteil |
+  |---|---|---|---|---|
+  | Sprout | 0,85 | Rare | 55 % | 60 % |
+  | Tide | 0,90 | Rare | 33 % | 78 % |
+  | Blaze | 0,95 | Rare | 32 % | 80 % |
+  | Volt | 1,00 | Rare | 23 % | 47 % |
+  | Dojo | 0,90 | Rare+Epic | 17 % | 37 % |
+  | Mind | 1,15 | Rare+Epic | ~12 % | ~40 % |
+  | Shadow | 1,00 | Epic | 8 % | 12 % |
+  | Champion | 0,90 | Epic+Legendary | 2 % | 2 % |
+
+  `mul` ist nicht vergleichbar zwischen Arenen, weil die Leiter-Seltenheit
+  mitwaechst. Der Champion ist gewollt fast unschlagbar („wirklich sehr
+  schwer bei den spaeteren"); gute Spieler mit Plan liegen ueber der
+  KI-Stufe 2, echte Quoten also etwas hoeher.
+- Reset: einmalige Migration beim Start (`u.kmGymsV !== 2`). Jede geschaffte
+  Arena wandert nach `u.kmGymsPaid[gid] = true`, dann `u.kmGyms = {}`.
+  Journal: `kekemon: Gym-Fortschritt von N Konten zurueckgesetzt (6.4)`.
+  Wer eine bezahlte Arena neu schafft, bekommt sie freigeschaltet und die
+  Wiederholungs-Coins (15 %), aber kein zweites Erst-Pack (`res.already`).
+- Admin, Reiter „Kekémon" im Konto-Dialog: Packs geben/nehmen, Karten
+  geben (Suche ueber Name · Seltenheit · id, Variante) und nehmen, Gyms
+  zuruecksetzen (bezahlte bleiben bezahlt) oder freischalten (ohne Belohnung).
+  `POST /api/users/:key/kekemon` mit `op`, jede Aktion im Admin-Log als
+  `kekemon-OP`, der Spieler sieht die Aenderung sofort (`pushKm`).
+
 ## 🎁 Case oeffnen neu (6.2)
 
 Max: Band endete rechts (Server schickte 34 Items, Gewinner auf 29), Animation

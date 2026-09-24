@@ -2455,3 +2455,11 @@ body.world-cards #kekemon > .card {
 .case-own {
     position: relative;
 }
+
+/* 6.4: fuenf Plaetze passen auf dem Handy in eine Reihe */
+@media (max-width: 600px) {
+    .kb-slots { gap: 6px; }
+    .kb-slot .kc.mini { --w: calc((100vw - 110px) / 5); }
+    .kb-slot.empty { width: calc((100vw - 110px) / 5); height: calc((100vw - 110px) / 5 * 1.4); font-size: 22px; }
+    .kb-slots #kb-fight { flex-basis: 100%; }
+}
