@@ -1,6 +1,6 @@
 [
   {
-    "version": "6.10",
+    "version": "6.10.1",
     "date": "24.09.2026",
     "items": [
       "🧟 Zombies: pick Easy, Normal or Hard when you create a lobby",
@@ -12,7 +12,8 @@
       "🔇 Burning enemies no longer spam hit sounds",
       "☠️ The Reaper's area attacks hit softer",
       "⏳ Raid bosses wait 30 s for you if you're the last one out",
-      "🧱 No more getting stuck on walls inside houses"
+      "🧱 No more getting stuck on walls inside houses",
+      "📦 Raid crates and rare enemy drops: Legendary and better are rarer"
     ]
   },
   {

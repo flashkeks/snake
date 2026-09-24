@@ -2248,3 +2248,22 @@ und die Event-Uhren (Boss, Drop, CTF) aufgeschlagen, sonst ginge der Boss
 sofort wegen „lange kein Treffer". Nach 30 s wird wie bisher geraeumt. Nur
 Extraction (nicht Zombies/PvP). Test: 10 s Pause -> Boss da, HP gleich;
 35 s -> weg.
+
+### 6.10.1: Raid-Kisten und seltene Gegner-Beute gekappt (Max)
+
+Anlass: Avalon_Gold zog in einer Stunde 5 Legendary+ aus Raids, zuletzt ein
+Phoenix Elixir (Legendary-Verbrauchsgut, kommt aus `crate2`/`crate3`).
+Nachgerechnet mit `crateGrade()` (87 % normal, 11 % blau, 2 % gold, 1,5 bzw.
+2,5 Items): im Schnitt **1,4 % Legendary+ je geoeffneter Kiste** – fast so viel
+wie ein Item aus dem 100k-Sovereign-Case (1,8 %), aber gratis und 150 Kisten
+auf der Map, Nachfuellen alle 150 s.
+
+| Quelle | Legendary | Mythic | Ultra |
+|---|---|---|---|
+| `crate2` | 3,7 -> 0,8 % | 0,3 -> 0,03 % | – |
+| `crate3` | 10 -> 3 % | 1,8 -> 0,2 % | 0,2 -> 0,02 % |
+| `npcrare` (Gegner, Stufe 2) | 3,7 -> 0,8 % | 0,3 -> 0,03 % | – |
+
+Der Rest geht an Epic. Schnitt je Kiste jetzt 0,43 % (÷3,3). Gegner-Drops je
+Kill von ~0,22 % auf ~0,08 %. Boss-Loot (`boss`, 3 Items Sovereign-Stufen)
+unveraendert, offen bei Max.

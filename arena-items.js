@@ -249,10 +249,16 @@ const SOURCES = {
     // Kisten auf der Map: nur Granaten und Heilung (Max: Inventar lief sonst zu schnell voll)
     crate: { t: [0.62, 0.27, 0.09, 0.0189, 0.001, 0.00001, 0], kinds: { util: 1 }, uses: ['heal', 'throw'] },
     // 6.6 (Max): bessere Kisten auf der Map (selten, wechseln beim Nachfuellen)
-    crate2: { t: [0.15, 0.38, 0.3, 0.13, 0.037, 0.003, 0], kinds: { util: 1 }, uses: ['heal', 'throw'] },
-    crate3: { t: [0, 0.15, 0.4, 0.33, 0.1, 0.018, 0.002], kinds: { util: 0.5, weapon: 0.25, armor: 0.2, pack: 0.05 } },
+    // 6.10 (Max: Avalon zieht ein Legendary nach dem anderen): Legendary+ gekappt.
+    // Vorher 1,4 % Legendary+ je geoeffneter Kiste im Schnitt (fast ein Sovereign-
+    // Item, gratis); jetzt ~0,4 %. Was wegfaellt, geht an Epic.
+    //   crate2 Leg 3,7 -> 0,8 %, Myth 0,3 -> 0,03 %
+    //   crate3 Leg 10 -> 3 %, Myth 1,8 -> 0,2 %, Ultra 0,2 -> 0,02 %
+    crate2: { t: [0.15, 0.38, 0.3, 0.1617, 0.008, 0.0003, 0], kinds: { util: 1 }, uses: ['heal', 'throw'] },
+    crate3: { t: [0, 0.15, 0.4, 0.4178, 0.03, 0.002, 0.0002], kinds: { util: 0.5, weapon: 0.25, armor: 0.2, pack: 0.05 } },
     // Seltene Gegner-Beute (Stufe 2 von 3); Stufe 3 zieht aus 'boss'
-    npcrare: { t: [0.1, 0.35, 0.33, 0.18, 0.037, 0.003, 0], kinds: { util: 0.4, weapon: 0.3, armor: 0.25, pack: 0.05 } },
+    // 6.10: wie crate2 gekappt (Leg 3,7 -> 0,8 %, Myth 0,3 -> 0,03 %)
+    npcrare: { t: [0.1, 0.35, 0.33, 0.2117, 0.008, 0.0003, 0], kinds: { util: 0.4, weapon: 0.3, armor: 0.25, pack: 0.05 } },
     // Versorgungsabwurf: Ausruestung, etwas besser als eine Standard-Case
     airdrop: { t: [0.3, 0.38, 0.2, 0.1, 0.0195, 0.0005, 0], kinds: { weapon: 0.45, armor: 0.45, pack: 0.1 } },
     // Normale Gegner (4.1): meist Verbrauchsgut, selten Ausruestung
