@@ -488,6 +488,7 @@ const LOOK_SAMPLES = 8, LOOK_TURNS = 3;
 // Stufe 3 (6.8, neue Gym-Reihe): doppelt so viele Stichproben, einen Zug
 // tiefer, und auch die Einwechsel-Wahl nach einem K.o. per Vorausschau
 const LOOK3 = { samples: 16, turns: 4 };
+const LOOK_BUDGET_MS = 10;
 
 function lookahead(b, s, opt = { samples: LOOK_SAMPLES, turns: LOOK_TURNS }) {
     const me = act(b, s);
@@ -500,10 +501,14 @@ function lookahead(b, s, opt = { samples: LOOK_SAMPLES, turns: LOOK_TURNS }) {
     }
     side.cards.forEach((c, i) => { if ((switching || i !== side.active) && i !== side.active && c.hp > 0) cands.push({ a: 'switch', to: i }); });
     if (!cands.length) return { a: 'switch', to: bestSwitch(b, s, -1) };
-    let best = null, bv = -1e9;
-    for (const c of cands) {
-        let sum = 0;
-        for (let k = 0; k < opt.samples; k++) {
+    // Reihum rechnen (je Runde eine Stichprobe fuer jeden Kandidaten) und nach
+    // LOOK_BUDGET_MS aufhoeren (6.8): die Vorausschau laeuft im selben Thread wie
+    // Snake und Arena, Stufe 3 brauchte in Spitzen 50 ms = spuerbarer Ruckler
+    const sums = cands.map(() => 0);
+    const t0 = Date.now();
+    let rounds = 0;
+    for (let k = 0; k < opt.samples; k++) {
+        cands.forEach((c, ci) => {
             const x = cloneBattle(b);
             x.sides[s].choice = c;
             if (!switching) x.sides[1 - s].choice = greedy(x, 1 - s, 1);
@@ -513,11 +518,15 @@ function lookahead(b, s, opt = { samples: LOOK_SAMPLES, turns: LOOK_TURNS }) {
                 if (!switching && x.phase === 'move' && !x.sides[0].choice && !x.sides[1].choice && x.turn === start) break;
                 step(x, []);
             }
-            sum += evalSide(x, s);
-        }
-        const v = sum / opt.samples;
-        if (v > bv) { bv = v; best = c; }
+            sums[ci] += evalSide(x, s);
+        });
+        rounds++;
+        if (rounds >= 3 && Date.now() - t0 > LOOK_BUDGET_MS) break;
     }
+    let best = null, bv = -1e9;
+    cands.forEach((c, ci) => {
+        if (sums[ci] > bv) { bv = sums[ci]; best = c; }
+    });
     return best;
 }
 

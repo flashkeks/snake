@@ -7011,8 +7011,28 @@ ws.onerror = () => {
     status.textContent = '⚠️ Connection error';
 };
 
+// Lag-Suche (6.9): im Spiel kommen viele Nachrichten je Sekunde. Bricht der
+// Strom ploetzlich ab, meldet der Browser die Luecke nach der Erholung.
+const lagWatch = { last: 0, n: 0, since: 0, busy: false };
+document.addEventListener('visibilitychange', () => { lagWatch.last = 0; lagWatch.busy = false; lagWatch.n = 0; });
+function lagWhere() {
+    const vis = id => $(id) && !$(id).classList.contains('hidden');
+    return typeof sh !== 'undefined' && sh ? 'arena' : vis('kekemon') ? 'kekemon' : vis('market') ? 'market' : 'snake';
+}
 ws.onmessage = event => {
+    const now = performance.now();
+    if (lagWatch.busy && lagWatch.last && now - lagWatch.last >= 400 && document.visibilityState === 'visible') {
+        try { ws.send(JSON.stringify({ type: 'lagReport', gap: Math.round(now - lagWatch.last), where: lagWhere() })); } catch (e) { /* egal */ }
+    }
+    // "busy" = in der letzten Sekunde mindestens 10 Nachrichten (laufendes Spiel)
+    if (now - lagWatch.since > 1000) { lagWatch.busy = lagWatch.n >= 10; lagWatch.n = 0; lagWatch.since = now; }
+    lagWatch.n++;
+    lagWatch.last = now;
     const data = JSON.parse(event.data);
+    if (data.type === 'rtt') {
+        try { ws.send(JSON.stringify({ type: 'rttAck', t: data.t })); } catch (e) { /* egal */ }
+        return;
+    }
 
     switch (data.type) {
         case 'watchStart':

@@ -85,10 +85,34 @@ setInterval(() => {
     const top = [...netStat.entries()].sort((a, b) => b[1][1] - a[1][1]).slice(0, 5)
         .map(([t, [n, b]]) => `${t} ${n}x ${(b / 1024).toFixed(0)}KB`).join(', ');
     const total = [...netStat.values()].reduce((s, [, b]) => s + b, 0);
-    console.log(`perf: loop p99 ${ms(loopLag.percentile(99))} ms, max ${ms(loopLag.max)} ms · ${clients.size} Verbindungen · raus ${(total / 1024 / 60).toFixed(1)} KB/s · ${top}`);
+    const r = rttSamples.splice(0).sort((a, b) => a - b);
+    const rtt = r.length ? ` · RTT p50 ${r[r.length >> 1]} p95 ${r[Math.floor(r.length * 0.95)]} max ${r[r.length - 1]} ms` : '';
+    const lags = lagReports.splice(0);
+    const lagTxt = lags.length ? ` · Browser-Luecken ${lags.length}: ${lags.slice(0, 5).join(', ')}` : '';
+    console.log(`perf: loop p99 ${ms(loopLag.percentile(99))} ms, max ${ms(loopLag.max)} ms · ${clients.size} Verbindungen · raus ${(total / 1024 / 60).toFixed(1)} KB/s${rtt}${lagTxt} · ${top}`);
     loopLag.reset();
     netStat.clear();
 }, 60000).unref();
+
+// Lag-Suche (6.9, Max: "laggt manchmal, ueber alle Modi"): der Server-Loop ist
+// laut perf-Zeile sauber (p99 der Minuten-Maxima ~60 ms). Deshalb jetzt die
+// Strecke messen: alle 5 s ein App-Ping je Client (Antwortzeit ueber Tunnel und
+// Browser), dazu Meldungen der Browser, wenn im Spiel ploetzlich nichts mehr
+// kommt (lagReport). Mehrere gleichzeitig = Server/Tunnel, einer = seine Leitung.
+const rttSamples = [];
+setInterval(() => {
+    const now = Date.now();
+    // Spitze: mindestens zwei Clients haengen gerade gleichzeitig
+    const hanging = [...clients.values()].filter(c => c.rttSent && !c.rttGot && now - c.rttSent > 1000);
+    if (hanging.length >= 2) console.log(`perf: RTT-Spitze, ${hanging.length}/${clients.size} Clients ohne Antwort seit >1 s: ${hanging.slice(0, 6).map(c => c.name || c.id).join(', ')}`);
+    for (const c of clients.values()) {
+        if (c.ws.readyState !== WebSocket.OPEN) continue;
+        c.rttSent = now;
+        c.rttGot = 0;
+        send(c, { type: 'rtt', t: now });
+    }
+}, 5000).unref();
+const lagReports = [];
 
 // index.html einmal je Start bauen: jede eingebundene Datei bekommt ?v=Inhalts-Hash
 let indexCache = null;
@@ -1977,6 +2001,24 @@ wss.on('connection', (ws, req) => {
             return;
         }
         if (!data || typeof data.type !== 'string') return;
+        if (data.type === 'rttAck') {
+            if (c.rttSent && Number(data.t) === c.rttSent && !c.rttGot) {
+                c.rttGot = Date.now();
+                if (rttSamples.length < 5000) rttSamples.push(c.rttGot - c.rttSent);
+            }
+            return;
+        }
+        if (data.type === 'lagReport') {
+            // Browser: im Spiel kam gap ms lang nichts an (gedrosselt je Client)
+            const gap = Math.round(Number(data.gap) || 0);
+            if (gap >= 400 && gap < 120000 && Date.now() - (c.lagAt || 0) > 5000 && lagReports.length < 200) {
+                c.lagAt = Date.now();
+                const who = c.account ? (accounts.get(c.account) || {}).name : c.id;
+                lagReports.push(`${who} ${gap}ms ${String(data.where || '').slice(0, 12)}`);
+                if (gap >= 1500) console.log(`perf: Browser-Luecke ${gap} ms bei ${who} (${String(data.where || '').slice(0, 12)})`);
+            }
+            return;
+        }
         if (data.type !== 'ui' && data.type !== 'where' && data.type !== 'shPing') c.lastActive = Date.now();
         handle(c, data).catch(err => console.error('handle', data.type, err));
     });
