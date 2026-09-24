@@ -281,6 +281,11 @@ const SOURCES = {
     // Aufschlag kommt aus der untersten Stufe
     zbox: { t: [0, 0.397445, 0.4, 0.19745, 0.005, 0.0001, 0.00001], kinds: { weapon: 1 } },
     zbox_s: { t: [0, 0, 0.33223337, 0.6322333, 1 / 30, 0.002, 0.0002], kinds: { weapon: 1 } },
+    // Utility-Kiste im Zombie-Modus (6.10, Max): gleiche Stufen-Chancen wie die
+    // Waffen-Box. `exact`: die gewuerfelte Stufe ist die Stufe des Items (sonst
+    // wuerde pickBase auch alles darunter nehmen und die Chancen verwaschen)
+    zubox: { t: [0, 0.397445, 0.4, 0.19745, 0.005, 0.0001, 0.00001], kinds: { util: 1 }, exact: true },
+    zubox_s: { t: [0, 0, 0.33223337, 0.6322333, 1 / 30, 0.002, 0.0002], kinds: { util: 1 }, exact: true },
     // Scrap-Shop: Waffe mit garantiert einem Effekt
     modded: { t: [0.6, 0.3, 0.1, 0, 0, 0, 0], kinds: { weapon: 1 }, effects: [0, 0.9, 0.095, 0.005] }
 };
@@ -311,7 +316,8 @@ const SHOP = [
     { id: 's_modded', kind: 'gen', source: 'modded', price: 600, currency: 'scrap' }
 ];
 
-const INV_MAX = 100;
+// 6.10 (Max): Lager 100 -> 200
+const INV_MAX = 200;
 
 function pickWeighted(entries) {
     const total = entries.reduce((s, [, w]) => s + w, 0);
@@ -338,6 +344,7 @@ function defsOf(kind) {
 function pickBase(kind, tier, src) {
     let all = Object.entries(defsOf(kind)).filter(([, b]) => b.tier <= tier && (kind === 'util' || kind === 'pack' || maxTierOf(b) >= tier));
     if (src.uses) all = all.filter(([, b]) => src.uses.includes(b.use));
+    if (src.exact && all.some(([, b]) => b.tier === tier)) all = all.filter(([, b]) => b.tier === tier);
     let pool = all;
     if (src.tag) {
         const tagged = all.filter(([, b]) => b.tag === src.tag);

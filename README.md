@@ -2195,3 +2195,25 @@ je brennendem Zombie) ein `shHit` geschickt, der Client piept bei jedem. Mit
 Amaterasus Dauerbrand auf vielen Zombies wurde das zum Dauerton. Jetzt schickt
 ein Brand-Tick (`w.dot`) nur beim Kill ein `shHit`, genau wie bei Spielern.
 Test: Zombie brennt ~1 s bis zum Tod -> genau ein `shHit` mit `kill: true`.
+
+### 6.10, Teil 3: Utility-Kiste, Lager 200, Lager-voll-Anzeige (Max)
+
+**Utility-Kiste** (`ubox`, rechts neben der Mystery Box, `ZMB_W/2 + 220`).
+Quellen `zubox`/`zubox_s` in `arena-items.js`: dieselben Stufen-Chancen wie
+`zbox`/`zbox_s`, nur Verbrauchsgut. Neues Quellen-Flag `exact`: `pickBase`
+nimmt dann nur Items genau der gewuerfelten Stufe (sonst zieht es alles bis zu
+der Stufe, gewichtet mit 4^Stufe, und die Chancen stimmen nicht mehr).
+Stichprobe 400k: uncommon 159k, rare 160k, epic 79k, legendary 2003, mythic 29, ultra 2.
+- Preis 1500 + 400 je eigenem Kauf (`p.uboxN`), Fire Sale halbiert, Lucky box
+  aus dem Baum gilt auch hier.
+- Menge: halber Stapel, aufgerundet (Stapel 1 -> 1). Liegt dasselbe Item schon
+  im Slot und hat Luft, wird aufgestockt.
+- Ohne freien Verbrauchsgut-Slot wird **vor** dem Bezahlen abgelehnt
+  („Free one of your two consumable slots first").
+- Snapshot `zmb.ubox` mit dem naechsten Preis; eigene Zeichnung in `zfx.js`.
+
+**Lager.** `INV_MAX` 100 -> 200 (`arena-items.js`, gilt fuer Cases, Handel, Raid-Ueberlauf).
+
+**Voll-Anzeige.** Der Tab-Knopf „🎒 Inventory" zeigt ab 90 % `used/max` in
+Orange und bei vollem Lager (oder wartenden Items) ein rotes `FULL`. In der
+Liste steht bei vollem Lager ein Banner, der Zaehler faerbt sich mit.

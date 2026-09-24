@@ -281,6 +281,9 @@ const ZMB_ARMOR = 1200, ZMB_ARMOR_MAX = 4, ZMB_NADES = 800, ZMB_REVIVE = 1500;
 // Box je Spieler. Altar 6000, 9000, 12000 ... · Box 2000, 2500, 3000 ...
 const ZMB_SHRINE = 6000, ZMB_SHRINE_STEP = 3000;
 const ZMB_BOX_STEP = 500;
+// Utility-Kiste (6.10, Max): wie die Box, aber Verbrauchsgut. 1500 + 400 je eigenem Kauf
+const ZMB_UBOX = 1500, ZMB_UBOX_STEP = 400;
+const zUboxPrice = n => ZMB_UBOX + ZMB_UBOX_STEP * n;
 const zShrinePrice = n => ZMB_SHRINE + ZMB_SHRINE_STEP * n;
 const zBoxPrice = n => ZMB_BOX + ZMB_BOX_STEP * n;
 const ZMB_POWERUPS = {
@@ -316,6 +319,7 @@ function buildZombieMap() {
         st('wall', ZMB_W - 90, ZMB_H * 0.7, { base: 'sniper', price: ZMB_WALL.sniper }),
         st('box', ZMB_W / 2, ZMB_H - 110, { price: ZMB_BOX }),
         st('pap', ZMB_W / 2, 110, { price: ZMB_PAP }),
+        st('ubox', ZMB_W / 2 + 220, ZMB_H - 110, { price: ZMB_UBOX }),
         st('perk', 150, 150, { perk: 'jug', price: ZMB_PERKS.jug.price }),
         st('perk', ZMB_W - 150, 150, { perk: 'speed', price: ZMB_PERKS.speed.price }),
         st('perk', 150, ZMB_H - 150, { perk: 'stamina', price: ZMB_PERKS.stamina.price }),
@@ -1950,6 +1954,7 @@ module.exports = function createArena(h, opts = {}) {
         p.pts = 500 + p.b.zStart;
         p.perks = [];
         p.boxN = 0;
+        p.uboxN = 0;
         gearStats(p);
         players.set(c.id, p);
         zb.kills.set(c.id, 0);
@@ -2177,6 +2182,22 @@ module.exports = function createArena(h, opts = {}) {
             giveWeapon(it);
             fxAt(s.x, s.y, { type: 'shFx', kind: 'phoenix', x: s.x, y: s.y });
             return say(`🎁 Mystery box: ${it.name}`);
+        }
+        if (s.kind === 'ubox') {
+            // Erst Platz pruefen, dann zahlen: einen der zwei Verbrauchsgut-Slots
+            // braucht es frei (oder denselben Gegenstand mit Luft im Stapel)
+            if (!p.util.some(u => !u)) return say('🧪 Free one of your two consumable slots first');
+            if (!pay(zUboxPrice(p.uboxN || 0))) return;
+            p.uboxN = (p.uboxN || 0) + 1;
+            const it = I.generate(Math.random() < p.b.zBox ? 'zubox_s' : 'zubox');
+            const d = I.UTILS[it.base];
+            const n = Math.max(1, Math.ceil(d.stack / 2));
+            const have = p.util.findIndex(u => u && u.base === it.base && u.n < d.stack);
+            if (have >= 0) p.util[have].n = Math.min(d.stack, p.util[have].n + n);
+            else p.util[p.util.findIndex(u => !u)] = { base: it.base, n };
+            sendInv(p);
+            fxAt(s.x, s.y, { type: 'shFx', kind: 'phoenix', x: s.x, y: s.y });
+            return say(`🧪 Utility box: ${n}× ${d.icon || ''} ${d.name} (${it.tier})`);
         }
         if (s.kind === 'pap') {
             const it = p.gear[p.slot];
@@ -3283,7 +3304,7 @@ module.exports = function createArena(h, opts = {}) {
                 zmb: zb ? { diff: zdId, wave: zb.wave, phase: zb.phase, left: Math.max(0, Math.round(zb.until - now)), zombies: mobs.length + zb.toSpawn, pts: Math.floor(p.pts), perks: p.perks,
                     disc: p.b.zDisc, perkDisc: p.b.zDisc * p.b.zPerk,
                     fx: Object.fromEntries(Object.entries(zb.fx).filter(([, t]) => t > now).map(([k, t]) => [k, Math.round(t - now)])),
-                    pap: zPapPrice((p.gear[p.slot] && p.gear[p.slot].pap) || 0), box: zBoxPrice(p.boxN || 0), shrine: zShrinePrice(zb.shrineN), armor: p.armorN || 0,
+                    pap: zPapPrice((p.gear[p.slot] && p.gear[p.slot].pap) || 0), box: zBoxPrice(p.boxN || 0), ubox: zUboxPrice(p.uboxN || 0), shrine: zShrinePrice(zb.shrineN), armor: p.armorN || 0,
                     team: plist.map(q => [q.name, Math.floor(q.pts), zb.kills.get(q.id) || 0, q.dead ? 1 : 0]) } : undefined,
                 players: plist.filter(q => q === p || (inView(q.x, q.y) && canSee(p, q, now))).map(q => {
                     const qw = q.gear[q.slot] || q.gear.primary;

@@ -3846,6 +3846,8 @@ body.world-arena h1 {
 }
 .inv-wait .it { filter: grayscale(.85); opacity: .6; }
 .inv-wait .it:hover { filter: none; opacity: 1; }
+.inv-full { color: #fff; background: #d8344a; border-radius: 6px; padding: 0 6px; font-size: .8em; }
+.inv-near { color: #ffb347; font-weight: 700; }
 
 /* 6.6: Unique-Items */
 .unique-box {
@@ -11048,6 +11050,12 @@ function hubDrawRaw() {
     if (hub && hub.prog) $('hub-lv').textContent = `🎖️ Lv ${hub.prog.level}`;
     $('hub-coins').textContent = me ? me.coins.toLocaleString('en-US') : '–';
     $('hub-scrap').textContent = hub ? hub.scrap.toLocaleString('en-US') : '–';
+    // 6.10 (Max): volles Lager sichtbar machen – Tab-Knopf zaehlt mit, ab 90 % gelb, voll rot
+    if (hub && hub.inv) {
+        const used = hub.inv.length, max = arenaCat.invMax, tab = document.querySelector('#hub-tabs [data-hubtab="inv"]');
+        const full = used >= max || (hub.overflow || []).length > 0;
+        if (tab) tab.innerHTML = `🎒 Inventory${full ? ' <b class="inv-full">FULL</b>' : used >= max * 0.9 ? ` <b class="inv-near">${used}/${max}</b>` : ''}`;
+    }
     itTip.hidden = true;
     TIP.clear();
     if (!hub) {
@@ -11077,7 +11085,8 @@ function hubDrawRaw() {
         html = (waiting.length ? `<div class="inv-wait"><b>📥 ${waiting.length} item${waiting.length > 1 ? 's' : ''} waiting – your stash is full.</b> ` +
             `<span class="hint">Salvage something and they move in automatically. Nothing gets scrapped on its own.</span>` +
             `<div class="inv-grid">${waiting.map(it => itemCard(it, {})).join('')}</div></div>` : '') +
-            `<div class="inv-bar">${filters}<span class="hint">${inv.length} / ${arenaCat.invMax}</span></div>` +
+            (inv.length >= arenaCat.invMax && !waiting.length ? `<div class="inv-wait"><b>📦 Your stash is full (${inv.length}/${arenaCat.invMax}).</b> <span class="hint">New loot waits until you salvage something.</span></div>` : '') +
+            `<div class="inv-bar">${filters}<span class="hint ${inv.length >= arenaCat.invMax ? 'inv-full' : inv.length >= arenaCat.invMax * 0.9 ? 'inv-near' : ''}">${inv.length} / ${arenaCat.invMax}</span></div>` +
             `<div class="inv-main"><div class="inv-list">${hubStacks(list).map(({ it, uids }) => itemRow(it, { sel: uids.includes(hubSel), eq: hubEquippedAs(it.uid), n: uids.length })).join('') || '<div class="hint">Nothing here.</div>'}</div>` +
             `<div class="inv-detail">${sel ? itemDetail(sel) + (waiting.includes(sel) ? `<div class="hint">Waiting for space in your stash.</div><div class="it-actions"><button type="button" class="danger" data-salvage="${sel.uid}">♻️ Salvage (+${sel.sv || 0} ⚙️)</button></div>` : hubActions(sel)) : '<div class="hint">Click an item to equip or salvage it.</div>'}</div></div>`;
     } else if (hubTab === 'salvage') {
@@ -11993,7 +12002,7 @@ function shOthers() {
 function zPrice(s) {
     const z = shSnaps.length && shSnaps[shSnaps.length - 1].zmb;
     if (!z || !s.price) return s.price;
-    const sale = (s.kind === 'box' || s.kind === 'wall') && z.fx && z.fx.sale ? 0.5 : 1;
+    const sale = (s.kind === 'box' || s.kind === 'ubox' || s.kind === 'wall') && z.fx && z.fx.sale ? 0.5 : 1;
     return Math.round(s.price * sale * (s.kind === 'perk' ? z.perkDisc || 1 : z.disc || 1));
 }
 
@@ -12006,10 +12015,11 @@ function stationLook(s) {
         const w = arenaCat.weapons[s.base] || {};
         return { icon: w.icon || '🔫', rgb: '120,180,255', label: `${w.name || s.base} · 💰 ${zPrice(s)}`, hint: `F · buy ${w.name || s.base} (${zPrice(s)} points)` };
     }
-    if (s.kind === 'box' || s.kind === 'shrine') {
+    if (s.kind === 'box' || s.kind === 'ubox' || s.kind === 'shrine') {
         const z = shSnaps.length && shSnaps[shSnaps.length - 1].zmb;
         if (z && z[s.kind]) s = { ...s, price: z[s.kind] };
     }
+    if (s.kind === 'ubox') return { icon: '🧪', rgb: '90,220,200', label: `Utility box · 💰 ${zPrice(s)}`, hint: `F · utility box: random consumable, same odds as the mystery box (${zPrice(s)} points)` };
     if (s.kind === 'box') return { icon: '🎁', rgb: '184,132,255', label: `Mystery box · 💰 ${zPrice(s)}`, hint: `F · mystery box: random weapon (${zPrice(s)} points)` };
     if (s.kind === 'heal') return { icon: '💉', rgb: '0,214,122', label: `Heal · 💰 ${zPrice(s)}`, hint: `F · heal to full (${zPrice(s)} points)` };
     if (s.kind === 'pap') {

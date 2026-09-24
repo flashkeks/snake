@@ -1896,6 +1896,22 @@ function zDrawStation(c, m, s, L, now) {
         c.fillStyle = '#111';
         c.fillRect(x - 20, y + 20, 40, 8);
         drawEmojiC(c, L.icon, x - 5, y - 6, 26);
+    } else if (s.kind === 'ubox') {
+        // Utility-Kiste (6.10): tuerkise Kiste mit Lichtsaeule, Flasche drauf
+        const beam = c.createLinearGradient(x, y - 140, x, y);
+        beam.addColorStop(0, 'rgba(90,220,200,0)');
+        beam.addColorStop(1, `rgba(90,220,200,${.22 + .18 * pulse})`);
+        c.fillStyle = beam;
+        c.fillRect(x - 16, y - 140, 32, 140);
+        shadow(64, 36);
+        c.fillStyle = '#23565a';
+        c.fillRect(x - 32, y - 18, 64, 36);
+        c.fillStyle = '#2f7479';
+        c.fillRect(x - 32, y - 18, 64, 10);
+        c.strokeStyle = '#7ff5e0';
+        c.lineWidth = 3;
+        c.strokeRect(x - 32, y - 18, 64, 36);
+        drawEmojiC(c, '🧪', x, y - 26 - pulse * 5, 26);
     } else if (s.kind === 'box') {
         // Mystery Box: Truhe mit Lichtsaeule und ?
         const beam = c.createLinearGradient(x, y - 160, x, y);
