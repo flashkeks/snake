@@ -46,7 +46,9 @@ const WEAPONS = {
     crossbow: { name: 'Crossbow', icon: '🏹', tier: 2, ms: 800, dmg: 70, speed: 1100, life: 1.2, spread: 0, pellets: 1, innate: { pierce: 2 } },
     firestaff: { name: 'Fire staff', icon: '☄️', tier: 2, tag: 'mage', ms: 450, dmg: 28, speed: 850, life: 1.0, spread: 0.02, pellets: 1, innate: { burn: 2 } },
     froststaff: { name: 'Frost staff', icon: '🧊', tier: 2, tag: 'mage', ms: 450, dmg: 26, speed: 850, life: 1.0, spread: 0.02, pellets: 1, innate: { frost: 2 } },
-    minigun: { name: 'Minigun', icon: '⚙️', tier: 3, ms: 55, dmg: 9, speed: 1100, life: 0.8, spread: 0.14, pellets: 1 },
+    // 6.8 (Max: "waaaaay zu op"): 55 ms/9 dmg (164 DPS, 18 Schuss/s – Treffer-Effekte
+    // loesten staendig aus) -> 75 ms/9,5 dmg (~127 DPS, 13 Schuss/s), mehr Streuung
+    minigun: { name: 'Minigun', icon: '⚙️', tier: 3, ms: 75, dmg: 9.5, speed: 1100, life: 0.8, spread: 0.17, pellets: 1 },
     launcher: { name: 'Launcher', icon: '🚀', tier: 3, tag: 'demo', ms: 1000, dmg: 45, speed: 700, life: 1.4, spread: 0, pellets: 1, explode: 1, rocket: true },
     flamethrower: { name: 'Flamethrower', icon: '🔥', tier: 3, tag: 'demo', ms: 60, dmg: 5, speed: 520, life: 0.42, spread: 0.35, pellets: 1, flame: true, innate: { burn: 2 } },
     stormstaff: { name: 'Storm staff', icon: '🌩️', tier: 3, tag: 'mage', ms: 500, dmg: 34, speed: 1000, life: 1.0, spread: 0.02, pellets: 1, innate: { tesla: 1 } },
