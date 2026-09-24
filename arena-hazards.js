@@ -38,7 +38,11 @@ function hits(z, px, py, R) {
         return !(z.gs && angDiff(Math.atan2(dy, dx), z.ga) < z.gs / 2);
     }
     if (z.sh === 'k') return d < z.r + R * 0.5 && d > 20 && angDiff(Math.atan2(dy, dx), z.a) < z.span / 2;
-    if (z.sh === 's') return !(z.safe || []).some(([sx, sy, sr]) => Math.hypot(px - sx, py - sy) < sr - R * 0.3);
+    if (z.sh === 's') {
+        // lim (6.9, Raid): nur im Umkreis lim um x/y, sonst die ganze Karte
+        if (z.lim && d > z.lim) return false;
+        return !(z.safe || []).some(([sx, sy, sr]) => Math.hypot(px - sx, py - sy) < sr - R * 0.3);
+    }
     return false;
 }
 
@@ -92,7 +96,7 @@ function createHazards(h) {
         const code = { c: 0, r: 1, g: 2, k: 3, s: 4 };
         return list.map(z => {
             const p = z.sh === 'c' ? [z.r, 0, 0, 0] : z.sh === 'r' ? [z.w, z.h, z.a, 0] : z.sh === 'g' ? [z.r, z.r2, z.ga || 0, z.gs || 0]
-                : z.sh === 'k' ? [z.r, z.a, z.span, 0] : [0, 0, 0, 0];
+                : z.sh === 'k' ? [z.r, z.a, z.span, 0] : [z.lim || 0, 0, 0, 0];
             return [z.id, code[z.sh], Math.round(z.x || 0), Math.round(z.y || 0), ...p.map(v => Math.round(v * 100) / 100),
                 Math.max(0, Math.round(z.at - now)), Math.max(0, Math.round(z.until - now)), z.total, z.look || 0,
                 Math.round(z.vx || 0), Math.round(z.vy || 0), Math.round((z.va || 0) * 100) / 100, z.blue ? 1 : 0,
@@ -111,23 +115,27 @@ const alive = api => api.players().filter(p => !p.dead);
 const target = api => pick(alive(api)) || { x: api.W / 2, y: api.H / 2 };
 const clampIn = (api, x, y, m) => [Math.max(m, Math.min(api.W - m, x)), Math.max(m, Math.min(api.H - m, y))];
 
+// Bereich, in dem ein Angriff spielt: ganze Karte (Zombies) oder Box um den Boss (Raid)
+const boxOf = api => api.box || { x0: 0, y0: 0, x1: api.W, y1: api.H };
+
 // Fegende Wand mit Luecke. dir: 0 → rechts, 1 → links, 2 → unten, 3 → oben
 function wall(api, dir, delay, look, dmg) {
-    const { W, H } = api;
+    const B = boxOf(api);
     const horiz = dir < 2;
-    const span = horiz ? H : W, travel = horiz ? W : H;
+    const span = horiz ? B.y1 - B.y0 : B.x1 - B.x0, travel = horiz ? B.x1 - B.x0 : B.y1 - B.y0;
+    const o = horiz ? B.y0 : B.x0, s0 = horiz ? B.x0 : B.y0;
     const speed = api.enraged ? 700 : 560;
     const gap = api.enraged ? 170 : 210;
     // Luecke in der Naehe eines Spielers, damit sie erreichbar ist
     const t = target(api);
-    const g = Math.max(gap, Math.min(span - gap, (horiz ? t.y : t.x) + rnd(-260, 260)));
-    const start = dir === 0 || dir === 2 ? -40 : travel + 40;
+    const g = Math.max(gap, Math.min(span - gap, (horiz ? t.y : t.x) - o + rnd(-260, 260)));
+    const start = s0 + (dir === 0 || dir === 2 ? -40 : travel + 40);
     const v = (dir === 0 || dir === 2 ? 1 : -1) * speed;
     const dur = (travel + 80) / speed * 1000;
     const parts = [[0, g - gap / 2], [g + gap / 2, span]];
     for (const [a, b] of parts) {
         if (b - a < 10) continue;
-        const mid = (a + b) / 2, len = b - a;
+        const mid = o + (a + b) / 2, len = b - a;
         api.hz.add(horiz
             ? { sh: 'r', x: start, y: mid, w: 56, h: len, a: 0, vx: v, total: 1000 + delay, dur, dmg, look }
             : { sh: 'r', x: mid, y: start, w: len, h: 56, a: 0, vy: v, total: 1000 + delay, dur, dmg, look }, api.now);
@@ -143,13 +151,13 @@ function beam(api, x, y, a, delay, look, dmg, width = 170) {
 
 // Schachbrett aus Feldern, erst die eine Haelfte, dann die andere
 function checker(api, size, look, dmg, circles) {
-    const { W, H } = api;
+    const B = boxOf(api);
     let n = 0;
     for (const half of [0, 1]) {
-        for (let gx = 0; gx * size < W; gx++) {
-            for (let gy = 0; gy * size < H; gy++) {
+        for (let gx = 0; gx * size < B.x1 - B.x0; gx++) {
+            for (let gy = 0; gy * size < B.y1 - B.y0; gy++) {
                 if ((gx + gy) % 2 !== half) continue;
-                const x = gx * size + size / 2, y = gy * size + size / 2;
+                const x = B.x0 + gx * size + size / 2, y = B.y0 + gy * size + size / 2;
                 api.hz.add(circles
                     ? { sh: 'c', x, y, r: size * 0.52, total: 1100 + half * 1500, dur: 450, dmg, look }
                     : { sh: 'r', x, y, w: size, h: size, a: 0, total: 1100 + half * 1500, dur: 450, dmg, look }, api.now);
@@ -162,15 +170,24 @@ function checker(api, size, look, dmg, circles) {
 
 // Ueberall Schaden ausser auf sicheren Inseln
 function islands(api, n, r, look, dmg, warn) {
+    const B = boxOf(api);
     const safe = [];
     for (let k = 0; k < n; k++) {
-        const t = k === 0 ? target(api) : { x: rnd(300, api.W - 300), y: rnd(300, api.H - 300) };
+        const t = k === 0 ? target(api) : { x: rnd(B.x0 + 300, B.x1 - 300), y: rnd(B.y0 + 300, B.y1 - 300) };
         const [x, y] = clampIn(api, t.x + rnd(-450, 450), t.y + rnd(-350, 350), 260);
         safe.push([x, y, r]);
     }
-    api.hz.add({ sh: 's', x: 0, y: 0, safe, total: warn, dur: 500, dmg, look }, api.now);
+    // Raid: nur im Umkreis des Bosses (lim), Zombies: ganze Karte
+    const lim = api.box ? (B.x1 - B.x0) / 2 : 0;
+    api.hz.add({ sh: 's', x: lim ? api.m.x : 0, y: lim ? api.m.y : 0, lim, safe, total: warn, dur: 500, dmg, look }, api.now);
     return warn + 500;
 }
+
+// Ziele nur im Kampfbereich (Raid: Spieler nahe am Boss)
+const inBox = api => {
+    const B = boxOf(api);
+    return alive(api).filter(p => p.x > B.x0 && p.x < B.x1 && p.y > B.y0 && p.y < B.y1);
+};
 
 const PATTERNS = {
     // ---------- Welle 30: Judge Bones (Sans-Anspielung) ----------
@@ -277,6 +294,73 @@ const PATTERNS = {
             api.hz.add({ sh: 's', x: 0, y: 0, safe: [], blue: true, total: 1200, dur: 1400, dps: api.dmg(70), look: LOOK.blue }, api.now);
             return 2600;
         }
+    }
+};
+
+// ---------- 6.9 Raid-Bosse (Extraction): alles in einer Box um den Boss ----------
+PATTERNS.titan = {
+    missiles(api) {
+        const ps = inBox(api), n = api.enraged ? 14 : 10;
+        const B = boxOf(api);
+        for (let k = 0; k < n; k++) {
+            const on = ps[k % Math.max(1, ps.length)];
+            const [x, y] = on && k < ps.length * 2 ? [on.x + rnd(-120, 120), on.y + rnd(-120, 120)] : [rnd(B.x0, B.x1), rnd(B.y0, B.y1)];
+            api.hz.add({ sh: 'c', x, y, r: rnd(140, 190), total: 1100 + k * 130, dur: 350, dmg: api.dmg(70), look: LOOK.meteor }, api.now);
+        }
+        api.say('🚀 MISSILE BARRAGE');
+        return 1100 + n * 130 + 350;
+    },
+    laser(api) {
+        const m = api.m, va = (Math.random() < 0.5 ? -1 : 1) * (api.enraged ? 0.9 : 0.65);
+        api.hz.add({ sh: 'r', x: m.x, y: m.y, w: 2400, h: 110, a: rnd(0, Math.PI), va, total: 1200, dur: 3600, dps: api.dmg(90), look: LOOK.sun }, api.now);
+        return 1200 + 3600;
+    },
+    shockwave(api) {
+        const m = api.m;
+        let ga = rnd(0, TAU);
+        for (let k = 0; k < 4; k++) {
+            const r = 160 + k * 230;
+            api.hz.add({ sh: 'g', x: m.x, y: m.y, r, r2: r + 120, ga, gs: 1.1, total: 1000 + k * 280, dur: 350, dmg: api.dmg(60), look: LOOK.gaster }, api.now);
+            ga += rnd(0.6, 1.0) * (Math.random() < 0.5 ? -1 : 1);
+        }
+        return 1000 + 4 * 280 + 350;
+    },
+    minefield(api) {
+        return checker(api, 260, LOOK.meteor, api.dmg(65), true);
+    },
+    crossfire(api) {
+        const a = wall(api, Math.floor(Math.random() * 2), 0, LOOK.gaster, api.dmg(60));
+        return api.enraged ? Math.max(a, wall(api, 2 + Math.floor(Math.random() * 2), 700, LOOK.gaster, api.dmg(60))) : a;
+    }
+};
+PATTERNS.reaper = {
+    scythe(api) {
+        const m = api.m, t = target(api);
+        const a = Math.atan2(t.y - m.y, t.x - m.x);
+        const n = api.enraged ? 3 : 2;
+        for (let k = 0; k < n; k++) api.hz.add({ sh: 'k', x: m.x, y: m.y, r: 900, a: a + (k - (n - 1) / 2) * 1.3, span: 1.0, total: 900 + k * 350, dur: 300, dmg: api.dmg(85), look: LOOK.void }, api.now);
+        return 900 + n * 350 + 300;
+    },
+    deathMarks(api) {
+        const ps = inBox(api);
+        for (const p of ps) for (let k = 0; k < 3; k++) api.hz.add({ sh: 'c', x: p.x, y: p.y, r: 150, total: 1000 + k * 700, dur: 300, dmg: api.dmg(70), look: LOOK.karma }, api.now);
+        api.say('☠️ You are marked');
+        return 1000 + 3 * 700 + 300;
+    },
+    harvest(api) {
+        api.say('☠️ SOUL HARVEST – find a safe spot!');
+        return islands(api, 2, 160, LOOK.karma, api.dmg(95), 1800);
+    },
+    whirl(api) {
+        const m = api.m, a = rnd(0, Math.PI), va = (Math.random() < 0.5 ? -1 : 1) * (api.enraged ? 1.1 : 0.8);
+        for (const off of [0, Math.PI / 2]) api.hz.add({ sh: 'r', x: m.x, y: m.y, w: 1900, h: 80, a: a + off, va, total: 1100, dur: 3800, dps: api.dmg(110), look: LOOK.blade }, api.now);
+        return 1100 + 3800;
+    },
+    stillness(api) {
+        api.say('☠️ DEATH IS WATCHING – don\'t move');
+        const B = boxOf(api);
+        api.hz.add({ sh: 's', x: api.m.x, y: api.m.y, lim: (B.x1 - B.x0) / 2, safe: [], blue: true, total: 1200, dur: 1400, dps: api.dmg(60), look: LOOK.blue }, api.now);
+        return 2600;
     }
 };
 

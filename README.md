@@ -2096,3 +2096,43 @@ zaehlt geteilt durch `zHp(Welle)`, Kill 60 -> 50. Solo je Welle: W10 ~12k ->
 **Scroll-Position** (`keepScroll` in `index.html`): Kekemon, Markt, Handel,
 Arena-Hub, Raid-Inventar, Haendler, Shop und Erfolge halten ihre Scroll-
 Position beim Neuzeichnen. Nachgestellt im Markt: 150 -> 0, jetzt bleibt 150.
+
+## 🐉 6.9: Bullet-Hell-Bosse, Raid-Bosse, Capture the Flag, Fixes (24.09.2026, Max)
+
+**Gefahrenzonen** (`arena-hazards.js`): Zone wird erst rot angekuendigt
+(`total` ms), dann aktiv (`dur`): Sofortschaden je Spieler einmal (`dmg`)
+und/oder Dauerschaden (`dps`), optional bewegt (`vx/vy`) oder drehend (`va`).
+Formen: Kreis, Rechteck/Strahl, Ring mit Luecke, Sektor, „alles ausser Inseln"
+(`s`, im Raid mit Reichweite `lim`), `blue` trifft nur, wer sich bewegt.
+Snapshot-Feld `hz`, gezeichnet in `zfx.js` `zDrawHazards`.
+
+**Zombie-Bosse ohne Minions** (Welle 30/35/40, danach 45 Kek Eye, dann Zyklus):
+Judge Bones (Knochenwaende mit Luecke, Gaster Blaster, Knochen-Raster, Karma-
+Inseln, blaue Phase), Solaris (Nova-Ringe, Sonnenstrahlen, Meteore,
+Laserkreuz, Supernova – zum Boss hin), Omega (Void-Schachbrett, Lanzen,
+Klingen, Kollaps, Doppelwaende, Freeze). Zonenschaden = Basis × (1 + halbe
+Wellen-Staerke). Test `hzsim.js`, Screenshots `hza.js`.
+
+**Raid (Extraction):** Boss geht nur noch, wenn 60 s kein Treffer und niemand
+in 1100 px (vorher stur nach 8 min – Bug aus einer Runde, Boss fast tot).
+Bosse alle 1–4 min (vorher 2–10), weiter nur einer zur Zeit. Neu: **Titan
+Mk-IV** (Raketen, Drehlaser, Schockwellen, Minenfeld, Wandpaar) und **The
+Reaper** (Sensen-Kegel, Todesmarken, Seelenernte-Inseln, Klingenkreuz,
+Stillstand) – Zonen nur in einer 2000er-Box um den Boss und nur mit Spieler
+in der Naehe. **Capture the Flag**: alle 4–9 min Flagge + Ziel (≥ 1600 px
+auseinander), Beruehren = tragen, Tod/Abgang = faellt, Ziel = Beutel mit 2–3
+Items aus `generate('sovereign')`, 6 min Laufzeit. Test `ctf.js`.
+Gelandeter Supply Drop bleibt markiert (📦), bis der Beutel leer ist.
+
+**Arena-Fixes:** Items schuetzen (`arFav`, Stern; kein Salvage, kein
+Haendler-Verkauf, Sammelknoepfe lassen sie aus). Drag & Drop aus dem Raid-
+Rucksack laesst den ganzen Stapel fallen. Positions-Korrektur im Browser mit
+Wandtest (Wand-Glitch, nicht nachgestellt). Gehaltene Tasten werden beim
+Inventar-Oeffnen und bei Drag & Drop zurueckgesetzt (Endlos-Laufen).
+
+**Lag-Suche:** Server-Loop sauber (48 h: Minuten-Maxima p99 ~60 ms, CPU auf
+edge im Leerlauf). Neu gemessen: App-Ping je Client (perf-Zeile: RTT p50/p95/
+max, „RTT-Spitze" bei ≥ 2 haengenden Clients) und Browser-Luecken im
+laufenden Spiel („Browser-Luecke" ab 1,5 s). Kekemon-KI mit Zeitbudget 10 ms
+(Stufe 3 brauchte bis 50 ms im Hauptthread). Verdacht: Tunnel ueber QUIC,
+einzelne Verbindungen brechen ab (cloudflared-Log) – Entscheidung Max offen.

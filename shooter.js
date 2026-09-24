@@ -67,6 +67,8 @@ const TRADER_BUY = { bandage: 12, medkit: 30, frag: 35, smoke: 25, stim: 45, mol
 const TRADER_SELL = 0.6;          // Anteil des Salvage-Werts beim Verkauf im Raid
 const DROP_EVERY = [3 * 60e3, 6 * 60e3];
 const DROP_WARN = 15000;
+// Capture the Flag (6.9, Max): Flagge taucht auf, ins Ziel tragen = Sovereign-Beute
+const CTF_EVERY = [4 * 60e3, 9 * 60e3], CTF_LIFE = 6 * 60e3, CTF_PICK = 50, CTF_GOAL = 120, CTF_MIN_DIST = 1600;
 
 // ---------- Map (fester Seed, damit sie nach jedem Neustart gleich ist) ----------
 
@@ -358,6 +360,7 @@ const Z_PTS_PER_DMG = 0.5, Z_PTS_KILL = 50;
 // Kugel-Optik der Zombie-Bosse (tier-Feld der Kugel, 1024 = Boss-Kugel)
 const BOSS_LOOK = { abomination: 5, necro: 11, brood: 12, inferno: 13, storm: 14, overlord: 15, judge: 11, seraph: 13, omega: 15 };
 const HZ = require('./arena-hazards');
+const RAID_HZ_BOX = 2000;         // Kampf-Box der Raid-Bosse mit Gefahrenzonen
 // 6.5.1: von Anfang an 12 % schneller
 const zSpd = w => Math.min(1.5, 1.12 + 0.015 * (w - 1));
 // Pause zwischen Wellen: am Anfang kurz, spaeter mehr Zeit zum Einkaufen
@@ -449,6 +452,7 @@ module.exports = function createArena(h, opts = {}) {
     let enforcerAt = [];             // Respawn-Zeiten der Enforcer
     let drop = null;                 // angekuendigter Versorgungsabwurf { x, y, at }
     let nextBossAt = 0, nextDropAt = 0;
+    let ctf = null, nextCtfAt = 0;    // { x, y, carrier, bx, by, until }
     const boss = () => bossId !== null ? mobs.find(m => m.id === bossId) || null : null;
     let lastTick = Date.now();
     let lastSend = 0;
@@ -2380,9 +2384,9 @@ module.exports = function createArena(h, opts = {}) {
         if (i < 0) return;
         mobs.splice(i, 1);
         const def = m.def;
+        if (def.pattern) hz.clear();
         if (zb) {
             if (m.id === bossId) bossId = null;
-            if (def.pattern) hz.clear();
             if (killer) {
                 const bi = def.boss ? (m.bossIdx || 0) + 1 : 0;
                 killer.pts += (def.boss ? 1000 * bi : m.kind === 'tank' ? 150 : def.pts || Z_PTS_KILL) * zPtsMul(killer, now);
@@ -2617,13 +2621,20 @@ module.exports = function createArena(h, opts = {}) {
     function patternTick(m, now) {
         const def = m.def, P = HZ.PATTERNS[def.pattern];
         if (!P || now < (m.patNext || 0)) return;
+        // Raid (6.9): Kampf-Box um den Boss, nur wenn jemand in der Naehe ist
+        let box = null;
+        if (!def.zombie) {
+            const half = RAID_HZ_BOX / 2;
+            box = { x0: Math.max(0, m.x - half), y0: Math.max(0, m.y - half), x1: Math.min(W, m.x + half), y1: Math.min(H, m.y + half) };
+            if (![...players.values()].some(p => !p.dead && Math.hypot(p.x - m.x, p.y - m.y) < half * 0.75)) return;
+        }
         const names = Object.keys(P).filter(k => k !== m.patLast && (k !== 'supernova' || m.enraged));
         const name = names[Math.floor(Math.random() * names.length)];
         m.patLast = name;
         const by = def.icon + ' ' + def.name;
         const api = {
-            hz: { add: z => hz.add({ ...z, by }, now) }, W, H, m, now, enraged: !!m.enraged,
-            players: () => [...players.values()],
+            hz: { add: z => hz.add({ ...z, by }, now) }, W, H, m, now, enraged: !!m.enraged, box,
+            players: () => [...players.values()].filter(p => !box || (p.x > box.x0 && p.x < box.x1 && p.y > box.y0 && p.y < box.y1)),
             dmg: base => Math.round(base * (1 + ((m.dm || 1) - 1) * 0.5)),
             say: text => { for (const q of players.values()) h.send(q.c, { type: 'shEvent', text, kind: 'boss' }); }
         };
@@ -2633,8 +2644,8 @@ module.exports = function createArena(h, opts = {}) {
 
     function bossSkills(m, now, dt, cd) {
         const def = m.def;
-        if (!def.zombie) return false;
         if (def.pattern) patternTick(m, now);
+        if (!def.zombie) return false;
         const by = def.icon + ' ' + def.name;
         const dm = m.dm || 1;
         // Feuerspur hinter sich her
@@ -2764,6 +2775,7 @@ module.exports = function createArena(h, opts = {}) {
             && ![...players.values()].some(p => !p.dead && Math.hypot(p.x - m.x, p.y - m.y) < BOSS_NEAR)) {
             mobs.splice(mobs.indexOf(m), 1);
             bossId = null;
+            if (def.pattern) hz.clear();
             nextBossAt = now + randIn(BOSS_EVERY) / SPEED;
             announce(`${def.icon} The ${def.name} got bored and left.`, 'boss');
             return;
@@ -2975,7 +2987,58 @@ module.exports = function createArena(h, opts = {}) {
         }
     }
 
+    // Capture the Flag (6.9)
+    function ctfTick(now) {
+        if (!nextCtfAt) nextCtfAt = now + randIn(CTF_EVERY) / SPEED;
+        if (!ctf) {
+            if (now < nextCtfAt) return;
+            const f = freeSpot(true);
+            let g = null;
+            for (let k = 0; k < 40 && !g; k++) {
+                const s = freeSpot(false);
+                if (Math.hypot(s.x - f.x, s.y - f.y) >= CTF_MIN_DIST) g = s;
+            }
+            if (!g) { nextCtfAt = now + 60e3 / SPEED; return; }
+            ctf = { x: f.x, y: f.y, carrier: null, bx: g.x, by: g.y, until: now + CTF_LIFE / SPEED };
+            announce('🚩 Capture the Flag! Grab the flag and carry it to the 🏁 goal for Sovereign loot', 'drop');
+            return;
+        }
+        if (now > ctf.until) {
+            announce('🚩 Nobody captured the flag – it vanished.', 'drop');
+            ctf = null;
+            nextCtfAt = now + randIn(CTF_EVERY) / SPEED;
+            return;
+        }
+        const c = ctf.carrier ? players.get(ctf.carrier) : null;
+        if (ctf.carrier && (!c || c.dead)) {
+            // Traeger tot oder weg: Flagge faellt, wo er zuletzt war
+            ctf.carrier = null;
+            announce('🚩 The flag was dropped!', 'drop');
+        }
+        if (c && !c.dead) {
+            ctf.x = c.x;
+            ctf.y = c.y;
+            if (Math.hypot(c.x - ctf.bx, c.y - ctf.by) < CTF_GOAL) {
+                const n = 2 + (Math.random() < 0.35 ? 1 : 0);
+                dropBag(ctf.bx, ctf.by, Array.from({ length: n }, () => I.generate('sovereign')), 'ctf');
+                fxAt(ctf.bx, ctf.by, { type: 'shBoom', x: Math.round(ctf.bx), y: Math.round(ctf.by), r: 160, nuke: false });
+                announce(`🏁 ${c.name} captured the flag – Sovereign loot at the goal!`, 'boss');
+                h.feed(`🏁 ${c.name} captured the flag in the raid`, 'good');
+                ctf = null;
+                nextCtfAt = now + randIn(CTF_EVERY) / SPEED;
+            }
+            return;
+        }
+        for (const p of players.values()) {
+            if (p.dead || Math.hypot(p.x - ctf.x, p.y - ctf.y) > CTF_PICK) continue;
+            ctf.carrier = p.id;
+            announce(`🚩 ${p.name} has the flag!`, 'drop');
+            break;
+        }
+    }
+
     function eventTick(now, dt) {
+        ctfTick(now);
         if (!nextBossAt) nextBossAt = now + randIn(BOSS_EVERY) / SPEED;
         if (!nextDropAt) nextDropAt = now + randIn(DROP_EVERY) / SPEED;
         // Boss weg, ohne abgemeldet zu sein (z. B. Test-Hook): Uhr neu starten
@@ -3031,6 +3094,8 @@ module.exports = function createArena(h, opts = {}) {
             drop = null;
             nextBossAt = 0;
             nextDropAt = 0;
+            ctf = null;
+            nextCtfAt = 0;
             return;
         }
         if (hz.list.length) hz.tick(now, dt);
@@ -3204,7 +3269,7 @@ module.exports = function createArena(h, opts = {}) {
                 }),
                 bullets: bullets.filter(b => inView(b.x, b.y)).map(b => b.w.look ? [b.id, Math.round(b.x), Math.round(b.y), Math.round(b.vx), Math.round(b.vy), b.owner, b.fx, b.tier, b.w.look] : [b.id, Math.round(b.x), Math.round(b.y), Math.round(b.vx), Math.round(b.vy), b.owner, b.fx, b.tier]),
                 crates: crates.filter(cr => inView(cr.x, cr.y)).map(cr => [cr.id, cr.x, cr.y, now >= cr.readyAt ? 1 : 0, cr.t === 'mil' ? 1 : 0, cr.g || 0]),
-                bags: bags.filter(b => inView(b.x, b.y)).map(b => [b.id, Math.round(b.x), Math.round(b.y), b.items.length, b.kind === 'boss' ? 2 : b.kind === 'drop' ? 1 : b.kind === 'mob1' ? 3 : b.kind === 'mob2' ? 4 : b.kind === 'mob3' ? 5 : 0]),
+                bags: bags.filter(b => inView(b.x, b.y)).map(b => [b.id, Math.round(b.x), Math.round(b.y), b.items.length, b.kind === 'boss' ? 2 : b.kind === 'drop' ? 1 : b.kind === 'mob1' ? 3 : b.kind === 'mob2' ? 4 : b.kind === 'mob3' || b.kind === 'ctf' ? 5 : 0]),
                 // Events sieht jeder, egal wo (Karte und Pfeil am Rand)
                 boss: bossView(now),
                 // Gefahrenzonen (6.9): alle, sie sind riesig und gehen ueber den Bildschirm hinaus
@@ -3213,6 +3278,8 @@ module.exports = function createArena(h, opts = {}) {
                 mobs: mobs.filter(m => !m.def.boss && inView(m.x, m.y)).map(m => [m.id, m.kind, Math.round(m.x), Math.round(m.y), Math.max(0, Math.round(m.hp)), m.maxHp, Math.round(m.a * 100) / 100, m.aimAt ? Math.max(0, Math.round(m.aimAt - now)) : 0,
                     m.chargeAt ? Math.max(0, Math.round(m.chargeAt - now)) : 0, m.charging ? 1 : 0, Math.round(m.cx || 0), Math.round(m.cy || 0)]),
                 drop: drop ? [Math.round(drop.x), Math.round(drop.y), Math.max(0, Math.round(drop.at - now)), drop.landed ? 1 : 0] : null,
+                // Capture the Flag (6.9): [Flagge x, y, Traeger-Id|0, Ziel x, y, ms uebrig]
+                ctf: ctf ? [Math.round(ctf.x), Math.round(ctf.y), ctf.carrier || 0, Math.round(ctf.bx), Math.round(ctf.by), Math.max(0, Math.round(ctf.until - now))] : undefined,
                 nades: nades.filter(g => inView(g.x, g.y)).map(g => [g.id, Math.round(g.x), Math.round(g.y), g.base, g.landed ? 1 : 0, g.fuseAt ? Math.max(0, Math.round(g.fuseAt - now)) : 0]),
                 smokes: smokes.filter(s => inView(s.x, s.y)).map(s => [s.id, Math.round(s.x), Math.round(s.y), s.r, Math.round(s.until - now)]),
                 fires: fires.filter(f => inView(f.x, f.y)).map(f => [f.id, Math.round(f.x), Math.round(f.y), f.r, Math.round(f.until - now), f.acid ? 1 : 0]),
@@ -3230,7 +3297,8 @@ module.exports = function createArena(h, opts = {}) {
         rooms: () => [{ id: 'raid', players: [...players.values()].map(p => p.name) }],
         _players: players, _bags: bags, _crates: crates, _damage: damage, _canSee: canSee,
         _spawnBoss: kind => spawnBoss(Date.now(), kind), _spawnDrop: () => spawnDrop(Date.now()), _boss: boss, _mobs: mobs, _strikes: strikes,
-        _spawnMob: (kind, x, y) => spawnMob(kind, x, y, Date.now())
+        _spawnMob: (kind, x, y) => spawnMob(kind, x, y, Date.now()),
+        _ctf: () => ctf, _startCtf: () => { nextCtfAt = 1; ctfTick(Date.now()); return ctf; }
     };
 };
 

@@ -6,9 +6,10 @@
 const ZB_COL = {
     abomination: '184,79,255', necro: '124,255,178', brood: '255,123,58',
     inferno: '255,90,30', storm: '90,216,255', overlord: '200,107,255',
-    judge: '127,216,255', seraph: '255,207,58', omega: '176,107,255'
+    judge: '127,216,255', seraph: '255,207,58', omega: '176,107,255',
+    titan: '255,138,58', reaper: '157,107,255'
 };
-const ZB_NEW = ['necro', 'brood', 'inferno', 'storm', 'overlord', 'judge', 'seraph', 'omega'];
+const ZB_NEW = ['necro', 'brood', 'inferno', 'storm', 'overlord', 'judge', 'seraph', 'omega', 'titan', 'reaper'];
 
 // Kleine Helfer
 const zHash = id => {
@@ -872,6 +873,145 @@ function zDrawBoss(c, bs, BR, now) {
         c.restore();
         return true;
     }
+    if (bs.kind === 'titan') {
+        // Titan Mk-IV: Kampfroboter, Schulterraketen, Reaktorkern, Beine stampfen
+        const step = Math.sin(now / 160) * (bs.charging ? 10 : 4);
+        c.rotate(a + Math.PI / 2);
+        // Beine
+        c.fillStyle = '#3a3f4a';
+        for (const e of [-1, 1]) {
+            c.save();
+            c.translate(e * BR * .5, BR * .55 + e * step);
+            c.fillRect(-BR * .18, -BR * .1, BR * .36, BR * .6);
+            c.fillStyle = '#20242c';
+            c.fillRect(-BR * .24, BR * .42, BR * .48, BR * .16);
+            c.restore();
+            c.fillStyle = '#3a3f4a';
+        }
+        // Rumpf
+        const g = c.createLinearGradient(-BR, -BR, BR, BR);
+        g.addColorStop(0, '#9aa3b2');
+        g.addColorStop(1, '#4a5160');
+        c.fillStyle = g;
+        c.strokeStyle = '#1b1e25';
+        c.lineWidth = 3;
+        c.beginPath();
+        c.moveTo(-BR * .75, -BR * .55);
+        c.lineTo(BR * .75, -BR * .55);
+        c.lineTo(BR * .95, BR * .15);
+        c.lineTo(BR * .6, BR * .6);
+        c.lineTo(-BR * .6, BR * .6);
+        c.lineTo(-BR * .95, BR * .15);
+        c.closePath();
+        c.fill();
+        c.stroke();
+        // Warnstreifen
+        c.save();
+        c.clip();
+        c.fillStyle = 'rgba(255,190,40,.55)';
+        for (let i = -6; i < 6; i++) {
+            c.beginPath();
+            c.moveTo(i * 18, BR * .4);
+            c.lineTo(i * 18 + 9, BR * .4);
+            c.lineTo(i * 18 + 21, BR * .6);
+            c.lineTo(i * 18 + 12, BR * .6);
+            c.fill();
+        }
+        c.restore();
+        // Raketenkaesten auf den Schultern
+        for (const e of [-1, 1]) {
+            c.fillStyle = '#2b3038';
+            c.fillRect(e * BR * .95 - BR * .28, -BR * .85, BR * .56, BR * .5);
+            for (let r = 0; r < 2; r++) for (let q = 0; q < 3; q++) {
+                c.fillStyle = (now / 200 + q + r) % 3 < 1 ? '#ff5a2a' : '#6b1a0a';
+                c.beginPath();
+                c.arc(e * BR * .95 - BR * .17 + q * BR * .17, -BR * .74 + r * BR * .2, BR * .06, 0, Math.PI * 2);
+                c.fill();
+            }
+        }
+        // Reaktorkern pulsiert
+        const pk = .6 + .4 * Math.sin(now / 120);
+        zGlow(c, 0, 0, BR * .7, bs.enraged ? '255,60,60' : '255,150,40', .7 * pk);
+        c.fillStyle = bs.enraged ? '#ff4040' : '#ffb24a';
+        c.beginPath();
+        c.arc(0, 0, BR * .22, 0, Math.PI * 2);
+        c.fill();
+        c.strokeStyle = '#fff';
+        c.lineWidth = 2;
+        c.beginPath();
+        c.arc(0, 0, BR * .3, now / 200, now / 200 + 4);
+        c.stroke();
+        // Visier
+        c.fillStyle = '#12151b';
+        c.fillRect(-BR * .4, -BR * .5, BR * .8, BR * .18);
+        c.fillStyle = bs.enraged ? '#ff3030' : '#ff8a3a';
+        c.fillRect(-BR * .4 + ((now / 6) % (BR * .7)), -BR * .47, BR * .12, BR * .12);
+        c.restore();
+        return true;
+    }
+    if (bs.kind === 'reaper') {
+        // The Reaper: schwebende Kutte, Sense, Seelenflammen, Nebelschweif
+        const fl = Math.sin(now / 380) * 6;
+        c.translate(0, fl);
+        // Nebelschweif
+        for (let i = 0; i < 7; i++) {
+            const t = now / 500 + i;
+            c.fillStyle = `rgba(80,40,140,${.18 - i * .02})`;
+            c.beginPath();
+            c.arc(Math.sin(t) * BR * .4, BR * (.8 + i * .22), BR * (.6 - i * .05), 0, Math.PI * 2);
+            c.fill();
+        }
+        // Kutte
+        c.fillStyle = '#0c0814';
+        c.strokeStyle = '#9d6bff';
+        c.lineWidth = 2;
+        c.beginPath();
+        c.moveTo(0, -BR * 1.05);
+        c.quadraticCurveTo(BR * .9, -BR * .6, BR * .8, BR * .9);
+        for (let i = 0; i <= 6; i++) c.lineTo(BR * .8 - i * BR * .27, BR * (.9 + (i % 2 ? .22 : 0) + .06 * Math.sin(now / 140 + i)));
+        c.quadraticCurveTo(-BR * .9, -BR * .6, 0, -BR * 1.05);
+        c.fill();
+        c.stroke();
+        // Kapuzen-Leere mit Augen
+        c.fillStyle = '#000';
+        c.beginPath();
+        c.ellipse(0, -BR * .45, BR * .38, BR * .42, 0, 0, Math.PI * 2);
+        c.fill();
+        for (const e of [-1, 1]) {
+            zGlow(c, e * BR * .14, -BR * .5, BR * .22, bs.enraged ? '255,60,90' : '190,140,255', .9);
+            c.fillStyle = bs.enraged ? '#ff5a7a' : '#e6d6ff';
+            c.beginPath();
+            c.arc(e * BR * .14, -BR * .5, BR * .05, 0, Math.PI * 2);
+            c.fill();
+        }
+        // Sense: schwingt mit
+        c.save();
+        c.rotate(a * .3 + Math.sin(now / 300) * .4);
+        c.strokeStyle = '#5a4a3a';
+        c.lineWidth = 5;
+        c.beginPath();
+        c.moveTo(-BR * 1.1, BR * 1.1);
+        c.lineTo(BR * 1.0, -BR * 1.3);
+        c.stroke();
+        const blade = c.createLinearGradient(BR * .4, -BR * 1.6, BR * 1.6, -BR * .7);
+        blade.addColorStop(0, '#e8e8f0');
+        blade.addColorStop(1, '#6a5aa0');
+        c.fillStyle = blade;
+        c.beginPath();
+        c.moveTo(BR * 1.0, -BR * 1.3);
+        c.quadraticCurveTo(BR * .2, -BR * 2.1, -BR * .7, -BR * 1.5);
+        c.quadraticCurveTo(BR * .15, -BR * 1.65, BR * .85, -BR * 1.1);
+        c.closePath();
+        c.fill();
+        c.restore();
+        // kreisende Seelen
+        for (let i = 0; i < 3; i++) {
+            const t = now / 700 + i / 3 * Math.PI * 2;
+            zGlow(c, Math.cos(t) * BR * 1.5, Math.sin(t) * BR * 1.1, 14, '157,107,255', .8);
+        }
+        c.restore();
+        return true;
+    }
     c.restore();
     return false;
 }
@@ -930,12 +1070,20 @@ function zDrawHazards(c, list, age, now) {
                 c.save();
                 c.fillStyle = blue ? `rgba(60,140,255,${.1 + .18 * k})` : `rgba(255,30,30,${.08 + .2 * k})`;
                 c.beginPath();
-                c.rect(-400, -400, map.w + 800, map.h + 800);
+                if (p1 > 0) c.arc(x0, y0, p1, 0, Math.PI * 2);
+                else c.rect(-400, -400, map.w + 800, map.h + 800);
                 for (const [sx, sy, sr] of safe || []) {
                     c.moveTo(sx + sr, sy);
                     c.arc(sx, sy, sr, 0, Math.PI * 2, true);
                 }
                 c.fill('evenodd');
+                if (p1 > 0) {
+                    c.strokeStyle = blue ? 'rgba(90,160,255,.7)' : 'rgba(255,60,60,.7)';
+                    c.lineWidth = 4;
+                    c.beginPath();
+                    c.arc(x0, y0, p1, 0, Math.PI * 2);
+                    c.stroke();
+                }
                 for (const [sx, sy, sr] of safe || []) {
                     c.strokeStyle = `rgba(90,255,140,${.6 + .4 * pulse})`;
                     c.lineWidth = 5;
@@ -1006,11 +1154,15 @@ function zDrawHazards(c, list, age, now) {
             c.save();
             if (blue) {
                 c.fillStyle = `rgba(40,110,255,${(.18 + .08 * Math.sin(now / 80)) * fade})`;
-                c.fillRect(-400, -400, map.w + 800, map.h + 800);
+                c.beginPath();
+                if (p1 > 0) c.arc(x0, y0, p1, 0, Math.PI * 2);
+                else c.rect(-400, -400, map.w + 800, map.h + 800);
+                c.fill();
             } else {
                 c.fillStyle = `rgba(${rgb},${.45 * fade})`;
                 c.beginPath();
-                c.rect(-400, -400, map.w + 800, map.h + 800);
+                if (p1 > 0) c.arc(x0, y0, p1, 0, Math.PI * 2);
+                else c.rect(-400, -400, map.w + 800, map.h + 800);
                 for (const [sx, sy, sr] of safe || []) {
                     c.moveTo(sx + sr, sy);
                     c.arc(sx, sy, sr, 0, Math.PI * 2, true);

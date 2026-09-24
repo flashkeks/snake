@@ -1724,6 +1724,7 @@ async function handle(c, data) {
                     shooter._spawnMob(String(data.mob), p.x + (Number(data.dx) || 300), p.y + (Number(data.dy) || 0));
                 }
                 if (data.drop) shooter._spawnDrop();
+                if (data.ctf) shooter._startCtf();
                 if (data.bossHp && shooter._boss()) shooter._boss().hp = Number(data.bossHp);
                 if (data.clearMobs) shooter._mobs.length = 0;
                 // Zombies: naechste Welle vorgeben (z. B. 10 = Boss-Welle), god = unverwundbar

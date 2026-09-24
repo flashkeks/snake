@@ -147,6 +147,18 @@ const MOBS = {
         speed: 50, aggro: 99999, range: 99999, keep: 380, contact: 70, taken: 0.85, pattern: 'omega', gap: 550, enrage: 0.5
     },
     // ---------- Bosse (einer zur Zeit, reihum zufaellig) ----------
+    // 6.9 (Max: neue extrem krasse Bosse): nutzen die Gefahrenzonen aus
+    // arena-hazards.js in einer Box um sich, dazu eigene Waffen
+    titan: {
+        boss: true, name: 'Titan Mk-IV', title: 'War Machine', icon: '🤖', color: '#ff8a3a', r: 58, hpBase: 14000, hpPer: 5000, speed: 95, aggro: 900, keep: 260, taken: 0.85,
+        gun: { dmg: 20, speed: 700, ms: 900, burst: 4, spread: 0.18, life: 1.6 }, charge: { ms: 9000, warn: 800, dur: 650, speed: 760 },
+        contact: 60, pattern: 'titan', gap: 900, enrage: 0.5
+    },
+    reaper: {
+        boss: true, name: 'The Reaper', title: 'Harvester of Raids', icon: '☠️', color: '#9d6bff', r: 46, hpBase: 12000, hpPer: 4500, speed: 150, aggro: 950, keep: 200,
+        gun: { dmg: 14, speed: 480, ms: 1300, burst: 3, spread: 0.4, life: 2.2, homing: 1 }, blink: { ms: 6000 },
+        contact: 50, pattern: 'reaper', gap: 800, enrage: 0.5
+    },
     king: {
         boss: true, name: 'Raccoon King', icon: '🦝', crown: true, color: '#ff3b3b', r: 44, hpBase: 5000, hpPer: 2500, speed: 125, aggro: 700, keep: 170,
         gun: { dmg: 16, speed: 620, ms: 850, burst: 3, spread: 0.12, life: 1.5, fan: true },

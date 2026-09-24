@@ -1,5 +1,18 @@
 [
   {
+    "version": "6.9",
+    "date": "24.09.2026",
+    "items": [
+      "🧟 Three new zombie bosses at waves 30, 35 and 40 – dodge or die",
+      "🤖 Two new raid bosses, and bosses show up more often",
+      "🚩 New raid event: Capture the Flag",
+      "⭐ Protect items so they can't be salvaged",
+      "🎒 Drag a stack out of your backpack to drop all of it",
+      "📦 Landed supply drops stay on the map",
+      "🐛 Bosses no longer leave mid-fight, no more endless running after opening the inventory, smoother walls"
+    ]
+  },
+  {
     "version": "6.8",
     "date": "24.09.2026",
     "items": [

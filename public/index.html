@@ -12446,6 +12446,52 @@ function shFrame() {
         c.textAlign = 'center';
         c.fillText(`Supply drop in ${Math.ceil(Math.max(0, left - (now - latest.recv)) / 1000)} s`, dx, dy + 50);
     }
+    // Capture the Flag (6.9): Ziel und Flagge (beim Traeger ueber dem Kopf)
+    if (latest.ctf) {
+        const [fx0, fy0, carrier, gx, gy] = latest.ctf;
+        const k = .5 + .5 * Math.sin(now / 180);
+        c.save();
+        zGlow(c, gx, gy, 170, '255,210,63', .25 + .15 * k);
+        c.strokeStyle = `rgba(255,210,63,${.6 + .4 * k})`;
+        c.lineWidth = 5;
+        c.setLineDash([22, 12]);
+        c.beginPath();
+        c.arc(gx, gy, 120, -now / 700, -now / 700 + Math.PI * 2);
+        c.stroke();
+        c.setLineDash([]);
+        drawEmojiC(c, '🏁', gx, gy - 8, 54);
+        c.fillStyle = '#ffd23f';
+        c.font = 'bold 16px system-ui';
+        c.textAlign = 'center';
+        c.fillText('FLAG GOAL', gx, gy + 48);
+        let fx = fx0, fy = fy0;
+        if (carrier) {
+            const cp = carrier === sh.id && shPred ? shPred : shOthers().find(q => q.id === carrier);
+            if (cp) { fx = cp.x; fy = cp.y; }
+            fy -= 34;
+        }
+        // Stange und wehendes Tuch
+        c.strokeStyle = '#e8e8e8';
+        c.lineWidth = 3;
+        c.beginPath();
+        c.moveTo(fx, fy + 22);
+        c.lineTo(fx, fy - 30);
+        c.stroke();
+        c.fillStyle = '#ff3b3b';
+        c.beginPath();
+        c.moveTo(fx, fy - 30);
+        for (let i = 0; i <= 6; i++) c.lineTo(fx + i * 6, fy - 30 + Math.sin(now / 120 + i * .8) * 3);
+        for (let i = 6; i >= 0; i--) c.lineTo(fx + i * 6, fy - 12 + Math.sin(now / 120 + i * .8) * 3);
+        c.closePath();
+        c.fill();
+        if (!carrier) {
+            zGlow(c, fx, fy, 60, '255,60,60', .3 + .2 * k);
+            c.fillStyle = '#ff9f9f';
+            c.font = 'bold 14px system-ui';
+            c.fillText('FLAG', fx, fy + 40);
+        }
+        c.restore();
+    }
     // Kugeln (Farbe nach Effekt)
     const age = (now - latest.recv) / 1000;
     for (const [, x, y, vx, vy, owner, fx, bt, look] of latest.bullets) {
@@ -13338,6 +13384,10 @@ function shEventHud(c, latest, W, H, now, dpr) {
     };
     if (bs) arrow(bs.x, bs.y, bs.def.icon, '#ff3b3b');
     if (latest.drop) arrow(latest.drop[0], latest.drop[1], latest.drop[3] ? '📦' : '🪂', '#5aaaff');
+    if (latest.ctf) {
+        if (latest.ctf[2] !== sh.id) arrow(latest.ctf[0], latest.ctf[1], '🚩', '#ff5a5a');
+        arrow(latest.ctf[3], latest.ctf[4], '🏁', '#ffd23f');
+    }
     for (const [, x, y, , kind] of latest.bags) if (kind === 2 || kind === 5) arrow(x, y, kind === 5 ? '💎' : '💰', '#ffd23f');
     if (shEventMsg && now - shEventMsg.t < 4500) {
         c.globalAlpha = Math.min(1, (4500 - (now - shEventMsg.t)) / 600);
@@ -13401,6 +13451,15 @@ function shMinimap(c, latest, W, H) {
         c.beginPath();
         c.arc(x0 + latest.drop[0] * k, y0 + latest.drop[1] * k, 4 + Math.sin(performance.now() / 150) * 1.5, 0, Math.PI * 2);
         c.fill();
+    }
+    if (latest.ctf) {
+        c.fillStyle = '#ff5a5a';
+        c.beginPath();
+        c.arc(x0 + latest.ctf[0] * k, y0 + latest.ctf[1] * k, 4.5, 0, Math.PI * 2);
+        c.fill();
+        c.strokeStyle = '#ffd23f';
+        c.lineWidth = 2;
+        c.strokeRect(x0 + latest.ctf[3] * k - 4, y0 + latest.ctf[4] * k - 4, 8, 8);
     }
     if (latest.boss) {
         c.fillStyle = '#ff3b3b';
