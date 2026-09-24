@@ -11928,11 +11928,23 @@ function shReconcile(d) {
     else if (!moving) k = err > 1 ? .12 : 0;
     else if (err > 14) k = .08 * (err - 14) / err;
     if (!k) return;
-    shPred.x += ex * k;
-    shPred.y += ey * k;
+    // 6.9 (Max: man glitcht an Waenden): Korrektur mit Wandtest schieben.
+    // Vorher ging sie blind, schob die Figur beim Entlanglaufen in die Wand –
+    // dort blockierte dann jede Richtung bis zur naechsten grossen Korrektur.
+    const r = sh.map.r;
+    const x0 = shPred.x, y0 = shPred.y;
+    if (k === 1) {
+        shPred.x += ex;
+        shPred.y += ey;
+        if (shBlocked(shPred.x, shPred.y, r)) {
+            shPred.x = me.x;
+            shPred.y = me.y;
+        }
+    } else [shPred.x, shPred.y] = shSlide(shPred.x, shPred.y, ex * k, ey * k, r);
+    const ax = shPred.x - x0, ay = shPred.y - y0;
     for (const h of shHist) {
-        h.x += ex * k;
-        h.y += ey * k;
+        h.x += ax;
+        h.y += ay;
     }
 }
 
