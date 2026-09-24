@@ -14,18 +14,21 @@
 const LV = require('./km-level');
 
 const GYMS = [
-    { id: 'sprout', name: 'Sprout Gym', icon: '🌱', leader: 'Scout Mika', type: 'nature', rar: ['uncommon'], mul: 0.85, smart: 1, coins: 3000, pack: 'anime' },
-    { id: 'tide', name: 'Tide Gym', icon: '💧', leader: 'Captain Ren', type: 'water', rar: ['uncommon', 'rare'], mul: 0.9, smart: 2, coins: 4000, pack: 'film' },
-    { id: 'blaze', name: 'Blaze Gym', icon: '🔥', leader: 'Pyra', type: 'fire', rar: ['rare'], mul: 0.95, smart: 2, coins: 5000, pack: 'anime' },
-    { id: 'volt', name: 'Volt Gym', icon: '⚡', leader: 'Sparky', type: 'electric', rar: ['rare'], mul: 1, smart: 2, coins: 6500, pack: 'waifu' },
-    { id: 'dojo', name: 'Iron Dojo', icon: '👊', leader: 'Master Ken', type: 'fighting', rar: ['rare', 'epic'], mul: 0.9, smart: 2, coins: 8000, pack: 'film' },
-    { id: 'mind', name: 'Mind Tower', icon: '🔮', leader: 'Oracle Lua', type: 'psychic', rar: ['epic'], mul: 1.15, smart: 2, coins: 11000, pack: 'anime' },
-    { id: 'shadow', name: 'Shadow Gym', icon: '🌑', leader: 'Noct', type: 'dark', rar: ['epic', 'legendary'], mul: 1, smart: 2, coins: 15000, pack: 'waifu' },
-    { id: 'champ', name: 'Kek Champion', icon: '👑', leader: 'The Kek', type: null, rar: ['legendary', 'secret'], mul: 0.9, smart: 2, coins: 30000, pack: 'mixed' }
+    { id: 'sprout', lv: 5, name: 'Sprout Gym', icon: '🌱', leader: 'Scout Mika', type: 'nature', rar: ['uncommon'], mul: 0.85, smart: 1, coins: 3000, pack: 'anime' },
+    { id: 'tide', lv: 10, name: 'Tide Gym', icon: '💧', leader: 'Captain Ren', type: 'water', rar: ['uncommon', 'rare'], mul: 0.9, smart: 2, coins: 4000, pack: 'film' },
+    { id: 'blaze', lv: 15, name: 'Blaze Gym', icon: '🔥', leader: 'Pyra', type: 'fire', rar: ['rare'], mul: 0.95, smart: 2, coins: 5000, pack: 'anime' },
+    { id: 'volt', lv: 20, name: 'Volt Gym', icon: '⚡', leader: 'Sparky', type: 'electric', rar: ['rare'], mul: 1, smart: 2, coins: 6500, pack: 'waifu' },
+    { id: 'dojo', lv: 26, name: 'Iron Dojo', icon: '👊', leader: 'Master Ken', type: 'fighting', rar: ['rare', 'epic'], mul: 0.9, smart: 2, coins: 8000, pack: 'film' },
+    { id: 'mind', lv: 33, name: 'Mind Tower', icon: '🔮', leader: 'Oracle Lua', type: 'psychic', rar: ['epic'], mul: 1.15, smart: 2, coins: 11000, pack: 'anime' },
+    { id: 'shadow', lv: 41, name: 'Shadow Gym', icon: '🌑', leader: 'Noct', type: 'dark', rar: ['epic', 'legendary'], mul: 1, smart: 2, coins: 15000, pack: 'waifu' },
+    { id: 'champ', lv: 50, name: 'Kek Champion', icon: '👑', leader: 'The Kek', type: null, rar: ['legendary', 'secret'], mul: 0.9, smart: 2, coins: 30000, pack: 'mixed' }
 ];
 // Staerke per Simulation (24.09.2026, Kampfsystem 6.0, tools/km-sim.js auf edge
 // mit den echten Karten; Spieler = KI-Stufe 1, Zufallsteam der Arena-Seltenheit).
 // Zielkurve ~85 % bei der ersten bis ~30 % beim Champion.
+// 6.7 (Karten-Level Schritt 3): Leiter-Karten kaempfen auf dem Gym-Level lv
+// (Sprout 5 … Champion 50). mul bleibt als Feinschliff; die Zielkurve gilt fuer
+// ein Spielerteam auf dem Gym-Level (PLAYER_CARD_LV=gym in tools/km-sim.js).
 const REPEAT_SHARE = 0.15, REPEAT_PER_DAY = 3;
 
 // Training (6.7, Karten-Level Schritt 2): wilde KI-Teams, unbegrenzt.
@@ -81,25 +84,27 @@ module.exports = function createGyms(h) {
     }
     const byId = Object.fromEntries(GYMS.map(g => [g.id, g]));
 
-    // Reset 6.4 (Max, einmalig): Fortschritt aller Konten leeren. Coins und
-    // Karten bleiben; wo der Erstsieg schon bezahlt war, gibt es ihn nicht
-    // nochmal (u.kmGymsPaid = { gymId: true } -> beim neuen Erstsieg nur die
-    // Wiederholungs-Belohnung). Merker je Konto: u.kmGymsV = 2.
+    // Reset 6.4 (Max, einmalig) und nochmal 6.7 (Gyms mit Level): Fortschritt
+    // aller Konten leeren. Coins und Karten bleiben; wo der Erstsieg schon
+    // bezahlt war, gibt es ihn nicht nochmal (u.kmGymsPaid = { gymId: true }
+    // -> beim neuen Erstsieg nur die Wiederholungs-Belohnung).
+    // Merker je Konto: u.kmGymsV = GYMS_V.
+    const GYMS_V = 3;
     if (accounts.users) {
         let n = 0;
         for (const [, u] of accounts.users()) {
-            if (u.kmGymsV === 2) continue;
+            if (u.kmGymsV === GYMS_V) continue;
             const old = u.kmGyms || {};
             const paid = u.kmGymsPaid || {};
             for (const [gid, st] of Object.entries(old)) if (st && st.cleared) paid[gid] = true;
             if (Object.keys(old).length) n++;
             u.kmGymsPaid = paid;
             u.kmGyms = {};
-            u.kmGymsV = 2;
+            u.kmGymsV = GYMS_V;
         }
         if (n) {
             accounts.touch();
-            if (h.log) h.log(`kekemon: Gym-Fortschritt von ${n} Konten zurueckgesetzt (6.4), Erstsieg-Belohnungen gemerkt`);
+            if (h.log) h.log(`kekemon: Gym-Fortschritt von ${n} Konten zurueckgesetzt (Stand ${GYMS_V}), Erstsieg-Belohnungen gemerkt`);
         }
     }
 
@@ -115,7 +120,7 @@ module.exports = function createGyms(h) {
             const s = p[g.id] || {};
             const today = s.day === day() ? s.today || 0 : 0;
             const row = {
-                id: g.id, name: g.name, icon: g.icon, leader: g.leader, type: g.type, rar: g.rar, mul: g.mul, smart: g.smart,
+                id: g.id, lv: g.lv, name: g.name, icon: g.icon, leader: g.leader, type: g.type, rar: g.rar, mul: g.mul, smart: g.smart,
                 coins: g.coins, repeat: Math.round(g.coins * REPEAT_SHARE), pack: g.pack, team: g.team,
                 unlocked: open, cleared: !!s.cleared, wins: s.wins || 0, rewardsLeft: s.cleared ? Math.max(0, REPEAT_PER_DAY - today) : 1,
                 paid: !!(u.kmGymsPaid || {})[g.id]
@@ -185,7 +190,7 @@ module.exports = function createGyms(h) {
             leader = `Wild team (Lv ${Math.min(...foes.map(f => f.lv))}–${Math.max(...foes.map(f => f.lv))})`;
             smart = z.smart;
         } else {
-            foes = g.team.map(id => B.fighter(cardDb.byId[id], '', g.mul));
+            foes = g.team.map(id => B.fighter(cardDb.byId[id], '', g.mul, g.lv));
             leader = g.leader;
             smart = g.smart;
         }
