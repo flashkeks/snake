@@ -5,7 +5,8 @@
 // DATA_DIR: Ordner mit cards-raw.json (auf edge /srv/snake-data), sonst die
 // kleine fixture. Seit 6.4 (echte Spieler waren viel besser als die alte
 // Annahme): Spieler = KI-Stufe PLAYER_LV (Standard 2, Vorausschau), Team aus
-// der Seltenheit PLAYER_RAR (Standard rare – was man nach ein paar Packs hat).
+// der Seltenheit PLAYER_RAR (Standard auto: bis Volt Rare, Dojo/Mind Rare+Epic,
+// Shadow Epic, Champion Epic+Legendary – was man dort realistisch hat).
 // Zwei Teams je Arena:
 //   zufall  drei zufaellige Karten dieser Seltenheit
 //   vorteil drei Karten dieser Seltenheit, die den Arena-Typ stark treffen
@@ -24,7 +25,9 @@ const override = Object.fromEntries((process.argv[4] || '').split(',').filter(Bo
 
 const cardDb = cards.load(dir);
 const PLAYER_LV = Number(process.env.PLAYER_LV || 2);
-const PLAYER_RAR = (process.env.PLAYER_RAR || 'rare').split(',');
+// auto: was ein Spieler bei dieser Arena realistisch hat
+const AUTO_RAR = { sprout: ['rare'], tide: ['rare'], blaze: ['rare'], volt: ['rare'], dojo: ['rare', 'epic'], mind: ['rare', 'epic'], shadow: ['epic'], champ: ['epic', 'legendary'] };
+const playerRar = g => process.env.PLAYER_RAR && process.env.PLAYER_RAR !== 'auto' ? process.env.PLAYER_RAR.split(',') : AUTO_RAR[g.id] || ['rare'];
 const { GYMS } = createGyms({ accounts: {}, cards, cardDb, battle: B, send() {}, feed() {} });
 
 function team(pool) {
@@ -52,7 +55,8 @@ console.log(`Karten: ${cardDb.cards.length} (${cardDb.source || 'fixture'}), ${N
 // Mit Vorgaben: nur diese Arenen; mehrere Werte je Arena mit ':' (Sweep)
 const runs = Object.keys(override).length ? GYMS.filter(g => override[g.id] !== undefined) : GYMS;
 for (const g of runs) for (const mul of String(override[g.id] || g.mul).split(':').map(Number)) {
-    const pool = cardDb.cards.filter(c => PLAYER_RAR.includes(c.rarity));
+    const pr = playerRar(g);
+    const pool = cardDb.cards.filter(c => pr.includes(c.rarity));
     const strong = g.type ? pool.filter(c => K.eff(c.type, g.type) > 1 || c.bt.moves.some(m => m.pow && K.eff(m.type, g.type) > 1)) : pool;
     let w1 = 0, w2 = 0, t = 0;
     for (let i = 0; i < N; i++) {
