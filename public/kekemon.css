@@ -2497,7 +2497,7 @@ body.world-cards #kekemon > .card {
 .kb-frag small { display: block; opacity: .75; }
 .kb-fragbar { display: block; height: 7px; border-radius: 9px; background: rgba(255,255,255,.1); margin-top: 5px; overflow: hidden; }
 .kb-fragbar i { display: block; height: 100%; background: linear-gradient(90deg, #3ddc84, #7dffb0); }
-.kb-glv { color: #9fd0ff; }
+.kb-gym-head .kb-glv { display: inline; font-size: inherit; color: #9fd0ff; }
 .km-feed { background: linear-gradient(135deg, #3a2a10, #6b4a1a); border-color: #c9913d; }
 
 /* 6.8 Team-Slots */

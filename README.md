@@ -2024,3 +2024,52 @@ Verbindungen bekommen den Stand im `welcome`.
 - Nicht in den Patch Notes (Admin-Funktion).
 - Test `rs.js` (srvat.sh): Banner mit Text, `kbStart`/`kdCreate` abgelehnt,
   „Call off" nimmt das Banner weg, Log-Eintraege da.
+
+## 🎮 6.8: Game-Set, Ace League, Team-Slots, XP-Fix (24.09.2026, Wuensche Max)
+
+**XP nur fuer besiegte Gegner** (`km-level.js` `battleXp`): je K.o.
+`2 + 0,6 × Gegner-Level`, Sieg ×1,2, Gyms ×1,5; gilt fuer Training, Gyms und
+Duelle (Duelle weiter mit Tageslimit). Vorher gab es 40 % schon fuers
+Durchhalten ab Zug 3 – Lv-1-Karten im Summit bekamen mehr als im Meadow.
+Test: Lv-1-Team im Summit -> 0 XP; Meadow 14–22 je Karte.
+
+**Trainer Booster:** 3 statt 1 sichere Rare-oder-besser (Max: „min 3 rare").
+
+**Team-Slots:** `u.kmTeams` (6 Slots, `{ name, keys }`), Nachricht
+`kmTeamSave`, Leiste im Auswahl-Schirm (Gyms, Training, Duelle). Laden nimmt
+nur Karten, die man noch hat.
+
+**Typ-Gyms staerker:** Seltenheit eine Stufe hoeher (Sprout Rare, Tide
+Rare/Epic, Blaze/Volt Epic, Dojo Epic/Legendary, Mind Legendary, Shadow
+Legendary/Secret). Reicht der Typ in der Seltenheit nicht, fuellt die
+naechst-niedrigere desselben Typs auf (vorher: fremde Typen). Champion
+unveraendert (Max: „kann bleiben").
+
+**Ace League** (`series: 'ace'`, `after` = Freischalt-Kette, Ace 1 nach
+Sprout): sieben Gyms auf den Leveln der Typ-Gyms, gemischte Teams
+(`aceTeam`: stark, jeder Typ einmal, Attacken mit moeglichst viel
+Typ-Abdeckung, keine gehaeufte Schwaeche, jede Stufe eigene Karten) und
+KI-Stufe 3 (`km-battle.js`: Vorausschau mit 16 Stichproben, 4 Zuege, auch
+beim Einwechseln; gegen Stufe 1 37/60 statt 29/60 bei Stufe 2).
+
+SIMTABLE68
+
+**Game-Set** (`tools/cards/games.js` -> `DATA_DIR/cards-games.json`, von
+`cards.js` dazugeladen; `cards-raw.json` bleibt unberuehrt): 1033 Figuren aus
+amiibo (Nintendo/Smash-Gaeste, 242), PokeAPI (225), League of Legends (171),
+Dota 2 (126), Brawl Stars (106), Genshin (85), Overwatch (51), Valorant (27).
+Typ je Figur (`ktype`: Pokemon-Typ, Genshin-Element, Rolle, Serie),
+Beliebtheit aus Quelle + Liste `STARS` (Secret: Mario, Link, Pikachu, Sonic,
+Kirby, Samus, DK, Cloud …). Neu bauen: `sudo -u deploy node
+tools/cards/games.js /srv/snake-data/cards-games.json`, dann Neustart.
+**Game Booster** (10k) im Shop; Mega/Daily/Trainer/Jackpot ziehen auch Game-
+Karten; Erstsieg Volt und Ace 3 = Game Booster. **Waifu Booster** raus aus dem
+Shop (`wheel/retired`), vorhandene lassen sich oeffnen und handeln.
+
+**Zombies, Punkte in der Runde** (Max: Bens Runde bis Welle 24): Schaden
+zaehlt geteilt durch `zHp(Welle)`, Kill 60 -> 50. Solo je Welle: W10 ~12k ->
+~4,6k, W20 ~46k -> ~8,6k Punkte. Die Coin-Auszahlung am Ende ist unveraendert.
+
+**Scroll-Position** (`keepScroll` in `index.html`): Kekemon, Markt, Handel,
+Arena-Hub, Raid-Inventar, Haendler, Shop und Erfolge halten ihre Scroll-
+Position beim Neuzeichnen. Nachgestellt im Markt: 150 -> 0, jetzt bleibt 150.
