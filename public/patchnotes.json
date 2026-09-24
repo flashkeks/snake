@@ -1,5 +1,12 @@
 [
   {
+    "version": "6.10.3",
+    "date": "25.09.2026",
+    "items": [
+      "🐛 Consumables kept their rarity after a raid – no more \"common\" Chidori (existing ones are fixed)"
+    ]
+  },
+  {
     "version": "6.10.2",
     "date": "24.09.2026",
     "items": [

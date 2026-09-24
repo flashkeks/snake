@@ -2299,3 +2299,16 @@ der echten Basis-Auswahl, nicht nur den `t`-Werten):
   sagen jetzt „top loot" statt „Sovereign loot".
 - Unveraendert: Boss (1,16 % je Boss), Gegner-Drops (0,16 % je Beutel),
   Enforcer (0,23 %), alle Cases.
+
+### 6.10.3: Verbrauchsgut verlor seine Stufe (Max: „Chidori jetzt Common?")
+
+`I.plain()` gab fest `tier: 'common'` aus. Verbrauchsgut-Slots (`p.util`,
+`{ base, n }`) werden nach dem Raid, beim Umpacken und beim Ablegen ueber
+`plain('util', base)` wieder zu Items – ein legendaeres Chidori kam so als
+„Common" (odds 1, score 300) zurueck. Das Item selbst wirkte weiter wie
+vorher, nur Anzeige, Salvage-Wert und Handelswert waren falsch.
+- `plain()` nimmt fuer `util` und `pack` jetzt die Stufe der Basis (wie `generate()`).
+- `migrate()` repariert v3-Utils/-Rucksaecke mit falscher Stufe; `st()` laesst
+  das einmal je Konto ueber Lager und Ueberlauf laufen (`a.fixTier1`).
+- Test: `plain('util','chidori')` -> legendary, bandage bleibt common,
+  altes Common-Chidori -> legendary, zweiter Lauf aendert nichts.

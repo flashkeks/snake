@@ -396,8 +396,13 @@ function generate(sourceId) {
 }
 
 // Feste Items (Shop, Starter): Common, keine Mods
+// 6.10.2 (Max: „Chidori jetzt Common?"): Verbrauchsgut und Rucksaecke haben
+// immer die Stufe ihrer Basis. Vorher kam hier fest 'common' raus – und ueber
+// plain() werden Verbrauchsgut-Slots nach dem Raid wieder zu Items gemacht,
+// aus einem legendaeren Chidori wurde so ein „Common"-Chidori.
 function plain(kind, base) {
-    return finish({ kind, base, tier: 'common', mods: [] }, true);
+    const tier = kind === 'util' || kind === 'pack' ? TIERS[defsOf(kind)[base].tier].id : 'common';
+    return finish({ kind, base, tier, mods: [] }, true);
 }
 
 // Vom Admin gebaut: beliebige Basis, Stufe und Mods
@@ -449,6 +454,16 @@ function salvageValue(item) {
 // (die Stufe traegt jetzt die Werte), Seltenheit und Score neu. true = geaendert
 const OLD_ARMOR = { light: 'scout_vest', medium: 'soldier_vest', heavy: 'jugg_vest' };
 function migrate(item) {
+    // 6.10.2: durch den plain()-Fehler falsch gestufte Verbrauchsgueter/Rucksaecke reparieren
+    if (item && item.v === 3 && (item.kind === 'util' || item.kind === 'pack') && defsOf(item.kind)[item.base]) {
+        const want = TIERS[defsOf(item.kind)[item.base].tier].id;
+        if (item.tier === want) return false;
+        item.tier = want;
+        const f = finish(item);
+        item.odds = f.odds;
+        item.score = f.score;
+        return true;
+    }
     if (!item || item.v === 3) return false;
     if (item.kind === 'med') { item.kind = 'util'; item.base = 'medkit'; }
     if (item.kind === 'throw') item.kind = 'util';

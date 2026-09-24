@@ -506,6 +506,12 @@ module.exports = function createArena(h, opts = {}) {
     function st(c) {
         if (!c.account) return null;
         const a = h.accounts.arena(c.account);
+        // 6.10.2: einmal alle Verbrauchsgueter/Rucksaecke auf die Stufe ihrer Basis ziehen
+        // (plain()-Fehler machte aus legendaeren Utils nach dem Raid „Common")
+        if (a.v === 3 && !a.fixTier1) {
+            for (const it of [...(a.inv || []), ...(a.overflow || [])]) I.migrate(it);
+            a.fixTier1 = true;
+        }
         if (a.v !== 3) {
             a.inv = a.inv.filter(it => { I.migrate(it); return it.v === 3; });
             const old = a.loadout || {};
