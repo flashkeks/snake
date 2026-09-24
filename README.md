@@ -2436,3 +2436,15 @@ Zaehler auf dem Server (gleiche Basis, gleiche Stufe, exakt gleiche Effekte).
 Formel gegen 2 Mio. echte Wuerfe geprueft (0,0233 % gerechnet, 0,0238 % gemessen).
 Karte: Chance je Pack fuer genau diese Karte samt Variante, Varianten-Chance, Kopien
 und Besitzer auf dem Server. Cosmetic: Besitzer, im Shop ja/nein. Pack/Case: Tabellen.
+
+### 6.12.1: Weniger und schlechtere Untergrund-Kisten (Max)
+
+| | vorher | jetzt |
+|---|---|---|
+| Keller-Kisten | 20 (2 je Raum ohne Treppe, 1 mit) | 4 (max. 1, gut die Haelfte der Raeume ohne Treppe) |
+| Labor-Kisten | 7 | 3 (mind. 700 px auseinander) |
+| Keller-Quelle | `military` (Leg+ 0,76 % je Kiste) | `bunkercrate` (0,2 % je Item, 2. Item 15 %) -> 0,23 % je Kiste |
+| Labor-Quelle | `labcrate` ~1,2 % je Kiste | 0,28 % je Item, 2. Item 30 % -> 0,36 % je Kiste |
+
+Gemessen mit 1,5 Mio. Ziehungen je Quelle. Weil weniger `rand()`-Aufrufe im Keller
+stattfinden, verschiebt sich auch das Labor-Layout leicht (nichts davon wird gespeichert).

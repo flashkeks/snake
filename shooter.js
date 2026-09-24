@@ -1332,8 +1332,8 @@ module.exports = function createArena(h, opts = {}) {
             // 6.12: Untergrund-Kisten – Keller wie das Militaerlager, Labor besser
             const lab = best.cr.t === 'lab';
             best.cr.readyAt = now + (lab ? UNDER_CRATE_RESPAWN * 1.5 : UNDER_CRATE_RESPAWN);
-            const n = 1 + (Math.random() < (lab ? 0.5 : 0.3) + p.b.loot ? 1 : 0);
-            got = Array.from({ length: n }, () => I.generate(lab ? 'labcrate' : 'military'));
+            const n = 1 + (Math.random() < (lab ? 0.3 : 0.15) + p.b.loot ? 1 : 0);
+            got = Array.from({ length: n }, () => I.generate(lab ? 'labcrate' : 'bunkercrate'));
             award(p, L.XP.crate * (lab ? 6 : 4), lab ? 'lab crate' : 'bunker crate');
         } else if (best.cr && best.cr.t === 'mil') {
             best.cr.readyAt = now + MIL_RESPAWN;

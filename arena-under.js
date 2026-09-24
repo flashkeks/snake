@@ -74,7 +74,8 @@ function buildUnder(surface) {
             }
         }
         // Kisten (Militaer-Beute) und Deko
-        for (let k = 0; k < (stairs ? 1 : 2); k++) {
+        // 6.12.1 (Max: weniger Ammo-Kisten): hoechstens eine, nur in gut der Haelfte der Raeume ohne Treppe
+        for (let k = 0; k < (!stairs && rand() < 0.55 ? 1 : 0); k++) {
             for (let t = 0; t < 40; t++) {
                 const x = R.x + 80 + rand() * (R.w - 160), y = R.y + 80 + rand() * (R.h - 160);
                 if (!free(x, y, 50) || crates.some(q => Math.hypot(q.x - x, q.y - y) < 160) || Math.hypot(x - R.cx, y - R.cy) < 150) continue;
@@ -124,10 +125,11 @@ function buildUnder(surface) {
             }
         }
     }
-    for (let k = 0; k < 7; k++) {
-        for (let t = 0; t < 40; t++) {
+    // 6.12.1 (Max: weniger Labor-Kisten): 3 statt 7, weit auseinander
+    for (let k = 0; k < 3; k++) {
+        for (let t = 0; t < 60; t++) {
             const x = lx + 90 + rand() * (L.w - 180), y = ly + 90 + rand() * (L.h - 180);
-            if (!free(x, y, 55) || crates.some(q => Math.hypot(q.x - x, q.y - y) < 260)) continue;
+            if (!free(x, y, 55) || crates.some(q => Math.hypot(q.x - x, q.y - y) < 700)) continue;
             crates.push({ x: Math.round(x), y: Math.round(y), t: 'lab' });
             break;
         }
