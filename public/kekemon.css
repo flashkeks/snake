@@ -1302,6 +1302,7 @@ body.world-cards #kekemon > .card {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    min-width: 0;
 }
 
 .kb-side {
@@ -1908,7 +1909,8 @@ body.world-cards #kekemon > .card {
 
 .kb-main {
     display: grid;
-    grid-template-columns: 1fr 280px;
+    /* minmax(0, …): sonst waechst die Spalte mit langen Namen ueber den Rand */
+    grid-template-columns: minmax(0, 1fr) 280px;
     gap: 10px;
     align-items: stretch;
 }
@@ -2239,7 +2241,7 @@ body.world-cards #kekemon > .card {
 
 @media (max-width: 900px) {
     .kb-main {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .kb-logpane {
@@ -2283,5 +2285,9 @@ body.world-cards #kekemon > .card {
 
     .km-mvs {
         grid-template-columns: 1fr;
+    }
+
+    .kb-type .tn {
+        display: none;
     }
 }

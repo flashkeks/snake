@@ -1126,7 +1126,74 @@ der Statistik unter `earned.cards`.
 | Mythic | 1 in 20 000 | 1 in 3 478 | 1 in 1000 |
 | Ultra | 1 in 200 000 | 1 in 34 783 | 1 in 10 000 |
 
-## ⚔️ Kekémon-Kaempfe gegen KI-Arenen (5.6)
+## ⚔️ Kekémon-Kampfsystem 6.0 (nach Pokémon Showdown)
+
+Max (24.09.2026): „das Karten Fighting System ist ein wenig boring … jeder hat
+2 Attacken und Energie aufladen. Orientier dich am Kampfsystem von Pokémon
+Showdown." Entscheidungen Max: **3 gegen 3** bleibt, **4 feste Attacken je
+Karte** (kein Teambuilder).
+
+**Karten** (`km-moves.js`, von `cards.js` beim Start gerechnet, eigener fester
+Zufall je Karte – die sichtbaren Werte HP/ATK/DEF/SPD bleiben unveraendert):
+
+- `style` physisch oder speziell (Kampf-, Stahl-, Dunkel-, Natur-Typen eher
+  physisch). Kampfwerte Level-50-artig: HP = Karten-HP, Angriff = 30 + ATK
+  (der andere Angriffswert ×0,75), Def/SpD = (45 + DEF × 2,2) × 0,85–1,15,
+  Spe = SPD.
+- Vier Attacken: 1. kleine eigene (Kartentyp, Staerke 65, 20 PP); 2. grosse
+  eigene (Kartentyp, aus dem alten Effekt: none 110/90 % Genauigkeit, burn 90
+  + 30 % Verbrennen, stun 85 + 30 % Paralyse, pierce 90 + hohe
+  Volltrefferchance, heal 80 + 25 % Heilung, drain 80 + halber Schaden als
+  Heilung, boost 85 + Angriff +1); 3. Abdeckung (anderer Typ, der die
+  Schwaechen des Kartentyps trifft, 75); 4. Hilfsattacke aus dem Pool des
+  Typs (Will-O-Wisp, Thunder Wave, Toxic, Hypnosis, Swords Dance/Nasty Plot,
+  Calm Mind, Bulk Up, Iron Defense, Agility, Recover-artig, Protect-artig oder
+  Prioritaets-Attacke +1).
+- Typ-Tabelle `CHART` (×2 / ×½ / ×0, Psycho trifft Dunkel nicht), die alten
+  Einzelschwaechen sind darin enthalten. Status-Immunitaeten: Feuer brennt
+  nicht, Elektro wird nicht paralysiert, Stahl nicht vergiftet.
+
+**Kampf** (`km-battle.js`): beide waehlen gleichzeitig (Attacke oder Wechsel),
+Wechsel zuerst, dann Prioritaet, dann Speed (Paralyse halbiert). Schaden
+`floor(floor(22 · Staerke · A / D) / 50) + 2`, × Zufall 0,85–1, STAB 1,5,
+Typ, Volltreffer 1,5 (1/24, hoch 1/8, ignoriert eigene Minus- und fremde
+Plus-Stufen), Verbrennung halbiert physisch. Werte-Stufen ±6, weg beim
+Auswechseln. Status: brn 1/16 je Zug, psn 1/8, par 25 % bewegungsunfaehig,
+slp 1–3 Zuege. Protect hintereinander 1, 1/3, 1/9 … PP-los: Struggle
+(Rueckstoss ¼). Ausgeschiedene Karte: Seite waehlt am Zugende die naechste.
+Nach 60 Zuegen gewinnt der hoehere HP-Anteil. Simulation: 3000 Kaempfe KI
+gegen KI ohne Haenger, im Schnitt ~10 Zuege, ein Treffer nimmt ~40 % HP.
+
+**KI:** Stufe 0 haut drauf, Stufe 1 gierig mit echter Schadensrechnung
+(K.o. zuerst, Status/Aufbau/Heilung, wenn es passt), Stufe 2 Vorausschau
+(jede Option 8× drei Zuege gegen gierige Antworten, beste gewinnt). Gemessen
+(`tools/km-ai.js`): Zufall gegen Stufe 0 27 %, Stufe 0 gegen 1 37 %, Stufe 1
+gegen 2 ~48 %. Mehr Vorausschau brachte kaum etwas – die Schwierigkeit kommt
+ueber die Arena-Staerke. Falle beim Messen: `step()` spielt mehrere Zuege am
+Stueck; Test-KI-Stufen gehoeren deshalb an die Seite (`side.level`), sonst
+gilt die Stufe nur fuer den ersten Zug.
+
+**Arenen neu eingestellt** (`tools/km-sim.js /srv/snake-data N`, auf edge mit
+den echten 1990 Karten; Spieler = KI-Stufe 1, Zufallsteam der
+Arena-Seltenheit / Team mit Typvorteil): Sprout ×0,75 86/73 %, Tide ×0,85
+71/87 %, Blaze ×0,9 63/71 %, Volt ×0,93 57/61 %, Dojo ×1,07 51/70 %, Mind
+×1,18 42/66 %, Shadow ×1,02 42/57 %, Champion ×1,44 30/33 %. „Typvorteil"
+hilft weniger als frueher, weil jede Karte eine Abdeckungs-Attacke gegen ihre
+Schwaechen hat.
+
+**Browser:** Attacken-Knoepfe in Typfarbe mit Staerke, Genauigkeit, PP und
+Schadensvorschau gegen die aktive Gegnerkarte (Spanne in % inkl. „KO",
+gleiche Formel wie der Server); Wechsel-Knoepfe darunter; Status-Abzeichen
+BRN/PAR/PSN/SLP, Stufen-Chips (+2 Atk), Team als Baelle; Gegner-HP in %;
+Protokoll mit Showdown-Saetzen (Desktop rechts, Handy aufklappbar); Details
+einer Karte zeigen Kampfwerte und alle Attacken. Katalog `cards.json`
+traegt je Karte `[style, [hp, atk, def, spa, spd, spe], Attacken]`, dazu
+`chart` und `immune`.
+
+Duelle: gleichzeitige Wahl, 45 s je Entscheidung; wer nicht waehlt, bekommt
+einen Zug der KI-Stufe 1; drei verpasste Entscheidungen am Stueck = Aufgabe.
+
+## ⚔️ Kekémon-Kaempfe gegen KI-Arenen (5.6, bis 5.10 – Historie)
 
 Tab „Gym battles" in Kekémon. Server rechnet (`km-battle.js`), der Browser
 spielt die Ereignisliste als Animation ab (Ausfallschritt, Wackeln,

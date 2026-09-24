@@ -1,5 +1,20 @@
 [
   {
+    "version": "6.0",
+    "date": "24.09.2026",
+    "items": [
+      "⚔️ New Kekémon battle system, inspired by Pokémon Showdown: every card now has 4 moves with type, power, accuracy and PP – no more energy",
+      "Both sides pick at the same time (move or switch). Switches go first, then priority moves, then the faster card",
+      "Real type chart: super effective ×2, not very effective ×½, and some types are immune. Moves of the card's own type hit ×1.5",
+      "Physical vs special attacks, stat boosts (Swords Dance, Calm Mind, …), Protect, healing, priority moves, critical hits",
+      "Status conditions: burn, paralysis, poison, sleep",
+      "Move buttons show type, power, accuracy, PP and how much damage they would do right now",
+      "Battle log like Showdown, card details show stats and all moves",
+      "Gyms rebalanced for the new system, duels now give 45 s per turn",
+      "📱 Phone: the page no longer scrolls sideways"
+    ]
+  },
+  {
     "version": "5.10",
     "date": "24.09.2026",
     "items": [

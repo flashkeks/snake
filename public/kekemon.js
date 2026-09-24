@@ -1027,7 +1027,7 @@ function kbSide(bp, s) {
         </div>
         <div class="kb-info">
             <div class="kb-who">${s === 0 ? '🧑' : bp === kbP.gym ? '🏟️' : '⚔️'} ${esc(side.name)} <span class="kb-dots">${dots}</span></div>
-            <div class="kb-nm"><b>${esc(c.name)}</b> <span class="kb-type" style="--tc:${T[c.type].color}">${T[c.type].icon} ${T[c.type].name}</span> ${st}</div>
+            <div class="kb-nm"><b>${esc(c.name)}</b> <span class="kb-type" style="--tc:${T[c.type].color}">${T[c.type].icon}<span class="tn"> ${T[c.type].name}</span></span> ${st}</div>
             <div class="kb-hp ${pct < 20 ? 'low' : pct < 50 ? 'mid' : ''}"><i style="width:${pct}%"></i><span>${hpTxt}</span></div>
             ${boosts ? `<div class="kb-status">${boosts}</div>` : ''}
         </div>
