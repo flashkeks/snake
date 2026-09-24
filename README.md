@@ -2136,3 +2136,29 @@ max, „RTT-Spitze" bei ≥ 2 haengenden Clients) und Browser-Luecken im
 laufenden Spiel („Browser-Luecke" ab 1,5 s). Kekemon-KI mit Zeitbudget 10 ms
 (Stufe 3 brauchte bis 50 ms im Hauptthread). Verdacht: Tunnel ueber QUIC,
 einzelne Verbindungen brechen ab (cloudflared-Log) – Entscheidung Max offen.
+
+## 💰 6.10: Zombie-Wirtschaft, zweiter Nerf (24.09.2026, Max)
+
+Anlass: schmoggi hatte auf Welle 11 seine Waffe voll gepackt (Pack-a-Punch 5)
+und hat danach die Mystery Box im Dauerbetrieb gedreht. Max: Box und Altar
+teurer, insgesamt noch weniger Punkte.
+
+| Was | vorher | jetzt |
+|---|---|---|
+| Punkte je Schaden (geteilt durch `zHp(Welle)`) | 0,5 | 0,35 |
+| Punkte je Kill (normaler Zombie) | 50 | 30 |
+| normaler Zombie gesamt | ~80 | ~51 (−36 %) |
+| Mystery Box | 950 fest | 2000 + 500 je eigenem Kauf (`p.boxN`) |
+| Power-up-Altar (Mitte) | 3000 fest | 6000 + 3000 je Kauf in der Runde (`zb.shrineN`) |
+| Pack-a-Punch Stufe 1–5 | 5k/7,5k/10k/12,5k/15k = 50k | 5k/10k/15k/20k/25k = 75k |
+
+- Der Box-Zaehler laeuft je Spieler, der Altar-Zaehler je Runde (sein Effekt
+  trifft das ganze Team, sonst kauft jeder reihum zum Grundpreis).
+- Rabatte (Bargain, Fire Sale bei der Box) gelten weiter auf den aktuellen Preis.
+- Der Snapshot traegt `zmb.box` und `zmb.shrine`, `stationLook()` im Client
+  zeigt damit den echten naechsten Preis.
+- Richtwert solo bis Welle 11: ~418 normale Zombies ≈ 21k Punkte roh, mit
+  vollem Baum und Vulture ≈ 38k – eine volle Pack-a-Punch-Waffe (75k) ist
+  damit erst deutlich spaeter drin.
+- Test (lokal, `zStation` ueber `shInteract`): Box 2000/2500/3000/3500,
+  Altar 6000/9000/12000, PaP 5k…25k, Stufe 6 abgelehnt; Snapshot-Preise stimmen.

@@ -275,7 +275,14 @@ const ZMB_PERKS = {
     vulture: { name: 'Vulture', icon: '🦅', price: 4000, desc: '+25% points' }
 };
 // Weitere Stationen (6.5.1): Ruestung (bis 4x +25 max HP), Granaten, Power-up-Altar, Wiederbeleben
-const ZMB_ARMOR = 1200, ZMB_ARMOR_MAX = 4, ZMB_NADES = 800, ZMB_SHRINE = 3000, ZMB_REVIVE = 1500;
+const ZMB_ARMOR = 1200, ZMB_ARMOR_MAX = 4, ZMB_NADES = 800, ZMB_REVIVE = 1500;
+// 6.10 (Max, schmoggi Welle 11 Waffe voll + Box-Spam): Altar und Box werden
+// mit jedem Kauf teurer. Altar zaehlt je Runde (Effekt gilt fuers Team),
+// Box je Spieler. Altar 6000, 9000, 12000 ... · Box 2000, 2500, 3000 ...
+const ZMB_SHRINE = 6000, ZMB_SHRINE_STEP = 3000;
+const ZMB_BOX_STEP = 500;
+const zShrinePrice = n => ZMB_SHRINE + ZMB_SHRINE_STEP * n;
+const zBoxPrice = n => ZMB_BOX + ZMB_BOX_STEP * n;
 const ZMB_POWERUPS = {
     double: { name: 'Double Points', icon: '✖️2', ms: 30000, desc: 'double points for the whole team' },
     insta: { name: 'Insta-Kill', icon: '💀', ms: 15000, desc: 'every zombie dies in one hit (not bosses)' },
@@ -283,9 +290,10 @@ const ZMB_POWERUPS = {
     sale: { name: 'Fire Sale', icon: '🏷️', ms: 30000, desc: 'mystery box and wall weapons half price' }
 };
 const ZMB_WALL = { smg: 750, shotgun: 1000, rifle: 1400, sniper: 1500 };
-// Pack-a-Punch seit 6.5.1 bis Stufe 5, jede Stufe +50 % teurer
-const ZMB_BOX = 950, ZMB_PAP = 5000, ZMB_PAP_MAX = 5;
-const zPapPrice = lvl => Math.round(ZMB_PAP * (1 + 0.5 * lvl));
+// Pack-a-Punch seit 6.5.1 bis Stufe 5. 6.10: jede Stufe +5000 (5k..25k,
+// voll 75k statt 50k); Box 950 -> 2000 plus Aufschlag je Kauf (oben)
+const ZMB_BOX = 2000, ZMB_PAP = 5000, ZMB_PAP_MAX = 5;
+const zPapPrice = lvl => Math.round(ZMB_PAP * (1 + lvl));
 const ZMB_HEAL = 600, ZMB_HEAL_CD = 25000;
 function buildZombieMap() {
     const rand = rng(777);
@@ -356,7 +364,9 @@ const zDmg = w => 1 + 0.06 * (w - 1);
 // Preise aber nicht – normaler Zombie Welle 1 ~90, Welle 20 ~420 Punkte.
 // Jetzt ist ein Zombie auf jeder Welle gleich viel wert (~80); mehr Punkte
 // gibt es nur ueber mehr Zombies. Solo je Welle: W10 ~12k -> ~4,6k, W20 ~46k -> ~8,6k.
-const Z_PTS_PER_DMG = 0.5, Z_PTS_KILL = 50;
+// 6.10 (Max: immer noch zu viel, schmoggi Welle 11 Waffe voll): 0,5/50 -> 0,35/30,
+// normaler Zombie ~80 -> ~51 Punkte (-36 %).
+const Z_PTS_PER_DMG = 0.35, Z_PTS_KILL = 30;
 // Kugel-Optik der Zombie-Bosse (tier-Feld der Kugel, 1024 = Boss-Kugel)
 const BOSS_LOOK = { abomination: 5, necro: 11, brood: 12, inferno: 13, storm: 14, overlord: 15, judge: 11, seraph: 13, omega: 15 };
 const HZ = require('./arena-hazards');
@@ -1908,7 +1918,7 @@ module.exports = function createArena(h, opts = {}) {
     // Perks. Wer stirbt, ist bis zum Ende der Welle raus; sind alle tot, ist
     // Schluss. Wie im PvP mit Kopien des Loadouts: nichts geht verloren.
     // Coins (5.9): am Ende je Spieler Kill-Coins + Wellenbonus -> zCoins().
-    const zb = mode === 'zombies' ? { wave: 0, phase: 'wait', until: 0, toSpawn: 0, spawnAt: 0, over: false, kills: new Map(), kc: new Map(), dt: 0, fx: {} } : null;
+    const zb = mode === 'zombies' ? { wave: 0, phase: 'wait', until: 0, toSpawn: 0, spawnAt: 0, over: false, kills: new Map(), kc: new Map(), dt: 0, fx: {}, shrineN: 0 } : null;
     const zfx = (k, now) => zb && now < (zb.fx[k] || 0);
 
     function joinZombies(c, name) {
@@ -1927,6 +1937,7 @@ module.exports = function createArena(h, opts = {}) {
         p.dead = false;
         p.pts = 500 + p.b.zStart;
         p.perks = [];
+        p.boxN = 0;
         gearStats(p);
         players.set(c.id, p);
         zb.kills.set(c.id, 0);
@@ -2143,7 +2154,8 @@ module.exports = function createArena(h, opts = {}) {
             return say(`🔫 ${I.WEAPONS[s.base].name} bought`);
         }
         if (s.kind === 'box') {
-            if (!pay(s.price)) return;
+            if (!pay(zBoxPrice(p.boxN || 0))) return;
+            p.boxN = (p.boxN || 0) + 1;
             let it = null;
             const src = Math.random() < p.b.zBox ? 'sovereign' : 'elite';
             for (let k = 0; k < 30 && (!it || it.kind !== 'weapon'); k++) it = I.generate(src);
@@ -2193,7 +2205,8 @@ module.exports = function createArena(h, opts = {}) {
             return say('💣 +2 frag grenades');
         }
         if (s.kind === 'shrine') {
-            if (!pay(s.price)) return;
+            if (!pay(zShrinePrice(zb.shrineN))) return;
+            zb.shrineN++;
             const keys = Object.keys(ZMB_POWERUPS);
             const k = keys[Math.floor(Math.random() * keys.length)];
             const d = ZMB_POWERUPS[k];
@@ -3254,7 +3267,7 @@ module.exports = function createArena(h, opts = {}) {
                 zmb: zb ? { wave: zb.wave, phase: zb.phase, left: Math.max(0, Math.round(zb.until - now)), zombies: mobs.length + zb.toSpawn, pts: Math.floor(p.pts), perks: p.perks,
                     disc: p.b.zDisc, perkDisc: p.b.zDisc * p.b.zPerk,
                     fx: Object.fromEntries(Object.entries(zb.fx).filter(([, t]) => t > now).map(([k, t]) => [k, Math.round(t - now)])),
-                    pap: zPapPrice((p.gear[p.slot] && p.gear[p.slot].pap) || 0), armor: p.armorN || 0,
+                    pap: zPapPrice((p.gear[p.slot] && p.gear[p.slot].pap) || 0), box: zBoxPrice(p.boxN || 0), shrine: zShrinePrice(zb.shrineN), armor: p.armorN || 0,
                     team: plist.map(q => [q.name, Math.floor(q.pts), zb.kills.get(q.id) || 0, q.dead ? 1 : 0]) } : undefined,
                 players: plist.filter(q => q === p || (inView(q.x, q.y) && canSee(p, q, now))).map(q => {
                     const qw = q.gear[q.slot] || q.gear.primary;
