@@ -547,6 +547,16 @@ function feed(text, kind, who, big) {
     broadcast({ type: 'feed', text, kind: kind || 'info', who: who || null, big: !!big });
 }
 
+// Nur fuer bestimmte Spieler (6.4, Max: nicht jede Box und jede Kirsche von
+// allen im Feed). ids: der Ausloeser und wen es trifft.
+function feedTo(ids, text, kind, who) {
+    const msg = { type: 'feed', text, kind: kind || 'info', who: who || null, big: false };
+    for (const id of new Set(ids)) {
+        const c = clients.get(id);
+        if (c) send(c, msg);
+    }
+}
+
 let achRatesCache = null;
 
 // ---------- In game (5.0): wer spielt gerade wo ----------
@@ -941,7 +951,7 @@ function resolveFreezes() {
                 // Schild faengt auch den Muenz-Tod ab
                 if (active(p, 'shield')) {
                     p.fx.shield = 0;
-                    feed(`🛡️ ${p.name}'s shield blocked a 🪙💀`, 'good', id);
+                    feedTo([id], `🛡️ ${p.name}'s shield blocked a 🪙💀`, 'good', id);
                     continue;
                 }
                 kill(id, null, 'gambled it all away 🪙💀', 'gamble');
@@ -957,7 +967,9 @@ function resolveFreezes() {
             }
 
             const kind = o.rarity === 'gold' || o.rarity === 'mythic' ? 'gold' : o.good ? 'good' : 'bad';
-            feed(`${p.name} 🪙 ${o.icon} → length ${p.len}`, kind, id, o.mul >= 10);
+            // Ab ×10 fuer alle, sonst nur fuer einen selbst
+            if (o.mul >= 10) feed(`${p.name} 🪙 ${o.icon} → length ${p.len}`, kind, id, true);
+            else feedTo([id], `${p.name} 🪙 ${o.icon} → length ${p.len}`, kind, id);
         }
     }
 }
@@ -991,6 +1003,8 @@ function others(p) {
 function applyBox(id, p, o) {
     const now = Date.now();
     let text = `${p.name} ❓ ${o.icon} ${o.label}`;
+    // Wen die Box ausser dem Oeffner trifft; die sehen die Zeile auch
+    const hitIds = [];
 
     switch (o.key) {
         case 'speed':
@@ -1027,10 +1041,11 @@ function applyBox(id, p, o) {
             accounts.earn(p.account, 'snake', n);
             sendAccount(p);
             text = `${p.name} ❓ 🪙 found ${n.toLocaleString('en-US')} coins`;
-            if (n >= 1000) {
-                feed(text + '!', 'gold', id, n >= 10000);
+            if (n >= 10000) {
+                feed(text + '!', 'gold', id, true);
                 return;
             }
+            if (n >= 1000) text += '!';
             break;
         }
         case 'half':
@@ -1053,6 +1068,7 @@ function applyBox(id, p, o) {
             for (const q of others(p)) {
                 q.fx.slow = now + DURATION.slowall;
                 q.fx.speed = 0;
+                hitIds.push(q.id);
             }
             break;
         case 'ice': {
@@ -1065,6 +1081,7 @@ function applyBox(id, p, o) {
             }
             const q = pool[0];
             q.fx.ice = now + DURATION.ice;
+            hitIds.push(q.id);
             text = `${p.name} 🧊 froze ${q.name}`;
             break;
         }
@@ -1076,6 +1093,7 @@ function applyBox(id, p, o) {
                 if (near && !active(q, 'star')) {
                     setLen(q, Math.floor(q.len / 2));
                     hit.push(q.name);
+                    hitIds.push(q.id);
                 }
             }
             text = `${p.name} 💥 Shockwave` + (hit.length ? `: ${hit.join(', ')} halved` : ' hit nothing');
@@ -1090,6 +1108,7 @@ function applyBox(id, p, o) {
                 if (take > 0) {
                     setLen(q, q.len - take);
                     loot += take;
+                    hitIds.push(q.id);
                 }
             }
             grow(p, loot);
@@ -1106,6 +1125,7 @@ function applyBox(id, p, o) {
             const a = p.len, b = q.len;
             setLen(p, b);
             setLen(q, a);
+            hitIds.push(q.id);
             text = `${p.name} 🔀 ${q.name}: ${a} ⇄ ${b}`;
             // Alle sehen den Strahl zwischen den Koepfen, die zwei bekommen ein Banner
             broadcast({ type: 'swapfx', a: p.id, b: q.id, an: p.name, bn: q.name, al: a, bl: b });
@@ -1115,7 +1135,7 @@ function applyBox(id, p, o) {
             // Schild faengt auch den Box-Tod ab
             if (active(p, 'shield')) {
                 p.fx.shield = 0;
-                feed(`🛡️ ${p.name}'s shield blocked a 💀 box`, 'good', id);
+                feedTo([id], `🛡️ ${p.name}'s shield blocked a 💀 box`, 'good', id);
                 return;
             }
             kill(id, null, 'opened a 💀 box', 'box');
@@ -1123,7 +1143,7 @@ function applyBox(id, p, o) {
     }
 
     const kind = o.rarity === 'gold' ? 'gold' : o.good === true ? 'good' : o.good === false ? 'bad' : 'info';
-    feed(text, kind, id);
+    feedTo([id, ...hitIds], text, kind, id);
 }
 
 // ---------- Nachrichten vom Browser ----------
@@ -2456,7 +2476,7 @@ function gameTick() {
                 const f = FRUIT[it.kind];
                 grow(p, f.value);
                 if (f.legend) feed(`${f.icon} ${p.name} ate the ${f.name}! +${f.value}`, 'gold', id);
-                else if (f.value >= 10) feed(`${p.name} ${f.icon} +${f.value}`, 'gold', id);
+                else if (f.value >= 10) feedTo([id], `${p.name} ${f.icon} +${f.value}`, 'gold', id);
             }
             if (it.type === 'box') openBox(id);
             if (it.type === 'coin') {

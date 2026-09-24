@@ -1169,6 +1169,14 @@ Koennen: 5 statt 3 Karten je Seite.
   zuruecksetzen (bezahlte bleiben bezahlt) oder freischalten (ohne Belohnung).
   `POST /api/users/:key/kekemon` mit `op`, jede Aktion im Admin-Log als
   `kekemon-OP`, der Spieler sieht die Aenderung sofort (`pushKm`).
+- Feed leiser (Max): `feedTo(ids, …)` schickt eine Zeile nur an bestimmte
+  Spieler. Mystery-Box, Muenzwurf unter ×10, Kirsche/Mango und Schild-Treffer
+  sieht nur der Ausloeser; wen eine Box trifft (Swap, Eis, Schockwelle, Raub,
+  Slow-all), der sieht sie auch (`hitIds` in `applyBox`). Fuer alle bleiben:
+  Legenden-Fruechte, Box-Coins ab 10 000, Muenze ab ×10, Kills, Cashouts.
+- Klang: Event-Fanfaren nur fuer Mitspieler oder wer auf dem Feld ist,
+  Jackpot-Banner und fremde grosse Treffer nur mit `joined` – im Casino, in
+  der Arena usw. bleibt es still.
 
 ## 🎁 Case oeffnen neu (6.2)
 

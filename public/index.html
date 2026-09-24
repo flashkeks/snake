@@ -8330,18 +8330,20 @@ function onEvent(d) {
         evAnswer = null;
         evRound = d.data.round;
     }
-    if (!ev || ev.phase !== d.phase) {
-        if (d.phase === 'intro') {
-            fanfare(true);
-            seenCards = new Set();
-            wheelFinal = null;
-        }
-        if (d.phase === 'reveal' && evAnswer !== null) fanfare(evAnswer === d.data.correct);
-        if (d.phase === 'awards') fanfare('gold');
+    const newPhase = !ev || ev.phase !== d.phase;
+    if (newPhase && d.phase === 'intro') {
+        seenCards = new Set();
+        wheelFinal = null;
     }
     if (d.phase !== 'spinning') evSpun = false;
     ev = d;
     evReceived = performance.now();
+    // Klang nur fuer die, die auf dem Feld sind oder mitspielen – nicht im Casino, in der Arena usw.
+    if (newPhase && (evMember() || joined)) {
+        if (d.phase === 'intro') fanfare(true);
+        if (d.phase === 'reveal' && evAnswer !== null) fanfare(evAnswer === d.data.correct);
+        if (d.phase === 'awards') fanfare('gold');
+    }
 
     // Only people who were on the field see the event; the menu stays usable
     if (!evMember() && !joined) return;
@@ -14775,8 +14777,8 @@ function addFeed(d) {
 
     while (box.children.length > 14) box.lastChild.remove();
 
-    // Sound only for your own highlights, or for huge ones (×10 and up) for everyone
-    if ((kind === 'streak' || kind === 'gold') && (d.big || d.who === myId)) {
+    // Grosse Treffer anderer nur auf dem Snake-Feld, nicht in Casino, Arena, Kekémon
+    if ((kind === 'streak' || kind === 'gold') && (d.who === myId || (d.big && joined))) {
         beep(520, 0.1, 0.06);
         setTimeout(() => beep(780, 0.2, 0.06), 100);
     }
@@ -14788,6 +14790,8 @@ function addFeed(d) {
 // ---------- Jackpot fuer alle ----------
 
 function showJackpot(d) {
+    // Banner und Fanfare gehoeren aufs Snake-Feld
+    if (!joined && d.id !== myId) return;
     const el = $('banner');
     el.textContent = `💰 ${d.id === myId ? 'YOU' : d.name} ${d.icon}! → ${d.len} 💰`;
     el.classList.remove('show');
