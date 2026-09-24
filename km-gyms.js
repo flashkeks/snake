@@ -112,8 +112,12 @@ module.exports = function createGyms(h) {
     // drei Karten mit derselben Schwaeche
     const TYPES = [...new Set(cardDb.cards.map(c => c.type))];
     const hits = c => new Set(TYPES.filter(t => (c.bt.moves || []).some(m => m.pow && K.eff(m.type, t) > 1)));
+    // Jede Ace-Stufe mit eigenen Karten (sonst gleichen sich Nachbarn mit
+    // derselben Seltenheit), solange die Seltenheit genug hergibt
+    const aceUsed = new Set();
     function aceTeam(g) {
-        const pool = cardDb.cards.filter(c => g.rar.includes(c.rarity)).sort(byPower).slice(0, 80);
+        let pool = cardDb.cards.filter(c => g.rar.includes(c.rarity) && !aceUsed.has(c.id)).sort(byPower).slice(0, 80);
+        if (pool.length < B.TEAM_SIZE * 2) pool = cardDb.cards.filter(c => g.rar.includes(c.rarity)).sort(byPower).slice(0, 80);
         const team = [], covered = new Set(), weak = {};
         while (team.length < B.TEAM_SIZE && pool.length) {
             let best = null, bv = -1e9;
@@ -132,6 +136,7 @@ module.exports = function createGyms(h) {
         const ids = team.map(c => c.id);
         for (const c of pool) if (ids.length < B.TEAM_SIZE && !ids.includes(c.id)) ids.push(c.id);
         for (const c of cardDb.cards.slice().sort(byPower)) if (ids.length < B.TEAM_SIZE && !ids.includes(c.id)) ids.push(c.id);
+        ids.forEach(id => aceUsed.add(id));
         return ids;
     }
     for (const g of GYMS) g.team = g.series === 'ace' ? aceTeam(g) : typeTeam(g);
