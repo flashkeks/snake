@@ -1126,6 +1126,33 @@ der Statistik unter `earned.cards`.
 | Mythic | 1 in 20 000 | 1 in 3 478 | 1 in 1000 |
 | Ultra | 1 in 200 000 | 1 in 34 783 | 1 in 10 000 |
 
+## 📈 Plan: Karten-Level (noch nicht gebaut, Stand 24.09.2026)
+
+Ideen aus „vorschlaege kek games" (Flashkeks = Max, SINTHSBen): Level fuer
+Karten als Grind-Faktor, normale Gegner zum Leveln, Gyms mit Level, Geld von
+Gegnern, Booster-Teile. Entscheidungen Max:
+
+- **Level 1–50, +4 % je Level** auf HP und Angriff (Lv 50 = x3), Def/Spd halb
+  so stark. Bewusst: eine gegrindete Common schlaegt eine frische Epic.
+- **Duelle mit echten Leveln** (kein Angleichen).
+- **Level haengt an der Kopie und ist handelbar.** Umbau: Kopien ohne XP
+  bleiben ein Zaehler (`collection[id][v]`), Kopien mit XP einzeln
+  (`u.cardXp['id~v'] = [xp, …]`, absteigend). Pick nimmt die hoechste,
+  Handel/Markt waehlen eine Kopie, Verfuettern nimmt die schwaechste.
+- **Training** (neu): wilde KI-Teams in drei Bereichen (Lv 1–10, 10–30,
+  30–50), unbegrenzt, XP immer voll, Coins und Booster-Teile fallen nach X
+  Kaempfen am Tag ab.
+- **Booster-Teile:** 10 Teile = 1 Booster.
+- **Duplikate verfuettern:** Kopie opfern = viel XP.
+- **Gyms mit Level** (Sprout 5 … Champion 50), Leiter-Karten auf diesem
+  Level, ersetzt grossteils `mul`; neu einstellen mit `tools/km-sim.js`.
+- **Neuer Gym-Reset** beim Start (wie 6.4: kein zweites Erstsieg-Pack).
+
+Reihenfolge: 1) Level-Datenmodell, XP aus Gyms/Duellen, Werte, Anzeige;
+2) Training + Coins + Booster-Teile; 3) Gym-Level + Sim + Reset;
+4) Verfuettern; Handel/Markt mit Level. Spaeter, eigene Runden: Skill-Punkte
+auf Attacken, PP-Item im Kampf, zwei Elemente je Karte, Videospiel-Set.
+
 ## 🔫 Arena 6.6: Items, Uniques, Kisten-Stufen, Boss-Wege
 
 Max (24.09.2026): mehr Items bis in die hoechste Stufe, Uniques nach Anime-
