@@ -70,6 +70,27 @@ h1 .logo {
     font-size: 13px;
 }
 
+/* Handy: nur der Punkt (🟢/🔴/⚠️), sonst ist die Seite 15 px zu breit (5.11) */
+@media (max-width: 600px) {
+    #topbar {
+        gap: 8px;
+    }
+
+    #status {
+        flex: none;
+        width: 1.3em;
+        overflow: hidden;
+        white-space: nowrap;
+    }
+}
+
+@media (max-width: 360px) {
+    #world-switch button {
+        padding: 5px 7px !important;
+        font-size: 12px !important;
+    }
+}
+
 #layout {
     display: flex;
     gap: 16px;
