@@ -2398,3 +2398,11 @@ Nur Extraction (PvP/Zombies haben eigene Regeln). 90 s statt weniger, weil Brows
 Timer in Hintergrund-Tabs drosseln.
 Test: Spieler 91 s still -> raus, Beutel mit seinen Items, 300 s Lebenszeit,
 der andere Spieler bleibt.
+
+### 6.12: Admin „Create item" → Armor ging nicht (Max)
+
+Die Basisliste im Admin-Panel schrieb je Ruestung `A.sets[x.set].name`. Seit 6.6
+gibt es 14 Ruestungen ohne Set (Kevlar, Bike helmet, Knee pads, …) – dort warf
+das einen Fehler, die Liste wurde nie gezeichnet, beim Wechsel auf „Armor" passierte
+nichts. Jetzt wird das Set nur gezeigt, wenn es eins gibt. Die Server-Seite
+(`accounts.adminArena` op `give`) war in Ordnung.

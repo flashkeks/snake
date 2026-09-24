@@ -524,7 +524,8 @@ let aKind = 'weapon';
 function drawArena() {
     const A = cat.arena, a = det.arena;
     const bases = aKind === 'weapon' ? Object.entries(A.weapons).map(([k, w]) => [k, `${w.icon} ${w.name}${w.special ? ' (case only)' : ''}`])
-        : aKind === 'armor' ? Object.entries(A.armors).map(([k, x]) => [k, `${x.icon} ${x.name} · ${A.sets[x.set].name} ${x.slot}`])
+        // 6.12: Ruestung ohne Set (seit 6.6) liess die Liste abstuerzen
+        : aKind === 'armor' ? Object.entries(A.armors).map(([k, x]) => [k, `${x.icon} ${x.name} · ${x.set && A.sets[x.set] ? A.sets[x.set].name + ' ' : ''}${x.slot}`])
         : aKind === 'pack' ? Object.entries(A.packs).map(([k, t]) => [k, `${t.icon} ${t.name} · ${t.cap} slots`])
         : Object.entries(A.utils).map(([k, t]) => [k, `${t.icon} ${t.name} · ${A.tiers[t.tier].name}`]);
     const modDefs = aKind === 'armor' ? A.armorMods : A.weaponMods;
