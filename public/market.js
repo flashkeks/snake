@@ -150,6 +150,9 @@ function mkHead() {
 }
 
 function mkDraw() {
+    return keepScroll('mk', mkTab + '|' + (typeof mkSub !== 'undefined' ? mkSub : ''), $('market'), mkDrawRaw);
+}
+function mkDrawRaw() {
     mkHead();
     if (mkTab === 'lobby') return lbDraw();
     lbStop();
@@ -305,6 +308,9 @@ function trSend(refs, patch = {}) {
 }
 
 function trDraw() {
+    return keepScroll('trade', trState ? trState.id + '|' + trSrc : '', $('tr-window'), trDrawRaw);
+}
+function trDrawRaw() {
     const box = $('tr-window');
     if (!trState) {
         box.hidden = true;

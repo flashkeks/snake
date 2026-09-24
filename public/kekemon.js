@@ -207,6 +207,9 @@ document.addEventListener('pointermove', e => {
 // ---------- Tabs ----------
 
 function kmDraw() {
+    return keepScroll('km', kmTab, $('kekemon'), kmDrawRaw);
+}
+function kmDrawRaw() {
     kmHead();
     const body = $('km-body');
     if (!kmCat) {

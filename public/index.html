@@ -10945,6 +10945,9 @@ $('hub-body').addEventListener('contextmenu', e => {
 // ---------- Haendler im Raid (4.1) ----------
 let shTraderOpen = false;
 function onShTrader(d) {
+    return keepScroll('shtrader', 'trader', $('sh-trader'), () => onShTraderRaw(d));
+}
+function onShTraderRaw(d) {
     let el = $('sh-trader');
     if (d.close || !sh) {
         if (el) el.hidden = true;
@@ -11005,6 +11008,9 @@ const hubFilterFn = x => hubFilter === 'all' || x.kind === hubFilter || (x.kind 
 const hubSort = (a, b) => tierIdx(b.tier) - tierIdx(a.tier) || (b.score || 0) - (a.score || 0) || (a.kind > b.kind ? 1 : -1);
 
 function hubDraw() {
+    return keepScroll('hub', hubTab, $('arenahub'), hubDrawRaw);
+}
+function hubDrawRaw() {
     if (!arenaCat) return;
     const invGroup = ['inv', 'salvage'].includes(hubTab);
     // 6.5: Game Modes = Modus waehlen, darunter Play / Loadout (equip) / Skills (profile)
@@ -11468,6 +11474,9 @@ function shInvToggle(open) {
 let shInvSel = null;        // { where: 'pack'|'gear'|'util', uid|slot }
 
 function shInvDraw() {
+    return keepScroll('shinv', 'inv', $('sh-inv'), () => shInvDrawRaw());
+}
+function shInvDrawRaw() {
     const d = shInvState;
     if (!d || !arenaCat) return;
     TIP.clear();
@@ -13612,6 +13621,9 @@ function shopCard(it) {
 }
 
 function drawShop() {
+    return keepScroll('shop', shopTab, $('shop'), () => drawShopRaw());
+}
+function drawShopRaw() {
     if (!shopInfo) return;
     $('shop-coins').textContent = me ? me.coins.toLocaleString('en-US') : '–';
     const tabs = [['daily', '☀️ Daily'], ['weekly', '📅 Weekly'], ['owned', '🎒 Collection'], ['all', '📖 Catalog']];
@@ -13995,6 +14007,9 @@ function onAchievement(a) {
 }
 
 function drawAchievements() {
+    return keepScroll('ach', 'ach', $('ach-grid') && $('ach-grid').parentNode, () => drawAchievementsRaw());
+}
+function drawAchievementsRaw() {
     if (!me || !achCatalog.length) return;
     const have = me.achievements || {};
     const n = achCatalog.filter(a => have[a.id]).length;
@@ -15026,6 +15041,40 @@ function showJackpot(d) {
 // ---------- Toast ----------
 
 let toastTimer = null;
+
+// ---------- Scroll-Position beim Neuzeichnen halten (6.8, Max) ----------
+// Viele Ansichten zeichnen bei jedem Klick komplett neu (innerHTML) – dabei
+// sprangen scrollbare Listen nach oben. keepScroll merkt sich vor dem
+// Zeichnen, was innerhalb von root (und die Seite selbst) gescrollt war, und
+// stellt es danach am selben Platz wieder her. Nur solange key (Tab) gleich
+// bleibt – ein Tabwechsel startet oben.
+const ksLast = {};
+function ksPath(el, root) {
+    const path = [];
+    while (el && el !== root) {
+        path.unshift([...el.parentNode.children].indexOf(el));
+        el = el.parentNode;
+    }
+    return el === root ? path : null;
+}
+function keepScroll(name, key, root, fn) {
+    if (!root || ksLast[name] !== key) {
+        ksLast[name] = key;
+        return fn();
+    }
+    const saved = [];
+    for (const el of root.querySelectorAll('*')) if (el.scrollTop > 0 || el.scrollLeft > 0) saved.push([ksPath(el, root), el.scrollTop, el.scrollLeft]);
+    const rootTop = root.scrollTop, winY = window.scrollY;
+    const out = fn();
+    for (const [path, top, left] of saved) {
+        let el = root;
+        for (const i of path || []) el = el && el.children[i];
+        if (el && el !== root) { el.scrollTop = top; el.scrollLeft = left; }
+    }
+    if (root.scrollTop !== rootTop) root.scrollTop = rootTop;
+    if (window.scrollY !== winY) window.scrollTo(window.scrollX, winY);
+    return out;
+}
 
 // ---------- Neustart-Warnung (6.7, vom Admin ausgeloest) ----------
 let rsEnd = 0, rsMsg = '', rsTimer = null;
