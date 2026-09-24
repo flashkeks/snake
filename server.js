@@ -533,6 +533,27 @@ function activityOf(key) {
     return { what, tabs: conns.length, idle: Math.round((Date.now() - (c.lastActive || Date.now())) / 1000), watchers: c.watchers ? c.watchers.size : 0 };
 }
 
+// Neustart-Warnung (6.7): der Admin startet einen Countdown, alle Spieler
+// sehen ein Banner. In den letzten RESTART_LOCK_MS starten keine neuen
+// Kekemon-Kaempfe mehr. Neugestartet wird weiter von Hand (deploy.sh) – die
+// Warnung raeumt sich RESTART_STALE_MS nach Ablauf selbst weg, falls nicht.
+const RESTART_LOCK_MS = 120e3, RESTART_STALE_MS = 10 * 60e3;
+let restart = null;          // { at, msg, by }
+const restartView = () => restart ? { left: restart.at - Date.now(), msg: restart.msg } : null;
+function setRestart(minutes, msg, by) {
+    restart = minutes > 0 ? { at: Date.now() + minutes * 60e3, msg: String(msg || '').slice(0, 200), by } : null;
+    broadcast({ type: 'restart', restart: restartView() });
+    console.log(restart ? `restart: Warnung ${minutes} min (${by})` : `restart: Warnung aufgehoben (${by})`);
+    return restartView();
+}
+function restartLocked() {
+    if (restart && Date.now() > restart.at + RESTART_STALE_MS) restart = null;
+    return !!restart && restart.at - Date.now() < RESTART_LOCK_MS;
+}
+setInterval(() => {
+    if (restart && Date.now() > restart.at + RESTART_STALE_MS) setRestart(0, '', 'timeout');
+}, 30e3);
+
 function broadcast(obj) {
     const msg = JSON.stringify(obj);
     let n = 0;
@@ -1512,6 +1533,7 @@ async function handle(c, data) {
         case 'kbGyms':
         case 'kbStart':
         case 'kbAct':
+            if (data.type === 'kbStart' && restartLocked()) return send(c, { type: 'kmError', error: 'Server restarts in a moment – no new battles right now' });
         case 'kbLeave':
             gyms.handle(c, data);
             return;
@@ -1520,6 +1542,7 @@ async function handle(c, data) {
         case 'kdState':
         case 'kdCreate':
         case 'kdJoin':
+            if (data.type !== 'kdState' && restartLocked()) return send(c, { type: 'kmError', error: 'Server restarts in a moment – no new duels right now' });
         case 'kdDecline':
         case 'kdCancel':
         case 'kdTeam':
@@ -1909,6 +1932,7 @@ wss.on('connection', (ws, req) => {
     send(c, {
         type: 'welcome',
         id,
+        restart: restartView(),
         world: WORLD,
         arena,
         view: VIEW,
@@ -2206,6 +2230,8 @@ function clientsOf(key) {
 }
 
 startAdmin({
+    // Neustart-Warnung (6.7)
+    restart: { get: restartView, set: setRestart },
     // Zuschauen (6.3)
     watchUrl: key => {
         if (!clientsOf(key).some(x => !x.watching)) return null;

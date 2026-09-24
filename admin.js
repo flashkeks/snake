@@ -260,6 +260,22 @@ module.exports = function startAdmin(h) {
                 });
             }
 
+            // Neustart-Warnung (6.7): GET Stand, POST { minutes, msg } starten, DELETE aufheben
+            if (p === '/api/restart' && h.restart) {
+                if (m === 'GET') return json(res, 200, { restart: h.restart.get() });
+                if (m === 'DELETE') {
+                    log(email, 'restart-cancel', '-');
+                    return json(res, 200, { restart: h.restart.set(0, '', email) });
+                }
+                if (m === 'POST') {
+                    const b = await body(req);
+                    const min = Number(b.minutes);
+                    if (!Number.isFinite(min) || min < 0.5 || min > 60) return json(res, 400, { error: 'minutes: 0.5–60' });
+                    log(email, 'restart-warn', '-', { minutes: min, msg: String(b.msg || '').slice(0, 200) });
+                    return json(res, 200, { restart: h.restart.set(min, b.msg, email) });
+                }
+            }
+
             // now (6.3): was der Spieler gerade macht, null = offline
             if (m === 'GET' && p === '/api/users') return json(res, 200, { users: h.accounts.adminList().map(u => ({ ...u, now: h.activity ? h.activity(u.key) : null })) });
 

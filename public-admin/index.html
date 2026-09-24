@@ -104,6 +104,10 @@ dialog h2 { margin: 0 0 10px; }
 .bubble small { display: block; margin-top: 4px; font-size: 11px; color: var(--dim); }
 .reply { display: flex; gap: 8px; margin-top: 10px; }
 .reply textarea { flex: 1; min-height: 70px; resize: vertical; }
+.rs-admin { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 20px 0; padding: 8px 12px; border: 1px dashed rgba(255,210,63,.4); border-radius: 9px; }
+.rs-admin input { flex: 1; min-width: 200px; }
+.rs-admin.on { border-style: solid; border-color: var(--gold); background: rgba(255,210,63,.07); }
+.rs-admin.on #rs-state { color: var(--gold); font-weight: 700; }
 @media (max-width: 860px) { .tk { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -118,6 +122,14 @@ dialog h2 { margin: 0 0 10px; }
     <button type="button" data-tab="tickets">💬 Tickets<span class="badge" id="tk-badge" hidden></span></button>
     <button type="button" data-tab="log">📜 Log</button>
 </nav>
+<div class="rs-admin" id="rs-admin">
+    <b>⚠️ Restart warning</b>
+    <select id="rs-min"><option value="1">1 min</option><option value="2">2 min</option><option value="3">3 min</option><option value="5" selected>5 min</option><option value="10">10 min</option><option value="15">15 min</option></select>
+    <input id="rs-msg" maxlength="200" placeholder="Message for players (optional), e.g. new card levels!">
+    <button type="button" class="gold" id="rs-go">Warn players</button>
+    <span id="rs-state" class="muted">no warning active</span>
+    <button type="button" class="danger" id="rs-cancel" hidden>Call off</button>
+</div>
 <main>
     <section id="tab-users">
         <div class="toolbar">
@@ -713,9 +725,39 @@ async function loadLog() {
 
 // ---------- Refresh ----------
 
+// ---------- Neustart-Warnung (6.7) ----------
+// Spieler sehen ein Banner mit Countdown; in den letzten 2 Minuten starten keine
+// neuen Kekemon-Kaempfe. Neugestartet wird weiter per deploy.sh.
+let rsEnd = 0;
+function rsShow(r) {
+    rsEnd = r ? Date.now() + r.left : 0;
+    $('rs-admin').classList.toggle('on', !!r);
+    $('rs-cancel').hidden = !r;
+    $('rs-go').textContent = r ? 'New countdown' : 'Warn players';
+    rsTick();
+}
+function rsTick() {
+    if (!rsEnd) { $('rs-state').textContent = 'no warning active'; return; }
+    const s = Math.round((rsEnd - Date.now()) / 1000);
+    $('rs-state').textContent = s > 0 ? `players see: restart in ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `countdown over ${-s} s ago – deploy now (clears itself after 10 min)`;
+}
+setInterval(rsTick, 1000);
+$('rs-go').onclick = async () => {
+    const min = Number($('rs-min').value);
+    if (!confirm(`Show every player a ${min}-minute restart warning?`)) return;
+    try { rsShow((await api('/api/restart', { method: 'POST', body: { minutes: min, msg: $('rs-msg').value.trim() } })).restart); } catch (e) { alert(e.message); }
+};
+$('rs-cancel').onclick = async () => {
+    try { rsShow((await api('/api/restart', { method: 'DELETE', body: {} })).restart); } catch (e) { alert(e.message); }
+};
+async function rsLoad() {
+    try { rsShow((await api('/api/restart')).restart); } catch (e) { /* aelterer Server */ }
+}
+
 async function refresh() {
     try {
         await loadOverview();
+        await rsLoad();
         if (tab === 'users' && !$('dlg').open) await loadUsers();
         if (tab === 'tickets') await loadTickets();
         if (tab === 'log') await loadLog();

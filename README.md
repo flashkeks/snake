@@ -2003,3 +2003,24 @@ cashed), `crossError`, `plinko` (`path`, `slot`, `mult`, `win`, `balance`),
 `plinkoError` (`quiet` bei zu schnellen Drops), `tickets` (`list`, `unread`, `open`), `ticketError`. `welcome` bringt dazu `wheel`, `cross`, `plinko` (Reihen, Stufen, Tabellen) und `lobby`.
 
 Die Oberflaeche ist seit 23.09.2026 englisch, diese Doku bleibt deutsch.
+
+## ⚠️ Neustart-Warnung (6.7, Wunsch Max)
+
+Vor einem Deploy im Admin (`admin-game…`, Leiste ueber den Konten)
+**Restart warning** mit 1–15 Minuten und optionalem Text ausloesen. Alle
+Spieler sehen oben ein Banner mit Countdown (in der letzten Minute rot), neue
+Verbindungen bekommen den Stand im `welcome`.
+
+- Server `server.js`: `setRestart(minutes, msg, by)`, Nachricht
+  `{ type: 'restart', restart: { left, msg } | null }`. In den letzten 2 Minuten
+  (`RESTART_LOCK_MS`) lehnt der Server `kbStart` (Gyms, Training) sowie
+  `kdCreate`/`kdJoin` ab; laufende Kaempfe laufen weiter.
+- Neugestartet wird **nicht** automatisch – das macht weiter `deploy.sh`. Kommt
+  kein Neustart, raeumt sich die Warnung 10 min nach Ablauf selbst weg.
+- Admin-API: `GET/POST/DELETE /api/restart` (POST `{ minutes: 0.5–60, msg }`),
+  landet im Admin-Log als `restart-warn` / `restart-cancel`. „Call off" hebt auf,
+  Spieler bekommen „Restart called off"; nach einem echten Neustart „The server
+  is back".
+- Nicht in den Patch Notes (Admin-Funktion).
+- Test `rs.js` (srvat.sh): Banner mit Text, `kbStart`/`kdCreate` abgelehnt,
+  „Call off" nimmt das Banner weg, Log-Eintraege da.

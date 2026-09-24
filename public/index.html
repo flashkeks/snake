@@ -6311,6 +6311,14 @@ body.co-shake #case-open .co-box {
 body.watch-mode #world-switch {
     pointer-events: none;
 }
+#rs-banner { position: fixed; top: 0; left: 50%; transform: translateX(-50%); z-index: 99999; max-width: calc(100vw - 16px);
+    background: linear-gradient(135deg, #3a2a00, #6b4a00); color: #ffe7a0; border: 2px solid #ffd23f; border-top: 0;
+    border-radius: 0 0 14px 14px; padding: 7px 18px 8px; font: 600 14px/1.35 system-ui, sans-serif; text-align: center;
+    box-shadow: 0 6px 24px rgba(0,0,0,.55); pointer-events: none; }
+#rs-banner b { color: #fff; }
+#rs-banner small { display: block; font-weight: 500; opacity: .85; }
+#rs-banner.hot { background: linear-gradient(135deg, #4a0a0a, #8a1a1a); border-color: #ff5b5b; color: #ffd0d0; animation: rsPulse 1s ease-in-out infinite; }
+@keyframes rsPulse { 50% { box-shadow: 0 6px 30px rgba(255,91,91,.7); } }
 </style>
 <link rel="stylesheet" href="/kekemon.css">
 <link rel="stylesheet" href="/market.css">
@@ -7014,7 +7022,11 @@ ws.onmessage = event => {
         case 'watchError':
             onWatch(data);
             break;
+        case 'restart':
+            rsSet(data.restart);
+            break;
         case 'welcome':
+            rsSet(data.restart, true);
             if (!WATCH) myId = data.id;
             arena = data.arena;
             viewCells = data.view;
@@ -15014,6 +15026,44 @@ function showJackpot(d) {
 // ---------- Toast ----------
 
 let toastTimer = null;
+
+// ---------- Neustart-Warnung (6.7, vom Admin ausgeloest) ----------
+let rsEnd = 0, rsMsg = '', rsTimer = null;
+// welcome: kommt nach einem echten Neustart (neue Verbindung) -> "wieder da"
+function rsSet(r, welcome) {
+    const had = rsEnd > 0;
+    rsEnd = r ? Date.now() + r.left : 0;
+    rsMsg = r ? r.msg || '' : '';
+    let el = document.getElementById('rs-banner');
+    if (!rsEnd) {
+        if (el) el.remove();
+        clearInterval(rsTimer);
+        rsTimer = null;
+        if (had) toast(welcome ? '✅ The server is back – have fun!' : '✅ Restart called off – play on!');
+        return;
+    }
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'rs-banner';
+        document.body.appendChild(el);
+    }
+    if (!had) {
+        toast('⚠️ The server restarts soon – finish your games');
+    }
+    rsTick();
+    clearInterval(rsTimer);
+    rsTimer = setInterval(rsTick, 500);
+}
+function rsTick() {
+    const el = document.getElementById('rs-banner');
+    if (!el || !rsEnd) return;
+    const s = Math.max(0, Math.ceil((rsEnd - Date.now()) / 1000));
+    const t = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    el.className = s <= 60 ? 'hot' : '';
+    el.innerHTML = s > 0
+        ? `⚠️ <b>Server restart in ${t}</b> – finish your games${s <= 120 ? ' · no new battles' : ''}${rsMsg ? `<small>${esc(rsMsg)}</small>` : ''}`
+        : `🔄 <b>Restarting now…</b> you'll be back in a few seconds${rsMsg ? `<small>${esc(rsMsg)}</small>` : ''}`;
+}
 
 function toast(text) {
     const el = $('toast');
