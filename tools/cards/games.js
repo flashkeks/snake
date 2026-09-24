@@ -42,7 +42,7 @@ async function json(url, tries = 4) {
 
 // Bekannte Figuren: pop direkt (hoechster Wert = Secret Rare). Kleinschreibung.
 const STARS = {
-    mario: 1000, link: 990, pikachu: 985, sonic: 980, kirby: 960, samus: 950, 'donkey kong': 940, cloud: 930,
+    mario: 1000, link: 990, pikachu: 985, sonic: 980, kirby: 960, samus: 950, 'donkey kong': 940, 'cloud strife': 930,
     mewtwo: 925, charizard: 920, bowser: 915, zelda: 900, sephiroth: 895, ganondorf: 890, luigi: 885, peach: 880,
     yoshi: 875, 'pac-man': 870, 'mega man': 860, ryu: 850, snake: 845, steve: 840, sora: 835, mew: 830, fox: 820,
     wario: 815, jinx: 812, tracer: 810, ahri: 808, 'raiden shogun': 806, yasuo: 804, ness: 800, 'd.va': 798,
@@ -50,12 +50,12 @@ const STARS = {
     'meta knight': 758, bulbasaur: 756, squirtle: 755, charmander: 757, ike: 750, jigglypuff: 745, pudge: 744,
     invoker: 742, mercy: 741, genji: 740, 'king dedede': 735, ridley: 732, bayonetta: 730, lux: 728, zed: 726,
     zhongli: 725, 'hu tao': 724, venti: 723, nahida: 722, furina: 721, jett: 720, 'lee sin': 718, teemo: 716,
-    ekko: 714, vi: 712, 'simon': 710, banjo: 708, joker: 706, 'diddy kong': 704, rosalina: 702, snorlax: 700,
+    ekko: 714, vi: 712, 'simon': 710, 'banjo & kazooie': 708, joker: 706, 'diddy kong': 704, rosalina: 702, snorlax: 700,
     'chun-li': 700, 'captain falcon': 698, waluigi: 695, daisy: 694, blastoise: 693, venusaur: 692, gyarados: 690,
     dragonite: 689, lugia: 688, greninja: 687, mimikyu: 686, umbreon: 685, garchomp: 684, blaziken: 683,
     reinhardt: 682, widowmaker: 681, 'kazuha': 680, ganyu: 679, reyna: 678, sage: 676, toad: 675, ken: 674,
     'kaedehara kazuha': 680, spike: 660, leon: 658, shelly: 656, crow: 654, 'crystal maiden': 652, juggernaut: 650,
-    'terry': 648, hero: 640, 'shovel knight': 638, olimar: 636, 'k.k. slider': 634, sheik: 632, 'dark samus': 630,
+    'terry bogard': 648, hero: 640, 'shovel knight': 638, olimar: 636, 'k.k. slider': 634, sheik: 632, 'dark samus': 630,
     'king k. rool': 628, 'little mac': 626, 'min min': 620, pyra: 618, mythra: 617, 'wii fit trainer': 560
 };
 
