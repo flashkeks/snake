@@ -14,7 +14,7 @@ let kmShown = 60;            // Album: so viele Karten gerade sichtbar
 const kmFilter = { set: '', type: '', rarity: '', own: '', q: '', sort: 'num' };
 let kmOpening = null;        // offenes Pack { pack, cards: [{id, v}], fresh, order, idx }
 
-const KM_PACK_COLOR = { anime: '#ff7ac8', film: '#3da5ff', waifu: '#ff4f8b', mixed: '#ffb13d', train: '#7dffb0' };
+const KM_PACK_COLOR = { anime: '#ff7ac8', film: '#3da5ff', waifu: '#ff4f8b', game: '#57e38a', mixed: '#ffb13d', train: '#7dffb0' };
 const KM_VLABEL = { p: 'Pokéball', m: 'Masterball', s: 'Shiny' };
 
 // Klang nie das Oeffnen blockieren lassen

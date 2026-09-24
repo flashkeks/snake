@@ -39,7 +39,9 @@ const RIDX = Object.fromEntries(RARITIES.map((r, i) => [r.id, i]));
 const SETS = {
     anime: { name: 'Anime', code: 'AN', icon: '🌸' },
     hero: { name: 'Heroes & Villains', code: 'HV', icon: '🦸' },
-    tv: { name: 'Series', code: 'TV', icon: '📺' }
+    tv: { name: 'Series', code: 'TV', icon: '📺' },
+    // 6.8 (Max): Videospiel-Figuren, eigene Datei cards-games.json (tools/cards/games.js)
+    game: { name: 'Games', code: 'GM', icon: '🎮' }
 };
 
 // Genre -> Typ (Anime und Serien)
@@ -90,6 +92,8 @@ function seeded(str) {
 }
 
 function typeOf(raw, rnd) {
+    // Game-Set: Typ steht schon in den Rohdaten (Element, Rolle, Serie)
+    if (raw.ktype && TYPES[raw.ktype]) return raw.ktype;
     if (raw.set === 'hero' && raw.stats) {
         const s = raw.stats;
         const top = Object.entries(s).sort((a, b) => (Number(b[1]) || 0) - (Number(a[1]) || 0))[0];
@@ -153,9 +157,12 @@ function makeCard(raw, rankFrac, num) {
 
 function load(dataDir) {
     const file = [path.join(dataDir, 'cards-raw.json'), path.join(__dirname, 'tools', 'cards', 'fixture.json')].find(f => fs.existsSync(f));
+    // 6.8: Game-Set aus eigener Datei (fehlt sie, gibt es das Set eben nicht)
+    const gamesFile = path.join(dataDir, 'cards-games.json');
+    const games = fs.existsSync(gamesFile) ? JSON.parse(fs.readFileSync(gamesFile, 'utf8')).cards || [] : [];
     // Doppelte (gleicher Name in gleicher Serie) und Nicht-Figuren raus
     const seen = new Set();
-    const raw = (file ? JSON.parse(fs.readFileSync(file, 'utf8')).cards : []).filter(r => {
+    const raw = (file ? JSON.parse(fs.readFileSync(file, 'utf8')).cards : []).concat(games).filter(r => {
         const k = r.set + '|' + r.name.toLowerCase() + '|' + String(r.from).toLowerCase();
         if (seen.has(k) || /^(presenter|narrator|host)$/i.test(r.name)) return false;
         seen.add(k);
@@ -196,15 +203,18 @@ const PACKS = {
     anime: { name: 'Anime Booster', icon: '🌸', sets: ['anime'], price: 10000, size: 5, sure: 1 },
     film: { name: 'Heroes & Series Booster', icon: '🎬', sets: ['hero', 'tv'], price: 10000, size: 5, sure: 1 },
     // 5.1b (Max): nur weibliche Figuren aus Anime und Comics (Geschlecht aus AniList/Superhero-API)
-    waifu: { name: 'Waifu Booster', icon: '💖', sets: ['anime', 'hero'], only: 'f', price: 10000, size: 5, sure: 1 },
-    mixed: { name: 'Kek Mega Booster', icon: '🃏', sets: ['anime', 'hero', 'tv'], price: 50000, size: 8, sure: 3, mega: true },
+    // 6.8 (Max): nicht mehr im Shop (wheel: true); vorhandene Packs lassen sich weiter oeffnen und handeln
+    waifu: { name: 'Waifu Booster', icon: '💖', sets: ['anime', 'hero'], only: 'f', price: 10000, size: 5, sure: 1, wheel: true, retired: true },
+    // 6.8 (Max): an seiner Stelle die Videospiel-Figuren
+    game: { name: 'Game Booster', icon: '🎮', sets: ['game'], price: 10000, size: 5, sure: 1 },
+    mixed: { name: 'Kek Mega Booster', icon: '🃏', sets: ['anime', 'hero', 'tv', 'game'], price: 50000, size: 8, sure: 3, mega: true },
     // 6.1 (Max): nur aus dem Daily Pack Wheel, nicht im Shop (wheel: true).
     // Daily: alles moeglich, Chancen wie die 10k-Packs. Jackpot: Chancen wie
     // der Mega Booster, 50 % mehr Karten (12 statt 8, 5 statt 3 sicher Rare+)
-    daily: { name: 'Daily Booster', icon: '🎁', sets: ['anime', 'hero', 'tv'], price: 10000, size: 5, sure: 1, wheel: true },
+    daily: { name: 'Daily Booster', icon: '🎁', sets: ['anime', 'hero', 'tv', 'game'], price: 10000, size: 5, sure: 1, wheel: true },
     // 6.7: nur aus 10 Booster-Teilen (Training), nicht im Shop. 6.8 (Max): 3 sichere Rare+ statt 1
-    train: { name: 'Trainer Booster', icon: '🧩', sets: ['anime', 'hero', 'tv'], price: 10000, size: 5, sure: 3, wheel: true },
-    jackpot: { name: 'Jackpot Booster', icon: '🌟', sets: ['anime', 'hero', 'tv'], price: 75000, size: 12, sure: 5, mega: true, wheel: true }
+    train: { name: 'Trainer Booster', icon: '🧩', sets: ['anime', 'hero', 'tv', 'game'], price: 10000, size: 5, sure: 3, wheel: true },
+    jackpot: { name: 'Jackpot Booster', icon: '🌟', sets: ['anime', 'hero', 'tv', 'game'], price: 75000, size: 12, sure: 5, mega: true, wheel: true }
 };
 // Gewichte je Platz (Summe egal, wird normiert)
 const ODDS = {
