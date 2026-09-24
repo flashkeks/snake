@@ -12,13 +12,13 @@
 // h: { accounts, cards, cardDb, battle, send, kmState(c, extra), feed(text, kind), log(line) }
 
 const GYMS = [
-    { id: 'sprout', name: 'Sprout Gym', icon: '🌱', leader: 'Scout Mika', type: 'nature', rar: ['common'], mul: 0.75, smart: 0, coins: 3000, pack: 'anime' },
-    { id: 'tide', name: 'Tide Gym', icon: '💧', leader: 'Captain Ren', type: 'water', rar: ['common', 'uncommon'], mul: 0.85, smart: 1, coins: 4000, pack: 'film' },
-    { id: 'blaze', name: 'Blaze Gym', icon: '🔥', leader: 'Pyra', type: 'fire', rar: ['uncommon'], mul: 0.9, smart: 1, coins: 5000, pack: 'anime' },
-    { id: 'volt', name: 'Volt Gym', icon: '⚡', leader: 'Sparky', type: 'electric', rar: ['uncommon', 'rare'], mul: 0.93, smart: 1, coins: 6500, pack: 'waifu' },
-    { id: 'dojo', name: 'Iron Dojo', icon: '👊', leader: 'Master Ken', type: 'fighting', rar: ['rare'], mul: 1.07, smart: 1, coins: 8000, pack: 'film' },
-    { id: 'mind', name: 'Mind Tower', icon: '🔮', leader: 'Oracle Lua', type: 'psychic', rar: ['rare', 'epic'], mul: 1.18, smart: 2, coins: 11000, pack: 'anime' },
-    { id: 'shadow', name: 'Shadow Gym', icon: '🌑', leader: 'Noct', type: 'dark', rar: ['epic'], mul: 1.02, smart: 2, coins: 15000, pack: 'waifu' },
+    { id: 'sprout', name: 'Sprout Gym', icon: '🌱', leader: 'Scout Mika', type: 'nature', rar: ['uncommon'], mul: 0.75, smart: 1, coins: 3000, pack: 'anime' },
+    { id: 'tide', name: 'Tide Gym', icon: '💧', leader: 'Captain Ren', type: 'water', rar: ['uncommon', 'rare'], mul: 0.85, smart: 2, coins: 4000, pack: 'film' },
+    { id: 'blaze', name: 'Blaze Gym', icon: '🔥', leader: 'Pyra', type: 'fire', rar: ['rare'], mul: 0.9, smart: 2, coins: 5000, pack: 'anime' },
+    { id: 'volt', name: 'Volt Gym', icon: '⚡', leader: 'Sparky', type: 'electric', rar: ['rare'], mul: 0.93, smart: 2, coins: 6500, pack: 'waifu' },
+    { id: 'dojo', name: 'Iron Dojo', icon: '👊', leader: 'Master Ken', type: 'fighting', rar: ['rare', 'epic'], mul: 1.07, smart: 2, coins: 8000, pack: 'film' },
+    { id: 'mind', name: 'Mind Tower', icon: '🔮', leader: 'Oracle Lua', type: 'psychic', rar: ['epic'], mul: 1.18, smart: 2, coins: 11000, pack: 'anime' },
+    { id: 'shadow', name: 'Shadow Gym', icon: '🌑', leader: 'Noct', type: 'dark', rar: ['epic', 'legendary'], mul: 1.02, smart: 2, coins: 15000, pack: 'waifu' },
     { id: 'champ', name: 'Kek Champion', icon: '👑', leader: 'The Kek', type: null, rar: ['legendary', 'secret'], mul: 1.44, smart: 2, coins: 30000, pack: 'mixed' }
 ];
 // Staerke per Simulation (24.09.2026, Kampfsystem 6.0, tools/km-sim.js auf edge
@@ -43,17 +43,25 @@ const day = () => new Date().toISOString().slice(0, 10);
 module.exports = function createGyms(h) {
     const { accounts, cards, cardDb, battle: B } = h;
 
-    // Leiter-Teams einmal beim Start festlegen
+    // Leiter-Teams einmal beim Start festlegen. Seit 6.4 (Max: "deutlich
+    // schwerer") die staerksten Karten des Typs und der Seltenheit, nicht
+    // zufaellige; der Champion nimmt verschiedene Typen.
+    const power = c => {
+        const t = c.bt.stats;
+        return t.hp + 1.3 * Math.max(t.atk, t.spa) + 0.8 * (t.def + t.spd) + 0.9 * t.spe;
+    };
     for (const g of GYMS) {
-        const rnd = seeded('gym:' + g.id);
         let pool = cardDb.cards.filter(c => g.rar.includes(c.rarity) && (!g.type || c.type === g.type));
         if (pool.length < 3) pool = cardDb.cards.filter(c => g.rar.includes(c.rarity));
         if (pool.length < 3) pool = cardDb.cards.slice();
+        pool = pool.slice().sort((a, b) => power(b) - power(a) || a.id.localeCompare(b.id));
         const team = [];
-        while (team.length < 3 && pool.length) {
-            const i = Math.floor(rnd() * pool.length);
-            team.push(pool.splice(i, 1)[0].id);
+        for (const c of pool) {
+            if (team.length >= 3) break;
+            if (!g.type && team.some(id => cardDb.byId[id].type === c.type)) continue;
+            team.push(c.id);
         }
+        for (const c of pool) if (team.length < 3 && !team.includes(c.id)) team.push(c.id);
         g.team = team;
     }
     const byId = Object.fromEntries(GYMS.map(g => [g.id, g]));
