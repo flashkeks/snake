@@ -12417,7 +12417,20 @@ function shFrame() {
     }
 
     // Angekuendigter Abwurf: Zielkreis mit Countdown
-    if (latest.drop) {
+    if (latest.drop && latest.drop[3]) {
+        // 6.9: gelandet – Kiste bleibt markiert, bis sie leer ist
+        const [dx, dy] = latest.drop;
+        const k = .5 + .5 * Math.sin(now / 200);
+        c.strokeStyle = `rgba(90,170,255,${.35 + .3 * k})`;
+        c.lineWidth = 3;
+        c.beginPath();
+        c.arc(dx, dy, 55 + k * 8, 0, Math.PI * 2);
+        c.stroke();
+        c.fillStyle = '#9fd0ff';
+        c.font = 'bold 14px system-ui';
+        c.textAlign = 'center';
+        c.fillText('Supply drop', dx, dy + 48);
+    } else if (latest.drop) {
         const [dx, dy, left] = latest.drop;
         const k = .5 + .5 * Math.sin(now / 150);
         c.strokeStyle = `rgba(90,170,255,${.5 + .4 * k})`;
@@ -13322,7 +13335,7 @@ function shEventHud(c, latest, W, H, now, dpr) {
         c.fillText(`${Math.round(Math.hypot(wx - (shPred ? shPred.x : wx), wy - (shPred ? shPred.y : wy)) / 10)} m`, ax, ay + 30);
     };
     if (bs) arrow(bs.x, bs.y, bs.def.icon, '#ff3b3b');
-    if (latest.drop) arrow(latest.drop[0], latest.drop[1], '🪂', '#5aaaff');
+    if (latest.drop) arrow(latest.drop[0], latest.drop[1], latest.drop[3] ? '📦' : '🪂', '#5aaaff');
     for (const [, x, y, , kind] of latest.bags) if (kind === 2 || kind === 5) arrow(x, y, kind === 5 ? '💎' : '💰', '#ffd23f');
     if (shEventMsg && now - shEventMsg.t < 4500) {
         c.globalAlpha = Math.min(1, (4500 - (now - shEventMsg.t)) / 600);

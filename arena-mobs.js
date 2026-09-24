@@ -131,6 +131,21 @@ const MOBS = {
         summon: { kind: 'runner', n: 4, ms: 12000, max: 10, ring: true },
         strikes: { n: 7, r: 110, dmg: 75, warn: 1300, ms: 10000, spread: 320 }, enrage: 0.5
     },
+    // ---------- 6.9: Bullet-Hell-Bosse (Max: wie Undertale, keine Minions) ----------
+    // pattern: Angriffs-Skript aus arena-hazards.js (riesige Zonen, erst rot
+    // angekuendigt); gap = Pause zwischen zwei Angriffen (ms)
+    judge: {
+        zombie: true, boss: true, name: 'Judge Bones', title: 'The Last Judgement', icon: '🦴', color: '#7fd8ff', r: 42, hpBase: 20000, hpPer: 7000,
+        speed: 75, aggro: 99999, range: 99999, keep: 420, contact: 40, blink: { ms: 5200 }, pattern: 'judge', gap: 700, enrage: 0.5
+    },
+    seraph: {
+        zombie: true, boss: true, name: 'Solaris', title: 'The Sun Eater', icon: '☀️', color: '#ffcf3a', r: 60, hpBase: 28000, hpPer: 9000,
+        speed: 55, aggro: 99999, range: 99999, keep: 400, contact: 60, taken: 0.9, pattern: 'seraph', gap: 650, enrage: 0.5
+    },
+    omega: {
+        zombie: true, boss: true, name: 'Omega', title: 'The End of All', icon: '🌌', color: '#b06bff', r: 64, hpBase: 36000, hpPer: 12000,
+        speed: 50, aggro: 99999, range: 99999, keep: 380, contact: 70, taken: 0.85, pattern: 'omega', gap: 550, enrage: 0.5
+    },
     // ---------- Bosse (einer zur Zeit, reihum zufaellig) ----------
     king: {
         boss: true, name: 'Raccoon King', icon: '🦝', crown: true, color: '#ff3b3b', r: 44, hpBase: 5000, hpPer: 2500, speed: 125, aggro: 700, keep: 170,
@@ -153,14 +168,15 @@ const MOBS = {
 };
 
 const BOSSES = Object.keys(MOBS).filter(k => MOBS[k].boss && !MOBS[k].zombie);
-// Zombie-Bosse in fester Reihenfolge: Welle 5, 10, 15, 20, 25, 30, danach von vorn (staerker)
-const ZBOSSES = ['abomination', 'necro', 'brood', 'inferno', 'storm', 'overlord'];
+// Zombie-Bosse in fester Reihenfolge: Welle 5, 10, 15, 20, 25, dann (6.9, Max)
+// 30 Judge Bones, 35 Solaris, 40 Omega, 45 Kek Eye – danach von vorn (staerker)
+const ZBOSSES = ['abomination', 'necro', 'brood', 'inferno', 'storm', 'judge', 'seraph', 'omega', 'overlord'];
 // Wer normal auf der Map herumlaeuft (Gewichte); Enforcer bewachen das Militaerlager
 const ROAMERS = [['scav', 55], ['brute', 18], ['sniper', 14], ['drone', 13]];
 
 // Fuer den Browser: was er zum Zeichnen braucht
 function catalog() {
-    return Object.fromEntries(Object.entries(MOBS).map(([k, m]) => [k, { name: m.name, icon: m.icon, color: m.color, r: m.r, boss: !!m.boss, zombie: !!m.zombie, crown: !!m.crown, elite: !!m.elite || (!!m.boss && !!m.zombie), slamR: m.slam ? m.slam.r : 0, title: m.title || '', ghost: !!m.ghost, armored: !!m.armored, boom: m.boom ? m.boom.r : 0, beamLen: m.beam ? m.beam.len : 0, beamW: m.beam ? m.beam.width : 0, beamTwin: !!(m.beam && m.beam.twin), vortexR: m.vortex ? m.vortex.r : 0 }]));
+    return Object.fromEntries(Object.entries(MOBS).map(([k, m]) => [k, { name: m.name, icon: m.icon, color: m.color, r: m.r, boss: !!m.boss, zombie: !!m.zombie, crown: !!m.crown, elite: !!m.elite || (!!m.boss && !!m.zombie), slamR: m.slam ? m.slam.r : 0, title: m.title || '', ghost: !!m.ghost, armored: !!m.armored, boom: m.boom ? m.boom.r : 0, beamLen: m.beam ? m.beam.len : 0, beamW: m.beam ? m.beam.width : 0, beamTwin: !!(m.beam && m.beam.twin), vortexR: m.vortex ? m.vortex.r : 0, pattern: m.pattern || '' }]));
 }
 
 module.exports = { MOBS, BOSSES, ZBOSSES, ROAMERS, catalog };

@@ -356,7 +356,8 @@ const zDmg = w => 1 + 0.06 * (w - 1);
 // gibt es nur ueber mehr Zombies. Solo je Welle: W10 ~12k -> ~4,6k, W20 ~46k -> ~8,6k.
 const Z_PTS_PER_DMG = 0.5, Z_PTS_KILL = 50;
 // Kugel-Optik der Zombie-Bosse (tier-Feld der Kugel, 1024 = Boss-Kugel)
-const BOSS_LOOK = { abomination: 5, necro: 11, brood: 12, inferno: 13, storm: 14, overlord: 15 };
+const BOSS_LOOK = { abomination: 5, necro: 11, brood: 12, inferno: 13, storm: 14, overlord: 15, judge: 11, seraph: 13, omega: 15 };
+const HZ = require('./arena-hazards');
 // 6.5.1: von Anfang an 12 % schneller
 const zSpd = w => Math.min(1.5, 1.12 + 0.015 * (w - 1));
 // Pause zwischen Wellen: am Anfang kurz, spaeter mehr Zeit zum Einkaufen
@@ -437,6 +438,11 @@ module.exports = function createArena(h, opts = {}) {
     let seqId = 0;
     const mobs = [];                 // Gegner und Boss (4.1), siehe arena-mobs.js
     const strikes = [];              // angekuendigte Einschlaege der Bosse (4.6)
+    // Gefahrenzonen der Bullet-Hell-Bosse (6.9, arena-hazards.js)
+    const hz = HZ.createHazards({
+        W, H, R, speed: SPEED, players: () => players.values(),
+        damage: (p, dmg, now, by) => damage(p, null, dmg, now, p.x, p.y, { how: 'boss', by, noDodge: true })
+    });
     let mobSeq = 0;
     let bossId = null;               // id des Bosses in mobs
     let lastBoss = null;
@@ -1950,6 +1956,8 @@ module.exports = function createArena(h, opts = {}) {
             const spots = MAP.zspawns.slice().sort((a, b) => Math.min(...alive.map(p => Math.hypot(p.x - b.x, p.y - b.y))) - Math.min(...alive.map(p => Math.hypot(p.x - a.x, p.y - a.y))));
             const s = spots[0] || MAP.zspawns[0];
             const m = spawnMob(kind, s.x, s.y, now);
+            // Bullet-Hell-Bosse (6.9, Max): keine kleinen Mobs, nur der Boss
+            if (m.def.pattern) zb.toSpawn = 0;
             m.hp = m.maxHp = Math.round(m.maxHp * (1 + 1.2 * cycle));
             m.dm = zDmg(zb.wave);
             m.sp = 1 + 0.1 * cycle;
@@ -1957,6 +1965,7 @@ module.exports = function createArena(h, opts = {}) {
             // Auftritt: erst nach der Vorstellung loslegen
             m.nextThink = m.nextShot = m.nextSlam = m.nextCharge = m.nextStrike = m.nextSummon = m.nextRing = now + 3000 / SPEED;
             m.nextBlink = m.nextSpiral = m.nextVortex = m.nextBeam = now + 6000 / SPEED;
+            m.patNext = now + 3600 / SPEED;
             m.introUntil = now + 2800 / SPEED;
             bossId = m.id;
             const d = m.def;
@@ -2373,6 +2382,7 @@ module.exports = function createArena(h, opts = {}) {
         const def = m.def;
         if (zb) {
             if (m.id === bossId) bossId = null;
+            if (def.pattern) hz.clear();
             if (killer) {
                 const bi = def.boss ? (m.bossIdx || 0) + 1 : 0;
                 killer.pts += (def.boss ? 1000 * bi : m.kind === 'tank' ? 150 : def.pts || Z_PTS_KILL) * zPtsMul(killer, now);
@@ -2603,9 +2613,28 @@ module.exports = function createArena(h, opts = {}) {
 
     // Faehigkeiten der Zombie-Bosse (6.5). true = Boss ist beschaeftigt (steht,
     // feuert Spirale oder Strahl), der Rest von mobTick entfaellt dann.
+    // Bullet-Hell (6.9): naechster Angriff aus dem Skript, nie zweimal derselbe
+    function patternTick(m, now) {
+        const def = m.def, P = HZ.PATTERNS[def.pattern];
+        if (!P || now < (m.patNext || 0)) return;
+        const names = Object.keys(P).filter(k => k !== m.patLast && (k !== 'supernova' || m.enraged));
+        const name = names[Math.floor(Math.random() * names.length)];
+        m.patLast = name;
+        const by = def.icon + ' ' + def.name;
+        const api = {
+            hz: { add: z => hz.add({ ...z, by }, now) }, W, H, m, now, enraged: !!m.enraged,
+            players: () => [...players.values()],
+            dmg: base => Math.round(base * (1 + ((m.dm || 1) - 1) * 0.5)),
+            say: text => { for (const q of players.values()) h.send(q.c, { type: 'shEvent', text, kind: 'boss' }); }
+        };
+        const dur = P[name](api);
+        m.patNext = now + (dur + (def.gap || 700) * (m.enraged ? 0.6 : 1)) / SPEED;
+    }
+
     function bossSkills(m, now, dt, cd) {
         const def = m.def;
         if (!def.zombie) return false;
+        if (def.pattern) patternTick(m, now);
         const by = def.icon + ' ' + def.name;
         const dm = m.dm || 1;
         // Feuerspur hinter sich her
@@ -2966,12 +2995,15 @@ module.exports = function createArena(h, opts = {}) {
         }
         gridMobs();
         if (!drop && now >= nextDropAt) spawnDrop(now);
-        if (drop && now >= drop.at) {
+        // 6.9 (Max: gelandet war er von der Karte weg): Markierung bleibt als
+        // "gelandet", bis der Beutel leer geraeumt oder abgelaufen ist
+        if (drop && drop.landed && !bags.some(b => b.id === drop.bag)) drop = null;
+        if (drop && !drop.landed && now >= drop.at) {
             const n = 2 + (Math.random() < 0.4 ? 1 : 0);
             dropBag(drop.x, drop.y, Array.from({ length: n }, () => I.generate('airdrop')), 'drop');
             fxAt(drop.x, drop.y, { type: 'shBoom', x: Math.round(drop.x), y: Math.round(drop.y), r: 90, nuke: false });
             announce('📦 The supply drop has landed!', 'drop');
-            drop = null;
+            drop = { x: drop.x, y: drop.y, at: drop.at, landed: true, bag: bags[bags.length - 1].id };
             nextDropAt = now + randIn(DROP_EVERY) / SPEED;
         }
     }
@@ -2993,6 +3025,7 @@ module.exports = function createArena(h, opts = {}) {
             // leerer Raid: Events und Gegner weg, Uhr startet mit dem naechsten Spieler neu
             mobs.length = 0;
             strikes.length = 0;
+            hz.clear();
             bossId = null;
             enforcerAt = [];
             drop = null;
@@ -3000,6 +3033,7 @@ module.exports = function createArena(h, opts = {}) {
             nextDropAt = 0;
             return;
         }
+        if (hz.list.length) hz.tick(now, dt);
         for (let i = strikes.length - 1; i >= 0; i--) {
             const s = strikes[i];
             if (now < s.at) continue;
@@ -3173,10 +3207,12 @@ module.exports = function createArena(h, opts = {}) {
                 bags: bags.filter(b => inView(b.x, b.y)).map(b => [b.id, Math.round(b.x), Math.round(b.y), b.items.length, b.kind === 'boss' ? 2 : b.kind === 'drop' ? 1 : b.kind === 'mob1' ? 3 : b.kind === 'mob2' ? 4 : b.kind === 'mob3' ? 5 : 0]),
                 // Events sieht jeder, egal wo (Karte und Pfeil am Rand)
                 boss: bossView(now),
+                // Gefahrenzonen (6.9): alle, sie sind riesig und gehen ueber den Bildschirm hinaus
+                hz: hz.list.length ? hz.view(now) : undefined,
                 strikes: strikes.filter(s => inView(s.x, s.y)).map(s => [s.id, Math.round(s.x), Math.round(s.y), s.r, Math.max(0, Math.round(s.at - now)), s.total, s.look || 0]),
                 mobs: mobs.filter(m => !m.def.boss && inView(m.x, m.y)).map(m => [m.id, m.kind, Math.round(m.x), Math.round(m.y), Math.max(0, Math.round(m.hp)), m.maxHp, Math.round(m.a * 100) / 100, m.aimAt ? Math.max(0, Math.round(m.aimAt - now)) : 0,
                     m.chargeAt ? Math.max(0, Math.round(m.chargeAt - now)) : 0, m.charging ? 1 : 0, Math.round(m.cx || 0), Math.round(m.cy || 0)]),
-                drop: drop ? [Math.round(drop.x), Math.round(drop.y), Math.max(0, Math.round(drop.at - now))] : null,
+                drop: drop ? [Math.round(drop.x), Math.round(drop.y), Math.max(0, Math.round(drop.at - now)), drop.landed ? 1 : 0] : null,
                 nades: nades.filter(g => inView(g.x, g.y)).map(g => [g.id, Math.round(g.x), Math.round(g.y), g.base, g.landed ? 1 : 0, g.fuseAt ? Math.max(0, Math.round(g.fuseAt - now)) : 0]),
                 smokes: smokes.filter(s => inView(s.x, s.y)).map(s => [s.id, Math.round(s.x), Math.round(s.y), s.r, Math.round(s.until - now)]),
                 fires: fires.filter(f => inView(f.x, f.y)).map(f => [f.id, Math.round(f.x), Math.round(f.y), f.r, Math.round(f.until - now), f.acid ? 1 : 0]),
