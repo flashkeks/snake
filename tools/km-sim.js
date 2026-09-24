@@ -9,7 +9,7 @@
 //   zufall  drei zufaellige Karten der Arena-Seltenheit
 //   vorteil drei Karten dieser Seltenheit, deren Typ den Arena-Typ stark trifft
 // Mit arena=mul lassen sich Staerken probieren, ohne km-gyms.js zu aendern,
-// z. B. node tools/km-sim.js /srv/snake-data 400 sprout=1.1,champ=0.95
+// z. B. node tools/km-sim.js /srv/snake-data 400 sprout=1.1,champ=0.9:1:1.1
 
 const path = require('path');
 const cards = require(path.join(__dirname, '..', 'cards.js'));
@@ -19,7 +19,7 @@ const createGyms = require(path.join(__dirname, '..', 'km-gyms.js'));
 
 const dir = process.argv[2] || '/nonexistent';
 const N = Number(process.argv[3] || 300);
-const override = Object.fromEntries((process.argv[4] || '').split(',').filter(Boolean).map(x => x.split('=')).map(([k, v]) => [k, Number(v)]));
+const override = Object.fromEntries((process.argv[4] || '').split(',').filter(Boolean).map(x => x.split('=')));
 
 const cardDb = cards.load(dir);
 const { GYMS } = createGyms({ accounts: {}, cards, cardDb, battle: B, send() {}, feed() {} });
@@ -35,6 +35,7 @@ function fight(mine, g, mul) {
     const foes = g.team.map(id => B.fighter(cardDb.byId[id], '', mul));
     const { b } = B.createBattle(mine.map(id => B.fighter(cardDb.byId[id], '', 1)), foes, { smart: g.smart });
     b.sides[0].ai = true;
+    b.sides[0].level = 1;
     // Seite 0 spielt wie KI-Stufe 1
     const smart = b.smart;
     let guard = 0;
@@ -46,8 +47,9 @@ function fight(mine, g, mul) {
 }
 
 console.log(`Karten: ${cardDb.cards.length} (${cardDb.source || 'fixture'}), ${N} Kaempfe je Arena und Team-Art`);
-for (const g of GYMS) {
-    const mul = override[g.id] || g.mul;
+// Mit Vorgaben: nur diese Arenen; mehrere Werte je Arena mit ':' (Sweep)
+const runs = Object.keys(override).length ? GYMS.filter(g => override[g.id] !== undefined) : GYMS;
+for (const g of runs) for (const mul of String(override[g.id] || g.mul).split(':').map(Number)) {
     const pool = cardDb.cards.filter(c => g.rar.includes(c.rarity));
     const strong = g.type ? pool.filter(c => K.eff(c.type, g.type) > 1 || c.bt.moves.some(m => m.pow && K.eff(m.type, g.type) > 1)) : pool;
     let w1 = 0, w2 = 0, t = 0;

@@ -404,8 +404,10 @@ function useMove(b, s, m, ev) {
 
 // ---------- KI ----------
 // smart 0: haut mit starken Attacken drauf (etwas Zufall)
-// smart 1: rechnet Schaden inkl. Typ, nimmt K.o. mit, nutzt Status, Heilung, Aufbau
-// smart 2: wechselt ausserdem aus schlechten Paarungen
+// smart 1: gierig mit echter Schadensrechnung; K.o. zuerst, Status/Aufbau/
+//          Heilung, wenn es passt
+// smart 2: Vorausschau – jede eigene Option wird mehrfach zwei Zuege weit
+//          gegen gierige Antworten durchgespielt, die beste gewinnt
 
 function bestDamage(att, def) {
     let best = 0;
@@ -425,42 +427,100 @@ function bestSwitch(b, s, skip) {
     return best;
 }
 
-function aiChoose(b, s, level) {
-    const smart = level === undefined ? b.smart : level;
-    const side = b.sides[s];
-    if (b.phase === 'switch') return { a: 'switch', to: bestSwitch(b, s, -1) };
+// Gierige Wahl (Stufe 0 und 1)
+function greedy(b, s, smart) {
     const me = act(b, s), foe = act(b, 1 - s);
     const usable = me.moves.map((m, i) => ({ m, i })).filter(x => x.m.ppLeft > 0);
     if (!usable.length) return { a: 'move', i: -1 };
     const threat = bestDamage(foe, me);
+    const faster = speedOf(me) >= speedOf(foe);
     const opts = usable.map(({ m, i }) => {
         const e = m.eff || {};
         let v;
         if (m.pow) {
             const est = estimate(me, foe, m).dmg * (m.acc ? m.acc / 100 : 1);
-            v = est >= foe.hp ? 200 + (m.pri || 0) * 50 + (m.acc || 100) / 10 : est / foe.maxHp * 100;
             if (smart === 0) v = m.pow * K.eff(m.type, foe.type) * (0.6 + b.rnd() * 0.8);
+            // K.o.: bevorzugt, wenn wir zuerst dran sind (oder Prioritaet haben)
+            else v = est >= foe.hp ? 200 + (faster || m.pri > 0 ? 60 : 0) + (m.acc || 100) / 10 : est / foe.maxHp * 100;
         } else if (smart === 0) v = -1;
-        else if (e.st) v = foe.status || K.IMMUNE[e.st] === foe.type ? -1 : (e.st === 'slp' ? 45 : 32) * (m.acc || 100) / 100;
-        else if (e.heal) v = me.hp / me.maxHp < 0.45 ? 55 : -1;
-        else if (e.protect) v = me.protectCount > 0 ? -1 : (foe.status === 'brn' || foe.status === 'psn') ? 25 : 4;
+        else if (e.st) {
+            if (foe.status || K.IMMUNE[e.st] === foe.type || foe.hp < foe.maxHp * 0.5) v = -1;
+            else v = { slp: 48, par: faster ? 26 : 42, brn: foe.style === 'phys' ? 40 : 24, psn: 30 }[e.st] * (m.acc || 100) / 100;
+        } else if (e.heal) v = me.hp / me.maxHp < 0.45 && threat < me.hp ? 58 : -1;
+        else if (e.protect) v = me.protectCount > 0 ? -1 : (foe.status === 'brn' || foe.status === 'psn') ? 22 : 3;
         else if (e.self) {
             const k0 = Object.keys(e.self)[0];
             const k = k0 === 'off' ? (me.style === 'spec' ? 'spa' : 'atk') : k0;
-            v = me.boosts[k] >= 2 || threat >= me.hp * 0.6 || me.hp / me.maxHp < 0.6 ? -1 : 38;
+            v = me.boosts[k] >= 2 || threat >= me.hp * 0.4 || me.hp / me.maxHp < 0.7 ? -1 : 44;
         } else v = -1;
-        return { i, v: v + b.rnd() * 6 };
+        return { i, v: v + b.rnd() * 5 };
     });
-    // Schlechte Paarung: auswechseln
-    if (smart >= 2 && threat >= me.hp * 0.8 && alive(side).length > 1 && b.rnd() < 0.6) {
-        const top = Math.max(...opts.map(o => o.v));
-        if (top < 60) {
-            const to = bestSwitch(b, s, side.active);
-            if (to >= 0 && bestDamage(foe, side.cards[to]) < threat * 0.7) return { a: 'switch', to };
-        }
-    }
     opts.sort((x, y) => y.v - x.v);
     return { a: 'move', i: opts[0].i };
+}
+
+// Bewertung aus Sicht von Seite s: eigene HP/Karten minus die des Gegners
+function evalSide(b, s) {
+    const score = side => side.cards.reduce((a, c) => a + (c.hp > 0 ? 0.45 + 0.55 * c.hp / c.maxHp - (c.status ? 0.08 : 0) : 0), 0);
+    if (b.over) return b.winner === s ? 100 : -100;
+    const me = act(b, s);
+    const boost = Math.max(0, me.boosts.atk, me.boosts.spa) * 0.06 + Math.max(0, me.boosts.spe) * 0.04;
+    return score(b.sides[s]) - score(b.sides[1 - s]) + (me.hp > 0 ? boost : 0);
+}
+
+function cloneBattle(b) {
+    return {
+        ...b,
+        sides: b.sides.map(side => ({
+            ...side, choice: null, ai: true, level: 1,
+            cards: side.cards.map(c => ({ ...c, st: { ...c.st }, boosts: { ...c.boosts }, moves: c.moves.map(m => ({ ...m })) }))
+        })),
+        smart: 1
+    };
+}
+
+const LOOK_SAMPLES = 8, LOOK_TURNS = 3;
+
+function lookahead(b, s) {
+    const me = act(b, s);
+    const side = b.sides[s];
+    const cands = [];
+    me.moves.forEach((m, i) => { if (m.ppLeft > 0) cands.push({ a: 'move', i }); });
+    if (!cands.length) cands.push({ a: 'move', i: -1 });
+    side.cards.forEach((c, i) => { if (i !== side.active && c.hp > 0) cands.push({ a: 'switch', to: i }); });
+    let best = null, bv = -1e9;
+    for (const c of cands) {
+        let sum = 0;
+        for (let k = 0; k < LOOK_SAMPLES; k++) {
+            const x = cloneBattle(b);
+            x.sides[s].choice = c;
+            x.sides[1 - s].choice = greedy(x, 1 - s, 1);
+            const start = x.turn;
+            let g = 0;
+            while (!x.over && x.turn < start + LOOK_TURNS && g++ < 20) {
+                if (x.phase === 'move' && !x.sides[0].choice && !x.sides[1].choice && x.turn === start) break;
+                step(x, []);
+            }
+            sum += evalSide(x, s);
+        }
+        const v = sum / LOOK_SAMPLES;
+        if (v > bv) { bv = v; best = c; }
+    }
+    return best;
+}
+
+// level: fest vorgegeben (Auto-Zug), sonst Stufe der Seite (Tests) oder des Kampfes
+function aiChoose(b, s, level) {
+    const lv = b.sides[s].level;
+    const smart = level !== undefined ? level : lv !== undefined ? lv : b.smart;
+    if (b.phase === 'switch') return { a: 'switch', to: bestSwitch(b, s, -1) };
+    if (smart < 0) {
+        // nur fuer Tests: rein zufaellig
+        const ok = act(b, s).moves.map((m, i) => i).filter(i => act(b, s).moves[i].ppLeft > 0);
+        return { a: 'move', i: ok.length ? ok[Math.floor(b.rnd() * ok.length)] : -1 };
+    }
+    if (smart >= 2) return lookahead(b, s);
+    return greedy(b, s, smart);
 }
 
 // ---------- Ansicht ----------
