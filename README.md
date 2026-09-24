@@ -1126,6 +1126,60 @@ der Statistik unter `earned.cards`.
 | Mythic | 1 in 20 000 | 1 in 3 478 | 1 in 1000 |
 | Ultra | 1 in 200 000 | 1 in 34 783 | 1 in 10 000 |
 
+## 🧟 Zombies 6.5: haerter, Bosse, neue Arten, Baeume je Modus, Loadouts
+
+Max (24.09.2026): zwei Level-3-Spieler kamen mit Mystery-Box-Waffen locker
+bis Welle 10. Dazu Feedback Schmoggi: Punkte je Treffer -> mit der SMG Geld
+farmen. Wuensche: neue Bosse mit festen Wellen bis mind. 25, mehr normale
+Arten mit Faehigkeiten, Skill Tree je Modus mit geteiltem Level, Loadouts,
+Menue-Umbau, Zuschauen ohne Ruckeln.
+
+- **Skalierung** (`shooter.js` `zHp`/`zDmg`/`zSpd`): HP `1 + 0,3(w-1) +
+  0,015(w-1)^2` (Welle 10 x5,3, 25 x17), Schaden +6 %/Welle, Tempo +1,5 %/Welle
+  (max +40 %). Zombies je Welle `(8 + 5w) x (1 + 0,6 je weiterem Spieler)`,
+  Bosswellen halb so viele. Nachschub alle `max(180, 1000 - 55w)` ms,
+  gleichzeitig hoechstens `24 + 5 x Spieler`. `m.dm`/`m.sp` am Gegner
+  tragen Schaden/Tempo, auch fuer Brut und Boss-Faehigkeiten.
+- **Punkte** je echtem Schaden (`Z_PTS_PER_DMG = 1`, Overkill zaehlt nicht,
+  Brennen zaehlt), Kill-Bonus wie bisher (`def.pts`).
+- **Bosse** (`arena-mobs.js` `ZBOSSES`): 5 Abomination, 10 `necro`, 15
+  `brood`, 20 `inferno`, 25 `storm`, 30 `overlord`, danach Kreislauf mit
+  HP x(1 + 1,2 je Runde) und +10 % Tempo. Faehigkeiten in `bossSkills()`:
+  `blink`, `spiral`, `trail`, `vortex` (zieht Spieler per `slide`), `beam`
+  (drehend, `twin` = zwei), `enrage` (ab 50 % HP: Cooldowns x0,65, Tempo
+  x1,25). `strikes.fire/zap/acid` hinterlassen Feuer/Saeure (`fires` mit
+  `acid`). Auftritt: `shBossIntro` (Vollbild-Karte), 2,8 s Pause, FX
+  `bossin`/`bossdie`/`enrage`/`raise`/`vortex`/`zblink`. Boss-Kill:
+  Punkte/Coins/XP x(Boss-Nummer), XP anteilig fuer alle Schuetzen.
+- **Neue Zombies** (ab Welle): Bloater 5 (platzt bei Beruehrung/Tod,
+  Saeurepfuetze), Leaper 6 (Sprung), Shade 8 (Teleport, halb durchsichtig),
+  Riot 9 (-45 % Schaden, Schild), Acid Spewer 10 (Saeure-Einschlaege),
+  Screamer 12 (ruft Runner).
+- **Optik** in `public/zfx.js` (eigene Datei, eingebunden nach `market.js`):
+  Figuren fuer alle Zombies, Boss-Koerper, Kugeln (`tier` 11–15 an
+  Boss-Kugeln), Einschlaege, FX, Intro. `index.html` ruft `zDrawMob`,
+  `zDrawBoss`, `zDrawBullet`, `zDrawStrike`, `zDrawAcid`, `zDrawFx`,
+  `zFxSound`, `zBossIntro` an je einer Stelle.
+- **Skill Trees je Modus** (`arena-level.js`): `prog.trees[mode].skills`,
+  Punkte je Baum = Level - 1, Stats global. Migration beim ersten Zugriff
+  (`ensureTrees`): alter Baum -> Extraction und PvP. `ZSKILLS` wirken ueber
+  `bonuses(prog, 'zombies')` (`zDmg`, `zBoss`, `zCull`, `zChain`, `zTaken`,
+  `zBossTaken`, `zDodge`, `zSecond`, `zPts`, `zStart`, `zDisc`, `zPerk`,
+  `zBox`, `zCoins`). Reset getrennt: Baum eines Modus oder Stats.
+- **Loadouts** je Modus: Extraction `a.loadout`, PvP/Zombies
+  `a.loadouts[mode]` (Kopien); `a.presets[mode]` bis 5 (`arPreset`
+  save/load/delete/copy). `arEquip` hat `mode`.
+- **Menue**: Game Modes (Play/Loadout/Skills je Modus), Inventory (List,
+  Salvage), Cases, Shop. Die alten `hubTab`-Werte `equip`/`profile` sind
+  jetzt Unterseiten von Game Modes.
+- **XP** gab es schon: Kills, `20 x Welle` je ueberlebter Welle,
+  `40 x Welle^1,35` am Ende; Bosse jetzt x(Boss-Nummer).
+- **Zuschauen**: im `WATCH`-Modus keine Vorhersage (`shPredict` nimmt die
+  interpolierte Server-Position), Sprung je Frame vorher bis 90 px, jetzt
+  <= 6 px. Anmeldung erst nach `load`.
+- **Test** (nur `SNAKE_TEST=1`): `shTestEvent` mit `zwave` (naechste Welle),
+  `god`, `zBossHp` (Anteil), `zmob` (Arten neben den Spieler).
+
 ## ⚔️ Kekémon 6.4: 5 gegen 5, schwere Arenen, Gym-Reset
 
 Max (24.09.2026): Spieler (Avalon_Gold) schafften fuenf Arenen am Stueck,

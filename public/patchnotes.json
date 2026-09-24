@@ -1,5 +1,20 @@
 [
   {
+    "version": "6.5",
+    "date": "24.09.2026",
+    "items": [
+      "🧟 Zombies got a lot harder: zombies get tougher, hit harder and move faster every wave – and there are more of them",
+      "💰 Points now come from the damage you deal, not from the number of hits – every weapon earns the same (thanks Schmoggi)",
+      "👹 A boss every 5 waves, always in the same order: 5 Abomination · 10 Lord Morvath, the Necromancer · 15 Arachna, the Brood Mother · 20 Ignis, the Inferno Titan · 25 Voltra, the Storm Wraith · 30 The Kek Eye, Void Overlord – after that they come back stronger",
+      "Bosses teleport, spin bullet spirals, drag you in, sweep the map with rotating beams, rain meteors and lightning – and get ENRAGED at half health. Each one has its own entrance",
+      "🦠 New zombies: Bloater (bursts into acid), Leaper (pounces), Shade (teleports, half invisible), Riot (shield), Acid Spewer and Screamer (calls runners)",
+      "🌳 Every arena mode now has its own skill tree with its own points – level and stats stay shared. New Zombies tree: Slayer, Survivor, Economist",
+      "🎒 Loadouts per mode, and up to 5 saved loadouts per mode to switch with one click",
+      "🎮 Arena menu reorganized: Game Modes (Play · Loadout · Skills), Inventory, Cases, Shop",
+      "🃏 Kekémon: sort and filter your cards when picking a team (strongest, best vs this gym, rarity, speed, type, name)"
+    ]
+  },
+  {
     "version": "6.4",
     "date": "24.09.2026",
     "items": [
