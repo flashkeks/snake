@@ -6319,6 +6319,7 @@ body.watch-mode #world-switch {
 #rs-banner small { display: block; font-weight: 500; opacity: .85; }
 #rs-banner.hot { background: linear-gradient(135deg, #4a0a0a, #8a1a1a); border-color: #ff5b5b; color: #ffd0d0; animation: rsPulse 1s ease-in-out infinite; }
 @keyframes rsPulse { 50% { box-shadow: 0 6px 30px rgba(255,91,91,.7); } }
+.fav-tag { position: absolute; top: 3px; right: 5px; font-size: 13px; filter: drop-shadow(0 0 3px rgba(255,210,63,.8)); pointer-events: none; }
 </style>
 <link rel="stylesheet" href="/kekemon.css">
 <link rel="stylesheet" href="/market.css">
@@ -10427,7 +10428,7 @@ function itemCard(it, opts = {}) {
         (opts.pick !== undefined ? `<span class="pick">${opts.pick ? '☑' : '☐'}</span>` : '') +
         `<span class="it-ico">${itemIcon(it)}</span><b>${esc(it.name || it.n)}${opts.n > 1 ? ` ×${opts.n}` : ''}${setBadge(it)}</b>` +
         tierLine(it) + (mods ? `<div class="mods">${mods}</div>` : '') +
-        (opts.eq ? `<span class="eq-tag">${opts.eq}</span>` : '') + '</div>';
+        (opts.eq ? `<span class="eq-tag">${opts.eq}</span>` : '') + (it.fav ? '<span class="fav-tag" title="Protected – cannot be salvaged">⭐</span>' : '') + '</div>';
 }
 
 // Zeile fuer Listen (Inventar)
@@ -10993,7 +10994,7 @@ function onShTraderRaw(d) {
         const def = arenaCat.utils[base];
         return `<button type="button" data-buy="${base}" ${d.scrap < price ? 'disabled' : ''} title="${esc(def.desc)}">${def.icon} ${esc(def.name)}<b>⚙️ ${price}</b></button>`;
     }).join('');
-    const sell = d.sell.map(it => `<button type="button" class="ghost tier-${it.t}" data-sell="${esc(it.uid)}">${itemIcon(it)} ${esc(it.n)}<b>+⚙️ ${it.price}</b></button>`).join('') || '<span class="hint">Your backpack is empty</span>';
+    const sell = d.sell.map(it => `<button type="button" class="ghost tier-${it.t}" data-sell="${esc(it.uid)}" ${it.fav ? 'disabled title="⭐ Protected"' : ''}>${itemIcon(it)} ${it.fav ? '⭐ ' : ''}${esc(it.n)}<b>+⚙️ ${it.price}</b></button>`).join('') || '<span class="hint">Your backpack is empty</span>';
     el.innerHTML = `<div class="st-head"><b>🏪 Trader</b><span>⚙️ ${d.scrap.toLocaleString('en-US')} scrap in your stash</span><button type="button" class="ghost" data-close="1">✕</button></div>` +
         `<h5>Buy</h5><div class="st-grid">${buy}</div><h5>Sell from your backpack (${Math.round(sh.map.trader.sell * 100)}% of the salvage value)</h5><div class="st-grid">${sell}</div>`;
 }
@@ -11072,7 +11073,7 @@ function hubDrawRaw() {
             `<div class="inv-main"><div class="inv-list">${hubStacks(list).map(({ it, uids }) => itemRow(it, { sel: uids.includes(hubSel), eq: hubEquippedAs(it.uid), n: uids.length })).join('') || '<div class="hint">Nothing here.</div>'}</div>` +
             `<div class="inv-detail">${sel ? itemDetail(sel) + (waiting.includes(sel) ? `<div class="hint">Waiting for space in your stash.</div><div class="it-actions"><button type="button" class="danger" data-salvage="${sel.uid}">♻️ Salvage (+${sel.sv || 0} ⚙️)</button></div>` : hubActions(sel)) : '<div class="hint">Click an item to equip or salvage it.</div>'}</div></div>`;
     } else if (hubTab === 'salvage') {
-        const free = inv.filter(x => !hubEquippedAs(x.uid));
+        const free = inv.filter(x => !hubEquippedAs(x.uid) && !x.fav);
         const tierBtns = arenaCat.tiers.slice(0, 4).map(t => {
             const xs = free.filter(x => x.tier === t.id && x.kind !== 'util');
             const val = xs.reduce((s, x) => s + (x.sv || 0), 0);
@@ -11081,7 +11082,7 @@ function hubDrawRaw() {
         const list = inv.filter(hubFilterFn).sort(hubSort);
         const picked = inv.filter(x => hubMulti.has(x.uid));
         const val = picked.reduce((s, x) => s + (x.sv || 0), 0);
-        html = `<div class="salv-tiers">${tierBtns}</div><div class="hint">Equipped items and consumables are never included in these buttons.</div>` +
+        html = `<div class="salv-tiers">${tierBtns}</div><div class="hint">Equipped, ⭐ protected items and consumables are never included in these buttons.</div>` +
             `<div class="inv-bar">${filters}<button type="button" class="ghost" data-pickall="none">Clear</button>` +
             `<button type="button" class="danger" id="hub-salvage-picked" ${picked.length ? '' : 'disabled'}>♻️ Salvage ${picked.length} selected (+${val} ⚙️)</button></div>` +
             `<div class="inv-grid">${hubStacks(list).map(({ it, uids }) => itemCard(it, { eq: hubEquippedAs(it.uid), n: uids.length, pick: uids.every(u => hubMulti.has(u)) })).join('') || '<div class="hint">Nothing here.</div>'}</div>`;
@@ -11156,7 +11157,9 @@ function hubActions(it) {
         b += `<button type="button" class="ghost" data-utilset="1" data-base="${it.base}">Put ${Math.min(n, def.stack)} in slot G</button>`;
     }
     if (eq) b += `<button type="button" class="ghost" data-unequip="${GEAR_SLOTS.find(s => hubLO()[s] === it.uid)}">Take off</button>`;
-    b += `<button type="button" class="danger" data-salvage="${it.uid}">♻️ Salvage (+${it.sv || 0} ⚙️)</button>`;
+    // Schutz (6.9): geschuetzte Items lassen sich nicht verschrotten
+    b += `<button type="button" class="ghost" data-fav="${it.uid}" data-on="${it.fav ? 0 : 1}">${it.fav ? '☆ Unprotect' : '⭐ Protect'}</button>`;
+    b += `<button type="button" class="danger" data-salvage="${it.uid}" ${it.fav ? 'disabled title="Protected"' : ''}>♻️ Salvage (+${it.sv || 0} ⚙️)</button>`;
     return `<div class="it-actions">${b}</div>`;
 }
 
@@ -11372,7 +11375,7 @@ $('hub-body').addEventListener('click', e => {
     if (ds.pvp) return pvpClick(ds);
     if (t.id === 'hub-deploy') return wsSend({ type: 'shJoin' });
     if (t.id === 'hub-salvage-picked') return hubSalvage([...hubMulti]);
-    if (ds.salvtier) return hubSalvage(hub.inv.filter(x => x.tier === ds.salvtier && x.kind !== 'util' && !hubEquippedAs(x.uid)).map(x => x.uid));
+    if (ds.salvtier) return hubSalvage(hub.inv.filter(x => x.tier === ds.salvtier && x.kind !== 'util' && !x.fav && !hubEquippedAs(x.uid)).map(x => x.uid));
     if (ds.pickall) { hubMulti.clear(); return hubDraw(); }
     if (ds.filter) { hubFilter = ds.filter; return hubDraw(); }
     if (ds.pickclose) { hubPick = null; return hubDraw(); }
@@ -11390,6 +11393,7 @@ $('hub-body').addEventListener('click', e => {
     if (ds.utilset !== undefined) return hubSetUtil(Number(ds.utilset), ds.base, arenaCat.utils[ds.base].stack);
     if (ds.equip) return wsSend({ type: 'arEquip', mode: hubMode, slot: ds.equip, uid: ds.uid });
     if (ds.unequip) return wsSend({ type: 'arEquip', mode: hubMode, slot: ds.unequip, uid: null });
+    if (ds.fav) return wsSend({ type: 'arFav', uid: ds.fav, on: ds.on === '1' });
     if (ds.salvage) {
         const it = hub.inv.find(x => x.uid === ds.salvage) || (hub.overflow || []).find(x => x.uid === ds.salvage);
         if (it && tierIdx(it.tier) >= 2 && it.kind !== 'util' && !confirm(`Salvage ${it.name} (${tierName(it.tier)})?`)) return;
@@ -11432,6 +11436,7 @@ $('hub-body').addEventListener('click', e => {
     }
     if (ds.uid && hubTab === 'salvage') {
         const it = hub.inv.find(x => x.uid === ds.uid);
+        if (it && it.fav) return showMsg('hub-msg', '⭐ Protected – unprotect it in the list first', 'err');
         const group = it && it.kind === 'util' ? hub.inv.filter(x => x.kind === 'util' && x.base === it.base).map(x => x.uid) : [ds.uid];
         const on = group.every(u => hubMulti.has(u));
         for (const u of group) on ? hubMulti.delete(u) : hubMulti.add(u);

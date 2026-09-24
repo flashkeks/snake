@@ -727,9 +727,22 @@ module.exports = function createArena(h, opts = {}) {
             }
             return;
         }
+        // Schutz (6.9, Max): geschuetzte Items (it.fav) lassen sich nicht verschrotten
+        if (d.type === 'arFav') {
+            const it = a.inv.find(x => x.uid === String(d.uid)) || (a.overflow || []).find(x => x.uid === String(d.uid));
+            if (!it) return;
+            if (d.on) it.fav = true;
+            else delete it.fav;
+            h.accounts.touch();
+            return sendHub(c, {});
+        }
         if (d.type === 'arSalvage') {
             const uids = new Set((Array.isArray(d.uids) ? d.uids : []).slice(0, 300).map(String));
-            const out = a.inv.filter(it => uids.has(it.uid)).concat((a.overflow || []).filter(it => uids.has(it.uid)));
+            const out = a.inv.filter(it => uids.has(it.uid) && !it.fav).concat((a.overflow || []).filter(it => uids.has(it.uid) && !it.fav));
+            if (!out.length && [...a.inv, ...(a.overflow || [])].some(it => uids.has(it.uid) && it.fav)) return h.send(c, { type: 'arError', error: '⭐ Protected items cannot be salvaged – unprotect them first' });
+            out.forEach(it => uids.delete(it.uid));
+            for (const u of [...uids]) uids.delete(u);
+            out.forEach(it => uids.add(it.uid));
             if (!out.length) return;
             const scrap = Math.round(out.reduce((s, it) => s + I.salvageValue(it), 0) * L.bonuses(a.prog, 'extract').scrap);
             a.inv = a.inv.filter(it => !uids.has(it.uid));
@@ -1245,7 +1258,7 @@ module.exports = function createArena(h, opts = {}) {
         const a = st(p.c);
         h.send(p.c, {
             type: 'shTrader', scrap: a.scrap,
-            sell: p.pack.map(it => ({ ...brief(it), price: Math.max(1, Math.round(I.salvageValue(it) * TRADER_SELL)) }))
+            sell: p.pack.map(it => ({ ...brief(it), fav: !!it.fav, price: Math.max(1, Math.round(I.salvageValue(it) * TRADER_SELL)) }))
         });
     }
 
@@ -1264,6 +1277,7 @@ module.exports = function createArena(h, opts = {}) {
         } else if (d.op === 'sell') {
             const i = p.pack.findIndex(x => x.uid === d.uid);
             if (i < 0) return;
+            if (p.pack[i].fav) return h.send(p.c, { type: 'shEvent', text: '⭐ Protected item – unprotect it first', kind: 'self' });
             const [it] = p.pack.splice(i, 1);
             a.scrap += Math.max(1, Math.round(I.salvageValue(it) * TRADER_SELL));
         } else return;

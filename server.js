@@ -1630,6 +1630,7 @@ async function handle(c, data) {
         case 'arCaseOpen':
         case 'arWheel':
         case 'arSalvage':
+        case 'arFav':
         case 'arEquip':
         case 'arProg':
         case 'arPreset':
