@@ -52,19 +52,41 @@ module.exports = function createGyms(h) {
     };
     for (const g of GYMS) {
         let pool = cardDb.cards.filter(c => g.rar.includes(c.rarity) && (!g.type || c.type === g.type));
-        if (pool.length < 3) pool = cardDb.cards.filter(c => g.rar.includes(c.rarity));
-        if (pool.length < 3) pool = cardDb.cards.slice();
+        if (pool.length < B.TEAM_SIZE) pool = cardDb.cards.filter(c => g.rar.includes(c.rarity));
+        if (pool.length < B.TEAM_SIZE) pool = cardDb.cards.slice();
         pool = pool.slice().sort((a, b) => power(b) - power(a) || a.id.localeCompare(b.id));
         const team = [];
         for (const c of pool) {
-            if (team.length >= 3) break;
+            if (team.length >= B.TEAM_SIZE) break;
             if (!g.type && team.some(id => cardDb.byId[id].type === c.type)) continue;
             team.push(c.id);
         }
-        for (const c of pool) if (team.length < 3 && !team.includes(c.id)) team.push(c.id);
+        for (const c of pool) if (team.length < B.TEAM_SIZE && !team.includes(c.id)) team.push(c.id);
         g.team = team;
     }
     const byId = Object.fromEntries(GYMS.map(g => [g.id, g]));
+
+    // Reset 6.4 (Max, einmalig): Fortschritt aller Konten leeren. Coins und
+    // Karten bleiben; wo der Erstsieg schon bezahlt war, gibt es ihn nicht
+    // nochmal (u.kmGymsPaid = { gymId: true } -> beim neuen Erstsieg nur die
+    // Wiederholungs-Belohnung). Merker je Konto: u.kmGymsV = 2.
+    if (accounts.users) {
+        let n = 0;
+        for (const [, u] of accounts.users()) {
+            if (u.kmGymsV === 2) continue;
+            const old = u.kmGyms || {};
+            const paid = u.kmGymsPaid || {};
+            for (const [gid, st] of Object.entries(old)) if (st && st.cleared) paid[gid] = true;
+            if (Object.keys(old).length) n++;
+            u.kmGymsPaid = paid;
+            u.kmGyms = {};
+            u.kmGymsV = 2;
+        }
+        if (n) {
+            accounts.touch();
+            if (h.log) h.log(`kekemon: Gym-Fortschritt von ${n} Konten zurueckgesetzt (6.4), Erstsieg-Belohnungen gemerkt`);
+        }
+    }
 
     function progress(u) {
         u.kmGyms = u.kmGyms || {};
@@ -80,7 +102,8 @@ module.exports = function createGyms(h) {
             const row = {
                 id: g.id, name: g.name, icon: g.icon, leader: g.leader, type: g.type, rar: g.rar, mul: g.mul, smart: g.smart,
                 coins: g.coins, repeat: Math.round(g.coins * REPEAT_SHARE), pack: g.pack, team: g.team,
-                unlocked: open, cleared: !!s.cleared, wins: s.wins || 0, rewardsLeft: s.cleared ? Math.max(0, REPEAT_PER_DAY - today) : 1
+                unlocked: open, cleared: !!s.cleared, wins: s.wins || 0, rewardsLeft: s.cleared ? Math.max(0, REPEAT_PER_DAY - today) : 1,
+                paid: !!(u.kmGymsPaid || {})[g.id]
             };
             if (!s.cleared) open = false;
             return row;
@@ -99,8 +122,8 @@ module.exports = function createGyms(h) {
         if (c.kb && !c.kb.b.over) return 'Finish your current battle first';
         const row = list(u).find(x => x.id === g.id);
         if (!row.unlocked) return 'Beat the previous gym first';
-        const keys = Array.isArray(d.team) ? d.team.map(String).slice(0, 3) : [];
-        if (keys.length !== 3) return 'Pick three cards';
+        const keys = Array.isArray(d.team) ? d.team.map(String).slice(0, B.TEAM_SIZE) : [];
+        if (keys.length !== B.TEAM_SIZE) return `Pick ${B.TEAM_SIZE} cards`;
         const own = u.cards || {};
         const ids = new Set();
         const mine = [];
@@ -108,7 +131,7 @@ module.exports = function createGyms(h) {
             const { id, v } = cards.parseKey(k);
             const card = cardDb.byId[id];
             if (!card || !(own[k] > 0)) return 'You do not own one of those cards';
-            if (ids.has(id)) return 'Pick three different cards';
+            if (ids.has(id)) return `Pick ${B.TEAM_SIZE} different cards`;
             ids.add(id);
             mine.push(B.fighter(card, v, 1));
         }
@@ -130,9 +153,20 @@ module.exports = function createGyms(h) {
             const s = p[g.id] = p[g.id] || { wins: 0 };
             s.wins = (s.wins || 0) + 1;
             if (s.day !== day()) { s.day = day(); s.today = 0; }
-            if (!s.cleared) {
+            const paid = !!(u.kmGymsPaid || {})[g.id];
+            if (!s.cleared && paid) {
+                // Nach dem Reset 6.4: freigeschaltet ja, Erstsieg-Belohnung nicht nochmal
                 s.cleared = Date.now();
                 res.first = true;
+                res.already = true;
+                s.today = (s.today || 0) + 1;
+                res.coins = Math.round(g.coins * REPEAT_SHARE);
+                h.feed(`🏆 ${u.name} beat ${g.icon} ${g.name}!`, g.id === 'champ' ? 'gold' : 'good');
+            } else if (!s.cleared) {
+                s.cleared = Date.now();
+                res.first = true;
+                u.kmGymsPaid = u.kmGymsPaid || {};
+                u.kmGymsPaid[g.id] = true;
                 res.coins = g.coins;
                 // Seit 6.1 ungeoeffnet ins Pack-Inventar (Tab "Packs")
                 u.packs = u.packs || {};

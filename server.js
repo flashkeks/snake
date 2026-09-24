@@ -2128,6 +2128,9 @@ startAdmin({
         return `${base}/?watch=${createWatch(key)}`;
     },
     activity: key => activityOf(key),
+    // Kekemon (6.4)
+    cards, cardDb, gyms: gyms.GYMS,
+    pushKm: key => clientsOf(key).forEach(c => { kmState(c); gyms.handle(c, { type: 'kbGyms' }); }),
     accounts,
     shop,
     arenaItems,

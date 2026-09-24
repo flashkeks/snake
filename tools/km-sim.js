@@ -33,7 +33,7 @@ const { GYMS } = createGyms({ accounts: {}, cards, cardDb, battle: B, send() {},
 function team(pool) {
     const ids = new Set();
     let guard = 0;
-    while (ids.size < 3 && guard++ < 1000) ids.add(pool[Math.floor(Math.random() * pool.length)].id);
+    while (ids.size < B.TEAM_SIZE && guard++ < 1000) ids.add(pool[Math.floor(Math.random() * pool.length)].id);
     return [...ids];
 }
 
@@ -61,7 +61,7 @@ for (const g of runs) for (const mul of String(override[g.id] || g.mul).split(':
     let w1 = 0, w2 = 0, t = 0;
     for (let i = 0; i < N; i++) {
         const r1 = fight(team(pool), g, mul);
-        const r2 = fight(team(strong.length >= 3 ? strong : pool), g, mul);
+        const r2 = fight(team(strong.length >= B.TEAM_SIZE ? strong : pool), g, mul);
         w1 += r1.win;
         w2 += r2.win;
         t += r1.turns + r2.turns;

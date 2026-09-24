@@ -911,6 +911,8 @@ function kdInviteDraw() {
 
 // ---------- Kampf 6.0 (nach Pokemon Showdown) ----------
 
+// Teamgroesse (6.4: 5 gegen 5, wie km-battle.js TEAM_SIZE)
+const KB_TEAM = 5;
 const KB_ST = { brn: ['BRN', 'burned'], par: ['PAR', 'paralyzed'], psn: ['PSN', 'poisoned'], slp: ['SLP', 'asleep'] };
 const KB_STAT = { atk: 'Atk', def: 'Def', spa: 'SpA', spd: 'SpD', spe: 'Spe' };
 const KB_STAT_LONG = { atk: 'Attack', def: 'Defense', spa: 'Sp. Atk', spd: 'Sp. Def', spe: 'Speed' };
@@ -1103,7 +1105,7 @@ function kbStars(g) {
 }
 
 const KB_RULES = `<details class="kb-rules"><summary>📖 How battles work</summary><ul>
-    <li>3 vs 3, like Pokémon Showdown. Each card has <b>4 moves</b> with type, power, accuracy and PP.</li>
+    <li>5 vs 5, like Pokémon Showdown. Each card has <b>4 moves</b> with type, power, accuracy and PP.</li>
     <li>Both sides choose at the same time: a move or a switch. Switches go first, then moves by <b>priority</b>, then by <b>Speed</b>.</li>
     <li><b>Types:</b> super effective ×2, not very effective ×½, some attacks don't affect a type at all. Moves of the card's own type get ×1.5 (STAB).</li>
     <li>💥 Physical moves use Attack vs Defense, 🌀 special moves use Sp. Atk vs Sp. Def. ✨ Status moves raise stats, heal, protect or inflict a status.</li>
@@ -1122,7 +1124,7 @@ function kbDrawGyms() {
             ${g.cleared ? '<span class="kb-badge">✔ Cleared</span>' : ''}</div>
             <div class="kb-team">${g.unlocked ? team : '<div class="km-note">🔒 Beat the previous gym first</div>'}</div>
             <div class="kb-gym-foot">
-                <span>${g.cleared ? `🪙 ${g.repeat.toLocaleString('en-US')} per win · ${g.rewardsLeft} left today` : `🪙 ${g.coins.toLocaleString('en-US')} + ${kmCat.packs[g.pack].icon} free ${esc(kmCat.packs[g.pack].name)}`}</span>
+                <span>${g.cleared ? `🪙 ${g.repeat.toLocaleString('en-US')} per win · ${g.rewardsLeft} left today` : g.paid ? `🪙 ${g.repeat.toLocaleString('en-US')} · first-clear reward already received` : `🪙 ${g.coins.toLocaleString('en-US')} + ${kmCat.packs[g.pack].icon} free ${esc(kmCat.packs[g.pack].name)}`}</span>
                 ${weakTo ? `<span class="hint">Weak to ${weakTo.map(w => w.icon + ' ' + w.name).join(', ')}</span>` : ''}
                 <button type="button" class="gold" data-kbgym="${g.id}" ${g.unlocked ? '' : 'disabled'}>⚔️ Challenge</button>
             </div>
@@ -1146,7 +1148,7 @@ function kbDrawPick() {
     }
     list.sort((a, b) => (b.c.hp + b.c.atk * 2) - (a.c.hp + a.c.atk * 2));
     const chosen = kbPick.team;
-    const slots = [0, 1, 2].map(i => {
+    const slots = Array.from({ length: KB_TEAM }, (_, i) => i).map(i => {
         const k = chosen[i];
         if (!k) return '<div class="kb-slot empty">?</div>';
         const { id, v } = kmParse(k);
@@ -1164,16 +1166,16 @@ function kbDrawPick() {
     if (g) {
         head = `<button type="button" class="ghost" id="kb-back">← Gyms</button>
             <b>${g.icon} ${esc(g.name)}</b> <span class="hint">${t ? `Leader uses ${t.icon} ${t.name} – ${kmWeakTo(g.type).map(x => T[x].icon + ' ' + T[x].name).join(', ')} moves hit it ×2` : 'The champion uses every type'}</span>`;
-        go = `<button type="button" class="gold" id="kb-fight" ${chosen.length === 3 ? '' : 'disabled'}>⚔️ Fight!</button>`;
-        sub = 'Pick three different cards. The first one starts.';
+        go = `<button type="button" class="gold" id="kb-fight" ${chosen.length === KB_TEAM ? '' : 'disabled'}>⚔️ Fight!</button>`;
+        sub = `Pick ${KB_TEAM} different cards. The first one starts.`;
     } else {
         const l = kd && kd.mine;
         const foe = l ? (l.mine ? l.guest : l.host) : '?';
         const secs = l ? Math.ceil(l.pickLeft / 1000) : 0;
         head = `<button type="button" class="ghost" id="kd-leave">✖ Leave duel</button>
             <b>⚔️ Duel vs ${esc(foe)}</b> <span class="hint">${l && l.stake ? `Stake 🪙 ${l.stake.toLocaleString('en-US')} each – winner takes ${(l.stake * 2).toLocaleString('en-US')}` : 'No stake – just rating'} · ${secs} s to pick</span>`;
-        go = `<button type="button" class="gold" id="kd-ready" ${chosen.length === 3 ? '' : 'disabled'}>✔ Ready</button>`;
-        sub = `Pick three different cards. The first one starts. You don't see ${esc(foe)}'s team until the fight.`;
+        go = `<button type="button" class="gold" id="kd-ready" ${chosen.length === KB_TEAM ? '' : 'disabled'}>✔ Ready</button>`;
+        sub = `Pick ${KB_TEAM} different cards. The first one starts. You don't see ${esc(foe)}'s team until the fight.`;
     }
     return `<div class="kb-pick-head">${head}</div>
         <div class="kb-slots">${slots}${go}</div>
@@ -1275,7 +1277,7 @@ function kbDrawBattle(bp, kind) {
     if (v.over && !bp.busy) {
         const r = bp.result || { win: v.winner === 0 };
         let line;
-        if (kind === 'gym') line = r.win ? `${r.coins ? `+🪙 ${r.coins.toLocaleString('en-US')}` : 'No coins left from this gym today'}${r.first ? ' · first clear!' : ''}` : 'Try another team – type matchups matter.';
+        if (kind === 'gym') line = r.win ? `${r.coins ? `+🪙 ${r.coins.toLocaleString('en-US')}` : 'No coins left from this gym today'}${r.first ? (r.already ? ' · gym cleared again (first-clear reward was paid before)' : ' · first clear!') : ''}` : 'Try another team – type matchups matter.';
         else line = `${r.stake ? (r.win ? `+🪙 ${r.pot.toLocaleString('en-US')}` : `−🪙 ${r.stake.toLocaleString('en-US')}`) + ' · ' : ''}rating ${r.rating || '?'} (${r.delta >= 0 ? '+' : ''}${r.delta || 0})`;
         bar = `<div class="kb-result ${r.win ? 'win' : 'lose'}">
             <div class="big">${r.win ? '🏆 VICTORY' : '💀 DEFEAT'}</div><div>${line}</div>
@@ -1409,7 +1411,7 @@ $('km-body').addEventListener('click', e => {
         const k = ds.kbpick, team = kbPick.team;
         const i = team.indexOf(k);
         if (i >= 0) team.splice(i, 1);
-        else if (team.length < 3 && !team.some(x => kmParse(x).id === kmParse(k).id)) team.push(k);
+        else if (team.length < KB_TEAM && !team.some(x => kmParse(x).id === kmParse(k).id)) team.push(k);
         return kmDraw();
     }
     if (ds.kbunpick !== undefined) { kbPick.team.splice(Number(ds.kbunpick), 1); return kmDraw(); }

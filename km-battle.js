@@ -1,4 +1,5 @@
-// Kekemon-Kaempfe 6.0 (Max: "orientier dich an Pokemon Showdown"): 3 gegen 3.
+// Kekemon-Kaempfe 6.0 (Max: "orientier dich an Pokemon Showdown"): seit 6.4
+// 5 gegen 5 (Max: mit 3 Karten zu sehr von der Seltenheit abhaengig).
 //
 // Ablauf wie im Vorbild:
 //   - Beide Seiten waehlen gleichzeitig: Attacke (eine von vier) oder Wechsel.
@@ -25,6 +26,7 @@
 
 const K = require('./km-moves');
 
+const TEAM_SIZE = 5;
 const LEVEL_F = 22;           // floor(2 · 50 / 5 + 2)
 const MAX_TURNS = 60;
 const STRUGGLE = { name: 'Struggle', type: null, cat: 'phys', pow: 50, acc: 0, pp: 1, pri: 0, struggle: true };
@@ -558,4 +560,4 @@ function flip(ev, me) {
     });
 }
 
-module.exports = { step, fighter, createBattle, play, auto, needs, waitingOn, view, flip, calc, estimate, aiChoose, VAR_MUL, MAX_TURNS };
+module.exports = { TEAM_SIZE, step, fighter, createBattle, play, auto, needs, waitingOn, view, flip, calc, estimate, aiChoose, VAR_MUL, MAX_TURNS };

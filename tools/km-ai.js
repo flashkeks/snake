@@ -5,7 +5,7 @@ const cards = require(path.join(__dirname, '..', 'cards.js'));
 const B = require(path.join(__dirname, '..', 'km-battle.js'));
 const db = cards.load(process.argv[2] || '/nonexistent');
 const N = Number(process.argv[3] || 500);
-const team = () => { const s = new Set(); while (s.size < 3) s.add(db.cards[Math.floor(Math.random() * db.cards.length)].id); return [...s]; };
+const team = () => { const s = new Set(); while (s.size < B.TEAM_SIZE) s.add(db.cards[Math.floor(Math.random() * db.cards.length)].id); return [...s]; };
 function fight(ta, tb, la, lb) {
     const { b } = B.createBattle(ta.map(id => B.fighter(db.byId[id])), tb.map(id => B.fighter(db.byId[id])), {});
     b.sides[0].ai = b.sides[1].ai = true;

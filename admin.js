@@ -141,6 +141,73 @@ module.exports = function startAdmin(h) {
         });
     }
 
+    // ---------- Kekemon (6.4) ----------
+
+    function detail(key) {
+        const u = h.accounts.get(key);
+        return {
+            ...h.accounts.adminDetail(key),
+            kekemon: { cards: u.cards || {}, packs: u.packs || {}, gyms: u.kmGyms || {}, paid: u.kmGymsPaid || {}, duel: u.kmDuel || null }
+        };
+    }
+
+    const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+    const count = n => Math.max(1, Math.min(999, Math.floor(Number(n)) || 1));
+
+    // op: giveCard | takeCard | givePack | takePack | gymsReset | gymsUnlock. Fehlertext oder null
+    function kmAdmin(u, key, b) {
+        const op = String(b.op || '');
+        if (op === 'giveCard' || op === 'takeCard') {
+            const id = String(b.id || '');
+            const v = String(b.v || '');
+            if (!h.cardDb || !own(h.cardDb.byId, id)) return 'unknown card';
+            if (!/^[pm]?s?$/.test(v)) return 'bad variant';
+            const k = h.cards.keyOf(id, v);
+            const n = count(b.n);
+            u.cards = u.cards || {};
+            if (op === 'giveCard') u.cards[k] = (u.cards[k] || 0) + n;
+            else {
+                if (!(u.cards[k] > 0)) return 'player does not have that card';
+                u.cards[k] -= Math.min(n, u.cards[k]);
+                if (!u.cards[k]) delete u.cards[k];
+            }
+            return null;
+        }
+        if (op === 'givePack' || op === 'takePack') {
+            const id = String(b.pack || '');
+            if (!own(h.cards.PACKS, id)) return 'unknown pack';
+            const n = count(b.n);
+            u.packs = u.packs || {};
+            if (op === 'givePack') u.packs[id] = (u.packs[id] || 0) + n;
+            else {
+                if (!(u.packs[id] > 0)) return 'player does not have that pack';
+                u.packs[id] -= Math.min(n, u.packs[id]);
+                if (!u.packs[id]) delete u.packs[id];
+            }
+            return null;
+        }
+        // Gyms zuruecksetzen: bezahlte Erstsiege bleiben gemerkt (kein zweites Pack)
+        if (op === 'gymsReset') {
+            u.kmGymsPaid = u.kmGymsPaid || {};
+            for (const [gid, st] of Object.entries(u.kmGyms || {})) if (st && st.cleared) u.kmGymsPaid[gid] = true;
+            u.kmGyms = {};
+            return null;
+        }
+        // Alle freischalten (zum Testen), ohne Belohnung
+        if (op === 'gymsUnlock') {
+            u.kmGyms = u.kmGyms || {};
+            for (const g of h.gyms || []) u.kmGyms[g.id] = { ...(u.kmGyms[g.id] || {}), cleared: (u.kmGyms[g.id] || {}).cleared || Date.now(), wins: (u.kmGyms[g.id] || {}).wins || 0 };
+            return null;
+        }
+        return 'unknown op';
+    }
+
+    function kmLogDetail(b) {
+        const x = {};
+        for (const k of ['id', 'v', 'n', 'pack']) if (b[k] !== undefined && b[k] !== '') x[k] = String(b[k]).slice(0, 40);
+        return Object.keys(x).length ? x : undefined;
+    }
+
     const server = http.createServer(async (req, res) => {
         try {
             const email = INSECURE ? 'test@local' : await verifyAccess(req.headers['cf-access-jwt-assertion']);
@@ -279,16 +346,23 @@ module.exports = function startAdmin(h) {
                         weapons: A.weapons, armors: A.armors, sets: A.sets, utils: A.utils, packs: A.packs, tierBonus: A.tierBonus, tiers: A.tiers,
                         weaponMods: A.weaponMods, armorMods: A.armorMods, invMax: A.invMax
                     },
-                    luck: h.luck.GAMES
+                    luck: h.luck.GAMES,
+                    // Kekemon (6.4): alle Karten kompakt [id, name, rarity, type, set], Packs, Gyms
+                    kekemon: h.cardDb ? {
+                        cards: h.cardDb.cards.map(c => [c.id, c.name, c.rarity, c.type, c.set]),
+                        packs: Object.fromEntries(Object.entries(h.cards.PACKS).map(([id, pk]) => [id, { name: pk.name, icon: pk.icon }])),
+                        gyms: h.gyms ? h.gyms.map(g => ({ id: g.id, name: g.name, icon: g.icon })) : [],
+                        rarities: h.cards.RARITIES.map(r => ({ id: r.id, name: r.name, color: r.color }))
+                    } : null
                 });
             }
 
-            mm = p.match(/^\/api\/users\/([^/]+)\/(detail|cosmetics|luck|arena)$/);
+            mm = p.match(/^\/api\/users\/([^/]+)\/(detail|cosmetics|luck|arena|kekemon)$/);
             if (mm) {
                 const key = decodeURIComponent(mm[1]);
                 const u = h.accounts.get(key);
                 if (!u) return json(res, 404, { error: 'no such user' });
-                if (m === 'GET' && mm[2] === 'detail') return json(res, 200, h.accounts.adminDetail(key));
+                if (m === 'GET' && mm[2] === 'detail') return json(res, 200, detail(key));
                 if (m !== 'POST') return json(res, 404, { error: 'not found' });
                 const b = await body(req);
                 let err;
@@ -301,6 +375,13 @@ module.exports = function startAdmin(h) {
                 } else if (mm[2] === 'luck') {
                     err = h.accounts.adminRig(key, String(b.game), b.n, b.min, b.bonus);
                     if (!err) log(email, 'luck', u.name, { game: String(b.game), n: Number(b.n) || 0, min: Number(b.min) || 0, bonus: !!b.bonus });
+                } else if (mm[2] === 'kekemon') {
+                    err = kmAdmin(u, key, b);
+                    if (!err) {
+                        log(email, 'kekemon-' + String(b.op), u.name, kmLogDetail(b));
+                        h.accounts.touch();
+                        if (h.pushKm) h.pushKm(key);
+                    }
                 } else if (mm[2] === 'arena') {
                     err = h.accounts.adminArena(key, String(b.op), b);
                     if (!err) log(email, 'arena-' + b.op, u.name, b.op === 'give'
@@ -308,7 +389,7 @@ module.exports = function startAdmin(h) {
                         : b.op === 'scrap' || b.op === 'xp' ? { set: Number(b.set) } : b.op === 'delete' ? { items: (Array.isArray(b.uids) ? b.uids : [b.uid]).length } : undefined);
                 }
                 if (err) return json(res, 400, { error: err });
-                return json(res, 200, h.accounts.adminDetail(key));
+                return json(res, 200, detail(key));
             }
 
             if (m === 'GET' && p === '/api/tickets') return json(res, 200, { tickets: h.tickets.adminList() });

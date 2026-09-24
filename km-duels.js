@@ -1,4 +1,4 @@
-// Kekemon-Duelle (5.10): Spieler gegen Spieler, 3 gegen 3, gleiche Regeln wie
+// Kekemon-Duelle (5.10): Spieler gegen Spieler, seit 6.4 5 gegen 5, gleiche Regeln wie
 // die Arenen (km-battle.js).
 //
 // Gegner finden (Max: beides):
@@ -169,14 +169,14 @@ module.exports = function createDuels(h) {
         const l = lobbyOf(key);
         if (!l || !l.guest) return 'No duel to pick a team for';
         const u = accounts.get(key);
-        const keys = Array.isArray(d.team) ? d.team.map(String).slice(0, 3) : [];
-        if (keys.length !== 3) return 'Pick three cards';
+        const keys = Array.isArray(d.team) ? d.team.map(String).slice(0, B.TEAM_SIZE) : [];
+        if (keys.length !== B.TEAM_SIZE) return `Pick ${B.TEAM_SIZE} cards`;
         const own = u.cards || {};
         const ids = new Set();
         for (const k of keys) {
             const { id } = cards.parseKey(k);
             if (!cardDb.byId[id] || !(own[k] > 0)) return 'You do not own one of those cards';
-            if (ids.has(id)) return 'Pick three different cards';
+            if (ids.has(id)) return `Pick ${B.TEAM_SIZE} different cards`;
             ids.add(id);
         }
         l.teams[key] = keys;

@@ -67,6 +67,8 @@ tr:hover td { background: rgba(0,255,140,.03); }
 /* Konto-Dialog */
 dialog { background: var(--panel); color: var(--text); border: 1px solid var(--acc); border-radius: 12px; padding: 18px; width: min(900px, 96vw); max-height: 92vh; }
 .dtabs { display: flex; gap: 6px; margin: 6px 0 10px; flex-wrap: wrap; }
+.pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,.07); font-size: 12px; margin: 2px; }
+.pill button { padding: 0 6px; font-size: 11px; }
 .dtabs button.on { background: var(--acc); color: #04130b; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 9px; border-radius: 8px; background: rgba(255,255,255,.06); font-size: 13px; }
@@ -167,6 +169,7 @@ dialog h2 { margin: 0 0 10px; }
         <button type="button" data-dtab="cos">🎨 Cosmetics</button>
         <button type="button" data-dtab="luck">🎰 Luck</button>
         <button type="button" data-dtab="arena">🔫 Arena</button>
+        <button type="button" data-dtab="km">🃏 Kekémon</button>
     </div>
     <div id="dp-coins">
     <div class="row">Coins: <span class="big" id="d-coins"></span></div>
@@ -196,6 +199,7 @@ dialog h2 { margin: 0 0 10px; }
     <div id="dp-cos" hidden></div>
     <div id="dp-luck" hidden></div>
     <div id="dp-arena" hidden></div>
+    <div id="dp-km" hidden></div>
     <div class="msg" id="d-msg"></div>
     <div class="row" style="justify-content:flex-end"><button type="button" id="d-close">Close</button></div>
 </dialog>
@@ -354,7 +358,7 @@ let dTab = 'coins';
 function dtab(t) {
     dTab = t;
     document.querySelectorAll('#d-tabs [data-dtab]').forEach(b => b.classList.toggle('on', b.dataset.dtab === t));
-    for (const x of ['coins', 'cos', 'luck', 'arena']) $('dp-' + x).hidden = x !== t;
+    for (const x of ['coins', 'cos', 'luck', 'arena', 'km']) $('dp-' + x).hidden = x !== t;
     drawDetail();
 }
 $('d-tabs').onclick = e => { const b = e.target.closest('[data-dtab]'); if (b) dtab(b.dataset.dtab); };
@@ -380,7 +384,73 @@ function drawDetail() {
     if (dTab === 'cos') drawCos();
     if (dTab === 'luck') drawLuck();
     if (dTab === 'arena') drawArena();
+    if (dTab === 'km') drawKm();
 }
+
+// ---------- Kekemon (6.4) ----------
+const KM_RIDX = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, secret: 5 };
+const KM_V = { '': 'normal', p: 'Pokéball', m: 'Masterball', s: 'Shiny', ps: 'Pokéball + Shiny', ms: 'Masterball + Shiny' };
+let kmById = null;
+
+function drawKm() {
+    const K = cat.kekemon, d = det.kekemon;
+    if (!K) return ($('dp-km').innerHTML = '<div class="muted">No card data loaded.</div>');
+    if (!kmById) kmById = Object.fromEntries(K.cards.map(c => [c[0], c]));
+    const rc = Object.fromEntries(K.rarities.map(r => [r.id, r]));
+    // Sammlung
+    const rows = Object.entries(d.cards).filter(([, n]) => n > 0).map(([k, n]) => {
+        const i = k.indexOf('~');
+        const id = i < 0 ? k : k.slice(0, i), v = i < 0 ? '' : k.slice(i + 1);
+        return { k, id, v, n, c: kmById[id] };
+    }).filter(x => x.c).sort((a, b) => KM_RIDX[b.c[2]] - KM_RIDX[a.c[2]] || a.c[1].localeCompare(b.c[1]));
+    const total = rows.reduce((s, x) => s + x.n, 0);
+    const packs = Object.entries(d.packs).filter(([, n]) => n > 0);
+    const gyms = K.gyms.map(g => {
+        const st = d.gyms[g.id] || {};
+        return `<span class="pill">${g.icon} ${esc(g.name)}: ${st.cleared ? '✔ cleared' : d.paid[g.id] ? '↺ paid before' : '–'}${st.wins ? ` · ${st.wins} wins` : ''}</span>`;
+    }).join(' ');
+    const packOpts = Object.entries(K.packs).map(([id, p]) => `<option value="${id}">${p.icon} ${esc(p.name)}</option>`).join('');
+    $('dp-km').innerHTML = `
+        <div class="row"><b>${fmt(total)} cards</b> <span class="muted">(${rows.length} different)</span>
+            ${d.duel ? `<span class="pill">⚔️ duel rating ${d.duel.rating} · ${d.duel.wins}–${d.duel.losses}</span>` : ''}</div>
+        <h4>Packs (unopened)</h4>
+        <div class="row">${packs.map(([id, n]) => `<span class="pill">${(K.packs[id] || {}).icon || '?'} ${esc((K.packs[id] || {}).name || id)} ×${n} <button type="button" data-km="takePack" data-pack="${id}" data-n="1">−1</button></span>`).join(' ') || '<span class="muted">none</span>'}</div>
+        <div class="row"><select id="km-pack">${packOpts}</select><input id="km-pn" type="number" min="1" value="1" style="width:70px">
+            <button type="button" class="primary" data-km="givePack">Give packs</button></div>
+        <h4>Give a card</h4>
+        <div class="row"><input id="km-card" list="km-cards" placeholder="card name…" style="flex:1" autocomplete="off">
+            <datalist id="km-cards">${K.cards.map(c => `<option value="${esc(c[1])} · ${c[2]} · ${c[0]}"></option>`).join('')}</datalist>
+            <select id="km-v">${Object.entries(KM_V).map(([v, n]) => `<option value="${v}">${n}</option>`).join('')}</select>
+            <input id="km-cn" type="number" min="1" value="1" style="width:70px">
+            <button type="button" class="primary" data-km="giveCard">Give</button></div>
+        <h4>Gyms</h4>
+        <div class="row" style="flex-wrap:wrap">${gyms}</div>
+        <div class="row"><button type="button" data-km="gymsReset">Reset gym progress</button><button type="button" data-km="gymsUnlock">Unlock all gyms (no rewards)</button>
+            <span class="muted">Reset keeps "paid before": no second first-clear pack.</span></div>
+        <h4>Collection</h4>
+        <div style="max-height:320px;overflow:auto"><table><thead><tr><th>Card</th><th>Rarity</th><th>Variant</th><th class="num">Count</th><th></th></tr></thead><tbody>
+        ${rows.map(x => `<tr><td>${esc(x.c[1])} <span class="muted">${esc(x.c[3])}</span></td><td style="color:${(rc[x.c[2]] || {}).color || '#ccc'}">${esc((rc[x.c[2]] || {}).name || x.c[2])}</td>
+            <td>${KM_V[x.v] || x.v}</td><td class="num">${x.n}</td>
+            <td><button type="button" data-km="takeCard" data-id="${x.id}" data-v="${x.v}" data-n="1">−1</button> <button type="button" class="danger" data-km="takeCard" data-id="${x.id}" data-v="${x.v}" data-n="${x.n}">Take all</button></td></tr>`).join('') || '<tr><td colspan="5" class="muted">No cards.</td></tr>'}
+        </tbody></table></div>`;
+}
+
+$('dp-km').onclick = e => {
+    const b = e.target.closest('[data-km]');
+    if (!b) return;
+    const op = b.dataset.km;
+    if (op === 'givePack') return post('kekemon', { op, pack: $('km-pack').value, n: Number($('km-pn').value) || 1 }, 'Packs given');
+    if (op === 'takePack') return post('kekemon', { op, pack: b.dataset.pack, n: Number(b.dataset.n) || 1 }, 'Pack taken');
+    if (op === 'giveCard') {
+        const txt = $('km-card').value.trim();
+        const id = txt.includes(' · ') ? txt.split(' · ').pop() : (cat.kekemon.cards.find(c => c[1].toLowerCase() === txt.toLowerCase()) || [])[0];
+        if (!id || !kmById[id]) return msg('d-msg', 'Pick a card from the list', 'err');
+        return post('kekemon', { op, id, v: $('km-v').value, n: Number($('km-cn').value) || 1 }, `Gave ${kmById[id][1]}`);
+    }
+    if (op === 'takeCard') return post('kekemon', { op, id: b.dataset.id, v: b.dataset.v, n: Number(b.dataset.n) || 1 }, 'Card taken');
+    if (op === 'gymsReset' && !confirm(`Reset gym progress of ${cur.name}?`)) return;
+    if (op === 'gymsReset' || op === 'gymsUnlock') return post('kekemon', { op }, op === 'gymsReset' ? 'Gyms reset' : 'All gyms unlocked');
+};
 
 function drawCos() {
     const C = cat.cosmetics, own = new Set(det.inventory), eq = det.equipped;
