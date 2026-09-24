@@ -94,6 +94,53 @@ const SKILLS = {
 
 const TREES = { assault: { name: 'Assault', color: '#ff5b5b' }, survival: { name: 'Survival', color: '#00d67a' }, tactics: { name: 'Tactics', color: '#3da5ff' } };
 
+// ---------- 6.5: eigener Baum fuer Zombies ----------
+// Max: Skill Tree je Modus getrennt, Level geteilt. Extraction und PvP nutzen
+// die drei Aeste oben (je eigene Punkte), Zombies diesen Baum. Punkte je Baum
+// = Level − 1, Stats (oben) gelten ueberall.
+const ZSKILLS = {
+    // Slayer: toeten
+    z_head: { tree: 'slayer', row: 0, name: 'Headhunter', icon: '🎯', max: 3, desc: '+5% damage against zombies per rank' },
+    z_tap: { tree: 'slayer', row: 0, name: 'Double tap', icon: '🔫', max: 3, desc: '+4% fire rate per rank' },
+    z_crit: { tree: 'slayer', row: 1, name: 'Weak spots', icon: '🩻', max: 2, req: [['z_head', 2]], desc: '+5% crit chance per rank' },
+    z_boss: { tree: 'slayer', row: 1, name: 'Boss slayer', icon: '👑', max: 3, lvl: 6, req: [['z_head', 1]], desc: '+10% damage against bosses per rank' },
+    z_blast: { tree: 'slayer', row: 1, name: 'Demolition', icon: '💣', max: 2, req: [['z_tap', 1]], desc: '+12% explosive damage per rank' },
+    z_cull: { tree: 'slayer', row: 2, name: 'Culling', icon: '🪓', max: 1, lvl: 12, req: [['z_crit', 2]], desc: 'Zombies below 25% HP take +30% damage' },
+    z_chain: { tree: 'slayer', row: 2, name: 'Chain reaction', icon: '💥', max: 2, lvl: 15, req: [['z_blast', 1]], desc: 'Kills have a 10% chance per rank to explode (80 dmg, small radius)' },
+    z_bane: { tree: 'slayer', row: 3, name: 'Undead bane', icon: '☠️', max: 1, lvl: 25, req: [['z_cull', 1], ['z_boss', 2]], desc: '+15% damage against everything undead' },
+    // Survivor: durchhalten
+    z_tough: { tree: 'survivor', row: 0, name: 'Tough', icon: '🧱', max: 3, desc: '+15 max HP per rank' },
+    z_hide: { tree: 'survivor', row: 0, name: 'Thick hide', icon: '🦏', max: 3, desc: '−5% damage from zombie hits per rank' },
+    z_regen: { tree: 'survivor', row: 1, name: 'Regeneration', icon: '🌿', max: 2, req: [['z_tough', 1]], desc: '+0.5 HP/s regeneration per rank' },
+    z_dodge: { tree: 'survivor', row: 1, name: 'Sidestep', icon: '💨', max: 2, req: [['z_hide', 2]], desc: '4% chance per rank to dodge a zombie hit' },
+    z_second: { tree: 'survivor', row: 2, name: 'Second chance', icon: '💖', max: 1, lvl: 10, req: [['z_regen', 2]], desc: 'Once per game: when you go down, get back up after 10 s with half HP' },
+    z_jugg: { tree: 'survivor', row: 2, name: 'Juggernaut', icon: '🛡️', max: 1, lvl: 18, req: [['z_hide', 3]], desc: '−20% damage from bosses and their attacks' },
+    z_undying: { tree: 'survivor', row: 3, name: 'Undying', icon: '♾️', max: 1, lvl: 30, req: [['z_second', 1], ['z_jugg', 1]], desc: '+20% max HP, regeneration starts after 3 s' },
+    // Economist: Punkte und Coins
+    z_cash: { tree: 'economist', row: 0, name: 'Salvager', icon: '💰', max: 3, desc: '+8% points per rank' },
+    z_start: { tree: 'economist', row: 0, name: 'Head start', icon: '🏁', max: 2, desc: '+300 starting points per rank' },
+    z_disc: { tree: 'economist', row: 1, name: 'Bargain', icon: '🏷️', max: 3, req: [['z_cash', 1]], desc: '−7% prices at all stations per rank' },
+    z_box: { tree: 'economist', row: 1, name: 'Lucky box', icon: '🎁', max: 2, lvl: 8, req: [['z_start', 1]], desc: '+15% chance per rank that the mystery box rolls a sovereign weapon' },
+    z_perk: { tree: 'economist', row: 2, name: 'Perk-aholic', icon: '🥤', max: 1, lvl: 14, req: [['z_disc', 2]], desc: 'Perks cost 25% less' },
+    z_bounty: { tree: 'economist', row: 2, name: 'Bounty', icon: '🪙', max: 3, lvl: 18, req: [['z_cash', 3]], desc: '+10% coins at the end of a game per rank' },
+    z_king: { tree: 'economist', row: 3, name: 'Zombie tycoon', icon: '🤑', max: 1, lvl: 35, req: [['z_bounty', 2], ['z_perk', 1], ['z_box', 1]], desc: '+15% points, +10% coins, start with 1000 extra points' }
+};
+const ZTREES = { slayer: { name: 'Slayer', color: '#ff5b5b' }, survivor: { name: 'Survivor', color: '#00d67a' }, economist: { name: 'Economist', color: '#ffd23f' } };
+const MODES = ['extract', 'pvp', 'zombies'];
+const skillsFor = mode => mode === 'zombies' ? ZSKILLS : SKILLS;
+
+// Alte Konten: ein Baum fuer alles -> Extraction und PvP bekommen ihn (keiner verliert etwas)
+function ensureTrees(pr) {
+    if (!pr.trees) {
+        const old = pr.skills || {};
+        pr.trees = { extract: { skills: { ...old }, resets: 0 }, pvp: { skills: { ...old }, resets: 0 }, zombies: { skills: {}, resets: 0 } };
+    }
+    for (const m of MODES) pr.trees[m] = pr.trees[m] || { skills: {}, resets: 0 };
+    delete pr.skills;
+    return pr.trees;
+}
+const treeOf = (pr, mode) => ensureTrees(pr)[MODES.includes(mode) ? mode : 'extract'];
+
 // Zuruecksetzen: 50k Coins + 2.500 Scrap, jedes weitere Mal +50 %
 function resetCost(resets) {
     const k = Math.pow(1.5, resets || 0);
@@ -101,21 +148,24 @@ function resetCost(resets) {
 }
 
 function fresh() {
-    return { xp: 0, stats: {}, skills: {}, resets: 0 };
+    return { xp: 0, stats: {}, resets: 0, trees: { extract: { skills: {}, resets: 0 }, pvp: { skills: {}, resets: 0 }, zombies: { skills: {}, resets: 0 } } };
 }
 
-function pointsOf(p) {
+function pointsOf(p, mode) {
     const { level } = levelOf(p.xp);
     const statTotal = (level - 1) * STAT_POINTS_PER_LEVEL;
     const skillTotal = level - 1;
     const statUsed = Object.values(p.stats || {}).reduce((s, n) => s + n, 0);
-    const skillUsed = Object.values(p.skills || {}).reduce((s, n) => s + n, 0);
-    return { level, statFree: statTotal - statUsed, skillFree: skillTotal - skillUsed };
+    const skillFree = {};
+    for (const m of MODES) skillFree[m] = skillTotal - Object.values(treeOf(p, m).skills).reduce((s, n) => s + n, 0);
+    return { level, statFree: statTotal - statUsed, skillFree: mode ? skillFree[mode] : skillFree };
 }
 
 // Neue Verteilung pruefen (komplett, nicht nur die Aenderung). Nur Erhoehen
 // ist erlaubt, Senken geht nur ueber den Reset. Rueckgabe: Fehlertext oder null
-function validate(p, stats, skills) {
+function validate(p, stats, skills, mode) {
+    const SK = skillsFor(mode);
+    const cur = treeOf(p, mode).skills;
     const { level } = levelOf(p.xp);
     for (const [k, n] of Object.entries(stats)) {
         if (!Object.prototype.hasOwnProperty.call(STATS, k) || !Number.isInteger(n) || n < 0 || n > STAT_MAX) return 'Invalid stat';
@@ -125,23 +175,24 @@ function validate(p, stats, skills) {
     const statUsed = Object.values(stats).reduce((s, n) => s + n, 0);
     if (statUsed > (level - 1) * STAT_POINTS_PER_LEVEL) return 'Not enough stat points';
     for (const [k, n] of Object.entries(skills)) {
-        const d = Object.prototype.hasOwnProperty.call(SKILLS, k) ? SKILLS[k] : null;
+        const d = Object.prototype.hasOwnProperty.call(SK, k) ? SK[k] : null;
         if (!d || !Number.isInteger(n) || n < 0 || n > d.max) return 'Invalid skill';
-        if (n < ((p.skills || {})[k] || 0)) return 'Skills can only be removed with a reset';
+        if (n < (cur[k] || 0)) return 'Skills can only be removed with a reset';
         if (!n) continue;
         if (d.lvl && level < d.lvl) return `${d.name} needs level ${d.lvl}`;
-        for (const [r, rank] of d.req || []) if ((skills[r] || 0) < rank) return `${d.name} needs ${SKILLS[r].name} ${rank}`;
+        for (const [r, rank] of d.req || []) if ((skills[r] || 0) < rank) return `${d.name} needs ${SK[r].name} ${rank}`;
     }
-    for (const k of Object.keys(p.skills || {})) if (!(k in skills) && p.skills[k] > 0) return 'Skills can only be removed with a reset';
+    for (const k of Object.keys(cur)) if (!(k in skills) && cur[k] > 0) return 'Skills can only be removed with a reset';
     const skillUsed = Object.values(skills).reduce((s, n) => s + n, 0);
     if (skillUsed > level - 1) return 'Not enough skill points';
     return null;
 }
 
-// Was Stats und Skills im Raid bewirken
-function bonuses(p) {
+// Was Stats und Skills im Raid bewirken (mode: welcher Baum gilt)
+function bonuses(p, mode) {
     const st = k => (p.stats || {})[k] || 0;
-    const sk = k => (p.skills || {})[k] || 0;
+    const tree = treeOf(p, mode).skills;
+    const sk = k => tree[k] || 0;
     const b = {
         hp: STATS.vit.per * st('vit') + 10 * sk('s_tough'),
         hpMul: 1 + (sk('s_immortal') ? 0.15 : 0),
@@ -170,17 +221,45 @@ function bonuses(p) {
         reveal: Math.max(0.2, 1 - 0.4 * sk('t_ghost')),
         extractMs: sk('t_extract') ? 4000 : 6000,
         utilCd: Math.max(0.4, 1 - 0.2 * sk('t_nade')),
-        xp: 1 + 0.05 * sk('t_xp')
+        xp: 1 + 0.05 * sk('t_xp'),
+        // Zombie-Baum (6.5); ausserhalb von Zombies alles neutral
+        zDmg: (1 + 0.05 * sk('z_head')) * (sk('z_bane') ? 1.15 : 1),
+        zBoss: 1 + 0.1 * sk('z_boss'),
+        zCull: sk('z_cull') ? 0.3 : 0,
+        zChain: 0.1 * sk('z_chain'),
+        zTaken: 1 - 0.05 * sk('z_hide'),
+        zBossTaken: sk('z_jugg') ? 0.8 : 1,
+        zDodge: 0.04 * sk('z_dodge'),
+        zSecond: !!sk('z_second'),
+        zPts: (1 + 0.08 * sk('z_cash')) * (sk('z_king') ? 1.15 : 1),
+        zStart: 300 * sk('z_start') + (sk('z_king') ? 1000 : 0),
+        zDisc: 1 - 0.07 * sk('z_disc'),
+        zPerk: sk('z_perk') ? 0.75 : 1,
+        zBox: 0.15 * sk('z_box'),
+        zCoins: 1 + 0.1 * sk('z_bounty') + (sk('z_king') ? 0.1 : 0)
     };
+    if (mode === 'zombies') {
+        // Allgemeine Werte aus dem Zombie-Baum
+        b.hp += 15 * sk('z_tough');
+        b.hpMul *= sk('z_undying') ? 1.2 : 1;
+        b.regen += 0.5 * sk('z_regen');
+        if (sk('z_undying')) b.regenDelay = 3000;
+        b.rate *= 1 + 0.04 * sk('z_tap');
+        b.crit += 0.05 * sk('z_crit');
+        b.expl *= 1 + 0.12 * sk('z_blast');
+    }
     return b;
 }
 
 // Fuer den Browser
 function catalog() {
-    return { maxLevel: MAX_LEVEL, statPer: STAT_POINTS_PER_LEVEL, statMax: STAT_MAX, stats: STATS, skills: SKILLS, trees: TREES, xp: XP };
+    return {
+        maxLevel: MAX_LEVEL, statPer: STAT_POINTS_PER_LEVEL, statMax: STAT_MAX, stats: STATS, skills: SKILLS, trees: TREES, xp: XP,
+        modes: { extract: { skills: SKILLS, trees: TREES }, pvp: { skills: SKILLS, trees: TREES }, zombies: { skills: ZSKILLS, trees: ZTREES } }
+    };
 }
 
-module.exports = { MAX_LEVEL, XP, STATS, SKILLS, TREES, xpNeed, levelOf, pointsOf, validate, bonuses, resetCost, fresh, catalog };
+module.exports = { MAX_LEVEL, XP, STATS, SKILLS, ZSKILLS, TREES, ZTREES, MODES, skillsFor, ensureTrees, treeOf, xpNeed, levelOf, pointsOf, validate, bonuses, resetCost, fresh, catalog };
 
 // Nachsehen: node arena-level.js – XP bis zu einigen Leveln
 if (require.main === module) {

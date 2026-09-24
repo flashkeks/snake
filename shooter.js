@@ -456,7 +456,9 @@ module.exports = function createArena(h, opts = {}) {
         const pts = L.pointsOf(pr);
         const s = (h.accounts.get(c.account).stats) || {};
         return {
-            xp: pr.xp, level: lv.level, into: lv.into, need: lv.need, stats: pr.stats, skills: pr.skills, resets: pr.resets || 0,
+            xp: pr.xp, level: lv.level, into: lv.into, need: lv.need, stats: pr.stats, resets: pr.resets || 0,
+            // 6.5: je Modus ein Baum (Level und Stats geteilt)
+            trees: Object.fromEntries(L.MODES.map(m => [m, { skills: L.treeOf(pr, m).skills, resets: L.treeOf(pr, m).resets || 0, resetCost: L.resetCost(L.treeOf(pr, m).resets) }])),
             statFree: pts.statFree, skillFree: pts.skillFree, resetCost: L.resetCost(pr.resets),
             record: {
                 raids: s.raids || 0, extracts: s.arenaExtracts || 0, kills: s.shooterKills || 0, deaths: s.shooterDeaths || 0,
@@ -488,6 +490,8 @@ module.exports = function createArena(h, opts = {}) {
         const u = h.accounts.get(c.account);
         h.send(c, {
             type: 'arHub', inv: a.inv.map(it => ({ ...it, sv: I.salvageValue(it) })), loadout: a.loadout,
+            loadouts: { extract: a.loadout, pvp: loadoutOf(a, 'pvp'), zombies: loadoutOf(a, 'zombies') },
+            presets: Object.fromEntries(L.MODES.map(m => [m, presetsOf(a, m).map(x => ({ name: x.name, l: x.l }))])),
             scrap: a.scrap, coins: u.coins, inRaid: players.has(c.id), prog: progView(c, a), pvp: a.pvp || null, zombies: a.zombies || null,
             // 6.1: ungeoeffnete Cases und Daily Case Wheel
             cases: a.cases || {}, wheel: h.wheels ? { ready: h.wheels.ready('case', u), segs: h.wheels.segments('case') } : null, ...extra
@@ -533,17 +537,35 @@ module.exports = function createArena(h, opts = {}) {
     }
 
     // Loadout nach Salvage/Verkauf: nichts zeigen lassen, was fehlt
-    function fixLoadout(a) {
-        const l = a.loadout;
-        for (const s of GEAR) if (l[s] && !a.inv.some(x => x.uid === l[s])) l[s] = null;
-        if (!Array.isArray(l.util)) l.util = [null, null];
-        const used = {};
-        l.util = l.util.map(u => {
-            if (!u || !I.UTILS[u.base]) return null;
-            const n = Math.min(u.n, I.UTILS[u.base].stack, count(a, u.base) - (used[u.base] || 0));
-            used[u.base] = (used[u.base] || 0) + Math.max(0, n);
-            return n > 0 ? { base: u.base, n } : null;
-        });
+    function fixLoadout(a, only) {
+        for (const l of only ? [only] : [a.loadout, ...Object.values(a.loadouts || {})]) {
+            for (const s of GEAR) if (l[s] && !a.inv.some(x => x.uid === l[s])) l[s] = null;
+            if (!Array.isArray(l.util)) l.util = [null, null];
+            const used = {};
+            l.util = l.util.map(u => {
+                if (!u || !I.UTILS[u.base]) return null;
+                const n = Math.min(u.n, I.UTILS[u.base].stack, count(a, u.base) - (used[u.base] || 0));
+                used[u.base] = (used[u.base] || 0) + Math.max(0, n);
+                return n > 0 ? { base: u.base, n } : null;
+            });
+        }
+    }
+
+    // 6.5 (Max): je Modus ein eigenes Loadout. Extraction nutzt a.loadout (die
+    // Sachen gehen mit in den Raid), PvP und Zombies eigene (dort nur Kopien).
+    // Dazu je Modus bis zu PRESET_MAX gespeicherte Loadouts zum Umschalten.
+    const PRESET_MAX = 5;
+    function loadoutOf(a, mode) {
+        if (mode !== 'pvp' && mode !== 'zombies') return a.loadout;
+        a.loadouts = a.loadouts || {};
+        if (!a.loadouts[mode]) a.loadouts[mode] = JSON.parse(JSON.stringify(a.loadout));
+        return a.loadouts[mode];
+    }
+    function presetsOf(a, mode) {
+        a.presets = a.presets || {};
+        const m = L.MODES.includes(mode) ? mode : 'extract';
+        a.presets[m] = a.presets[m] || [];
+        return a.presets[m];
     }
 
     function hubAction(c, d) {
@@ -612,29 +634,38 @@ module.exports = function createArena(h, opts = {}) {
         }
         if (d.type === 'arProg') {
             const pr = a.prog;
+            // 6.5: Baum je Modus; Stats sind fuer alle gleich
+            const mode = L.MODES.includes(d.mode) ? d.mode : 'extract';
+            const tree = L.treeOf(pr, mode);
             if (d.op === 'apply') {
                 const stats = {}, skills = {};
                 for (const [k, n] of Object.entries(d.stats || {})) stats[k] = Math.floor(Number(n));
                 for (const [k, n] of Object.entries(d.skills || {})) skills[k] = Math.floor(Number(n));
-                const err = L.validate(pr, stats, skills);
+                const err = L.validate(pr, stats, skills, mode);
                 if (err) return h.send(c, { type: 'arError', error: err });
                 pr.stats = Object.fromEntries(Object.entries(stats).filter(([, n]) => n > 0));
-                pr.skills = Object.fromEntries(Object.entries(skills).filter(([, n]) => n > 0));
+                tree.skills = Object.fromEntries(Object.entries(skills).filter(([, n]) => n > 0));
                 h.accounts.touch();
                 return sendHub(c, { progSaved: true });
             }
             if (d.op === 'reset') {
-                const cost = L.resetCost(pr.resets);
+                // what: 'stats' = nur Stats (alle Modi), sonst nur der Baum dieses Modus
+                const stats = d.what === 'stats';
+                const cost = L.resetCost(stats ? pr.resets : tree.resets);
                 const u = h.accounts.get(c.account);
                 if (u.coins < cost.coins) return h.send(c, { type: 'arError', error: `A reset costs ${cost.coins.toLocaleString('en-US')} coins` });
                 if (a.scrap < cost.scrap) return h.send(c, { type: 'arError', error: `A reset costs ${cost.scrap.toLocaleString('en-US')} scrap` });
-                if (!Object.keys(pr.stats).length && !Object.keys(pr.skills).length) return h.send(c, { type: 'arError', error: 'Nothing to reset' });
+                if (stats ? !Object.keys(pr.stats).length : !Object.keys(tree.skills).length) return h.send(c, { type: 'arError', error: 'Nothing to reset' });
                 h.accounts.addCoins(c.account, -cost.coins);
                 h.accounts.earn(c.account, 'shooter', -cost.coins);
                 a.scrap -= cost.scrap;
-                pr.stats = {};
-                pr.skills = {};
-                pr.resets = (pr.resets || 0) + 1;
+                if (stats) {
+                    pr.stats = {};
+                    pr.resets = (pr.resets || 0) + 1;
+                } else {
+                    tree.skills = {};
+                    tree.resets = (tree.resets || 0) + 1;
+                }
                 h.accounts.touch();
                 h.refresh(c);
                 return sendHub(c, { progReset: true });
@@ -645,35 +676,67 @@ module.exports = function createArena(h, opts = {}) {
             const uids = new Set((Array.isArray(d.uids) ? d.uids : []).slice(0, 300).map(String));
             const out = a.inv.filter(it => uids.has(it.uid));
             if (!out.length) return;
-            const scrap = Math.round(out.reduce((s, it) => s + I.salvageValue(it), 0) * L.bonuses(a.prog).scrap);
+            const scrap = Math.round(out.reduce((s, it) => s + I.salvageValue(it), 0) * L.bonuses(a.prog, 'extract').scrap);
             a.inv = a.inv.filter(it => !uids.has(it.uid));
             fixLoadout(a);
             a.scrap += scrap;
             h.accounts.touch();
             return sendHub(c, { salvaged: { count: out.length, scrap } });
         }
+        if (d.type === 'arPreset') {
+            const mode = L.MODES.includes(d.mode) ? d.mode : 'extract';
+            const list = presetsOf(a, mode);
+            const i = Math.floor(Number(d.i));
+            if (d.op === 'save') {
+                const name = String(d.name || '').replace(/[<>]/g, '').trim().slice(0, 24) || `Loadout ${list.length + 1}`;
+                const copy = JSON.parse(JSON.stringify(loadoutOf(a, mode)));
+                if (Number.isInteger(i) && list[i]) list[i] = { name, l: copy };
+                else if (list.length >= PRESET_MAX) return h.send(c, { type: 'arError', error: `At most ${PRESET_MAX} saved loadouts per mode` });
+                else list.push({ name, l: copy });
+            } else if (d.op === 'load') {
+                if (!list[i]) return;
+                const l = JSON.parse(JSON.stringify(list[i].l));
+                if (mode === 'extract') a.loadout = l;
+                else a.loadouts[mode] = l;
+                fixLoadout(a, l);
+            } else if (d.op === 'delete') {
+                if (!list[i]) return;
+                list.splice(i, 1);
+            } else if (d.op === 'copy') {
+                // Loadout eines anderen Modus uebernehmen
+                const from = L.MODES.includes(d.from) ? d.from : null;
+                if (!from || from === mode) return;
+                const l = JSON.parse(JSON.stringify(loadoutOf(a, from)));
+                if (mode === 'extract') a.loadout = l;
+                else a.loadouts[mode] = l;
+                fixLoadout(a, l);
+            } else return;
+            h.accounts.touch();
+            return sendHub(c);
+        }
         if (d.type === 'arEquip') {
+            const lo = loadoutOf(a, d.mode);
             const slot = String(d.slot);
             if (slot === 'util0' || slot === 'util1') {
                 const i = slot === 'util0' ? 0 : 1;
                 const b = d.base === null ? null : String(d.base);
-                if (b === null) a.loadout.util[i] = null;
+                if (b === null) lo.util[i] = null;
                 else {
                     if (!Object.prototype.hasOwnProperty.call(I.UTILS, b)) return;
-                    const other = a.loadout.util[1 - i];
+                    const other = lo.util[1 - i];
                     const free = count(a, b) - (other && other.base === b ? other.n : 0);
                     const n = Math.max(0, Math.min(I.UTILS[b].stack, free, Math.floor(Number(d.n)) || 0));
-                    a.loadout.util[i] = n ? { base: b, n } : null;
+                    lo.util[i] = n ? { base: b, n } : null;
                 }
             } else if (GEAR.includes(slot)) {
-                if (d.uid === null) a.loadout[slot] = null;
+                if (d.uid === null) lo[slot] = null;
                 else {
                     const it = a.inv.find(x => x.uid === d.uid);
                     const ok = it && (slot === 'primary' || slot === 'secondary' ? it.kind === 'weapon' : slot === 'backpack' ? it.kind === 'pack' : it.kind === 'armor' && it.slot === slot);
                     if (!ok) return h.send(c, { type: 'arError', error: 'That does not fit there' });
                     // dieselbe Waffe nicht in beiden Slots
-                    for (const s of ['primary', 'secondary']) if (a.loadout[s] === it.uid) a.loadout[s] = null;
-                    a.loadout[slot] = it.uid;
+                    for (const s of ['primary', 'secondary']) if (lo[s] === it.uid) lo[s] = null;
+                    lo[slot] = it.uid;
                 }
             } else return;
             h.accounts.touch();
@@ -755,7 +818,7 @@ module.exports = function createArena(h, opts = {}) {
             hp: 0, maxHp: 0, speedMul: 1, regen: 0, thorns: 0, dodge: 0, dmgMul: 1, rateMul: 1, taken: 1, healMul: 1, homing: 0, phantom: false,
             burn: null, slowUntil: 0, slow: 0, lastHurt: 0, healUntil: 0, healRate: 0, stimUntil: 0, stim: 0,
             extractAt: null, joinedAt: now, protect: now + 3000 / SPEED,
-            b: L.bonuses(a.prog), level: L.levelOf(a.prog.xp).level, windUsed: false, lastUsed: false, adrenCd: 0, rampUntil: 0
+            b: L.bonuses(a.prog, mode), level: L.levelOf(a.prog.xp).level, windUsed: false, lastUsed: false, adrenCd: 0, rampUntil: 0
         };
     }
 
@@ -1418,6 +1481,12 @@ module.exports = function createArena(h, opts = {}) {
             return false;
         }
         if (attacker && attacker.b && attacker.b.exec && v.hp < v.maxHp * 0.3) dmg *= 1 + attacker.b.exec;
+        // Zombie-Baum (6.5): Treffer von Zombies und Bossen
+        if (zb && !attacker) {
+            if (opts.melee && v.b.zDodge && !opts.dot && Math.random() < v.b.zDodge) return false;
+            if (opts.melee) dmg *= v.b.zTaken;
+            if (opts.how === 'boss') dmg *= v.b.zBossTaken;
+        }
         if (opts.how === 'fire') dmg *= v.b.fire;
         if (v.b.iron && v.hp < v.maxHp / 2) dmg *= 0.85;
         dmg *= v.taken;
@@ -1513,9 +1582,10 @@ module.exports = function createArena(h, opts = {}) {
             const it = uid && a.inv.find(x => x.uid === uid);
             return it ? JSON.parse(JSON.stringify(it)) : null;
         };
-        const gear = { primary: copy(a.loadout.primary) || starterPistol(), secondary: copy(a.loadout.secondary) };
-        for (const s of [...I.SLOTS, 'backpack']) gear[s] = copy(a.loadout[s]);
-        const util = (a.loadout.util || []).map(u => u && Math.min(u.n, count(a, u.base)) > 0 ? { base: u.base, n: Math.min(u.n, count(a, u.base)) } : null);
+        const lo = loadoutOf(a, mode);
+        const gear = { primary: copy(lo.primary) || starterPistol(), secondary: copy(lo.secondary) };
+        for (const s of [...I.SLOTS, 'backpack']) gear[s] = copy(lo[s]);
+        const util = (lo.util || []).map(u => u && Math.min(u.n, count(a, u.base)) > 0 ? { base: u.base, n: Math.min(u.n, count(a, u.base)) } : null);
         team = team === 'b' ? 'b' : 'a';
         const p = newPlayer(c, name, TEAM_COLOR[team], a, gear, util, MAP.spawns[team][0]);
         p.team = team;
@@ -1671,14 +1741,15 @@ module.exports = function createArena(h, opts = {}) {
             const it = uid && a.inv.find(x => x.uid === uid);
             return it ? JSON.parse(JSON.stringify(it)) : null;
         };
-        const gear = { primary: copy(a.loadout.primary) || starterPistol(), secondary: copy(a.loadout.secondary) };
-        for (const s of [...I.SLOTS, 'backpack']) gear[s] = copy(a.loadout[s]);
-        const util = (a.loadout.util || []).map(u => u && Math.min(u.n, count(a, u.base)) > 0 ? { base: u.base, n: Math.min(u.n, count(a, u.base)) } : null);
+        const lo = loadoutOf(a, mode);
+        const gear = { primary: copy(lo.primary) || starterPistol(), secondary: copy(lo.secondary) };
+        for (const s of [...I.SLOTS, 'backpack']) gear[s] = copy(lo[s]);
+        const util = (lo.util || []).map(u => u && Math.min(u.n, count(a, u.base)) > 0 ? { base: u.base, n: Math.min(u.n, count(a, u.base)) } : null);
         const spot = MAP.spawns.a[players.size % MAP.spawns.a.length];
         const p = newPlayer(c, name, null, a, gear, util, spot);
         p.team = 'a';
         p.dead = false;
-        p.pts = 500;
+        p.pts = 500 + p.b.zStart;
         p.perks = [];
         gearStats(p);
         players.set(c.id, p);
@@ -1748,7 +1819,15 @@ module.exports = function createArena(h, opts = {}) {
 
     function zTick(now, dt) {
         if (zb.over || zb.phase === 'wait') return;
-        if (players.size && ![...players.values()].some(p => !p.dead)) return zFinish();
+        if (players.size && ![...players.values()].some(p => !p.dead || p.reviveAt)) return zFinish();
+        for (const p of players.values()) {
+            if (p.dead && p.reviveAt && now >= p.reviveAt) {
+                p.reviveAt = 0;
+                Object.assign(p, { dead: false, hp: p.maxHp / 2, burn: null, protect: now + 2000 / SPEED });
+                fxAt(p.x, p.y, { type: 'shFx', kind: 'phoenix', x: Math.round(p.x), y: Math.round(p.y) });
+                h.send(p.c, { type: 'shEvent', text: '💖 Back on your feet!', kind: 'drop' });
+            }
+        }
         if (zb.phase === 'break' && now >= zb.until) zWave(now);
         else if (zb.phase === 'wave') {
             const cap = 24 + 5 * players.size;
@@ -1784,6 +1863,12 @@ module.exports = function createArena(h, opts = {}) {
         p.fire = false;
         p.mx = p.my = 0;
         for (const q of players.values()) h.send(q.c, { type: 'shKill', killer: '🧟', victim: p.name, how: 'npc', loot: 0 });
+        // Second chance (Zombie-Baum): einmal je Spiel nach 10 s wieder hoch
+        if (p.b.zSecond && !p.secondUsed) {
+            p.secondUsed = true;
+            p.reviveAt = Date.now() + 10000 / SPEED;
+            return h.send(p.c, { type: 'shEvent', text: '💖 Second chance – back up in 10 s!', kind: 'self' });
+        }
         h.send(p.c, { type: 'shEvent', text: '💀 You are down – survive, team! You are back after this wave', kind: 'self' });
     }
 
@@ -1804,7 +1889,7 @@ module.exports = function createArena(h, opts = {}) {
         const xp = Math.round(40 * Math.pow(reached, 1.35));
         award(p, xp, `survived ${reached} wave${reached === 1 ? '' : 's'}`);
         // Coins (5.9): erst jetzt, am Ende des Spiels (alle tot oder verlassen)
-        const coins = zCoins(reached, zb.kc.get(p.id) || 0);
+        const coins = Math.floor(zCoins(reached, zb.kc.get(p.id) || 0) * (p.b ? p.b.zCoins : 1));
         if (coins > 0 && p.account) {
             h.accounts.addCoins(p.account, coins);
             h.accounts.earn(p.account, 'shooter', coins);
@@ -1829,6 +1914,8 @@ module.exports = function createArena(h, opts = {}) {
     function zStation(p, s) {
         const say = text => h.send(p.c, { type: 'shEvent', text, kind: 'self' });
         const pay = price => {
+            // Bargain (Zombie-Baum): alle Stationen billiger
+            price = Math.round(price * p.b.zDisc * (s.kind === 'perk' ? p.b.zPerk : 1));
             if (p.pts < price) {
                 say(`💰 You need ${price} points`);
                 return false;
@@ -1852,7 +1939,8 @@ module.exports = function createArena(h, opts = {}) {
         if (s.kind === 'box') {
             if (!pay(s.price)) return;
             let it = null;
-            for (let k = 0; k < 30 && (!it || it.kind !== 'weapon'); k++) it = I.generate('elite');
+            const src = Math.random() < p.b.zBox ? 'sovereign' : 'elite';
+            for (let k = 0; k < 30 && (!it || it.kind !== 'weapon'); k++) it = I.generate(src);
             if (!it || it.kind !== 'weapon') it = I.plain('weapon', 'rifle');
             giveWeapon(it);
             fxAt(s.x, s.y, { type: 'shFx', kind: 'phoenix', x: s.x, y: s.y });
@@ -2000,6 +2088,12 @@ module.exports = function createArena(h, opts = {}) {
         if (attacker && attacker.b) {
             dmg *= attacker.b.hunt;
             if (attacker.b.exec && m.hp < m.maxHp * 0.3) dmg *= 1 + attacker.b.exec;
+            // Zombie-Baum (6.5)
+            if (zb) {
+                dmg *= attacker.b.zDmg;
+                if (m.def.boss) dmg *= attacker.b.zBoss;
+                if (attacker.b.zCull && m.hp < m.maxHp * 0.25) dmg *= 1 + attacker.b.zCull;
+            }
         }
         dmg *= m.def.taken || 1;
         const real = Math.min(dmg, m.hp);
@@ -2018,7 +2112,7 @@ module.exports = function createArena(h, opts = {}) {
         }
         // Punkte nach Schaden statt je Treffer (6.5, Feedback Schmoggi: mit der SMG
         // liess sich Geld farmen, mit allem anderen nicht). Nur echter Schaden zaehlt.
-        if (zb && attacker && players.has(attacker.id)) attacker.pts += real * Z_PTS_PER_DMG;
+        if (zb && attacker && players.has(attacker.id)) attacker.pts += real * Z_PTS_PER_DMG * attacker.b.zPts;
         if (m.hp <= 0) mobDies(m, attacker && players.has(attacker.id) ? attacker : null, now);
     }
 
@@ -2031,7 +2125,12 @@ module.exports = function createArena(h, opts = {}) {
             if (m.id === bossId) bossId = null;
             if (killer) {
                 const bi = def.boss ? (m.bossIdx || 0) + 1 : 0;
-                killer.pts += def.boss ? 1000 * bi : m.kind === 'tank' ? 150 : def.pts || 60;
+                killer.pts += (def.boss ? 1000 * bi : m.kind === 'tank' ? 150 : def.pts || 60) * killer.b.zPts;
+                // Kettenreaktion (Zombie-Baum): der Tote explodiert
+                if (killer.b.zChain && !def.boss && Math.random() < killer.b.zChain) {
+                    fxAt(m.x, m.y, { type: 'shBoom', x: Math.round(m.x), y: Math.round(m.y), r: 90, nuke: false });
+                    for (const o of [...mobs]) if (o !== m && o.hp > 0 && Math.hypot(o.x - m.x, o.y - m.y) < 90 + o.def.r) hurtMob(o, killer, 80 * killer.b.expl, now, o.x, o.y, false, { dot: true });
+                }
                 zb.kills.set(killer.id, (zb.kills.get(killer.id) || 0) + 1);
                 zb.kc.set(killer.id, (zb.kc.get(killer.id) || 0) + (def.boss ? Z_COINS.boss * bi : m.kind === 'tank' ? Z_COINS.tank : def.coins || Z_COINS.kill));
                 award(killer, L.XP[def.xp || 'npc'] * (def.boss ? 20 * bi : def.xpMul || 1), def.name.toLowerCase());
@@ -2679,8 +2778,9 @@ module.exports = function createArena(h, opts = {}) {
                     hid: (!!(p.zone || p.smoke !== null) && now - p.lastShot >= REVEAL_MS * p.b.reveal) || stillHidden(p, now)
                 },
                 pvp: pvp ? { round: pvp.round, score: pvp.score, phase: pvp.phase, left: Math.max(0, Math.round(pvp.until - now)), last: pvp.last, team: p.team } : undefined,
-                zmb: zb ? { wave: zb.wave, phase: zb.phase, left: Math.max(0, Math.round(zb.until - now)), zombies: mobs.length + zb.toSpawn, pts: p.pts, perks: p.perks,
-                    team: plist.map(q => [q.name, q.pts, zb.kills.get(q.id) || 0, q.dead ? 1 : 0]) } : undefined,
+                zmb: zb ? { wave: zb.wave, phase: zb.phase, left: Math.max(0, Math.round(zb.until - now)), zombies: mobs.length + zb.toSpawn, pts: Math.floor(p.pts), perks: p.perks,
+                    disc: p.b.zDisc, perkDisc: p.b.zDisc * p.b.zPerk,
+                    team: plist.map(q => [q.name, Math.floor(q.pts), zb.kills.get(q.id) || 0, q.dead ? 1 : 0]) } : undefined,
                 players: plist.filter(q => q === p || (inView(q.x, q.y) && canSee(p, q, now))).map(q => {
                     const qw = q.gear[q.slot] || q.gear.primary;
                     return {

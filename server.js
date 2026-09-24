@@ -1533,6 +1533,7 @@ async function handle(c, data) {
         case 'arSalvage':
         case 'arEquip':
         case 'arProg':
+        case 'arPreset':
             shooter.hubAction(c, data);
             return;
 

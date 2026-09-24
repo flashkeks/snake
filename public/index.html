@@ -2922,6 +2922,24 @@ body.world-arena h1 {
     margin-bottom: 12px;
 }
 
+/* 6.5: gespeicherte Loadouts */
+.lo-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin: 0 0 12px;
+    padding: 8px 10px;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 10px;
+    background: rgba(255,255,255,.03);
+}
+.lo-presets .preset { display: inline-flex; gap: 2px; }
+.lo-presets .preset button { padding: 5px 10px; }
+.lo-presets select { background: #111a17; color: #e8fff4; border: 1px solid rgba(255,255,255,.2); border-radius: 8px; padding: 5px 8px; font: inherit; }
+.lo-presets.compact { background: none; border: 0; padding: 0; }
+.lo-mode { margin-bottom: 8px; font-weight: 700; }
+
 /* Handel */
 .tr-note {
     display: flex;
@@ -6511,11 +6529,10 @@ body.watch-mode #world-switch {
                         <button type="button" class="s2-icon" id="hub-back" title="Back">✕</button>
                     </div>
                     <div class="cs-tabs" id="hub-tabs">
-                        <button type="button" data-hubtab="play">🪂 Play</button>
-                        <button type="button" data-hubtab="equip" data-group="inv">🎒 Inventory</button>
+                        <button type="button" data-hubtab="play" data-group="modes">🎮 Game Modes</button>
+                        <button type="button" data-hubtab="inv" data-group="inv">🎒 Inventory</button>
                         <button type="button" data-hubtab="cases">🎁 Cases</button>
                         <button type="button" data-hubtab="shop">🛒 Shop</button>
-                        <button type="button" data-hubtab="profile">🎖️ Profile</button>
                     </div>
                     <div id="hub-body"></div>
                     <div class="msg" id="hub-msg"></div>
@@ -10524,8 +10541,27 @@ function arWheelSegs() {
     });
 }
 
+// 6.5: Loadout des gewaehlten Modus (Extraction, PvP, Zombies haben je eins)
+function hubLO() {
+    return hub.loadouts && hub.loadouts[hubMode] || hub.loadout;
+}
+const HUB_MODES = { extract: '🪂 Extraction', pvp: '⚔️ PvP', zombies: '🧟 Zombies' };
+
+// Gespeicherte Loadouts: laden, ueberschreiben, loeschen, aus anderem Modus uebernehmen
+function hubPresets(compact) {
+    const list = (hub.presets && hub.presets[hubMode]) || [];
+    const same = p => JSON.stringify(p.l) === JSON.stringify(hubLO());
+    const btns = list.map((p, i) => `<span class="preset ${same(p) ? 'on' : ''}"><button type="button" class="${same(p) ? 'gold' : 'ghost'}" data-preset="load" data-i="${i}" title="Switch to this loadout">${same(p) ? '✔ ' : ''}${esc(p.name)}</button>` +
+        (compact ? '' : `<button type="button" class="ghost" data-preset="save" data-i="${i}" title="Overwrite with the current loadout">💾</button><button type="button" class="ghost" data-preset="delete" data-i="${i}" title="Delete">✖</button>`) + '</span>').join('');
+    if (compact) return list.length ? `<div class="lo-presets compact"><b>Loadout:</b>${btns}</div>` : '';
+    const others = Object.keys(HUB_MODES).filter(m => m !== hubMode);
+    return `<div class="lo-presets"><b>💾 Saved loadouts</b>${btns || '<span class="hint">none yet</span>'}` +
+        `<button type="button" data-preset="save" ${list.length >= 5 ? 'disabled' : ''}>+ Save current</button>` +
+        `<select id="lo-copyfrom"><option value="">Copy from…</option>${others.map(m => `<option value="${m}">${HUB_MODES[m]}</option>`).join('')}</select></div>`;
+}
+
 function hubEquippedAs(uid) {
-    const l = hub.loadout;
+    const l = hubLO();
     const s = GEAR_SLOTS.find(x => l[x] === uid);
     return s ? SLOT_LABEL[s].replace(/^\d · /, '') : '';
 }
@@ -10546,7 +10582,7 @@ function utilHave() {
 
 // Loadout: 7 Slots + 2 Verbrauchsgut-Slots, Klick oeffnet die Auswahl
 function hubLoadout() {
-    const l = hub.loadout;
+    const l = hubLO();
     const byUid = uid => hub.inv.find(x => x.uid === uid);
     const slotCard = s => {
         const it = l[s] && byUid(l[s]);
@@ -10573,7 +10609,7 @@ function hubLoadout() {
 // Auswahl fuer einen Slot (Equip-Tab)
 function hubPicker() {
     if (!hubPick) return '<div class="hint pick-hint">Click a slot to choose what goes in it.</div>';
-    const l = hub.loadout;
+    const l = hubLO();
     const isUtil = hubPick.startsWith('util');
     let cards;
     if (isUtil) {
@@ -10640,7 +10676,7 @@ $('hub-body').addEventListener('drop', e => {
     if (tgt.dataset.stash) {
         // Slot zurueck ins Lager = ablegen
         if (d.from.startsWith('util')) hubSetUtil(Number(d.from.slice(4)), null, 0);
-        else wsSend({ type: 'arEquip', slot: d.from, uid: null });
+        else wsSend({ type: 'arEquip', mode: hubMode, slot: d.from, uid: null });
         return;
     }
     const slot = tgt.dataset.slot;
@@ -10648,7 +10684,7 @@ $('hub-body').addEventListener('drop', e => {
     if (slot.startsWith('util')) {
         const have = utilHave()[it.base] || 0;
         hubSetUtil(Number(slot.slice(4)), it.base, Math.min(arenaCat.utils[it.base].stack, have));
-    } else wsSend({ type: 'arEquip', slot, uid: it.uid });
+    } else wsSend({ type: 'arEquip', mode: hubMode, slot, uid: it.uid });
 });
 $('hub-body').addEventListener('dragend', () => {
     hubDrag = null;
@@ -10728,20 +10764,24 @@ setInterval(() => {
 }, 1000);
 
 // ---------- Profil: Level, Stat-Punkte, Skill Tree ----------
+// 6.5: Baum des gewaehlten Modus; Stats gelten fuer alle
+const profSkills = () => (hub.prog.trees && hub.prog.trees[hubMode] ? hub.prog.trees[hubMode].skills : {}) || {};
+const profCat = () => lvlCat.modes ? lvlCat.modes[hubMode] : { skills: lvlCat.skills, trees: lvlCat.trees };
+
 function profState() {
     const pr = hub.prog;
-    if (!profDraft) profDraft = { stats: { ...pr.stats }, skills: { ...pr.skills } };
+    if (!profDraft || profDraft.mode !== hubMode) profDraft = { mode: hubMode, stats: { ...pr.stats }, skills: { ...profSkills() } };
     const sum = o => Object.values(o).reduce((s, n) => s + n, 0);
     const statFree = (pr.level - 1) * lvlCat.statPer - sum(profDraft.stats);
     const skillFree = (pr.level - 1) - sum(profDraft.skills);
-    const changed = JSON.stringify(profDraft.stats) !== JSON.stringify(pr.stats) || JSON.stringify(profDraft.skills) !== JSON.stringify(pr.skills);
+    const changed = JSON.stringify(profDraft.stats) !== JSON.stringify(pr.stats) || JSON.stringify(profDraft.skills) !== JSON.stringify(profSkills());
     return { pr, statFree, skillFree, changed };
 }
 
 function skillState(k, level) {
-    const d = lvlCat.skills[k];
+    const d = profCat().skills[k];
     const rank = profDraft.skills[k] || 0;
-    const saved = hub.prog.skills[k] || 0;
+    const saved = profSkills()[k] || 0;
     const missing = (d.req || []).filter(([r, n]) => (profDraft.skills[r] || 0) < n);
     const lvlOk = !d.lvl || level >= d.lvl;
     return { d, rank, saved, open: lvlOk && !missing.length, missing, lvlOk };
@@ -10761,7 +10801,8 @@ function hubProfile() {
         `<div class="prof-rec"><span>🪂 ${r.raids} raids</span><span>🚁 ${r.extracts} extracted</span><span>🗡️ ${r.kills} kills</span><span>💀 ${r.deaths} deaths</span>` +
         `<span>K/D ${kd}</span><span>👑 ${r.bossKills} bosses</span>${r.npcKills ? `<span>👾 ${r.npcKills} enemies</span>` : ''}` +
         `<span>🏆 best: ${esc(arenaCat.tiers[r.bestTier] ? arenaCat.tiers[r.bestTier].name : '–')}</span>` +
-        (hub.pvp ? `<span>⚔️ PvP ${hub.pvp.rating} (${hub.pvp.wins}-${hub.pvp.losses})</span>` : '') + '</div></div></div>';
+        (hub.pvp ? `<span>⚔️ PvP ${hub.pvp.rating} (${hub.pvp.wins}-${hub.pvp.losses})</span>` : '') +
+        (hub.zombies ? `<span>🧟 best wave ${hub.zombies.bestWave} · ${hub.zombies.games} games · ${hub.zombies.kills} kills</span>` : '') + '</div></div></div>';
     // Stats
     html += '<div class="prof-grid"><div class="prof-box">' +
         `<h4><span>📊 Stats</span><span class="${statFree ? 'pend' : 'hint'}">${statFree} point${statFree === 1 ? '' : 's'} free</span></h4>`;
@@ -10774,17 +10815,18 @@ function hubProfile() {
             `<button type="button" data-stat="${k}" data-d="1" ${statFree <= 0 || v >= lvlCat.statMax ? 'disabled' : ''}>+</button></div>`;
     }
     html += '</div><div class="prof-box">' +
-        `<h4><span>🌳 Skill tree</span><span class="${skillFree ? 'pend' : 'hint'}">${skillFree} skill point${skillFree === 1 ? '' : 's'} free</span></h4>` +
-        '<div class="hint" style="margin-bottom:8px">Click a skill to add a rank, right-click to take back an unsaved rank. Gold numbers = level needed.</div><div class="trees">';
-    for (const [tk, t] of Object.entries(lvlCat.trees)) {
+        `<h4><span>🌳 ${HUB_MODES[hubMode]} skill tree</span><span class="${skillFree ? 'pend' : 'hint'}">${skillFree} skill point${skillFree === 1 ? '' : 's'} free</span></h4>` +
+        `<div class="hint" style="margin-bottom:8px">Every mode has its own tree with its own points – your level and stats are shared. ${hubMode === 'zombies' ? 'This tree only works in Zombies. ' : ''}Click a skill to add a rank, right-click to take back an unsaved rank. Gold numbers = level needed.</div><div class="trees">`;
+    const PC = profCat();
+    for (const [tk, t] of Object.entries(PC.trees)) {
         html += `<div class="tree" style="--tc:${t.color}"><h5 style="color:${t.color}">${t.name}</h5>`;
         const rows = {};
-        for (const [k, d] of Object.entries(lvlCat.skills)) if (d.tree === tk) (rows[d.row] = rows[d.row] || []).push(k);
+        for (const [k, d] of Object.entries(PC.skills)) if (d.tree === tk) (rows[d.row] = rows[d.row] || []).push(k);
         for (const row of Object.keys(rows).sort()) {
             html += '<div class="tree-row">' + rows[row].map(k => {
                 const s = skillState(k, pr.level);
                 const cls = s.rank >= s.d.max ? 'has max' : s.rank ? 'has' : s.open && skillFree > 0 ? 'can' : !s.open ? 'locked' : '';
-                const need = !s.lvlOk ? `Lv ${s.d.lvl}` : s.missing.map(([r, n]) => `${lvlCat.skills[r].name} ${n}`).join(', ');
+                const need = !s.lvlOk ? `Lv ${s.d.lvl}` : s.missing.map(([r, n]) => `${PC.skills[r].name} ${n}`).join(', ');
                 return `<div class="skill ${cls}" data-skill="${k}" title="${esc(s.d.desc)}${need ? ' · needs ' + esc(need) : ''}">` +
                     (s.rank > s.saved ? `<span class="pend">+${s.rank - s.saved}</span>` : '') +
                     `<span class="ic">${s.d.icon}</span><b>${esc(s.d.name)}</b><span class="rk">${s.rank}/${s.d.max}</span>` +
@@ -10793,12 +10835,14 @@ function hubProfile() {
         }
         html += '</div>';
     }
-    const cost = pr.resetCost;
+    const cost = pr.resetCost, tcost = (pr.trees && pr.trees[hubMode] && pr.trees[hubMode].resetCost) || cost;
+    const money = c => `🪙 ${c.coins.toLocaleString('en-US')} + ⚙️ ${c.scrap.toLocaleString('en-US')}`;
     html += '</div></div></div><div class="prof-actions">' +
         `<button type="button" class="gold" data-prof="apply" ${changed ? '' : 'disabled'}>✔ Save points</button>` +
         `<button type="button" class="ghost" data-prof="discard" ${changed ? '' : 'disabled'}>Discard</button>` +
-        `<span style="flex:1"></span><span class="hint">Reset everything: 🪙 ${cost.coins.toLocaleString('en-US')} + ⚙️ ${cost.scrap.toLocaleString('en-US')} (gets 50% pricier each time)</span>` +
-        `<button type="button" class="danger" data-prof="reset">↺ Reset stats & skills</button></div>`;
+        `<span style="flex:1"></span><span class="hint">Resets get 50% pricier each time</span>` +
+        `<button type="button" class="danger" data-prof="reset" data-what="tree">↺ Reset ${HUB_MODES[hubMode]} tree · ${money(tcost)}</button>` +
+        `<button type="button" class="danger" data-prof="reset" data-what="stats">↺ Reset stats (all modes) · ${money(cost)}</button></div>`;
     return html;
 }
 
@@ -10820,14 +10864,15 @@ function profClick(t, ds, e) {
         }
         return hubDraw();
     }
-    if (ds.prof === 'apply') return wsSend({ type: 'arProg', op: 'apply', stats: profDraft.stats, skills: profDraft.skills });
+    if (ds.prof === 'apply') return wsSend({ type: 'arProg', op: 'apply', mode: hubMode, stats: profDraft.stats, skills: profDraft.skills });
     if (ds.prof === 'discard') {
         profDraft = null;
         return hubDraw();
     }
     if (ds.prof === 'reset') {
-        const c = pr.resetCost;
-        if (confirm(`Reset ALL stat points and skills?\nCosts ${c.coins.toLocaleString('en-US')} coins and ${c.scrap.toLocaleString('en-US')} scrap. You get every point back to spend again.`)) wsSend({ type: 'arProg', op: 'reset' });
+        const stats = ds.what === 'stats';
+        const c = stats ? pr.resetCost : pr.trees[hubMode].resetCost;
+        if (confirm(`Reset ${stats ? 'ALL stat points (they count for every mode)' : `your ${HUB_MODES[hubMode]} skill tree`}?\nCosts ${c.coins.toLocaleString('en-US')} coins and ${c.scrap.toLocaleString('en-US')} scrap. You get the points back to spend again.`)) wsSend({ type: 'arProg', op: 'reset', mode: hubMode, what: stats ? 'stats' : 'tree' });
     }
 }
 
@@ -10835,6 +10880,10 @@ function profClick(t, ds, e) {
 $('hub-body').addEventListener('click', e => {
     const m = e.target.closest('.mode[data-mode]');
     if (!m || hubCaseBusy) return;
+    if (hubMode !== m.dataset.mode) {
+        profDraft = null;
+        hubPick = null;
+    }
     hubMode = m.dataset.mode;
     if (hubMode === 'pvp' || hubMode === 'zombies') wsSend({ type: 'pvpList' });
     hubDraw();
@@ -10844,11 +10893,11 @@ $('hub-body').addEventListener('contextmenu', e => {
     const t = e.target.closest('.skill[data-skill]');
     if (!t || hubTab !== 'profile' || !profDraft) return;
     e.preventDefault();
-    const k = t.dataset.skill, saved = hub.prog.skills[k] || 0, rank = profDraft.skills[k] || 0;
+    const k = t.dataset.skill, saved = profSkills()[k] || 0, rank = profDraft.skills[k] || 0;
     if (rank <= saved) return;
     // nicht unter Voraussetzung anderer (ungespeicherter) Skills fallen lassen
     const next = rank - 1;
-    const needed = Object.entries(lvlCat.skills).some(([o, d]) => (profDraft.skills[o] || 0) > 0 && (d.req || []).some(([r, n]) => r === k && next < n));
+    const needed = Object.entries(profCat().skills).some(([o, d]) => (profDraft.skills[o] || 0) > 0 && (d.req || []).some(([r, n]) => r === k && next < n));
     if (needed) return showMsg('hub-msg', 'Another skill needs this rank', 'err');
     if (next) profDraft.skills[k] = next;
     else delete profDraft.skills[k];
@@ -10919,8 +10968,10 @@ const hubSort = (a, b) => tierIdx(b.tier) - tierIdx(a.tier) || (b.score || 0) - 
 
 function hubDraw() {
     if (!arenaCat) return;
-    const invGroup = ['equip', 'inv', 'salvage'].includes(hubTab);
-    document.querySelectorAll('#hub-tabs [data-hubtab]').forEach(b => b.classList.toggle('on', b.dataset.hubtab === hubTab || (invGroup && b.dataset.group === 'inv')));
+    const invGroup = ['inv', 'salvage'].includes(hubTab);
+    // 6.5: Game Modes = Modus waehlen, darunter Play / Loadout (equip) / Skills (profile)
+    const modeGroup = ['play', 'equip', 'profile'].includes(hubTab);
+    document.querySelectorAll('#hub-tabs [data-hubtab]').forEach(b => b.classList.toggle('on', b.dataset.hubtab === hubTab || (invGroup && b.dataset.group === 'inv') || (modeGroup && b.dataset.group === 'modes')));
     if (hub && hub.prog) $('hub-lv').textContent = `🎖️ Lv ${hub.prog.level}`;
     $('hub-coins').textContent = me ? me.coins.toLocaleString('en-US') : '–';
     $('hub-scrap').textContent = hub ? hub.scrap.toLocaleString('en-US') : '–';
@@ -10934,11 +10985,7 @@ function hubDraw() {
     const filters = `<div class="cr-diffs">${HUB_FILTERS.map(([k, n]) => `<button type="button" data-filter="${k}" class="${hubFilter === k ? 'on' : ''}">${n}</button>`).join('')}</div>`;
     let html = '';
     if (hubTab === 'play') {
-        html = `<div class="modes">` +
-            `<div class="mode ${hubMode === 'extract' ? 'on' : ''}" data-mode="extract"><b>🪂 Extraction</b><small>Loot, enemies, bosses, extract alive. Everything you take in is at risk.</small></div>` +
-            `<div class="mode ${hubMode === 'pvp' ? 'on' : ''}" data-mode="pvp"><b>⚔️ PvP arena</b><small>1v1 · 2v2 · 3v3 lobbies, best of 5 – you never lose items</small></div>` +
-            `<div class="mode ${hubMode === 'zombies' ? 'on' : ''}" data-mode="zombies"><b>🧟 Zombies</b><small>Survive the waves, up to 4 players, buy guns and perks – no item loss · earn coins for kills and waves</small></div></div>` +
-            (hubMode === 'pvp' || hubMode === 'zombies' ? (hubMode === 'pvp' ? hubPvp() : hubZombies()) + (hubLast ? `<div class="raid-result ${hubLast.result}">${hubLast.html}</div>` : '') : hubLoadout() +
+        html = (hubMode === 'pvp' || hubMode === 'zombies' ? hubPresets(true) + (hubMode === 'pvp' ? hubPvp() : hubZombies()) + (hubLast ? `<div class="raid-result ${hubLast.result}">${hubLast.html}</div>` : '') : hubPresets(true) + hubLoadout() +
             `<div class="hub-play"><button type="button" class="gold" id="hub-deploy">🪂 Deploy into the raid</button>` +
             `<div class="hint">${shRoomCount ? `● ${shRoomCount} in the raid right now · ` : ''}Everything you take in is at risk. Get to a 🚁 extraction zone and stand in it for 6 s to keep your loot. ` +
             `If you die or leave, the killer gets it all. Hide in buildings, bushes and smoke – nobody outside sees you until you shoot.</div></div>` +
@@ -10946,7 +10993,8 @@ function hubDraw() {
     } else if (hubTab === 'profile') {
         html = hubProfile();
     } else if (hubTab === 'equip') {
-        html = hubLoadout() + (hubPick ? hubPicker() : hubStash(filters));
+        html = `<div class="hint lo-mode">${HUB_MODES[hubMode]} loadout${hubMode === 'extract' ? ' – these items really go into the raid' : ' – copies only, you never lose anything here'}</div>` +
+            hubPresets() + hubLoadout() + (hubPick ? hubPicker() : hubStash(filters));
         setTimeout(() => $('hub-body').querySelectorAll('.it[data-uid]').forEach(x => { x.draggable = true; }), 0);
     } else if (hubTab === 'inv') {
         const list = inv.filter(hubFilterFn).sort(hubSort);
@@ -11003,10 +11051,19 @@ function hubDraw() {
             `<h3 class="shop-h">⚙️ For scrap</h3><div class="shop-list">${arenaCat.shop.filter(o => o.currency === 'scrap').map(item).join('')}</div>` +
             `<div class="hint">Armor, bigger backpacks, rarer weapons and special consumables only come from cases and crates.</div>`;
     }
-    if (['equip', 'inv', 'salvage'].includes(hubTab)) {
+    if (invGroup) {
         hubInvLast = hubTab;
-        html = `<div class="cr-diffs hub-sub">${[['equip', '🎒 Equip'], ['inv', '📋 List'], ['salvage', '♻️ Salvage']].map(([k, n]) =>
+        html = `<div class="cr-diffs hub-sub">${[['inv', '📋 List'], ['salvage', '♻️ Salvage']].map(([k, n]) =>
             `<button type="button" data-hubsub="${k}" class="${hubTab === k ? 'on' : ''}">${n}</button>`).join('')}</div>` + html;
+    }
+    if (modeGroup) {
+        hubModesLast = hubTab;
+        html = `<div class="modes">` +
+            `<div class="mode ${hubMode === 'extract' ? 'on' : ''}" data-mode="extract"><b>🪂 Extraction</b><small>Loot, enemies, bosses, extract alive. Everything you take in is at risk.</small></div>` +
+            `<div class="mode ${hubMode === 'pvp' ? 'on' : ''}" data-mode="pvp"><b>⚔️ PvP arena</b><small>1v1 · 2v2 · 3v3 lobbies, best of 5 – you never lose items</small></div>` +
+            `<div class="mode ${hubMode === 'zombies' ? 'on' : ''}" data-mode="zombies"><b>🧟 Zombies</b><small>Survive the waves, up to 4 players, buy guns and perks – no item loss · earn coins for kills and waves</small></div></div>` +
+            `<div class="cr-diffs hub-sub">${[['play', '▶ Play'], ['equip', '🎒 Loadout'], ['profile', '🌳 Skills']].map(([k, n]) =>
+                `<button type="button" data-hubsub="${k}" class="${hubTab === k ? 'on' : ''}">${n}${k === 'profile' && hub.prog && hub.prog.skillFree && hub.prog.skillFree[hubMode] > 0 ? ` <span class="pend">+${hub.prog.skillFree[hubMode]}</span>` : ''}</button>`).join('')}</div>` + html;
     }
     $('hub-body').innerHTML = html;
     if (hubTab === 'cases') pwIdle('ar-wheel', arWheelSegs());
@@ -11016,6 +11073,7 @@ function hubActions(it) {
     const eq = hubEquippedAs(it.uid);
     let b = '';
     if (it.kind === 'weapon') {
+        b += `<div class="hint">Equips into your ${HUB_MODES[hubMode]} loadout – pick the mode under 🎮 Game Modes</div>`;
         b += `<button type="button" data-equip="primary" data-uid="${it.uid}">Equip as primary (1)</button>`;
         b += `<button type="button" class="ghost" data-equip="secondary" data-uid="${it.uid}">Equip as secondary (2)</button>`;
     } else if (it.kind === 'armor') {
@@ -11028,7 +11086,7 @@ function hubActions(it) {
         b += `<button type="button" data-utilset="0" data-base="${it.base}">Put ${Math.min(n, def.stack)} in slot Q</button>`;
         b += `<button type="button" class="ghost" data-utilset="1" data-base="${it.base}">Put ${Math.min(n, def.stack)} in slot G</button>`;
     }
-    if (eq) b += `<button type="button" class="ghost" data-unequip="${GEAR_SLOTS.find(s => hub.loadout[s] === it.uid)}">Take off</button>`;
+    if (eq) b += `<button type="button" class="ghost" data-unequip="${GEAR_SLOTS.find(s => hubLO()[s] === it.uid)}">Take off</button>`;
     b += `<button type="button" class="danger" data-salvage="${it.uid}">♻️ Salvage (+${it.sv || 0} ⚙️)</button>`;
     return `<div class="it-actions">${b}</div>`;
 }
@@ -11188,17 +11246,26 @@ $('hub-tabs').addEventListener('click', e => {
     const b = e.target.closest('[data-hubtab]');
     if (!b || hubCaseBusy) return;
     // Inventory merkt sich den Unter-Tab (Equip, List, Salvage)
-    hubTab = b.dataset.group === 'inv' ? (['equip', 'inv', 'salvage'].includes(hubTab) ? hubTab : hubInvLast) : b.dataset.hubtab;
+    hubTab = b.dataset.group === 'inv' ? (['inv', 'salvage'].includes(hubTab) ? hubTab : hubInvLast)
+        : b.dataset.group === 'modes' ? (['play', 'equip', 'profile'].includes(hubTab) ? hubTab : hubModesLast) : b.dataset.hubtab;
     hubDraw();
 });
 $('hub-lv').onclick = () => { if (!hubCaseBusy) { hubTab = 'profile'; hubDraw(); } };
-let hubInvLast = 'equip';
+$('hub-body').addEventListener('change', e => {
+    if (e.target.id === 'lo-copyfrom' && e.target.value) {
+        const from = e.target.value;
+        if (confirm(`Replace your ${HUB_MODES[hubMode]} loadout with your ${HUB_MODES[from]} loadout?`)) wsSend({ type: 'arPreset', mode: hubMode, op: 'copy', from });
+        e.target.value = '';
+    }
+});
+let hubInvLast = 'inv';
+let hubModesLast = 'play';
 let hubMode = 'extract';        // Play-Tab: extract | pvp
 let pvpLobbies = [];
 let pvpLobbiesAt = 0;
 
 function hubSetUtil(i, base, n) {
-    wsSend({ type: 'arEquip', slot: 'util' + i, base: base || null, n });
+    wsSend({ type: 'arEquip', mode: hubMode, slot: 'util' + i, base: base || null, n });
 }
 
 function hubSalvage(uids) {
@@ -11221,6 +11288,18 @@ $('hub-body').addEventListener('click', e => {
         return hubDraw();
     }
     if (hubTab === 'profile') return profClick(t, ds, e);
+    if (ds.preset) {
+        const i = ds.i === undefined ? undefined : Number(ds.i);
+        const list = (hub.presets && hub.presets[hubMode]) || [];
+        if (ds.preset === 'save') {
+            const name = i === undefined ? prompt('Name for this loadout:', `Loadout ${list.length + 1}`) : list[i].name;
+            if (name === null) return;
+            if (i !== undefined && !confirm(`Overwrite "${list[i].name}" with the current loadout?`)) return;
+            return wsSend({ type: 'arPreset', mode: hubMode, op: 'save', i, name });
+        }
+        if (ds.preset === 'delete' && !confirm(`Delete "${list[i].name}"?`)) return;
+        return wsSend({ type: 'arPreset', mode: hubMode, op: ds.preset, i });
+    }
     if (ds.pvp) return pvpClick(ds);
     if (t.id === 'hub-deploy') return wsSend({ type: 'shJoin' });
     if (t.id === 'hub-salvage-picked') return hubSalvage([...hubMulti]);
@@ -11231,17 +11310,17 @@ $('hub-body').addEventListener('click', e => {
     if (ds.takeoff) {
         const s = ds.takeoff;
         if (s.startsWith('util')) hubSetUtil(Number(s.slice(4)), null, 0);
-        else wsSend({ type: 'arEquip', slot: s, uid: null });
+        else wsSend({ type: 'arEquip', mode: hubMode, slot: s, uid: null });
         return;
     }
     if (ds.util !== undefined) {
-        const u = hub.loadout.util[Number(ds.util)];
+        const u = hubLO().util[Number(ds.util)];
         if (u) hubSetUtil(Number(ds.util), u.base, u.n + Number(ds.d));
         return;
     }
     if (ds.utilset !== undefined) return hubSetUtil(Number(ds.utilset), ds.base, arenaCat.utils[ds.base].stack);
-    if (ds.equip) return wsSend({ type: 'arEquip', slot: ds.equip, uid: ds.uid });
-    if (ds.unequip) return wsSend({ type: 'arEquip', slot: ds.unequip, uid: null });
+    if (ds.equip) return wsSend({ type: 'arEquip', mode: hubMode, slot: ds.equip, uid: ds.uid });
+    if (ds.unequip) return wsSend({ type: 'arEquip', mode: hubMode, slot: ds.unequip, uid: null });
     if (ds.salvage) {
         const it = hub.inv.find(x => x.uid === ds.salvage);
         if (it && tierIdx(it.tier) >= 2 && it.kind !== 'util' && !confirm(`Salvage ${it.name} (${tierName(it.tier)})?`)) return;
@@ -11266,7 +11345,7 @@ $('hub-body').addEventListener('click', e => {
     if (hubTab === 'equip' && ds.uid && t.closest('[data-stash]')) {
         const it = hub.inv.find(x => x.uid === ds.uid);
         if (!it) return;
-        hubPick = it.kind === 'weapon' ? (hub.loadout.primary ? 'secondary' : 'primary') : it.kind === 'pack' ? 'backpack' : it.kind === 'util' ? 'util0' : it.slot;
+        hubPick = it.kind === 'weapon' ? (hubLO().primary ? 'secondary' : 'primary') : it.kind === 'pack' ? 'backpack' : it.kind === 'util' ? 'util0' : it.slot;
         return hubDraw();
     }
     // Item in der Auswahl eines Slots: ausruesten
@@ -11274,7 +11353,7 @@ $('hub-body').addEventListener('click', e => {
         const it = hub.inv.find(x => x.uid === ds.uid);
         if (!it) return;
         if (hubPick.startsWith('util')) hubSetUtil(Number(hubPick.slice(4)), it.base, arenaCat.utils[it.base].stack);
-        else wsSend({ type: 'arEquip', slot: hubPick, uid: it.uid });
+        else wsSend({ type: 'arEquip', mode: hubMode, slot: hubPick, uid: it.uid });
         return;
     }
     if (ds.slot) {
@@ -11791,6 +11870,13 @@ function shOthers() {
     });
 }
 
+// Preis mit Rabatt aus dem Zombie-Baum (Bargain, Perk-aholic)
+function zPrice(s) {
+    const z = shSnaps.length && shSnaps[shSnaps.length - 1].zmb;
+    if (!z || !s.price) return s.price;
+    return Math.round(s.price * (s.kind === 'perk' ? z.perkDisc || 1 : z.disc || 1));
+}
+
 // Aussehen einer Station (Extraction: Sani/Haendler, Zombies: Kaufstationen)
 function stationLook(s) {
     const m = sh.map;
@@ -11798,14 +11884,14 @@ function stationLook(s) {
     if (s.kind === 'trader') return { icon: '🏪', rgb: '255,210,63', label: 'Trader', hint: 'F · trade (buy with scrap, sell your loot)' };
     if (s.kind === 'wall') {
         const w = arenaCat.weapons[s.base] || {};
-        return { icon: w.icon || '🔫', rgb: '120,180,255', label: `${w.name || s.base} · 💰 ${s.price}`, hint: `F · buy ${w.name || s.base} (${s.price} points)` };
+        return { icon: w.icon || '🔫', rgb: '120,180,255', label: `${w.name || s.base} · 💰 ${zPrice(s)}`, hint: `F · buy ${w.name || s.base} (${zPrice(s)} points)` };
     }
-    if (s.kind === 'box') return { icon: '🎁', rgb: '184,132,255', label: `Mystery box · 💰 ${s.price}`, hint: `F · mystery box: random weapon (${s.price} points)` };
-    if (s.kind === 'heal') return { icon: '💉', rgb: '0,214,122', label: `Heal · 💰 ${s.price}`, hint: `F · heal to full (${s.price} points)` };
-    if (s.kind === 'pap') return { icon: '⚡', rgb: '255,120,255', label: `Pack-a-Punch · 💰 ${s.price}`, hint: `F · upgrade your weapon: ×1.6 damage (${s.price} points)` };
+    if (s.kind === 'box') return { icon: '🎁', rgb: '184,132,255', label: `Mystery box · 💰 ${zPrice(s)}`, hint: `F · mystery box: random weapon (${zPrice(s)} points)` };
+    if (s.kind === 'heal') return { icon: '💉', rgb: '0,214,122', label: `Heal · 💰 ${zPrice(s)}`, hint: `F · heal to full (${zPrice(s)} points)` };
+    if (s.kind === 'pap') return { icon: '⚡', rgb: '255,120,255', label: `Pack-a-Punch · 💰 ${zPrice(s)}`, hint: `F · upgrade your weapon: ×1.6 damage (${zPrice(s)} points)` };
     if (s.kind === 'perk') {
         const d = (m.perks || {})[s.perk] || {};
-        return { icon: d.icon || '🥤', rgb: '255,160,60', label: `${d.name} · 💰 ${s.price}`, hint: `F · ${d.name}: ${d.desc} (${s.price} points)` };
+        return { icon: d.icon || '🥤', rgb: '255,160,60', label: `${d.name} · 💰 ${zPrice(s)}`, hint: `F · ${d.name}: ${d.desc} (${zPrice(s)} points)` };
     }
     return { icon: '❔', rgb: '200,200,200', label: s.kind, hint: 'F' };
 }
