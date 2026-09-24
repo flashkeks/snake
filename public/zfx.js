@@ -5,9 +5,10 @@
 
 const ZB_COL = {
     abomination: '184,79,255', necro: '124,255,178', brood: '255,123,58',
-    inferno: '255,90,30', storm: '90,216,255', overlord: '200,107,255'
+    inferno: '255,90,30', storm: '90,216,255', overlord: '200,107,255',
+    judge: '127,216,255', seraph: '255,207,58', omega: '176,107,255'
 };
-const ZB_NEW = ['necro', 'brood', 'inferno', 'storm', 'overlord'];
+const ZB_NEW = ['necro', 'brood', 'inferno', 'storm', 'overlord', 'judge', 'seraph', 'omega'];
 
 // Kleine Helfer
 const zHash = id => {
@@ -614,8 +615,492 @@ function zDrawBoss(c, bs, BR, now) {
         c.restore();
         return true;
     }
+    // ---------- 6.9: Bullet-Hell-Bosse ----------
+    if (bs.kind === 'judge') {
+        // Judge Bones: Skelett im blauen Hoodie, schwebt, linkes Auge lodert blau
+        const fl = Math.sin(now / 420) * 6;
+        c.translate(0, fl);
+        // Knochenkranz
+        c.save();
+        c.rotate(now / 1500);
+        for (let i = 0; i < 10; i++) {
+            c.save();
+            c.rotate(i / 10 * Math.PI * 2);
+            c.translate(BR * 1.75, 0);
+            c.rotate(Math.PI / 2 + Math.sin(now / 300 + i) * .3);
+            zBone(c, 0, 0, BR * .5, 5, 'rgba(235,245,255,.85)');
+            c.restore();
+        }
+        c.restore();
+        // Schatten
+        c.fillStyle = 'rgba(0,0,0,.35)';
+        c.beginPath();
+        c.ellipse(0, BR * 1.25 - fl, BR * .8, BR * .2, 0, 0, Math.PI * 2);
+        c.fill();
+        // Hoodie
+        c.fillStyle = '#2c4a8c';
+        c.strokeStyle = '#0d1a33';
+        c.lineWidth = 3;
+        c.beginPath();
+        c.moveTo(-BR * .95, BR * 1.05);
+        c.quadraticCurveTo(-BR * 1.1, BR * .1, -BR * .55, -BR * .05);
+        c.lineTo(BR * .55, -BR * .05);
+        c.quadraticCurveTo(BR * 1.1, BR * .1, BR * .95, BR * 1.05);
+        c.closePath();
+        c.fill();
+        c.stroke();
+        // Fellkragen
+        c.fillStyle = '#e8eef7';
+        for (let i = -4; i <= 4; i++) {
+            c.beginPath();
+            c.arc(i * BR * .14, -BR * .02 + Math.abs(i) * 2, BR * .13, 0, Math.PI * 2);
+            c.fill();
+        }
+        // Reissverschluss, Taschen
+        c.strokeStyle = '#9fb6e0';
+        c.lineWidth = 2;
+        c.beginPath();
+        c.moveTo(0, BR * .15);
+        c.lineTo(0, BR * 1.02);
+        c.stroke();
+        // Schaedel
+        const sk = c.createRadialGradient(-BR * .2, -BR * .75, 4, 0, -BR * .55, BR * .8);
+        sk.addColorStop(0, '#ffffff');
+        sk.addColorStop(1, '#c9d3e0');
+        c.fillStyle = sk;
+        c.strokeStyle = '#1a2233';
+        c.lineWidth = 3;
+        c.beginPath();
+        c.ellipse(0, -BR * .6, BR * .72, BR * .62, 0, 0, Math.PI * 2);
+        c.fill();
+        c.stroke();
+        // Augenhoehlen
+        c.fillStyle = '#05070c';
+        for (const sx of [-1, 1]) {
+            c.beginPath();
+            c.ellipse(sx * BR * .28, -BR * .7, BR * .17, BR * .19, 0, 0, Math.PI * 2);
+            c.fill();
+        }
+        // Auge: blau/gelb flackernd, bei Wut riesig
+        const flick = .6 + .4 * Math.sin(now / 45);
+        const er = BR * (bs.enraged ? .16 : .09);
+        zGlow(c, -BR * .28, -BR * .7, BR * (bs.enraged ? .9 : .55), bs.enraged && flick > .8 ? '255,230,90' : '80,200,255', .6 * flick);
+        c.fillStyle = bs.enraged && flick > .8 ? '#ffe75a' : '#7fe6ff';
+        c.beginPath();
+        c.arc(-BR * .28, -BR * .7, er, 0, Math.PI * 2);
+        c.fill();
+        // Flamme ueber dem Auge
+        c.fillStyle = `rgba(127,230,255,${.5 * flick})`;
+        c.beginPath();
+        c.moveTo(-BR * .38, -BR * .72);
+        c.quadraticCurveTo(-BR * .3, -BR * (1.15 + .15 * flick), -BR * .18, -BR * .72);
+        c.fill();
+        c.fillStyle = '#fff';
+        c.beginPath();
+        c.arc(BR * .28, -BR * .7, BR * .05, 0, Math.PI * 2);
+        c.fill();
+        // Grinsen
+        c.strokeStyle = '#1a2233';
+        c.lineWidth = 2.5;
+        c.beginPath();
+        c.arc(0, -BR * .52, BR * .42, .25 * Math.PI, .75 * Math.PI);
+        c.stroke();
+        for (let i = -3; i <= 3; i++) {
+            const t = Math.PI / 2 + i * .11;
+            c.beginPath();
+            c.moveTo(Math.cos(t) * BR * .36, -BR * .52 + Math.sin(t) * BR * .36);
+            c.lineTo(Math.cos(t) * BR * .47, -BR * .52 + Math.sin(t) * BR * .47);
+            c.stroke();
+        }
+        c.restore();
+        return true;
+    }
+    if (bs.kind === 'seraph') {
+        // Solaris: Sonne mit Korona, sechs Lichtfluegel; bei Wut Sonnenfinsternis
+        const beat = 1 + .04 * Math.sin(now / 180);
+        // Fluegel
+        for (let i = 0; i < 6; i++) {
+            const side = i < 3 ? -1 : 1, j = i % 3;
+            const flap = Math.sin(now / 260 + j) * .18;
+            c.save();
+            c.rotate(side * (Math.PI / 2 + (j - 1) * .5 + flap));
+            const g = c.createLinearGradient(0, 0, 0, -BR * 2.6);
+            g.addColorStop(0, 'rgba(255,240,180,.85)');
+            g.addColorStop(1, 'rgba(255,170,40,0)');
+            c.fillStyle = g;
+            c.beginPath();
+            c.moveTo(-BR * .22, -BR * .6);
+            c.quadraticCurveTo(-BR * .7, -BR * 1.8, 0, -BR * 2.7);
+            c.quadraticCurveTo(BR * .7, -BR * 1.8, BR * .22, -BR * .6);
+            c.fill();
+            // Federlinien
+            c.strokeStyle = 'rgba(255,255,255,.35)';
+            c.lineWidth = 1.5;
+            for (let f = 1; f <= 3; f++) {
+                c.beginPath();
+                c.moveTo(0, -BR * .7);
+                c.lineTo((f - 2) * BR * .22, -BR * (1.6 + f * .25));
+                c.stroke();
+            }
+            c.restore();
+        }
+        // Korona: zwei Zackenkraenze gegenlaeufig
+        for (const [dir, n, len, col] of [[1, 18, 1.55, 'rgba(255,200,60,.8)'], [-1, 12, 1.85, 'rgba(255,120,30,.6)']]) {
+            c.save();
+            c.rotate(dir * now / 900);
+            c.fillStyle = col;
+            c.beginPath();
+            for (let i = 0; i <= n * 2; i++) {
+                const t = i / (n * 2) * Math.PI * 2;
+                const rr = BR * (i % 2 ? 1.02 : len + .12 * Math.sin(now / 120 + i));
+                i ? c.lineTo(Math.cos(t) * rr, Math.sin(t) * rr) : c.moveTo(Math.cos(t) * rr, Math.sin(t) * rr);
+            }
+            c.fill();
+            c.restore();
+        }
+        // Kern
+        const core = c.createRadialGradient(-BR * .2, -BR * .2, 2, 0, 0, BR * beat);
+        core.addColorStop(0, '#ffffff');
+        core.addColorStop(.35, '#fff2a8');
+        core.addColorStop(.75, '#ffb21e');
+        core.addColorStop(1, '#ff6a00');
+        c.fillStyle = core;
+        c.beginPath();
+        c.arc(0, 0, BR * beat, 0, Math.PI * 2);
+        c.fill();
+        // Sonnenflecken wandern
+        c.fillStyle = 'rgba(200,90,0,.35)';
+        for (let i = 0; i < 4; i++) {
+            const t = now / 2000 + i * 1.7;
+            c.beginPath();
+            c.arc(Math.cos(t) * BR * .55, Math.sin(t * 1.3) * BR * .45, BR * (.08 + .04 * i), 0, Math.PI * 2);
+            c.fill();
+        }
+        if (bs.enraged) {
+            // Finsternis: schwarze Scheibe schiebt sich davor, Diamantring
+            const off = BR * (.25 + .1 * Math.sin(now / 700));
+            c.fillStyle = '#0a0612';
+            c.beginPath();
+            c.arc(off, -off * .4, BR * .93, 0, Math.PI * 2);
+            c.fill();
+            zGlow(c, -BR * .78, BR * .3, BR * .5, '255,255,255', .9);
+        } else {
+            // drei Augen
+            for (const [ex, ey] of [[-.32, -.1], [.32, -.1], [0, -.45]]) {
+                c.fillStyle = '#fff';
+                c.beginPath();
+                c.ellipse(ex * BR, ey * BR, BR * .13, BR * .08, 0, 0, Math.PI * 2);
+                c.fill();
+                c.fillStyle = '#7a2a00';
+                c.beginPath();
+                c.arc(ex * BR + Math.cos(a) * 3, ey * BR + Math.sin(a) * 2, BR * .05, 0, Math.PI * 2);
+                c.fill();
+            }
+        }
+        c.restore();
+        return true;
+    }
+    if (bs.kind === 'omega') {
+        // Omega: Leere mit Ereignishorizont, gekippte Ringe, Tentakel aus Nichts
+        // Tentakel
+        c.lineCap = 'round';
+        for (let i = 0; i < 8; i++) {
+            const t0 = i / 8 * Math.PI * 2 + now / 3000;
+            c.strokeStyle = `rgba(40,0,70,${.85})`;
+            c.lineWidth = 14 - i % 3 * 2;
+            c.beginPath();
+            c.moveTo(Math.cos(t0) * BR * .8, Math.sin(t0) * BR * .8);
+            const w1 = Math.sin(now / 400 + i) * BR * .6, w2 = Math.cos(now / 330 + i * 2) * BR * .7;
+            c.bezierCurveTo(Math.cos(t0) * BR * 1.5 - Math.sin(t0) * w1, Math.sin(t0) * BR * 1.5 + Math.cos(t0) * w1,
+                Math.cos(t0) * BR * 2.1 + Math.sin(t0) * w2, Math.sin(t0) * BR * 2.1 - Math.cos(t0) * w2,
+                Math.cos(t0 + .3) * BR * 2.7, Math.sin(t0 + .3) * BR * 2.7);
+            c.stroke();
+            c.strokeStyle = 'rgba(190,120,255,.5)';
+            c.lineWidth = 2;
+            c.stroke();
+        }
+        // Ringe (gekippte Ellipsen) mit Glyphen
+        for (let r = 0; r < 3; r++) {
+            c.save();
+            c.rotate(r * 1.05 + now / (2200 + r * 700));
+            c.strokeStyle = `rgba(200,150,255,${.55 - r * .12})`;
+            c.lineWidth = 2;
+            c.beginPath();
+            c.ellipse(0, 0, BR * (1.45 + r * .3), BR * (.42 + r * .1), 0, 0, Math.PI * 2);
+            c.stroke();
+            for (let g = 0; g < 6; g++) {
+                const t = g / 6 * Math.PI * 2 + now / 600;
+                c.fillStyle = '#e8d6ff';
+                c.font = `${10 + r * 2}px serif`;
+                c.fillText('ΩΣΔΨΦΞ'[g], Math.cos(t) * BR * (1.45 + r * .3) - 4, Math.sin(t) * BR * (.42 + r * .1) + 4);
+            }
+            c.restore();
+        }
+        // Ereignishorizont
+        const eh = c.createRadialGradient(0, 0, BR * .3, 0, 0, BR * 1.15);
+        eh.addColorStop(0, '#000');
+        eh.addColorStop(.7, '#07000f');
+        eh.addColorStop(.88, bs.enraged ? '#ff2a5a' : '#b06bff');
+        eh.addColorStop(1, 'rgba(176,107,255,0)');
+        c.fillStyle = eh;
+        c.beginPath();
+        c.arc(0, 0, BR * 1.15, 0, Math.PI * 2);
+        c.fill();
+        // Sternenstaub, der hineinfaellt
+        for (let i = 0; i < 14; i++) {
+            const t = (now / 1400 + i / 14) % 1;
+            const ang = i * 2.4 + now / 900;
+            const rr = BR * (1.9 - t * 1.6);
+            c.fillStyle = `rgba(255,255,255,${.8 * (1 - t)})`;
+            c.fillRect(Math.cos(ang) * rr, Math.sin(ang) * rr, 2.5, 2.5);
+        }
+        // Pupille: weisser Stern, bei Wut rote Risse
+        zGlow(c, Math.cos(a) * 5, Math.sin(a) * 5, BR * .45, bs.enraged ? '255,60,90' : '230,210,255', .8);
+        c.fillStyle = '#fff';
+        c.beginPath();
+        for (let i = 0; i <= 8; i++) {
+            const t = i / 8 * Math.PI * 2 + now / 500, rr = i % 2 ? BR * .06 : BR * .2;
+            const px = Math.cos(a) * 5 + Math.cos(t) * rr, py = Math.sin(a) * 5 + Math.sin(t) * rr;
+            i ? c.lineTo(px, py) : c.moveTo(px, py);
+        }
+        c.fill();
+        if (bs.enraged) {
+            c.strokeStyle = 'rgba(255,60,90,.8)';
+            c.lineWidth = 2;
+            for (let i = 0; i < 5; i++) zBolt(c, 0, 0, Math.cos(i * 1.26 + now / 900) * BR, Math.sin(i * 1.26 + now / 900) * BR, 10, 5);
+        }
+        c.restore();
+        return true;
+    }
     c.restore();
     return false;
+}
+
+// Knochen (Judge Bones): Schaft mit zwei Knubbeln an jedem Ende
+function zBone(c, x, y, len, w, col) {
+    c.fillStyle = col;
+    c.fillRect(x - w / 2, y - len / 2, w, len);
+    for (const e of [-1, 1]) {
+        c.beginPath();
+        c.arc(x - w * .55, y + e * len / 2, w * .75, 0, Math.PI * 2);
+        c.arc(x + w * .55, y + e * len / 2, w * .75, 0, Math.PI * 2);
+        c.fill();
+    }
+}
+
+// ---------- 6.9: Gefahrenzonen der Bullet-Hell-Bosse ----------
+// z: [id, sh, x, y, p1, p2, p3, p4, bisAktiv, bisEnde, total, look, vx, vy, va, blue, safe]
+// age: ms seit Empfang. Vorwarnung rot (fuellt sich), aktiv je nach look.
+const ZHZ_ACT = { 1: '235,245,255', 2: '220,250,255', 3: '60,140,255', 4: '255,190,40', 5: '255,120,30', 6: '176,107,255', 7: '200,120,255', 8: '255,60,200' };
+
+function zHzPath(c, sh, x, y, p1, p2, p3, p4) {
+    c.beginPath();
+    if (sh === 0) c.arc(x, y, p1, 0, Math.PI * 2);
+    else if (sh === 1) {
+        c.save();
+        c.translate(x, y);
+        c.rotate(p3);
+        c.rect(-p1 / 2, -p2 / 2, p1, p2);
+        c.restore();
+    } else if (sh === 2) {
+        const gs = p4 || 0;
+        const a0 = p3 + gs / 2, a1 = p3 - gs / 2 + Math.PI * 2;
+        c.arc(x, y, p2, a0, a1);
+        c.arc(x, y, p1, a1, a0, true);
+        c.closePath();
+    } else if (sh === 3) {
+        c.moveTo(x, y);
+        c.arc(x, y, p1, p2 - p3 / 2, p2 + p3 / 2);
+        c.closePath();
+    }
+}
+
+function zDrawHazards(c, list, age, now) {
+    const map = (typeof sh !== 'undefined' && sh && sh.map) || { w: 2600, h: 1800 };
+    for (const z of list || []) {
+        const [, shp, x0, y0, p1, p2, p3, p4, toAct, toEnd, total, look, vx, vy, va, blue, safe] = z;
+        const left = toAct - age;
+        const rgb = ZHZ_ACT[look] || '255,255,255';
+        if (left > 0) {
+            // ---------- Vorwarnung ----------
+            const k = Math.max(0, Math.min(1, 1 - left / total));
+            const pulse = .5 + .5 * Math.sin(now / 90);
+            if (shp === 4) {
+                // alles ausser den Inseln (bzw. blau: ganzer Bildschirm)
+                c.save();
+                c.fillStyle = blue ? `rgba(60,140,255,${.1 + .18 * k})` : `rgba(255,30,30,${.08 + .2 * k})`;
+                c.beginPath();
+                c.rect(-400, -400, map.w + 800, map.h + 800);
+                for (const [sx, sy, sr] of safe || []) {
+                    c.moveTo(sx + sr, sy);
+                    c.arc(sx, sy, sr, 0, Math.PI * 2, true);
+                }
+                c.fill('evenodd');
+                for (const [sx, sy, sr] of safe || []) {
+                    c.strokeStyle = `rgba(90,255,140,${.6 + .4 * pulse})`;
+                    c.lineWidth = 5;
+                    c.setLineDash([18, 10]);
+                    c.beginPath();
+                    c.arc(sx, sy, sr, now / 500, now / 500 + Math.PI * 2);
+                    c.stroke();
+                    c.setLineDash([]);
+                    c.fillStyle = '#7dffb0';
+                    c.font = 'bold 20px system-ui';
+                    c.textAlign = 'center';
+                    c.fillText('SAFE', sx, sy + 7);
+                }
+                c.restore();
+                continue;
+            }
+            c.save();
+            // Bewegte Zonen: ganze Bahn schwach rot, Pfeile in Laufrichtung
+            if (vx || vy) {
+                const len = Math.hypot(map.w, map.h);
+                c.fillStyle = `rgba(255,40,40,${.05 + .08 * k})`;
+                c.save();
+                c.translate(x0, y0);
+                c.rotate(Math.atan2(vy, vx));
+                const across = shp === 1 ? (Math.abs(vx) > Math.abs(vy) ? p2 : p1) : p1 * 2;
+                c.fillRect(0, -across / 2, len, across);
+                c.fillStyle = `rgba(255,80,80,${.35 + .4 * pulse})`;
+                for (let d = 80; d < len; d += 260) {
+                    c.beginPath();
+                    c.moveTo(d + ((now / 8) % 260), -26);
+                    c.lineTo(d + 40 + ((now / 8) % 260), 0);
+                    c.lineTo(d + ((now / 8) % 260), 26);
+                    c.fill();
+                }
+                c.restore();
+            }
+            zHzPath(c, shp, x0, y0, p1, p2, p3, p4);
+            c.fillStyle = `rgba(255,30,30,${.12 + .3 * k})`;
+            c.fill();
+            c.strokeStyle = `rgba(255,70,70,${.55 + .45 * pulse})`;
+            c.lineWidth = 3;
+            c.setLineDash([16, 10]);
+            c.stroke();
+            c.setLineDash([]);
+            // Drehrichtung andeuten
+            if (va) {
+                c.strokeStyle = 'rgba(255,90,90,.5)';
+                c.lineWidth = 4;
+                c.beginPath();
+                const a0 = shp === 1 ? p3 : p2;
+                c.arc(x0, y0, 140, a0, a0 + Math.sign(va) * 1.2, va < 0);
+                c.stroke();
+            }
+            // Meteor faellt
+            if (look === 5) {
+                const fall = (1 - k) * 420;
+                zGlow(c, x0 + fall * .5, y0 - fall, 40, '255,140,40', .7);
+                drawEmojiC(c, '☄️', x0 + fall * .5, y0 - fall, 48);
+            }
+            c.restore();
+            continue;
+        }
+        // ---------- aktiv ----------
+        const t = -left / 1000;
+        const x = x0 + vx * t, y = y0 + vy * t;
+        const fade = Math.max(0, Math.min(1, (toEnd - age) / 250));
+        if (shp === 4) {
+            c.save();
+            if (blue) {
+                c.fillStyle = `rgba(40,110,255,${(.18 + .08 * Math.sin(now / 80)) * fade})`;
+                c.fillRect(-400, -400, map.w + 800, map.h + 800);
+            } else {
+                c.fillStyle = `rgba(${rgb},${.45 * fade})`;
+                c.beginPath();
+                c.rect(-400, -400, map.w + 800, map.h + 800);
+                for (const [sx, sy, sr] of safe || []) {
+                    c.moveTo(sx + sr, sy);
+                    c.arc(sx, sy, sr, 0, Math.PI * 2, true);
+                }
+                c.fill('evenodd');
+            }
+            c.restore();
+            continue;
+        }
+        const P1 = p1, P2 = shp === 3 ? p2 + va * t : p2, P3 = shp === 1 ? p3 + va * t : p3;
+        c.save();
+        c.shadowColor = `rgb(${rgb})`;
+        c.shadowBlur = 24;
+        zHzPath(c, shp, x, y, P1, P2, P3, p4);
+        if (look === 4 || look === 5) {
+            const g = shp === 0 || shp === 2 || shp === 3 ? c.createRadialGradient(x, y, 0, x, y, shp === 2 ? p2 : P1) : null;
+            if (g) {
+                g.addColorStop(0, `rgba(255,255,220,${.95 * fade})`);
+                g.addColorStop(.6, `rgba(255,180,40,${.85 * fade})`);
+                g.addColorStop(1, `rgba(255,80,0,${.6 * fade})`);
+                c.fillStyle = g;
+            } else c.fillStyle = `rgba(255,200,60,${.85 * fade})`;
+        } else if (look === 6 || look === 7) {
+            c.fillStyle = `rgba(20,0,40,${.9 * fade})`;
+        } else c.fillStyle = `rgba(${rgb},${.85 * fade})`;
+        c.fill();
+        c.shadowBlur = 0;
+        c.strokeStyle = look === 6 || look === 7 ? `rgba(200,140,255,${fade})` : `rgba(255,255,255,${.9 * fade})`;
+        c.lineWidth = look === 7 ? 4 : 2;
+        c.stroke();
+        // Einzelheiten je Look
+        if (look === 1 && shp === 1) {
+            // Knochenwand: Knochen quer zur Laufrichtung
+            c.save();
+            c.translate(x, y);
+            c.rotate(P3);
+            const along = p1 > p2, L = along ? p1 : p2, Wd = along ? p2 : p1;
+            for (let d = -L / 2 + 20; d < L / 2; d += 26) {
+                c.save();
+                if (along) c.translate(d, 0);
+                else {
+                    c.translate(0, d);
+                    c.rotate(Math.PI / 2);
+                }
+                c.rotate(Math.PI / 2);
+                zBone(c, 0, 0, Wd * .9, 6, `rgba(255,255,255,${fade})`);
+                c.restore();
+            }
+            c.restore();
+        } else if (look === 2 && shp === 1) {
+            // Blaster: weisser Kern, Schaedel am Rand
+            c.save();
+            c.translate(x, y);
+            c.rotate(P3);
+            c.fillStyle = `rgba(255,255,255,${fade})`;
+            c.fillRect(-p1 / 2, -p2 * .22, p1, p2 * .44);
+            for (const e of [-1, 1]) {
+                c.save();
+                c.translate(e * Math.min(p1 / 2 - 60, 1300), 0);
+                c.rotate(e > 0 ? Math.PI : 0);
+                c.fillStyle = '#f4f8ff';
+                c.beginPath();
+                c.moveTo(-90, -70);
+                c.quadraticCurveTo(-150, 0, -90, 70);
+                c.lineTo(40, 45);
+                c.lineTo(80, 0);
+                c.lineTo(40, -45);
+                c.closePath();
+                c.fill();
+                c.fillStyle = '#6fe0ff';
+                for (const ey of [-28, 28]) {
+                    c.beginPath();
+                    c.arc(-60, ey, 12, 0, Math.PI * 2);
+                    c.fill();
+                }
+                c.restore();
+            }
+            c.restore();
+        } else if (look === 6 || look === 7) {
+            // Void: Sterne im Schwarz
+            c.save();
+            zHzPath(c, shp, x, y, P1, P2, P3, p4);
+            c.clip();
+            c.fillStyle = `rgba(255,255,255,${.8 * fade})`;
+            const bx = x - 800, by = y - 800;
+            for (let i = 0; i < 60; i++) c.fillRect(bx + (i * 173 + now / 20) % 1600, by + (i * 97) % 1600, 2, 2);
+            c.restore();
+        }
+        c.restore();
+    }
 }
 
 // ---------- Kugeln der Bosse (tier 11–15) ----------

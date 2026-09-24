@@ -12719,6 +12719,8 @@ function shFrame() {
         c.strokeRect(x, y, w, dh);
         drawEmojiC(c, '🚪', x + w / 2, y + dh / 2, 22);
     }
+    // Gefahrenzonen der Bullet-Hell-Bosse (6.9, zfx.js)
+    if (latest.hz) zDrawHazards(c, latest.hz, now - latest.recv, now);
     // Einschlaege (4.6): Warnkreis fuellt sich bis zum Knall
     for (const [, sx, sy, sr, left, total, look] of latest.strikes || []) {
         const k = Math.max(0, Math.min(1, 1 - (left - (now - latest.recv)) / total));
