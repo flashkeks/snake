@@ -60,7 +60,9 @@ function kmLoadCat(v) {
         const cards = d.cards.map(a => ({
             id: a[0], set: a[1], num: a[2], name: a[3], img: a[4], from: a[5], type: a[6], rarity: a[7],
             hp: a[8], atk: a[9], def: a[10], spd: a[11], weak: d.types[a[6]].weak,
-            attacks: a[12].map(x => ({ name: x[0], cost: x[1], dmg: x[2], effect: x[3] }))
+            // Kampf 6.0: Stil, Werte, vier Attacken
+            style: a[12][0], bst: Object.fromEntries(['hp', 'atk', 'def', 'spa', 'spd', 'spe'].map((k, i) => [k, a[12][1][i]])),
+            moves: a[12][2].map(x => ({ name: x[0], type: x[1], cat: x[2], pow: x[3], acc: x[4], pp: x[5], pri: x[6], desc: x[7], eff: x[8] || null }))
         }));
         const ridx = Object.fromEntries(d.rarities.map((r, i) => [r.id, i]));
         kmCat = { ...d, v, cards, ridx, byId: Object.fromEntries(cards.map(c => [c.id, c])) };
@@ -118,8 +120,9 @@ function kmHead() {
 
 // ---------- Karte zeichnen ----------
 
-function kmCost(n, type) {
-    return kmCat.types[type].icon.repeat(n);
+// Typen, gegen die dieser Typ schwach ist / die er aushaelt (Typ-Tabelle 6.0)
+function kmWeakTo(type) {
+    return Object.keys(kmCat.types).filter(t => (kmCat.chart[t] || {})[type] > 1);
 }
 
 // Kleine Baelle als SVG (Pokeball rot, Masterball lila mit M)
@@ -140,7 +143,7 @@ function kmCard(c, opt = {}) {
     const cls = ['kc', 'r-' + c.rarity, opt.mini ? 'mini' : '', opt.missing ? 'missing' : '', holo ? 'holo' : '',
         ball ? 'ball-' + ball : '', v.includes('s') ? 'shiny' : ''].filter(Boolean).join(' ');
     const set = kmCat.sets[c.set];
-    const atk = c.attacks.map(a => `<div class="kc-atk"><span class="cost">${kmCost(a.cost, c.type)}</span><span class="an">${esc(a.name)}</span><span class="dmg">${a.dmg}</span>${a.effect !== 'none' ? `<span class="fx">${esc(kmCat.effects[a.effect])}</span>` : ''}</div>`).join('');
+    const atk = c.moves.map(m => `<div class="kc-atk" title="${esc(m.desc || '')}"><span class="cost">${kmCat.types[m.type].icon}</span><span class="an">${esc(m.name)}</span><span class="dmg">${m.pow || '—'}</span></div>`).join('');
     const W = kmCat.types[c.weak];
     const img = esc(c.img);
     // Bild ganz zeigen (contain), dahinter dieselbe Grafik unscharf als Fuellung
@@ -152,7 +155,7 @@ function kmCard(c, opt = {}) {
             <div class="kc-from">${opt.missing ? set.icon + ' ' + esc(set.name) : esc(c.from)}</div>
             ${atk}
             <div class="kc-stats"><span>⚔️ ${c.atk}</span><span>🛡️ ${c.def}</span><span>💨 ${c.spd}</span></div>
-            <div class="kc-foot"><span>weak ${W.icon}×1.5</span><span>${esc(c.num)}</span><span class="kc-gem" style="color:${R.color}">${esc(R.name)}</span></div>
+            <div class="kc-foot"><span>weak ${kmWeakTo(c.type).map(t => kmCat.types[t].icon).join('')}</span><span>${esc(c.num)}</span><span class="kc-gem" style="color:${R.color}">${esc(R.name)}</span></div>
         </div>
     </div>`;
 }
@@ -330,12 +333,26 @@ function kmView(id, showV) {
     v.innerHTML = kmCard(c, { missing: !o, v: cur }) + `<div class="km-info">
         <h3>${o ? esc(c.name) : '???'}</h3>
         <div>${o ? esc(c.from) + '<br>' : ''}${kmCat.sets[c.set].icon} ${esc(kmCat.sets[c.set].name)} · ${esc(c.num)}</div>
-        <div>${T.icon} ${esc(T.name)} · <b style="color:${R.color}">${esc(R.name)}</b> · weak to ${kmCat.types[c.weak].icon} ${esc(kmCat.types[c.weak].name)}</div>
+        <div>${T.icon} ${esc(T.name)} · <b style="color:${R.color}">${esc(R.name)}</b> · weak to ${kmWeakTo(c.type).map(t => kmCat.types[t].icon + ' ' + esc(kmCat.types[t].name)).join(', ')}</div>
+        ${o ? kmBattleInfo(c) : ''}
         <div style="margin-top:8px">${o ? `You own <b>${o.total}</b>` : 'You do not own this card yet'}</div>
         ${vars}
         <button type="button" id="km-view-close">Close</button>
     </div>`;
     v.hidden = false;
+}
+
+// Kampfwerte und Attacken in der Detailansicht (6.0)
+function kmBattleInfo(c) {
+    const max = 160;
+    const bars = [['hp', 'HP'], ['atk', 'Atk'], ['def', 'Def'], ['spa', 'SpA'], ['spd', 'SpD'], ['spe', 'Spe']].map(([k, l]) =>
+        `<div class="km-bst"><span>${l}</span><b>${c.bst[k]}</b><i style="width:${Math.min(100, c.bst[k] / (k === 'hp' ? 260 : max) * 100)}%"></i></div>`).join('');
+    const moves = c.moves.map(m => {
+        const T = kmCat.types[m.type];
+        return `<div class="km-mv" style="--tc:${T.color}"><b>${esc(m.name)}</b><span>${T.icon} ${m.cat === 'phys' ? '💥' : m.cat === 'spec' ? '🌀' : '✨'} ${m.pow || '—'}${m.acc ? ' · ' + m.acc + '%' : ''} · PP ${m.pp}</span>${m.desc ? `<small>${esc(m.desc)}</small>` : ''}</div>`;
+    }).join('');
+    return `<div class="km-bt"><div class="km-bsts">${bars}</div><div class="km-mvs">${moves}</div>
+        <small class="hint">${c.style === 'phys' ? '💥 Physical attacker' : '🌀 Special attacker'}</small></div>`;
 }
 
 // ---------- Pack oeffnen ----------
@@ -611,16 +628,17 @@ function kbGymOf(id) {
     return kb && kb.gyms.find(g => g.id === id);
 }
 
-// Frischer Kampf: vorher alle voll, Energie 0, erste Karte vorne
+// Frischer Kampf: alle voll, kein Status, volle PP, erste Karte vorne
 function kbFresh(view) {
     const v = JSON.parse(JSON.stringify(view));
     for (const s of v.sides) {
         s.active = 0;
-        for (const c of s.cards) Object.assign(c, { hp: c.maxHp, energy: 0, burn: 0, stun: false, boost: 0 });
+        for (const c of s.cards) {
+            Object.assign(c, { hp: c.maxHp, status: null, boosts: { atk: 0, def: 0, spa: 0, spd: 0, spe: 0 } });
+            for (const m of c.moves) m.pp = m.ppMax;
+        }
     }
-    v.over = false;
-    v.needSwitch = false;
-    v.foeSwitch = false;
+    Object.assign(v, { over: false, need: null, waiting: false, needSwitch: false, foeSwitch: false, turn: 1 });
     return v;
 }
 
@@ -713,19 +731,33 @@ function kdInviteDraw() {
         <button type="button" class="gold" data-kdinv="yes" data-id="${i.id}">Accept</button><button type="button" class="ghost" data-kdinv="no" data-id="${i.id}">Decline</button></div>`).join('');
 }
 
-// Schaden wie auf dem Server (nur fuer die Vorschau auf den Knoepfen)
-function kbDmg(att, def, a) {
-    const A = kmCat.byId[att.id], D = kmCat.byId[def.id];
-    let d = a.dmg + (att.boost || 0);
-    const weak = D.weak === A.type;
-    if (weak) d *= KB_WEAK;
-    if (a.effect !== 'pierce') d -= def.def * KB_DEF;
-    return { dmg: Math.max(10, Math.round(d)), weak };
+// ---------- Kampf 6.0 (nach Pokemon Showdown) ----------
+
+const KB_ST = { brn: ['BRN', 'burned'], par: ['PAR', 'paralyzed'], psn: ['PSN', 'poisoned'], slp: ['SLP', 'asleep'] };
+const KB_STAT = { atk: 'Atk', def: 'Def', spa: 'SpA', spd: 'SpD', spe: 'Spe' };
+const KB_STAT_LONG = { atk: 'Attack', def: 'Defense', spa: 'Sp. Atk', spd: 'Sp. Def', spe: 'Speed' };
+const KB_CAT = { phys: ['💥', 'Physical'], spec: ['🌀', 'Special'], status: ['✨', 'Status'] };
+
+const kbStage = n => n >= 0 ? (2 + n) / 2 : 2 / (2 - n);
+const kbEff = (a, d) => a && kmCat.chart[a] && kmCat.chart[a][d] !== undefined ? kmCat.chart[a][d] : 1;
+
+// Schaden wie auf dem Server (km-battle.js calc), als Spanne min–max
+function kbDmg(att, def, m) {
+    if (!m.pow) return null;
+    const e = kbEff(m.type, def.type);
+    if (e === 0) return { e, lo: 0, hi: 0 };
+    const phys = m.cat === 'phys';
+    const A = att.st[phys ? 'atk' : 'spa'] * kbStage(att.boosts[phys ? 'atk' : 'spa']);
+    const D = def.st[phys ? 'def' : 'spd'] * kbStage(def.boosts[phys ? 'def' : 'spd']);
+    const base = Math.floor(Math.floor(22 * m.pow * A / D) / 50) + 2;
+    let mod = (m.type === att.type ? 1.5 : 1) * e;
+    if (phys && att.status === 'brn') mod *= 0.5;
+    return { e, lo: Math.max(1, Math.floor(base * mod * 0.85)), hi: Math.max(1, Math.floor(base * mod)) };
 }
 
-function kbName(v, s) {
-    const c = v.sides[s].cards[v.sides[s].active];
-    return (s === 1 ? v.sides[1].name + "'s " : '') + kmCat.byId[c.id].name;
+function kbNm(v, s, c) {
+    const card = c || v.sides[s].cards[v.sides[s].active];
+    return (s === 1 ? 'The opposing ' : '') + kmCat.byId[card.id].name;
 }
 
 // Ein Ereignis nach dem anderen, mit Pause und Effekt
@@ -746,37 +778,142 @@ function kbPlay(bp, kind) {
     const actv = s => v.sides[s].cards[v.sides[s].active];
     const foeName = v.sides[1].name;
     let wait = 120, anim = null;
-    const log = t => {
-        bp.log.push(t);
-        if (bp.log.length > 40) bp.log.shift();
+    const log = (t, cls) => {
+        bp.log.push({ t, cls: cls || '' });
+        if (bp.log.length > 120) bp.log.shift();
         bp.ticker++;
     };
-    if (e.k === 'start') log(e.first === 0 ? 'You are faster – you start!' : `${foeName} is faster and starts.`);
-    else if (e.k === 'energy') { actv(e.s).energy = e.n; wait = 150; }
-    else if (e.k === 'charge') { actv(e.s).energy = e.n; log(`${kbName(v, e.s)} charges up (⚡ ${e.n})`); anim = { s: e.s, text: '+⚡', cls: 'charge' }; wait = 650; kmSfx('charge'); }
-    else if (e.k === 'burn') { actv(e.s).hp = e.hp; actv(e.s).burn = Math.max(0, actv(e.s).burn - 1); log(`${kbName(v, e.s)} burns for ${e.dmg}`); anim = { s: e.s, text: '🔥 −' + e.dmg, cls: 'hit' }; wait = 700; }
-    else if (e.k === 'stunned') { actv(e.s).stun = false; log(`${kbName(v, e.s)} is stunned and skips the turn`); anim = { s: e.s, text: '💫', cls: 'stun' }; wait = 750; }
-    else if (e.k === 'atk') {
-        const me = actv(e.s), foe = actv(1 - e.s);
-        foe.hp = e.hp;
-        if (e.en !== undefined) me.energy = e.en;
-        if (e.myHp !== undefined) me.hp = e.myHp;
-        if (e.boost) me.boost = e.boost;
-        if (e.eff === 'burn' && e.hp > 0) foe.burn = 3;
-        if (e.eff === 'stun' && e.hp > 0 && !e.resist) foe.stun = true;
-        log(`${kbName(v, e.s)} uses ${e.name}: ${e.dmg} damage${e.weak ? ' – super effective!' : ''}${e.heal ? ` · heals ${e.heal}` : ''}${e.boost ? ' · power up!' : ''}${e.resist ? ' · resisted the stun' : ''}`);
-        anim = { s: 1 - e.s, from: e.s, text: '−' + e.dmg + (e.weak ? ' ×1.5' : ''), cls: e.weak ? 'hit big' : 'hit' };
-        wait = 950;
-        if (e.weak || e.dmg >= 100) kmSfx('fanfare', 'small'); else kmSfx('click');
+    const who = s => kbNm(v, s);
+    switch (e.k) {
+        case 'start':
+            log(kind === 'gym' ? `Battle started against ${foeName}!` : `Battle started: you vs ${foeName}!`, 'head');
+            break;
+        case 'turn':
+            log(`Turn ${e.n}`, 'turn');
+            v.turn = e.n;
+            wait = 200;
+            break;
+        case 'switch': {
+            const side = v.sides[e.s];
+            side.active = e.to;
+            const c = actv(e.s);
+            c.boosts = { atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+            if (e.s === 0) v.needSwitch = false; else v.foeSwitch = false;
+            log(e.s === 0 ? `Go! ${kmCat.byId[c.id].name}!` : `${foeName} sent out ${kmCat.byId[c.id].name}!`);
+            anim = { s: e.s, text: '', cls: 'enter' };
+            wait = 650;
+            break;
+        }
+        case 'move':
+            log(`${who(e.s)} used ${e.name}!`, 'move');
+            anim = { s: e.s, from: e.s, text: '', cls: '' };
+            wait = 550;
+            break;
+        case 'dmg': {
+            const c = actv(e.s);
+            const pct = Math.round(e.dmg / c.maxHp * 100);
+            c.hp = e.hp;
+            if (e.from === 'move') {
+                if (e.crit) log('A critical hit!', 'crit');
+                if (e.eff > 1) log("It's super effective!", 'good');
+                else if (e.eff < 1) log("It's not very effective…", 'bad');
+                log(`(${who(e.s)} lost ${Math.min(100, pct)}% of its health!)`, 'small');
+                anim = { s: e.s, text: '−' + Math.min(100, pct) + '%', cls: e.eff > 1 || e.crit ? 'hit big' : 'hit' };
+                if (e.eff > 1 || e.crit) kmSfx('fanfare', 'small'); else kmSfx('click');
+                wait = 900;
+            } else {
+                log(e.from === 'brn' ? `${who(e.s)} was hurt by its burn!` : e.from === 'psn' ? `${who(e.s)} was hurt by poison!` : `${who(e.s)} was damaged by the recoil!`);
+                anim = { s: e.s, text: '−' + Math.min(100, pct) + '%', cls: 'hit' };
+                wait = 700;
+            }
+            break;
+        }
+        case 'heal':
+            actv(e.s).hp = e.hp;
+            log(e.why === 'drain' ? `${who(e.s)} drained some health!` : `${who(e.s)} restored its HP.`, 'good');
+            anim = { s: e.s, text: '+' + Math.round(e.n / actv(e.s).maxHp * 100) + '%', cls: 'charge' };
+            wait = 650;
+            break;
+        case 'boost': {
+            const c = actv(e.s);
+            c.boosts[e.stat] = e.now;
+            const how = e.n >= 2 ? 'rose sharply!' : e.n > 0 ? 'rose!' : e.n <= -2 ? 'harshly fell!' : 'fell!';
+            log(`${who(e.s)}'s ${KB_STAT_LONG[e.stat]} ${how}`);
+            anim = { s: e.s, text: `${e.n > 0 ? '▲' : '▼'} ${KB_STAT[e.stat]}`, cls: 'charge' };
+            kmSfx('charge');
+            wait = 600;
+            break;
+        }
+        case 'status': {
+            actv(e.s).status = e.st;
+            const txt = { brn: 'was burned!', par: 'is paralyzed! It may be unable to move!', psn: 'was poisoned!', slp: 'fell asleep!' }[e.st];
+            log(`${who(e.s)} ${txt}`);
+            anim = { s: e.s, text: KB_ST[e.st][0], cls: 'stun' };
+            wait = 700;
+            break;
+        }
+        case 'cure':
+            actv(e.s).status = null;
+            log(`${who(e.s)} woke up!`);
+            wait = 500;
+            break;
+        case 'cant':
+            log(e.why === 'slp' ? `${who(e.s)} is fast asleep.` : `${who(e.s)} is paralyzed! It can't move!`);
+            anim = { s: e.s, text: e.why === 'slp' ? '💤' : '⚡', cls: 'stun' };
+            wait = 700;
+            break;
+        case 'protect':
+            log(`${who(e.s)} protected itself!`);
+            anim = { s: e.s, text: '🛡️', cls: 'charge' };
+            wait = 600;
+            break;
+        case 'blocked':
+            log(`${who(e.s)} protected itself!`);
+            anim = { s: e.s, text: '🛡️', cls: 'charge' };
+            wait = 600;
+            break;
+        case 'fail':
+            log('But it failed!', 'bad');
+            wait = 450;
+            break;
+        case 'miss':
+            log(`${who(1 - e.s)} avoided the attack!`, 'bad');
+            anim = { s: 1 - e.s, text: 'MISS', cls: 'stun' };
+            wait = 600;
+            break;
+        case 'immune':
+            log(`It doesn't affect ${who(e.s)}…`, 'bad');
+            wait = 600;
+            break;
+        case 'faint':
+            actv(e.s).hp = 0;
+            log(`${who(e.s)} fainted!`, 'faint');
+            anim = { s: e.s, text: 'K.O.', cls: 'ko' };
+            wait = 950;
+            break;
+        case 'choose':
+            if (e.s === 0) v.needSwitch = true;
+            else v.foeSwitch = true;
+            break;
+        case 'timeout-turn':
+            log(e.s === 0 ? '⏰ You ran out of time – auto move' : `⏰ ${foeName} ran out of time – auto move`, 'small');
+            break;
+        case 'afk':
+            log(e.s === 0 ? '💤 You missed 3 turns in a row' : `💤 ${foeName} missed 3 turns in a row`, 'bad');
+            break;
+        case 'forfeit':
+            log(e.s === 1 ? `${foeName} forfeited.` : 'You forfeited.', 'head');
+            break;
+        case 'timeout':
+            log('Turn limit reached – the side with more HP left wins', 'head');
+            break;
+        case 'end':
+            v.over = true;
+            v.winner = e.winner;
+            log(e.winner === 0 ? 'You won the battle!' : `${foeName} won the battle!`, 'head');
+            wait = 400;
+            break;
     }
-    else if (e.k === 'ko') { log(`💥 ${kmCat.byId[e.id].name} is knocked out!`); anim = { s: e.s, text: 'K.O.', cls: 'ko' }; wait = 900; }
-    else if (e.k === 'switch') { v.sides[e.s].active = e.to; if (e.s === 0) v.needSwitch = false; else v.foeSwitch = false; log(`${e.s === 0 ? 'You send' : foeName + ' sends'} out ${kmCat.byId[v.sides[e.s].cards[e.to].id].name}`); wait = 600; }
-    else if (e.k === 'choose') { if (e.s === 0) { v.needSwitch = true; log('Pick your next card'); } else { v.foeSwitch = true; log(`${foeName} picks the next card…`); } }
-    else if (e.k === 'timeout') log('Time is up – the side with more HP left wins');
-    else if (e.k === 'timeout-turn') log(e.s === 0 ? '⏰ You ran out of time – auto move' : `⏰ ${foeName} ran out of time – auto move`);
-    else if (e.k === 'afk') log(e.s === 0 ? '💤 You missed 3 turns in a row' : `💤 ${foeName} missed 3 turns in a row`);
-    else if (e.k === 'forfeit') log(e.s === 1 ? `🏳️ ${foeName} gave up` : 'You gave up');
-    else if (e.k === 'end') { v.over = true; v.winner = e.winner; wait = 400; }
     bp.fx = anim ? [anim] : [];
     redraw();
     setTimeout(() => kbPlay(bp, kind), wait);
@@ -788,18 +925,19 @@ function kbStars(g) {
 }
 
 const KB_RULES = `<details class="kb-rules"><summary>📖 How battles work</summary><ul>
-    <li>3 vs 3. Your first card fights, the other two wait on the bench. The faster card starts.</li>
-    <li>Each turn your active card gets <b>+1 energy</b>. Energy stays on that card when you switch.</li>
-    <li>One action per turn: <b>attack</b> (costs the energy shown), <b>charge</b> (+1 extra energy) or <b>switch</b> (tap a bench card). Save up for the big attack or hit small every turn.</li>
-    <li>Weakness: ×1.5 damage. Defense lowers damage (not for pierce). Burn 15 for 3 turns, stun skips a turn (not twice in a row), heal 30, drain half the damage, boost +20 damage.</li>
-    <li>Pokéball +3 %, Masterball +8 %, Shiny +10 % HP and damage.</li>
+    <li>3 vs 3, like Pokémon Showdown. Each card has <b>4 moves</b> with type, power, accuracy and PP.</li>
+    <li>Both sides choose at the same time: a move or a switch. Switches go first, then moves by <b>priority</b>, then by <b>Speed</b>.</li>
+    <li><b>Types:</b> super effective ×2, not very effective ×½, some attacks don't affect a type at all. Moves of the card's own type get ×1.5 (STAB).</li>
+    <li>💥 Physical moves use Attack vs Defense, 🌀 special moves use Sp. Atk vs Sp. Def. ✨ Status moves raise stats, heal, protect or inflict a status.</li>
+    <li><b>Status:</b> burn (hurts each turn, halves physical damage), paralysis (slower, sometimes can't move), poison (hurts each turn), sleep (1–3 turns). Fire can't be burned, Electric can't be paralyzed, Steel can't be poisoned.</li>
+    <li>Stat changes (▲▼) reset when a card switches out. Critical hits deal ×1.5. Pokéball +3 %, Masterball +8 %, Shiny +10 % HP and attack.</li>
 </ul></details>`;
 
 function kbDrawGyms() {
     const T = kmCat.types;
     const tiles = kb.gyms.map(g => {
         const t = g.type ? T[g.type] : null;
-        const weakTo = t ? T[t.weak] : null;
+        const weakTo = t ? kmWeakTo(g.type).map(x => T[x]) : null;
         const team = g.team.map(id => kmCard(kmCat.byId[id], { mini: true })).join('');
         return `<div class="kb-gym ${g.unlocked ? '' : 'locked'} ${g.cleared ? 'cleared' : ''}" style="--gc:${t ? t.color : '#ffd23f'}">
             <div class="kb-gym-head"><span class="ico">${g.icon}</span><div><b>${esc(g.name)}</b><small>Leader ${esc(g.leader)} · ${t ? t.icon + ' ' + t.name : '🌈 All types'} · <span class="kb-stars">${kbStars(g)}</span></small></div>
@@ -807,7 +945,7 @@ function kbDrawGyms() {
             <div class="kb-team">${g.unlocked ? team : '<div class="km-note">🔒 Beat the previous gym first</div>'}</div>
             <div class="kb-gym-foot">
                 <span>${g.cleared ? `🪙 ${g.repeat.toLocaleString('en-US')} per win · ${g.rewardsLeft} left today` : `🪙 ${g.coins.toLocaleString('en-US')} + ${kmCat.packs[g.pack].icon} free ${esc(kmCat.packs[g.pack].name)}`}</span>
-                ${weakTo ? `<span class="hint">Weak to ${weakTo.icon} ${weakTo.name}</span>` : ''}
+                ${weakTo ? `<span class="hint">Weak to ${weakTo.map(w => w.icon + ' ' + w.name).join(', ')}</span>` : ''}
                 <button type="button" class="gold" data-kbgym="${g.id}" ${g.unlocked ? '' : 'disabled'}>⚔️ Challenge</button>
             </div>
         </div>`;
@@ -839,14 +977,15 @@ function kbDrawPick() {
     const grid = list.map(x => {
         const on = chosen.includes(x.key);
         const blocked = !on && chosen.some(k => kmParse(k).id === x.c.id);
-        const good = t && x.c.type === t.weak;
-        const bad = t && kmCat.types[x.c.type] && x.c.weak === g.type;
+        // Typ-Tabelle 6.0: eigene Attacken treffen den Leiter-Typ stark / Leiter trifft uns stark
+        const good = t && kbEff(x.c.type, g.type) > 1;
+        const bad = t && kbEff(g.type, x.c.type) > 1;
         return `<div class="kb-cand ${on ? 'on' : ''} ${blocked ? 'off' : ''}" data-kbpick="${esc(x.key)}">${kmCard(x.c, { mini: true, v: x.v })}${good ? '<span class="kb-tag good">Strong</span>' : bad ? '<span class="kb-tag bad">Weak</span>' : ''}</div>`;
     }).join('');
     let head, go, sub;
     if (g) {
         head = `<button type="button" class="ghost" id="kb-back">← Gyms</button>
-            <b>${g.icon} ${esc(g.name)}</b> <span class="hint">${t ? `Leader uses ${t.icon} ${t.name} – ${T[t.weak].icon} ${T[t.weak].name} cards hit it ×1.5` : 'The champion uses every type'}</span>`;
+            <b>${g.icon} ${esc(g.name)}</b> <span class="hint">${t ? `Leader uses ${t.icon} ${t.name} – ${kmWeakTo(g.type).map(x => T[x].icon + ' ' + T[x].name).join(', ')} moves hit it ×2` : 'The champion uses every type'}</span>`;
         go = `<button type="button" class="gold" id="kb-fight" ${chosen.length === 3 ? '' : 'disabled'}>⚔️ Fight!</button>`;
         sub = 'Pick three different cards. The first one starts.';
     } else {
@@ -864,59 +1003,61 @@ function kbDrawPick() {
         <div class="km-grid">${grid || '<div class="km-note" style="grid-column:1/-1">You need cards first – open packs in 📦 Packs.</div>'}</div>`;
 }
 
-// Energie als Punkte; die Kosten der Attacken sind als Striche markiert
-function kbPips(card, cc) {
-    const T = kmCat.types[cc.type];
-    const costs = new Set(card.attacks.map(a => a.cost));
-    const n = Math.max(4, card.energy, ...costs);
-    let out = '';
-    for (let i = 1; i <= Math.min(n, 8); i++) out += `<i class="${i <= card.energy ? 'on' : ''} ${costs.has(i) ? 'mark' : ''}" style="--tc:${T.color}"></i>`;
-    if (card.energy > 8) out += `<b>+${card.energy - 8}</b>`;
-    return `<div class="kb-pips" title="Energy ${card.energy}">${out}</div>`;
-}
-
-// Eine Seite: aktive Karte, Anzeige, Bank
+// Anzeige einer Seite: aktive Karte + Infokasten (Showdown-artig)
 function kbSide(bp, s) {
     const v = bp.shown;
     const side = v.sides[s];
     const act = side.cards[side.active];
     const c = kmCat.byId[act.id];
     const T = kmCat.types;
-    const fx = bp.fx.find(f => f.s === s);
+    const fx = bp.fx.find(f => f.s === s && f.cls);
     const lunge = bp.fx.find(f => f.from === s);
     const pct = Math.max(0, act.hp / act.maxHp * 100);
-    const status = (act.burn ? `<span class="kb-chip burn">🔥 Burn ${act.burn}</span>` : '') + (act.stun ? '<span class="kb-chip stun">💫 Stunned</span>' : '') +
-        (act.boost ? `<span class="kb-chip boost">⬆️ +${act.boost} dmg</span>` : '') + (s === 1 ? `<span class="kb-chip weak">Weak to ${T[c.weak].icon}</span>` : '');
-    const canSw = s === 0 && !bp.busy && !v.over && (v.needSwitch || (v.turn === 0 && !v.foeSwitch));
-    const bench = side.cards.map((x, i) => {
-        if (i === side.active) return '';
-        const cc = kmCat.byId[x.id];
-        const ok = canSw && x.hp > 0;
-        return `<button type="button" class="kb-bench ${x.hp <= 0 ? 'dead' : ''} ${ok ? 'can' : ''}" ${ok ? `data-kbsw="${i}"` : 'disabled'} title="${esc(cc.name)} · ${Math.max(0, x.hp)}/${x.maxHp} HP · ⚡ ${x.energy}">
-            <span class="ico" style="--tc:${T[cc.type].color}">${T[cc.type].icon}</span><span class="nm">${esc(cc.name)}</span>
-            <span class="kb-mhp"><i style="width:${Math.max(0, x.hp) / x.maxHp * 100}%"></i></span>${ok ? '<span class="kb-swap">⇄</span>' : x.hp <= 0 ? '<span class="kb-swap ko">K.O.</span>' : ''}</button>`;
-    }).join('');
-    const turn = v.turn === s && !v.over && !v.needSwitch && !v.foeSwitch;
+    const boosts = Object.entries(act.boosts || {}).filter(([, n]) => n)
+        .map(([k, n]) => `<span class="kb-chip ${n > 0 ? 'up' : 'down'}">${(n > 0 ? '+' : '') + n} ${KB_STAT[k]}</span>`).join('');
+    const st = act.status ? `<span class="kb-stat st-${act.status}">${KB_ST[act.status][0]}</span>` : '';
+    // Team als Punkte (wie die Baelle in Showdown)
+    const dots = side.cards.map((x, i) => `<i class="${x.hp <= 0 ? 'ko' : x.status ? 'st' : ''} ${i === side.active ? 'on' : ''}" title="${esc(kmCat.byId[x.id].name)}"></i>`).join('');
+    const hpTxt = s === 0 ? `${Math.max(0, act.hp)} / ${act.maxHp}` : `${Math.ceil(pct)}%`;
+    const turn = !v.over && (s === 0 ? v.need : v.waiting || v.foeSwitch);
     return `<div class="kb-side s${s} ${turn ? 'turn' : ''}">
         <div class="kb-act ${act.hp <= 0 ? 'dead' : ''} ${fx ? fx.cls : ''} ${lunge ? 'lunge' : ''}">
-            ${kmCard(c, { v: act.v })}
-            ${fx ? `<span class="kb-float ${fx.cls}">${fx.text}</span>` : ''}
+            ${kmCard(c, { v: act.v, mini: true })}
+            ${fx && fx.text ? `<span class="kb-float ${fx.cls}">${fx.text}</span>` : ''}
         </div>
         <div class="kb-info">
-            <div class="kb-who">${s === 0 ? '🧑' : bp === kbP.gym ? '🏟️' : '⚔️'} ${esc(side.name)}${turn ? ' <span class="kb-dot"></span>' : ''}</div>
-            <div class="kb-nm"><span style="color:${T[c.type].color}">${T[c.type].icon}</span> <b>${esc(c.name)}</b></div>
-            <div class="kb-hp ${pct < 25 ? 'low' : pct < 55 ? 'mid' : ''}"><i style="width:${pct}%"></i><span>${Math.max(0, act.hp)} / ${act.maxHp}</span></div>
-            ${kbPips(act, c)}
-            <div class="kb-status">${status}</div>
-            <div class="kb-benchrow">${bench}</div>
+            <div class="kb-who">${s === 0 ? '🧑' : bp === kbP.gym ? '🏟️' : '⚔️'} ${esc(side.name)} <span class="kb-dots">${dots}</span></div>
+            <div class="kb-nm"><b>${esc(c.name)}</b> <span class="kb-type" style="--tc:${T[c.type].color}">${T[c.type].icon} ${T[c.type].name}</span> ${st}</div>
+            <div class="kb-hp ${pct < 20 ? 'low' : pct < 50 ? 'mid' : ''}"><i style="width:${pct}%"></i><span>${hpTxt}</span></div>
+            ${boosts ? `<div class="kb-status">${boosts}</div>` : ''}
         </div>
     </div>`;
+}
+
+// Knopf fuer eine Attacke (mit Vorschau gegen die aktive Gegnerkarte)
+function kbMoveBtn(me, foe, m, i) {
+    const T = kmCat.types[m.type] || { color: '#999', icon: '•', name: '???' };
+    const d = kbDmg(me, foe, m);
+    let hint = '';
+    if (d) {
+        const lo = Math.min(100, Math.round(d.lo / foe.maxHp * 100)), hi = Math.min(100, Math.round(d.hi / foe.maxHp * 100));
+        const lbl = d.e === 0 ? 'No effect' : d.e > 1 ? 'Super effective' : d.e < 1 ? 'Not very effective' : '';
+        hint = d.e === 0 ? `<em class="e0">No effect</em>` : `<em class="${d.e > 1 ? 'e2' : d.e < 1 ? 'e5' : ''}">${lbl ? lbl + ' · ' : ''}${lo === hi ? lo : lo + '–' + hi}%${d.lo >= foe.hp ? ' · KO' : ''}</em>`;
+    } else hint = `<em>${esc(m.desc || 'Status move')}</em>`;
+    const ok = m.pp > 0;
+    return `<button type="button" class="kb-move ${ok ? '' : 'no'}" style="--tc:${T.color}" data-kbatk="${i}" ${ok ? '' : 'disabled'} title="${esc(m.desc || '')}">
+        <b>${esc(m.name)}</b>
+        <span class="meta">${T.icon} ${KB_CAT[m.cat][0]} ${m.pow ? m.pow : '—'}${m.acc ? ` · ${m.acc}%` : ''}${m.pri > 0 && m.pow ? ' · +' + m.pri : ''}</span>
+        <span class="pp">${m.pp}/${m.ppMax}</span>
+        ${hint}
+    </button>`;
 }
 
 // Der Kampf-Bildschirm. kind: 'gym' | 'duel'
 function kbDrawBattle(bp, kind) {
     const v = bp.shown;
-    let title, color, foeLabel = v.sides[1].name;
+    let title, color;
+    const foeLabel = v.sides[1].name;
     if (kind === 'gym') {
         const gym = kbGymOf(kb.battle ? kb.battle.gym : bp.result ? bp.result.gym : null) || kb.gyms[0];
         const t = gym.type ? kmCat.types[gym.type] : null;
@@ -924,59 +1065,71 @@ function kbDrawBattle(bp, kind) {
         color = t ? t.color : '#ffd23f';
     } else {
         const d = kd.duel || kd.duelDone || {};
-        title = `⚔️ Duel vs ${esc(foeLabel)}${d.foeRating ? ` <small>(${d.foeRating})</small>` : ''}${d.stake ? ` · <span class="kb-pot">🪙 ${(d.stake * 2).toLocaleString('en-US')} pot</span>` : ''}`;
+        title = `⚔️ vs ${esc(foeLabel)}${d.foeRating ? ` <small>(${d.foeRating})</small>` : ''}${d.stake ? ` · <span class="kb-pot">🪙 ${(d.stake * 2).toLocaleString('en-US')}</span>` : ''}`;
         color = '#ff5bd6';
     }
-    const myTurn = !v.over && !bp.busy && (v.needSwitch || (v.turn === 0 && !v.foeSwitch));
+    const myTurn = !v.over && !bp.busy && !!v.need;
     let turnTxt;
     if (v.over) turnTxt = v.winner === 0 ? '🏆 You won' : '💀 You lost';
-    else if (bp.busy) turnTxt = '…';
-    else if (v.needSwitch) turnTxt = '🔁 Pick your next card';
-    else if (v.foeSwitch) turnTxt = `⏳ ${esc(foeLabel)} picks…`;
-    else turnTxt = v.turn === 0 ? '🟢 Your turn' : `⏳ ${esc(foeLabel)}'s turn`;
+    else if (bp.busy) turnTxt = `Turn ${v.turn}`;
+    else if (v.need === 'switch') turnTxt = '🔁 Choose your next card';
+    else if (v.need) turnTxt = `🟢 Turn ${v.turn} – your move`;
+    else turnTxt = `⏳ Waiting for ${esc(foeLabel)}…`;
     const timer = kind === 'duel' && !v.over ? `<span class="kb-timer" id="kd-timer"></span>` : '';
+
+    const mine = v.sides[0];
+    const me = mine.cards[mine.active], foe = v.sides[1].cards[v.sides[1].active];
+    const switches = (label) => {
+        const btns = mine.cards.map((x, i) => {
+            if (i === mine.active && x.hp > 0) return '';
+            const cc = kmCat.byId[x.id];
+            const T = kmCat.types[cc.type];
+            const ok = x.hp > 0;
+            return `<button type="button" class="kb-sw" ${ok ? `data-kbsw="${i}"` : 'disabled'} style="--tc:${T.color}">
+                <span class="ico">${T.icon}</span><span class="nm">${esc(cc.name)}</span>
+                <span class="kb-mhp"><i style="width:${Math.max(0, x.hp) / x.maxHp * 100}%"></i></span>
+                <small>${ok ? `${x.hp}/${x.maxHp}${x.status ? ' · ' + KB_ST[x.status][0] : ''}` : 'fainted'}</small></button>`;
+        }).join('');
+        return btns ? `<div class="kb-swrow"><span class="lbl">${label}</span>${btns}</div>` : '';
+    };
 
     let bar = '';
     if (v.over && !bp.busy) {
         const r = bp.result || { win: v.winner === 0 };
         let line;
-        if (kind === 'gym') line = r.win ? `${r.coins ? `+🪙 ${r.coins.toLocaleString('en-US')}` : 'No coins left from this gym today'}${r.first ? ' · first clear!' : ''}` : 'Try another team – type advantage matters.';
+        if (kind === 'gym') line = r.win ? `${r.coins ? `+🪙 ${r.coins.toLocaleString('en-US')}` : 'No coins left from this gym today'}${r.first ? ' · first clear!' : ''}` : 'Try another team – type matchups matter.';
         else line = `${r.stake ? (r.win ? `+🪙 ${r.pot.toLocaleString('en-US')}` : `−🪙 ${r.stake.toLocaleString('en-US')}`) + ' · ' : ''}rating ${r.rating || '?'} (${r.delta >= 0 ? '+' : ''}${r.delta || 0})`;
         bar = `<div class="kb-result ${r.win ? 'win' : 'lose'}">
             <div class="big">${r.win ? '🏆 VICTORY' : '💀 DEFEAT'}</div><div>${line}</div>
             <div class="kb-result-btns">${r.pack ? `<button type="button" class="gold" id="kb-openpack">🎁 Open your free ${esc(kmCat.packs[r.pack.pack].name)}</button>` : ''}
             <button type="button" id="${kind === 'gym' ? 'kb-done' : 'kd-done'}">${kind === 'gym' ? 'Back to gyms' : 'Back to duels'}</button></div>
         </div>`;
-    } else if (!bp.busy && v.needSwitch) {
-        bar = '<div class="kb-hintbig">Your card was knocked out – tap a card on your bench ⇄</div>';
+    } else if (myTurn && v.need === 'switch') {
+        bar = `<div class="kb-ask">${esc(kmCat.byId[me.id].name)} fainted – who's next?</div>` + switches('Switch in:');
     } else if (myTurn) {
-        const me = v.sides[0].cards[v.sides[0].active], foe = v.sides[1].cards[v.sides[1].active];
-        const cc = kmCat.byId[me.id];
-        const btns = me.attacks.map((a, i) => {
-            const d = kbDmg(me, foe, a);
-            const ok = me.energy >= a.cost;
-            const kill = ok && d.dmg >= foe.hp;
-            return `<button type="button" class="kb-atk ${ok ? '' : 'no'} ${kill ? 'kill' : ''}" data-kbatk="${i}" ${ok ? '' : 'disabled'}>
-                <span class="cost">${kmCost(a.cost, cc.type)}</span><b>${esc(a.name)}</b>
-                <span class="dmg">${d.dmg}${d.weak ? '<em>×1.5</em>' : ''}</span>
-                <small>${ok ? (kill ? '💥 Knocks it out' : a.effect !== 'none' ? esc(kmCat.effects[a.effect]) : 'Damage') : `Needs ${a.cost - me.energy} more ⚡`}</small></button>`;
-        }).join('');
-        bar = `<div class="kb-actions">${btns}
-            <button type="button" class="kb-charge" data-kbcharge="1"><b>⚡ Charge</b><small>+1 energy, no attack</small></button></div>`;
+        const noPP = me.moves.every(m => m.pp <= 0);
+        const moves = noPP ? `<button type="button" class="kb-move" data-kbatk="-1"><b>Struggle</b><span class="meta">No PP left – hurts itself</span></button>`
+            : me.moves.map((m, i) => kbMoveBtn(me, foe, m, i)).join('');
+        bar = `<div class="kb-ask">What will <b>${esc(kmCat.byId[me.id].name)}</b> do?</div>
+            <div class="kb-moves">${moves}</div>${switches('Switch:')}`;
     } else if (!v.over) {
-        bar = `<div class="kb-hintbig wait">${bp.busy ? '…' : v.foeSwitch ? `${esc(foeLabel)} picks the next card…` : kind === 'gym' ? `${esc(foeLabel)} is thinking…` : `Waiting for ${esc(foeLabel)}…`}</div>`;
+        bar = `<div class="kb-hintbig wait">${bp.busy ? '…' : v.foeSwitch ? `${esc(foeLabel)} is choosing the next card…` : `Waiting for ${esc(foeLabel)}…`}</div>`;
     }
-    const last = bp.log[bp.log.length - 1] || '';
+    const logHtml = bp.log.slice().reverse().map(l => `<div class="${l.cls}">${esc(l.t)}</div>`).join('');
+    const last = bp.log.filter(l => l.cls !== 'turn' && l.cls !== 'small').slice(-1)[0];
     return `<div class="kb-arena" style="--gc:${color}">
         <div class="kb-top"><span class="kb-title">${title}</span><span class="kb-turn ${myTurn ? 'me' : ''}">${turnTxt}${timer}</span>
-            <span class="kb-round">Round ${v.round}${!v.over ? ` <button type="button" class="kb-ff" data-kbff="${kind}" title="Give up">🏳️</button>` : ''}</span></div>
-        <div class="kb-field">
-            ${kbSide(bp, 1)}
-            <div class="kb-ticker" data-n="${bp.ticker}">${esc(last)}</div>
-            ${kbSide(bp, 0)}
+            <span class="kb-round">${!v.over ? `<button type="button" class="kb-ff" data-kbff="${kind}" title="Forfeit">🏳️</button>` : ''}</span></div>
+        <div class="kb-main">
+            <div class="kb-field">
+                ${kbSide(bp, 1)}
+                <div class="kb-ticker" data-n="${bp.ticker}">${last ? esc(last.t) : ''}</div>
+                ${kbSide(bp, 0)}
+            </div>
+            <div class="kb-logpane" id="kb-logpane">${logHtml}</div>
         </div>
         <div class="kb-bar">${bar}</div>
-        <details class="kb-logbox"><summary>📜 Battle log (${bp.log.length})</summary>${bp.log.slice().reverse().map(l => `<div>${esc(l)}</div>`).join('')}</details>
+        <details class="kb-logbox"><summary>📜 Battle log</summary>${bp.log.slice().reverse().map(l => `<div class="${l.cls}">${esc(l.t)}</div>`).join('')}</details>
     </div>`;
 }
 
@@ -998,7 +1151,7 @@ function kdDrawLobby() {
     const lob = kd.mine;
     const games = m.wins + m.losses;
     const head = `<div class="kd-me">
-        <div><b>⚔️ Kekémon duels</b><small>Fight other players with your cards. Same rules as the gyms, 30 s per turn.</small></div>
+        <div><b>⚔️ Kekémon duels</b><small>Fight other players with your cards. Same rules as the gyms, 45 s per turn.</small></div>
         <div class="kd-stat"><b>${m.rating}</b><small>rating</small></div>
         <div class="kd-stat"><b>${m.wins}–${m.losses}</b><small>won–lost</small></div>
         <div class="kd-stat"><b class="${(m.won || 0) >= 0 ? 'pos' : 'neg'}">${(m.won || 0) >= 0 ? '+' : ''}${(m.won || 0).toLocaleString('en-US')}</b><small>coins from duels</small></div>
@@ -1065,7 +1218,7 @@ setInterval(() => {
 
 $('km-body').addEventListener('click', e => {
     if (kmTab !== 'battle' && kmTab !== 'duel') return;
-    const t = e.target.closest('[data-kbgym],[data-kbpick],[data-kbunpick],[data-kbatk],[data-kbcharge],[data-kbsw],[data-kbff],[data-kdjoin],[data-kddecline],[data-kdto],#kb-back,#kb-fight,#kb-done,#kb-openpack,#kd-create,#kd-cancel,#kd-leave,#kd-ready,#kd-done');
+    const t = e.target.closest('[data-kbgym],[data-kbpick],[data-kbunpick],[data-kbatk],[data-kbsw],[data-kbff],[data-kdjoin],[data-kddecline],[data-kdto],#kb-back,#kb-fight,#kb-done,#kb-openpack,#kd-create,#kd-cancel,#kd-leave,#kd-ready,#kd-done');
     if (!t) return;
     e.stopPropagation();
     const ds = t.dataset;
@@ -1104,8 +1257,7 @@ $('km-body').addEventListener('click', e => {
     if (t.id === 'kb-done') { Object.assign(kbP.gym, kbNewPlayer()); wsSend({ type: 'kbGyms' }); return kmDraw(); }
     if (t.id === 'kd-done') { Object.assign(kbP.duel, kbNewPlayer()); if (kd) kd.duelDone = null; wsSend({ type: 'kdState' }); return kmDraw(); }
     if (bp.busy) return;
-    if (ds.kbatk !== undefined) return act({ a: 'atk', i: Number(ds.kbatk) });
-    if (ds.kbcharge) return act({ a: 'charge' });
+    if (ds.kbatk !== undefined) return act({ a: 'move', i: Number(ds.kbatk) });
     if (ds.kbsw !== undefined) return act({ a: 'switch', to: Number(ds.kbsw) });
 }, true);
 

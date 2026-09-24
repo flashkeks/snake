@@ -1,30 +1,34 @@
-// Kekemon-Kaempfe (5.6): 3 gegen 3 gegen KI-Arenen.
+// Kekemon-Kaempfe 6.0 (Max: "orientier dich an Pokemon Showdown"): 3 gegen 3.
 //
-// Regeln (auch im Browser unter "How battles work"):
-//   - Jede Seite hat eine aktive Karte und zwei auf der Bank.
-//   - Zu Beginn des eigenen Zuges bekommt die aktive Karte +1 Energie. Energie
-//     bleibt an der Karte (wer auswechselt, faengt mit der neuen bei ihrer
-//     eigenen Energie an).
-//   - Pro Zug genau eine Aktion: angreifen (kostet die Energie der Attacke –
-//     seit 5.7, Max: vorher blieb sie liegen und die grosse Attacke ging jede
-//     Runde), aufladen (+1 Energie extra), auswechseln, aufgeben.
-//   - Schaden = Attacke (+20 je Boost) × 1,5 bei Schwaeche − 40 % der
-//     Verteidigung (ausser Pierce), mindestens 10.
-//   - Effekte: burn 15 Schaden zu Beginn der naechsten 3 Zuege des Ziels,
-//     stun Ziel setzt den naechsten Zug aus, heal +30, drain +50 % des
-//     Schadens, boost +20 Schaden fuer den Rest des Kampfes, pierce ohne Abwehr.
-//   - K.o.: naechste lebende Karte kommt (Spieler waehlt, KI nimmt die beste).
-//   - Wer zuerst beginnt: die schnellere aktive Karte.
+// Ablauf wie im Vorbild:
+//   - Beide Seiten waehlen gleichzeitig: Attacke (eine von vier) oder Wechsel.
+//     Erst wenn beide gewaehlt haben, wird der Zug aufgeloest.
+//   - Reihenfolge: Wechsel zuerst, dann Attacken nach Prioritaet, dann nach
+//     Initiative (Speed; Paralyse halbiert), Gleichstand per Zufall.
+//   - Schaden (Level 50): ((22 · Staerke · A / D) / 50 + 2) · Zufall 0,85–1
+//     · STAB 1,5 · Typ-Faktor (×2 / ×½ / ×0) · Volltreffer 1,5 (1/24, hohe
+//     Chance 1/8) · Verbrennung halbiert physische Attacken.
+//     A/D nach Kategorie: physisch Atk gegen Def, speziell SpA gegen SpD.
+//   - Werte-Stufen −6..+6 (Faktor (2+n)/2 bzw. 2/(2−n)), weg beim Auswechseln.
+//   - Status: brn (1/16 je Zug, Atk halbiert), par (Speed halbiert, 25 %
+//     bewegungsunfaehig), psn (1/8 je Zug), slp (1–3 Zuege). Einer zur Zeit.
+//   - Protect: blockt alles in diesem Zug, hintereinander immer seltener.
+//   - PP je Attacke; ohne PP bleibt nur Verzweifler (Struggle).
+//   - Faellt die aktive Karte, waehlt die Seite am Zugende die naechste.
+//   - Nach 60 Zuegen gewinnt, wer anteilig mehr HP hat.
 //
-// Reine Logik ohne Netz – server.js haelt je Spieler einen Kampf.
+// Reine Logik ohne Netz. Arena: Seite 1 ist KI. Duell: createBattle(..., { ai:
+// false }), dann play(b, c, s) je Seite. view(b, me) / flip(ev, me) drehen
+// alles so, dass die eigene Seite Seite 0 ist.
 //
-// Seit 5.10 auch Spieler gegen Spieler (km-duels.js): createBattle mit
-// { ai: false }, dann play(b, c, s) fuer die jeweilige Seite. Ansicht und
-// Ereignisse lassen sich mit view(b, me) / flip(ev, me) so drehen, dass die
-// eigene Seite immer Seite 0 ist – der Browser kennt nur "ich unten".
+// Wahl c: { a: 'move', i } | { a: 'switch', to } | { a: 'forfeit' }
 
-const BURN_DMG = 15, BURN_TURNS = 3, HEAL = 30, BOOST = 20, DEF_FACTOR = 0.4, WEAK = 1.5;
-// Varianten machen Karten ein bisschen staerker (HP und Schaden)
+const K = require('./km-moves');
+
+const LEVEL_F = 22;           // floor(2 · 50 / 5 + 2)
+const MAX_TURNS = 60;
+const STRUGGLE = { name: 'Struggle', type: null, cat: 'phys', pow: 50, acc: 0, pp: 1, pri: 0, struggle: true };
+// Varianten machen Karten ein bisschen staerker (HP und Angriff)
 const VAR_MUL = { p: 1.03, m: 1.08, s: 1.10 };
 
 function varMul(v) {
@@ -33,149 +37,380 @@ function varMul(v) {
     return m;
 }
 
-// Kampfkarte aus einer Katalogkarte
+const stage = n => n >= 0 ? (2 + n) / 2 : 2 / (2 - n);
+const freshBoosts = () => ({ atk: 0, def: 0, spa: 0, spd: 0, spe: 0 });
+
+// Kampfkarte aus einer Katalogkarte. mul: Staerke (Arenen)
 function fighter(card, v, mul = 1) {
     const m = varMul(v) * mul;
-    const hp = Math.round(card.hp * m);
+    const st = card.bt.stats;
+    const hp = Math.round(st.hp * m);
+    const dm = 0.8 + 0.2 * mul;
     return {
-        id: card.id, v: v || '', name: card.name, type: card.type, weak: card.weak, rarity: card.rarity,
-        hp, maxHp: hp, def: Math.round(card.def * (0.8 + 0.2 * mul)), spd: card.spd,
-        attacks: card.attacks.map(a => ({ ...a, dmg: Math.round(a.dmg * m) })),
-        energy: 0, burn: 0, stun: false, boost: 0
+        id: card.id, v: v || '', name: card.name, type: card.type, style: card.bt.style,
+        hp, maxHp: hp,
+        st: { atk: Math.round(st.atk * m), spa: Math.round(st.spa * m), def: Math.round(st.def * dm), spd: Math.round(st.spd * dm), spe: st.spe },
+        moves: card.bt.moves.map(x => ({ ...x, ppLeft: x.pp })),
+        status: null, slp: 0, boosts: freshBoosts(), protecting: false, protectCount: 0
     };
 }
 
 function createBattle(teamA, teamB, opts = {}) {
     const b = {
         sides: [
-            { name: opts.nameA || 'You', cards: teamA, active: 0, ai: false },
-            { name: opts.nameB || 'Leader', cards: teamB, active: 0, ai: opts.ai !== false }
+            { name: opts.nameA || 'You', cards: teamA, active: 0, ai: false, choice: null, need: false },
+            { name: opts.nameB || 'Leader', cards: teamB, active: 0, ai: opts.ai !== false, choice: null, need: false }
         ],
-        turn: 0, round: 1, over: false, winner: null, smart: opts.smart || 0, needSwitch: false, switchSide: 0
+        turn: 1, phase: 'move', over: false, winner: null, smart: opts.smart || 0,
+        rnd: opts.rnd || Math.random
     };
-    b.turn = teamA[0].spd >= teamB[0].spd ? 0 : 1;
-    const ev = [{ k: 'start', first: b.turn }];
-    startTurn(b, ev);
-    // KI faengt an: gleich ziehen
-    runAi(b, ev);
+    const ev = [{ k: 'start' }, { k: 'switch', s: 0, to: 0 }, { k: 'switch', s: 1, to: 0 }, { k: 'turn', n: 1 }];
     return { b, ev };
 }
 
 const act = (b, s) => b.sides[s].cards[b.sides[s].active];
 const alive = side => side.cards.filter(c => c.hp > 0);
+const speedOf = c => c.st.spe * stage(c.boosts.spe) * (c.status === 'par' ? 0.5 : 1);
 
-function damage(att, def, atk) {
-    let d = atk.dmg + att.boost;
-    const weak = def.weak === att.type;
-    if (weak) d *= WEAK;
-    if (atk.effect !== 'pierce') d -= def.def * DEF_FACTOR;
-    return { dmg: Math.max(10, Math.round(d)), weak };
+// Wer muss gerade waehlen (Menschen und KI)?
+function needs(b) {
+    if (b.over) return [];
+    if (b.phase === 'move') return [0, 1].filter(s => !b.sides[s].choice);
+    return [0, 1].filter(s => b.sides[s].need && !b.sides[s].choice);
 }
 
-// Zugbeginn: Energie, Brennen, Betaeubung
-function startTurn(b, ev) {
-    const s = b.turn;
-    const c = act(b, s);
-    c.energy++;
-    ev.push({ k: 'energy', s, n: c.energy });
-    if (c.burn > 0) {
-        c.burn--;
-        c.hp = Math.max(0, c.hp - BURN_DMG);
-        ev.push({ k: 'burn', s, dmg: BURN_DMG, hp: c.hp });
-        if (c.hp <= 0) return knockout(b, s, ev);
+// Nur menschliche Seiten, auf die gewartet wird (fuer Zugzeit im Duell)
+function waitingOn(b) {
+    return needs(b).filter(s => !b.sides[s].ai);
+}
+
+// ---------- Schaden ----------
+
+function calc(att, def, m, crit, roll) {
+    if (m.struggle) {
+        const base = Math.floor(Math.floor(LEVEL_F * m.pow * att.st.atk / def.st.def) / 50) + 2;
+        return { dmg: Math.max(1, Math.floor(base * roll)), e: 1 };
     }
-    if (c.stun) {
-        c.stun = false;
-        // Kein Dauer-Betaeuben: bis nach der naechsten eigenen Aktion immun
-        c.stunImmune = true;
-        ev.push({ k: 'stunned', s });
-        return endTurn(b, ev);
+    const e = K.eff(m.type, def.type);
+    if (e === 0) return { dmg: 0, e };
+    const phys = m.cat === 'phys';
+    let ab = att.boosts[phys ? 'atk' : 'spa'], db = def.boosts[phys ? 'def' : 'spd'];
+    if (crit) {
+        ab = Math.max(0, ab);
+        db = Math.min(0, db);
     }
+    const A = att.st[phys ? 'atk' : 'spa'] * stage(ab);
+    const D = def.st[phys ? 'def' : 'spd'] * stage(db);
+    const base = Math.floor(Math.floor(LEVEL_F * m.pow * A / D) / 50) + 2;
+    let mod = roll * (m.type === att.type ? 1.5 : 1) * e * (crit ? 1.5 : 1);
+    if (phys && att.status === 'brn') mod *= 0.5;
+    return { dmg: Math.max(1, Math.floor(base * mod)), e };
 }
 
-// Heilen gegen Heilen soll nicht ewig dauern: nach MAX_ROUNDS gewinnt,
-// wer anteilig mehr Leben uebrig hat
-const MAX_ROUNDS = 40;
-function hpShare(side) {
-    const max = side.cards.reduce((a, c) => a + c.maxHp, 0);
-    return side.cards.reduce((a, c) => a + Math.max(0, c.hp), 0) / max;
+// Erwarteter Schaden (KI und Vorschau): mittlerer Zufall, kein Volltreffer
+function estimate(att, def, m) {
+    if (!m.pow) return { dmg: 0, e: K.eff(m.type, def.type) };
+    return calc(att, def, m, false, 0.925);
 }
 
-function endTurn(b, ev) {
-    if (b.over) return;
-    b.turn = 1 - b.turn;
-    if (b.turn === 0) b.round++;
-    if (b.round > MAX_ROUNDS) {
-        b.over = true;
-        b.winner = hpShare(b.sides[0]) >= hpShare(b.sides[1]) ? 0 : 1;
-        ev.push({ k: 'timeout', winner: b.winner }, { k: 'end', winner: b.winner });
-        return;
-    }
-    startTurn(b, ev);
-}
+// ---------- Auswahl ----------
 
-// Aktive Karte von Seite s ist k.o.
-function knockout(b, s, ev) {
-    ev.push({ k: 'ko', s, id: act(b, s).id });
+function validate(b, s, c) {
     const side = b.sides[s];
-    if (!alive(side).length) {
-        b.over = true;
-        b.winner = 1 - s;
-        ev.push({ k: 'end', winner: b.winner });
-        return;
+    const me = act(b, s);
+    if (b.phase === 'switch') {
+        if (!side.need) return 'Wait for your opponent';
+        if (c.a !== 'switch') return 'Pick your next card';
     }
-    // Danach ist immer die andere Seite dran als die, deren Zug gerade lief
-    // (Angriff haut um -> Getroffener ist dran; Brennen im eigenen Zug -> Gegner)
-    const next = 1 - b.turn;
-    if (side.ai) {
-        side.active = bestSwitch(b, s, -1);
-        ev.push({ k: 'switch', s, to: side.active, forced: true });
-        b.turn = next;
-        if (next === 0) b.round++;
-        startTurn(b, ev);
-    } else {
-        // Spieler waehlt die naechste Karte
-        b.needSwitch = true;
-        b.switchSide = s;
-        b.nextTurn = next;
-        ev.push({ k: 'choose', s });
+    if (c.a === 'switch') {
+        const to = Number(c.to);
+        if (!side.cards[to] || side.cards[to].hp <= 0) return 'That card cannot fight';
+        if (to === side.active) return 'That card is already fighting';
+        return null;
+    }
+    if (c.a === 'move' || c.a === 'atk') {
+        const i = Number(c.i);
+        if (i === -1) return me.moves.every(m => m.ppLeft <= 0) ? null : 'You still have PP left';
+        if (!me.moves[i]) return 'Unknown move';
+        if (me.moves[i].ppLeft <= 0) return 'No PP left for that move';
+        return null;
+    }
+    return 'Unknown action';
+}
+
+// Aktion einer Seite. Loest den Zug auf, sobald alle gewaehlt haben.
+function play(b, c, s = 0) {
+    if (b.over) return { err: 'The battle is over' };
+    const ev = [];
+    if (c.a === 'forfeit') {
+        end(b, 1 - s, ev, { k: 'forfeit', s });
+        return { ev };
+    }
+    if (!needs(b).includes(s)) return { err: b.phase === 'switch' ? 'Wait for your opponent' : 'You already chose – waiting for your opponent' };
+    const err = validate(b, s, c);
+    if (err) return { err };
+    b.sides[s].choice = c.a === 'switch' ? { a: 'switch', to: Number(c.to) } : { a: 'move', i: Number(c.i) };
+    step(b, ev);
+    return { ev };
+}
+
+// KI waehlt, dann wird aufgeloest, solange niemand Menschliches fehlt
+function step(b, ev) {
+    let guard = 0;
+    while (!b.over && guard++ < 10) {
+        for (const s of needs(b)) if (b.sides[s].ai) b.sides[s].choice = aiChoose(b, s);
+        if (needs(b).length) return;
+        if (b.phase === 'move') resolveTurn(b, ev);
+        else resolveSwitches(b, ev);
     }
 }
 
-function attack(b, s, i, ev) {
-    const me = act(b, s), foe = act(b, 1 - s);
-    const atk = me.attacks[i];
-    if (!atk || me.energy < atk.cost) return false;
-    const { dmg, weak } = damage(me, foe, atk);
-    me.energy -= atk.cost;
-    foe.hp = Math.max(0, foe.hp - dmg);
-    const e = { k: 'atk', s, i, name: atk.name, dmg, weak, eff: atk.effect, hp: foe.hp, en: me.energy };
-    if (atk.effect === 'burn' && foe.hp > 0) foe.burn = BURN_TURNS;
-    if (atk.effect === 'stun' && foe.hp > 0 && !foe.stunImmune) foe.stun = true;
-    else if (atk.effect === 'stun' && foe.hp > 0) e.resist = true;
-    me.stunImmune = false;
-    if (atk.effect === 'heal') { me.hp = Math.min(me.maxHp, me.hp + HEAL); e.heal = HEAL; e.myHp = me.hp; }
-    if (atk.effect === 'drain') { const hl = Math.round(dmg / 2); me.hp = Math.min(me.maxHp, me.hp + hl); e.heal = hl; e.myHp = me.hp; }
-    if (atk.effect === 'boost') { me.boost += BOOST; e.boost = me.boost; }
-    ev.push(e);
-    if (foe.hp <= 0) {
-        knockout(b, 1 - s, ev);
-        // Spieler muss nach seinem K.o. erst waehlen; hat der Spieler die KI
-        // umgehauen, wechselt die KI selbst (knockout macht den Zugwechsel)
-        return true;
+// Zeit abgelaufen (Duelle): fuer alle Wartenden automatisch waehlen
+function auto(b) {
+    const who = waitingOn(b);
+    if (!who.length) return null;
+    const ev = [];
+    for (const s of who) {
+        ev.push({ k: 'timeout-turn', s });
+        b.sides[s].choice = aiChoose(b, s, 1);
     }
-    endTurn(b, ev);
+    step(b, ev);
+    return { ev, who };
+}
+
+// ---------- Zug ----------
+
+function doSwitch(b, s, to, ev, forced) {
+    const side = b.sides[s];
+    const old = act(b, s);
+    old.boosts = freshBoosts();
+    old.protectCount = 0;
+    side.active = to;
+    ev.push({ k: 'switch', s, to, forced: !!forced });
+}
+
+function resolveTurn(b, ev) {
+    const acts = [0, 1].map(s => ({ s, c: b.sides[s].choice }));
+    for (const side of b.sides) side.choice = null;
+    // Wechsel zuerst (schnellere Seite zuerst)
+    acts.filter(x => x.c.a === 'switch')
+        .sort((x, y) => speedOf(act(b, y.s)) - speedOf(act(b, x.s)))
+        .forEach(x => doSwitch(b, x.s, x.c.to, ev));
+    // Attacken nach Prioritaet, dann Speed, Gleichstand Zufall
+    const moves = acts.filter(x => x.c.a === 'move').map(x => {
+        const me = act(b, x.s);
+        const m = x.c.i === -1 ? STRUGGLE : me.moves[x.c.i];
+        return { ...x, m, pri: m.pri || 0, spe: speedOf(me), tie: b.rnd() };
+    }).sort((x, y) => y.pri - x.pri || y.spe - x.spe || x.tie - y.tie);
+    for (const x of moves) {
+        if (b.over) return;
+        const me = act(b, x.s);
+        if (me.hp <= 0) continue;
+        useMove(b, x.s, x.m, ev);
+    }
+    if (b.over) return;
+    // Zugende: Verbrennung, Gift
+    for (const s of [0, 1]) {
+        const c = act(b, s);
+        c.protecting = false;
+        if (c.hp <= 0 || b.over) continue;
+        const frac = c.status === 'brn' ? 16 : c.status === 'psn' ? 8 : 0;
+        if (frac) {
+            const d = Math.max(1, Math.floor(c.maxHp / frac));
+            c.hp = Math.max(0, c.hp - d);
+            ev.push({ k: 'dmg', s, dmg: d, hp: c.hp, from: c.status });
+            if (c.hp <= 0) faint(b, s, ev);
+        }
+    }
+    if (b.over) return;
+    afterTurn(b, ev);
+}
+
+// Nach dem Zug: wer braucht eine neue Karte? Sonst naechster Zug
+function afterTurn(b, ev) {
+    let any = false;
+    for (const s of [0, 1]) {
+        const side = b.sides[s];
+        side.need = act(b, s).hp <= 0 && alive(side).length > 0;
+        if (side.need) {
+            any = true;
+            ev.push({ k: 'choose', s });
+        }
+    }
+    if (any) {
+        b.phase = 'switch';
+        return;
+    }
+    nextTurn(b, ev);
+}
+
+function nextTurn(b, ev) {
+    b.phase = 'move';
+    b.turn++;
+    if (b.turn > MAX_TURNS) {
+        const share = side => side.cards.reduce((a, c) => a + Math.max(0, c.hp), 0) / side.cards.reduce((a, c) => a + c.maxHp, 0);
+        end(b, share(b.sides[0]) >= share(b.sides[1]) ? 0 : 1, ev, { k: 'timeout' });
+        return;
+    }
+    ev.push({ k: 'turn', n: b.turn });
+}
+
+function resolveSwitches(b, ev) {
+    for (const s of [0, 1]) {
+        const side = b.sides[s];
+        if (!side.need) continue;
+        doSwitch(b, s, side.choice.to, ev, true);
+        side.choice = null;
+        side.need = false;
+    }
+    nextTurn(b, ev);
+}
+
+function faint(b, s, ev) {
+    ev.push({ k: 'faint', s, id: act(b, s).id });
+    // Wer zuerst keine Karte mehr hat, verliert
+    if (!alive(b.sides[s]).length && !b.over) end(b, 1 - s, ev);
+}
+
+function end(b, winner, ev, pre) {
+    if (b.over) return;
+    b.over = true;
+    b.winner = winner;
+    b.phase = 'over';
+    for (const side of b.sides) side.choice = null;
+    if (pre) ev.push(pre);
+    ev.push({ k: 'end', winner });
+}
+
+function applyBoosts(me, self, ev, s) {
+    let changed = false;
+    for (const [k0, n] of Object.entries(self)) {
+        const k = k0 === 'off' ? (me.style === 'spec' ? 'spa' : 'atk') : k0;
+        const before = me.boosts[k];
+        me.boosts[k] = Math.max(-6, Math.min(6, before + n));
+        if (me.boosts[k] !== before) {
+            changed = true;
+            ev.push({ k: 'boost', s, stat: k, n: me.boosts[k] - before, now: me.boosts[k] });
+        }
+    }
+    return changed;
+}
+
+function setStatus(b, s, st, ev) {
+    const c = act(b, s);
+    if (c.hp <= 0 || c.status || K.IMMUNE[st] === c.type) return false;
+    c.status = st;
+    if (st === 'slp') c.slp = 1 + Math.floor(b.rnd() * 3);
+    ev.push({ k: 'status', s, st });
     return true;
 }
 
-// ---------- KI ----------
+function useMove(b, s, m, ev) {
+    const me = act(b, s), foe = act(b, 1 - s);
+    // Schlaf und Paralyse
+    if (me.status === 'slp') {
+        me.slp--;
+        if (me.slp > 0) {
+            ev.push({ k: 'cant', s, why: 'slp' });
+            return;
+        }
+        me.status = null;
+        ev.push({ k: 'cure', s, st: 'slp' });
+    }
+    if (me.status === 'par' && b.rnd() < 0.25) {
+        ev.push({ k: 'cant', s, why: 'par' });
+        return;
+    }
+    if (!m.struggle) m.ppLeft = Math.max(0, m.ppLeft - 1);
+    ev.push({ k: 'move', s, name: m.name, type: m.type, cat: m.cat });
+    const e = m.eff || {};
+    if (e.protect) {
+        const chance = 1 / Math.pow(3, me.protectCount);
+        if (b.rnd() < chance) {
+            me.protecting = true;
+            me.protectCount++;
+            ev.push({ k: 'protect', s });
+        } else {
+            me.protectCount = 0;
+            ev.push({ k: 'fail', s });
+        }
+        return;
+    }
+    me.protectCount = 0;
+    const hitsFoe = m.cat !== 'status' || !!e.st;
+    if (hitsFoe) {
+        if (foe.hp <= 0) {
+            ev.push({ k: 'fail', s });
+            return;
+        }
+        if (foe.protecting) {
+            ev.push({ k: 'blocked', s: 1 - s });
+            return;
+        }
+        if (m.acc && b.rnd() * 100 >= m.acc) {
+            ev.push({ k: 'miss', s });
+            return;
+        }
+    }
+    if (m.cat === 'status') {
+        if (e.st) {
+            if (foe.status || K.IMMUNE[e.st] === foe.type) ev.push({ k: 'fail', s, why: foe.status ? 'status' : 'immune' });
+            else setStatus(b, 1 - s, e.st, ev);
+            return;
+        }
+        let ok = false;
+        if (e.heal) {
+            if (me.hp >= me.maxHp) ev.push({ k: 'fail', s, why: 'fullhp' });
+            else {
+                const h = Math.min(me.maxHp - me.hp, Math.floor(me.maxHp * e.heal / 100));
+                me.hp += h;
+                ev.push({ k: 'heal', s, n: h, hp: me.hp });
+            }
+            ok = true;
+        }
+        if (e.self && !applyBoosts(me, e.self, ev, s) && !ok) ev.push({ k: 'fail', s, why: 'maxed' });
+        return;
+    }
+    // Angriff
+    const crit = !m.struggle && b.rnd() < (e.crit ? 1 / 8 : 1 / 24);
+    const roll = 0.85 + b.rnd() * 0.15;
+    const r = calc(me, foe, m, crit, roll);
+    if (r.e === 0) {
+        ev.push({ k: 'immune', s: 1 - s });
+        return;
+    }
+    foe.hp = Math.max(0, foe.hp - r.dmg);
+    ev.push({ k: 'dmg', s: 1 - s, dmg: r.dmg, hp: foe.hp, eff: r.e, crit, from: 'move' });
+    if (e.drain && me.hp < me.maxHp) {
+        const h = Math.min(me.maxHp - me.hp, Math.max(1, Math.floor(r.dmg * e.drain / 100)));
+        me.hp += h;
+        ev.push({ k: 'heal', s, n: h, hp: me.hp, why: 'drain' });
+    }
+    if (e.heal && me.hp < me.maxHp) {
+        const h = Math.min(me.maxHp - me.hp, Math.floor(me.maxHp * e.heal / 100));
+        me.hp += h;
+        ev.push({ k: 'heal', s, n: h, hp: me.hp });
+    }
+    if (e.self) applyBoosts(me, e.self, ev, s);
+    if (e.st && foe.hp > 0 && b.rnd() * 100 < (e.ch || 100)) setStatus(b, 1 - s, e.st, ev);
+    if (m.struggle) {
+        const d = Math.max(1, Math.floor(me.maxHp / 4));
+        me.hp = Math.max(0, me.hp - d);
+        ev.push({ k: 'dmg', s, dmg: d, hp: me.hp, from: 'recoil' });
+    }
+    if (foe.hp <= 0) faint(b, 1 - s, ev);
+    if (!b.over && me.hp <= 0) faint(b, s, ev);
+}
 
-// Wert einer Karte gegen den Gegner (fuer Wechsel)
-function matchScore(me, foe) {
-    let v = me.hp / me.maxHp * 40 + me.energy * 8;
-    if (foe.weak === me.type) v += 30;
-    if (me.weak === foe.type) v -= 30;
-    return v;
+// ---------- KI ----------
+// smart 0: haut mit starken Attacken drauf (etwas Zufall)
+// smart 1: rechnet Schaden inkl. Typ, nimmt K.o. mit, nutzt Status, Heilung, Aufbau
+// smart 2: wechselt ausserdem aus schlechten Paarungen
+
+function bestDamage(att, def) {
+    let best = 0;
+    for (const m of att.moves) if (m.ppLeft > 0 && m.pow) best = Math.max(best, estimate(att, def, m).dmg * (m.acc ? m.acc / 100 : 1));
+    return best;
 }
 
 function bestSwitch(b, s, skip) {
@@ -183,130 +418,72 @@ function bestSwitch(b, s, skip) {
     let best = -1, bv = -1e9;
     side.cards.forEach((c, i) => {
         if (c.hp <= 0 || i === skip) return;
-        const v = matchScore(c, foe);
+        // eigener Schaden gegen den Gegner minus sein Schaden gegen uns, anteilig
+        const v = bestDamage(c, foe) / Math.max(1, foe.hp) - bestDamage(foe, c) / Math.max(1, c.hp) + c.hp / c.maxHp * 0.3;
         if (v > bv) { bv = v; best = i; }
     });
     return best;
 }
 
-function aiChoose(b, s) {
-    const me = act(b, s), foe = act(b, 1 - s);
-    const opts = me.attacks.map((a, i) => ({ a, i, ...damage(me, foe, a) })).filter(o => me.energy >= o.a.cost);
-    // Umhauen, wenn moeglich
-    const kill = opts.filter(o => o.dmg >= foe.hp).sort((x, y) => x.a.cost - y.a.cost)[0];
-    if (kill) return { a: 'atk', i: kill.i };
-    // Schlaue Leiter wechseln bei schlechter Paarung
-    if (b.smart >= 2 && me.weak === foe.type && Math.random() < 0.5) {
-        const to = bestSwitch(b, s, b.sides[s].active);
-        if (to !== b.sides[s].active && to >= 0 && b.sides[s].cards[to].weak !== foe.type) return { a: 'switch', to };
-    }
-    const big = me.attacks[1], small = me.attacks[0];
-    const bigDmg = damage(me, foe, big).dmg, smallDmg = damage(me, foe, small).dmg;
-    // Grosse Attacke geht: nehmen
-    if (me.energy >= big.cost) return { a: 'atk', i: 1 };
-    // Energie wird verbraucht (5.7): sparen lohnt, wenn die grosse pro Energie
-    // mehr bringt als die kleine. Stufe 0 haut einfach drauf.
-    const worth = bigDmg / big.cost > smallDmg / small.cost * 1.1;
-    if (b.smart >= 1 && worth && me.hp > me.maxHp * 0.3) {
-        // Aufladen, wenn die grosse dadurch naechsten Zug geht; sonst sparen (auch Aufladen)
-        return { a: 'charge' };
-    }
-    if (me.energy >= small.cost) return { a: 'atk', i: 0 };
-    return { a: 'charge' };
-}
-
-function runAi(b, ev) {
-    let guard = 0;
-    while (!b.over && !b.needSwitch && b.sides[b.turn].ai && guard++ < 200) {
-        const s = b.turn;
-        const c = aiChoose(b, s);
-        // Sicherheitsnetz: ungueltiger Zug -> aufladen
-        if (!doAct(b, s, c, ev)) doAct(b, s, { a: 'charge' }, ev);
-    }
-}
-
-function doAct(b, s, c, ev) {
+function aiChoose(b, s, level) {
+    const smart = level === undefined ? b.smart : level;
     const side = b.sides[s];
-    if (c.a === 'atk') return attack(b, s, Number(c.i), ev);
-    if (c.a === 'charge') {
-        act(b, s).stunImmune = false;
-        act(b, s).energy++;
-        ev.push({ k: 'charge', s, n: act(b, s).energy });
-        endTurn(b, ev);
-        return true;
+    if (b.phase === 'switch') return { a: 'switch', to: bestSwitch(b, s, -1) };
+    const me = act(b, s), foe = act(b, 1 - s);
+    const usable = me.moves.map((m, i) => ({ m, i })).filter(x => x.m.ppLeft > 0);
+    if (!usable.length) return { a: 'move', i: -1 };
+    const threat = bestDamage(foe, me);
+    const opts = usable.map(({ m, i }) => {
+        const e = m.eff || {};
+        let v;
+        if (m.pow) {
+            const est = estimate(me, foe, m).dmg * (m.acc ? m.acc / 100 : 1);
+            v = est >= foe.hp ? 200 + (m.pri || 0) * 50 + (m.acc || 100) / 10 : est / foe.maxHp * 100;
+            if (smart === 0) v = m.pow * K.eff(m.type, foe.type) * (0.6 + b.rnd() * 0.8);
+        } else if (smart === 0) v = -1;
+        else if (e.st) v = foe.status || K.IMMUNE[e.st] === foe.type ? -1 : (e.st === 'slp' ? 45 : 32) * (m.acc || 100) / 100;
+        else if (e.heal) v = me.hp / me.maxHp < 0.45 ? 55 : -1;
+        else if (e.protect) v = me.protectCount > 0 ? -1 : (foe.status === 'brn' || foe.status === 'psn') ? 25 : 4;
+        else if (e.self) {
+            const k0 = Object.keys(e.self)[0];
+            const k = k0 === 'off' ? (me.style === 'spec' ? 'spa' : 'atk') : k0;
+            v = me.boosts[k] >= 2 || threat >= me.hp * 0.6 || me.hp / me.maxHp < 0.6 ? -1 : 38;
+        } else v = -1;
+        return { i, v: v + b.rnd() * 6 };
+    });
+    // Schlechte Paarung: auswechseln
+    if (smart >= 2 && threat >= me.hp * 0.8 && alive(side).length > 1 && b.rnd() < 0.6) {
+        const top = Math.max(...opts.map(o => o.v));
+        if (top < 60) {
+            const to = bestSwitch(b, s, side.active);
+            if (to >= 0 && bestDamage(foe, side.cards[to]) < threat * 0.7) return { a: 'switch', to };
+        }
     }
-    if (c.a === 'switch') {
-        const to = Number(c.to);
-        if (!side.cards[to] || side.cards[to].hp <= 0 || to === side.active) return false;
-        act(b, s).stunImmune = false;
-        side.active = to;
-        ev.push({ k: 'switch', s, to });
-        endTurn(b, ev);
-        return true;
-    }
-    return false;
+    opts.sort((x, y) => y.v - x.v);
+    return { a: 'move', i: opts[0].i };
 }
 
-// Aktion einer Seite (Standard: Seite 0 = Spieler gegen KI); danach zieht
-// die KI, falls es eine gibt. Liefert Ereignisse oder Fehlertext.
-function play(b, c, s = 0) {
-    if (b.over) return { err: 'The battle is over' };
-    const ev = [];
-    if (c.a === 'forfeit') {
-        b.over = true;
-        b.winner = 1 - s;
-        b.needSwitch = false;
-        ev.push({ k: 'forfeit', s }, { k: 'end', winner: b.winner });
-        return { ev };
-    }
-    if (b.needSwitch) {
-        if (b.switchSide !== s) return { err: 'Wait – your opponent picks the next card' };
-        const side = b.sides[s], to = Number(c.to);
-        if (c.a !== 'switch' || !side.cards[to] || side.cards[to].hp <= 0) return { err: 'Pick your next card' };
-        side.active = to;
-        b.needSwitch = false;
-        ev.push({ k: 'switch', s, to, forced: true });
-        b.turn = b.nextTurn;
-        if (b.turn === 0) b.round++;
-        startTurn(b, ev);
-        runAi(b, ev);
-        return { ev };
-    }
-    if (b.turn !== s) return { err: 'Not your turn' };
-    if (!doAct(b, s, c, ev)) return { err: 'You cannot do that now' };
-    runAi(b, ev);
-    return { ev };
-}
+// ---------- Ansicht ----------
 
-// Wer muss gerade handeln? (Seite, die waehlen oder ziehen muss)
-function waitingOn(b) {
-    if (b.over) return null;
-    return b.needSwitch ? b.switchSide : b.turn;
-}
-
-// Zeit abgelaufen (Duelle): fuer die wartende Seite automatisch handeln –
-// naechste lebende Karte schicken bzw. aufladen
-function auto(b) {
-    const s = waitingOn(b);
-    if (s === null) return null;
-    if (b.needSwitch) {
-        const to = b.sides[s].cards.findIndex(c => c.hp > 0);
-        return play(b, { a: 'switch', to }, s);
-    }
-    return play(b, { a: 'charge' }, s);
-}
-
-// Ansicht fuer den Browser, aus Sicht von Seite me (die steht dann vorne)
+// Aus Sicht von Seite me (die steht dann vorne)
 function view(b, me = 0) {
-    const sides = b.sides.map(s => ({
-        name: s.name, active: s.active,
-        cards: s.cards.map(c => ({ id: c.id, v: c.v, hp: c.hp, maxHp: c.maxHp, energy: c.energy, burn: c.burn, stun: c.stun, boost: c.boost, def: c.def, attacks: c.attacks }))
+    const sides = b.sides.map(side => ({
+        name: side.name, active: side.active,
+        cards: side.cards.map(c => ({
+            id: c.id, v: c.v, type: c.type, hp: c.hp, maxHp: c.maxHp, status: c.status, boosts: c.boosts, st: c.st,
+            moves: c.moves.map(m => ({ name: m.name, type: m.type, cat: m.cat, pow: m.pow, acc: m.acc, pp: m.ppLeft, ppMax: m.pp, pri: m.pri || 0, desc: m.desc }))
+        }))
     }));
     const fl = x => x === null || x === undefined ? x : x ^ me;
+    const mine = b.sides[me], foe = b.sides[1 - me];
+    const n = needs(b);
     return {
-        turn: fl(b.turn), round: b.round, over: b.over, winner: fl(b.winner),
-        needSwitch: b.needSwitch && b.switchSide === me,
-        foeSwitch: b.needSwitch && b.switchSide !== me,
+        turn: b.turn, phase: b.phase, over: b.over, winner: fl(b.winner),
+        // Muss ich waehlen? Oder habe ich schon und warte?
+        need: n.includes(me) ? (b.phase === 'switch' ? 'switch' : 'move') : null,
+        waiting: !b.over && !n.includes(me) && n.includes(1 - me),
+        needSwitch: b.phase === 'switch' && mine.need && !mine.choice,
+        foeSwitch: b.phase === 'switch' && foe.need,
         sides: me ? [sides[1], sides[0]] : sides
     };
 }
@@ -316,9 +493,9 @@ function flip(ev, me) {
     if (!me) return ev;
     return ev.map(e => {
         const o = { ...e };
-        for (const k of ['s', 'first', 'winner']) if (typeof o[k] === 'number') o[k] ^= 1;
+        for (const k of ['s', 'winner']) if (typeof o[k] === 'number') o[k] ^= 1;
         return o;
     });
 }
 
-module.exports = { fighter, createBattle, play, auto, waitingOn, view, flip, damage, VAR_MUL, BURN_DMG, BURN_TURNS, HEAL, BOOST };
+module.exports = { step, fighter, createBattle, play, auto, needs, waitingOn, view, flip, calc, estimate, aiChoose, VAR_MUL, MAX_TURNS };

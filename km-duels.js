@@ -13,8 +13,9 @@
 // naechste Start ihn zurueck (siehe refundEscrows).
 //
 // Ablauf: Duell eroeffnen -> Gegner nimmt an -> beide waehlen drei Karten
-// (90 s) -> Kampf. Pro Zug 30 s; wer sie verstreichen laesst, laedt automatisch
-// auf (bzw. schickt die naechste Karte). Drei verpasste Zuege am Stueck = Aufgabe.
+// (90 s) -> Kampf. Seit 6.0 waehlen beide gleichzeitig (wie Showdown), 45 s je
+// Zug; wer sie verstreichen laesst, bekommt eine automatische Wahl (bzw. die
+// naechste Karte). Drei verpasste Zuege am Stueck = Aufgabe.
 // Der Kampf haengt am Konto, nicht an der Verbindung: Seite neu laden geht.
 //
 // Rating: Elo, Start 1000, K = 32, in u.kmDuel = { rating, wins, losses, won }.
@@ -24,7 +25,7 @@
 
 const STAKE_MAX = 100000;
 const PICK_MS = 90000;
-const TURN_MS = 30000;
+const TURN_MS = 45000;
 const AFK_LIMIT = 3;
 const OPEN_MS = 10 * 60000;     // offenes Duell verfaellt nach 10 min
 const K = 32;
@@ -71,7 +72,7 @@ module.exports = function createDuels(h) {
 
     function duelView(d, key) {
         const me = d.keys.indexOf(key);
-        const wait = B.waitingOn(d.b);
+        const wait = B.waitingOn(d.b).length ? true : null;
         return {
             id: d.id, stake: d.stake, me, view: B.view(d.b, me),
             foe: nameOf(d.keys[1 - me]), foeRating: record(accounts.get(d.keys[1 - me])).rating,
@@ -222,7 +223,7 @@ module.exports = function createDuels(h) {
             accounts.touch();
         }
         const { b: battle, ev } = B.createBattle(ta, tb, { nameA: ua.name, nameB: ub.name, ai: false });
-        const d = { id: l.id, keys: [a, b], b: battle, stake: l.stake, turnAt: Date.now() + TURN_MS, afk: [0, 0] };
+        const d = { id: l.id, keys: [a, b], b: battle, stake: l.stake, turnAt: Date.now() + TURN_MS, afk: [0, 0], point: battle.turn + battle.phase };
         duels.set(d.id, d);
         h.log(`kmduel: #${d.id} ${ua.name} gegen ${ub.name}, Einsatz ${l.stake}`);
         for (const [i, k] of d.keys.entries()) {
@@ -235,7 +236,13 @@ module.exports = function createDuels(h) {
 
     // Ergebnis eines Zuges an beide
     function after(d, ev) {
-        d.turnAt = Date.now() + TURN_MS;
+        // Zugzeit neu, sobald ein neuer Entscheidungspunkt beginnt (nicht schon,
+        // wenn nur eine Seite gewaehlt hat)
+        const key = d.b.turn + d.b.phase;
+        if (key !== d.point) {
+            d.point = key;
+            d.turnAt = Date.now() + TURN_MS;
+        }
         let result = null;
         if (d.b.over) result = finish(d);
         for (const [i, k] of d.keys.entries()) {
@@ -304,18 +311,18 @@ module.exports = function createDuels(h) {
         const now = Date.now();
         for (const d of [...duels.values()]) {
             if (now < d.turnAt) continue;
-            const s = B.waitingOn(d.b);
-            if (s === null) continue;
-            d.afk[s]++;
+            const who = B.waitingOn(d.b);
+            if (!who.length) continue;
+            for (const s of who) d.afk[s]++;
+            const gone = who.find(s => d.afk[s] >= AFK_LIMIT);
             let r;
-            if (d.afk[s] >= AFK_LIMIT) {
-                d.forfeit = s;
-                r = B.play(d.b, { a: 'forfeit' }, s);
-                r.ev.unshift({ k: 'afk', s });
-            } else {
-                r = B.auto(d.b);
-                r.ev.unshift({ k: 'timeout-turn', s });
-            }
+            if (gone !== undefined) {
+                d.forfeit = gone;
+                r = B.play(d.b, { a: 'forfeit' }, gone);
+                r.ev.unshift({ k: 'afk', s: gone });
+            } else r = B.auto(d.b);
+            // Auch ohne neuen Entscheidungspunkt nicht sofort wieder ausloesen
+            d.turnAt = Date.now() + TURN_MS;
             after(d, r.ev);
         }
         let changed = false;

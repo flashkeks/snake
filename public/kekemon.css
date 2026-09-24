@@ -1445,14 +1445,6 @@ body.world-cards #kekemon > .card {
     gap: 6px;
 }
 
-.kb-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #ffd23f;
-    box-shadow: 0 0 8px #ffd23f;
-}
-
 .kb-nm {
     font-size: 17px;
     white-space: nowrap;
@@ -1495,43 +1487,6 @@ body.world-cards #kekemon > .card {
 }
 
 /* Energie: Punkte, Kosten der Attacken als Strich darunter */
-.kb-pips {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    min-height: 16px;
-}
-
-.kb-pips i {
-    position: relative;
-    width: 13px;
-    height: 13px;
-    border-radius: 50%;
-    border: 2px solid rgba(255,255,255,.25);
-    box-sizing: border-box;
-}
-
-.kb-pips i.on {
-    background: var(--tc);
-    border-color: var(--tc);
-    box-shadow: 0 0 6px var(--tc);
-}
-
-.kb-pips i.mark::after {
-    content: '';
-    position: absolute;
-    left: 1px;
-    right: 1px;
-    bottom: -6px;
-    height: 2px;
-    background: rgba(255,255,255,.55);
-}
-
-.kb-pips b {
-    font-size: 11px;
-    color: #cfd8e3;
-}
-
 .kb-status {
     display: flex;
     flex-wrap: wrap;
@@ -1557,66 +1512,6 @@ body.world-cards #kekemon > .card {
 .kb-chip.weak { background: rgba(255,255,255,.08); color: #cfd8e3; font-weight: 600; }
 
 /* Bank: kleine Knoepfe statt Mini-Karten */
-.kb-benchrow {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-
-.kb-arena .kb-bench {
-    position: relative;
-    display: grid;
-    grid-template-columns: auto 1fr;
-    grid-template-rows: auto auto;
-    align-items: center;
-    column-gap: 6px;
-    min-width: 0;
-    flex: 1 1 110px;
-    max-width: 180px;
-    padding: 4px 8px;
-    border-radius: 10px;
-    background: rgba(255,255,255,.06);
-    border: 1px solid rgba(255,255,255,.12);
-    color: #e8edf5;
-    text-align: left;
-    font-size: 12px;
-    cursor: default;
-}
-
-.kb-arena .kb-bench .ico {
-    grid-row: 1 / 3;
-    font-size: 16px;
-}
-
-.kb-arena .kb-bench .nm {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-weight: 700;
-}
-
-.kb-arena .kb-bench.can {
-    cursor: pointer;
-    border-color: #ffb13d;
-    background: rgba(255,177,61,.12);
-}
-
-.kb-arena .kb-bench.can:hover {
-    background: rgba(255,177,61,.22);
-}
-
-.kb-arena .kb-bench.dead {
-    opacity: .4;
-}
-
-.kb-arena .kb-bench:disabled {
-    opacity: 1;
-}
-
-.kb-arena .kb-bench.dead:disabled {
-    opacity: .4;
-}
-
 .kb-mhp {
     display: block;
     height: 4px;
@@ -1629,24 +1524,6 @@ body.world-cards #kekemon > .card {
     display: block;
     height: 100%;
     background: #7dffb0;
-}
-
-.kb-swap {
-    position: absolute;
-    top: -7px;
-    right: -5px;
-    background: #ffb13d;
-    color: #2a1600;
-    font-weight: 900;
-    font-size: 11px;
-    border-radius: 999px;
-    padding: 0 6px;
-    pointer-events: none;
-}
-
-.kb-swap.ko {
-    background: #3a3446;
-    color: #cfd8e3;
 }
 
 /* Laufschrift in der Mitte: das letzte Ereignis */
@@ -1679,84 +1556,9 @@ body.world-cards #kekemon > .card {
     z-index: 20;
     margin: 0 -12px;
     padding: 8px 12px 10px;
-    background: linear-gradient(to top, #120f1d 75%, rgba(18,15,29,0));
+    background: #120f1d;
+    box-shadow: 0 -10px 16px -6px rgba(0,0,0,.6);
     border-radius: 0 0 16px 16px;
-}
-
-.kb-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr 150px;
-    gap: 8px;
-}
-
-.kb-arena .kb-atk,
-.kb-arena .kb-charge {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    gap: 2px 8px;
-    align-items: center;
-    text-align: left;
-    padding: 9px 12px;
-    border-radius: 12px;
-    background: rgba(255,255,255,.07);
-    border: 2px solid rgba(255,177,61,.6);
-    color: #fff;
-    min-height: 58px;
-}
-
-.kb-arena .kb-atk:hover:not(:disabled),
-.kb-arena .kb-charge:hover {
-    background: rgba(255,177,61,.15);
-}
-
-.kb-arena .kb-atk.kill {
-    border-color: #7dffb0;
-    box-shadow: 0 0 12px rgba(125,255,176,.3);
-}
-
-.kb-arena .kb-atk .cost {
-    letter-spacing: -2px;
-}
-
-.kb-arena .kb-atk b {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.kb-arena .kb-atk .dmg {
-    font-size: 20px;
-    font-weight: 900;
-    color: #ffd23f;
-}
-
-.kb-arena .kb-atk .dmg em {
-    font-style: normal;
-    font-size: 11px;
-    margin-left: 3px;
-    color: #7dffb0;
-}
-
-.kb-arena .kb-atk small,
-.kb-arena .kb-charge small {
-    grid-column: 1 / -1;
-    color: #9aa7b8;
-    font-weight: 400;
-    font-size: 11px;
-}
-
-.kb-arena .kb-atk.no {
-    opacity: .45;
-    border-color: rgba(255,255,255,.15);
-}
-
-.kb-arena .kb-atk.no small {
-    color: #ffb13d;
-}
-
-.kb-arena .kb-charge {
-    grid-template-columns: 1fr;
-    border-color: rgba(61,165,255,.6);
 }
 
 .kb-hintbig {
@@ -2057,11 +1859,6 @@ body.world-cards #kekemon > .card {
         font-size: 14px;
     }
 
-    .kb-arena .kb-bench {
-        flex: 1 1 100%;
-        max-width: none;
-    }
-
     .kb-ticker {
         font-size: 12px;
         padding: 3px 10px;
@@ -2072,63 +1869,7 @@ body.world-cards #kekemon > .card {
         padding: 6px 8px 8px;
     }
 
-    .kb-actions {
-        grid-template-columns: 1fr 1fr;
-        gap: 6px;
-    }
-
-    .kb-arena .kb-charge {
-        grid-column: 1 / -1;
-        min-height: 0;
-        padding: 6px 10px;
-        grid-template-columns: auto 1fr;
-    }
-
-    .kb-arena .kb-charge small {
-        grid-column: auto;
-    }
-
     /* Handy: Name oben ueber die ganze Breite, darunter Kosten, rechts Schaden */
-    .kb-arena .kb-atk {
-        min-height: 0;
-        padding: 7px 9px;
-        gap: 1px 6px;
-        grid-template-columns: 1fr auto;
-    }
-
-    .kb-arena .kb-atk b {
-        grid-column: 1;
-        grid-row: 1;
-        font-size: 13px;
-        white-space: normal;
-        line-height: 1.15;
-    }
-
-    .kb-arena .kb-atk .cost {
-        grid-column: 1;
-        grid-row: 2;
-        font-size: 12px;
-    }
-
-    .kb-arena .kb-atk .dmg {
-        grid-column: 2;
-        grid-row: 1 / 3;
-    }
-
-    .kb-arena .kb-atk small {
-        display: none;
-    }
-
-    .kb-arena .kb-atk.no .cost {
-        display: none;
-    }
-
-    .kb-arena .kb-atk.no small {
-        display: block;
-        grid-column: 1;
-        grid-row: 2;
-    }
-
     /* Tabs in einer Zeile, damit der Kampf mehr Platz hat */
     #kekemon #km-tabs {
         flex-wrap: nowrap;
@@ -2142,10 +1883,6 @@ body.world-cards #kekemon > .card {
         line-height: 1.15;
         padding: 5px 1px;
         white-space: normal;
-    }
-
-    .kb-arena .kb-atk .dmg {
-        font-size: 17px;
     }
 
     .kb-logbox {
@@ -2164,5 +1901,387 @@ body.world-cards #kekemon > .card {
     .kd-row .btns {
         grid-column: 1 / -1;
         justify-content: flex-end;
+    }
+}
+
+/* ---------- Kampf 6.0 (nach Pokemon Showdown) ---------- */
+
+.kb-main {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 10px;
+    align-items: stretch;
+}
+
+.kb-logpane {
+    max-height: 430px;
+    overflow-y: auto;
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: rgba(0,0,0,.35);
+    border: 1px solid rgba(255,255,255,.08);
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: #dfe6ef;
+    display: flex;
+    /* Zeilen kommen neueste zuerst; column-reverse zeigt sie chronologisch
+       und haelt die Scrollposition unten */
+    flex-direction: column-reverse;
+}
+
+.kb-logpane,
+.kb-logbox {
+    --mute: #9aa7b8;
+}
+
+.kb-logpane .turn,
+.kb-logbox .turn {
+    margin-top: 6px;
+    font-weight: 900;
+    color: #ffd23f;
+    border-top: 1px solid rgba(255,210,63,.25);
+    padding-top: 3px;
+}
+
+.kb-logpane .head,
+.kb-logbox .head {
+    font-weight: 800;
+    color: #ff9be6;
+}
+
+.kb-logpane .move,
+.kb-logbox .move {
+    font-weight: 700;
+}
+
+.kb-logpane .small,
+.kb-logbox .small {
+    color: var(--mute);
+    font-size: .92em;
+}
+
+.kb-logpane .good,
+.kb-logbox .good { color: #7dffb0; }
+.kb-logpane .bad,
+.kb-logbox .bad { color: #ffb08a; }
+.kb-logpane .crit,
+.kb-logbox .crit { color: #ffd23f; font-weight: 800; }
+.kb-logpane .faint,
+.kb-logbox .faint { color: #ff7a8a; font-weight: 800; }
+
+.kb-logbox {
+    display: none;
+}
+
+.kb-act .kc.mini {
+    cursor: default;
+}
+
+.kb-act .kc.mini:hover {
+    transform: none;
+}
+
+.kb-act.enter {
+    animation: kb-enter .45s ease-out;
+}
+
+@keyframes kb-enter {
+    from { opacity: 0; transform: scale(.6) translateY(20px); }
+}
+
+.kb-dots {
+    display: inline-flex;
+    gap: 3px;
+    margin-left: 4px;
+}
+
+.kb-dots i {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #e8edf5;
+    box-shadow: inset 0 -3px 0 #e3263b;
+    opacity: .9;
+}
+
+.kb-dots i.on {
+    outline: 1px solid #ffd23f;
+    outline-offset: 1px;
+}
+
+.kb-dots i.st {
+    box-shadow: inset 0 -3px 0 #ffb13d;
+}
+
+.kb-dots i.ko {
+    background: #3a3446;
+    box-shadow: none;
+    opacity: .6;
+}
+
+.kb-type {
+    font-size: 11px;
+    font-weight: 800;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--tc) 30%, transparent);
+    border: 1px solid color-mix(in srgb, var(--tc) 70%, transparent);
+    vertical-align: middle;
+}
+
+.kb-stat {
+    font-size: 10px;
+    font-weight: 900;
+    padding: 1px 6px;
+    border-radius: 4px;
+    vertical-align: middle;
+    color: #fff;
+}
+
+.kb-stat.st-brn { background: #e25822; }
+.kb-stat.st-par { background: #c9a400; color: #1a1400; }
+.kb-stat.st-psn { background: #a040a0; }
+.kb-stat.st-slp { background: #6d7a8a; }
+
+.kb-chip.up { background: rgba(125,255,176,.18); color: #7dffb0; }
+.kb-chip.down { background: rgba(255,122,138,.18); color: #ff9aa7; }
+
+.kb-ask {
+    font-size: 14px;
+    color: #cfd8e3;
+    margin-bottom: 6px;
+}
+
+.kb-moves {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.kb-arena .kb-move {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2px 8px;
+    align-items: center;
+    text-align: left;
+    padding: 8px 12px;
+    border-radius: 12px;
+    color: #fff;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--tc, #888) 38%, #1a1626), color-mix(in srgb, var(--tc, #888) 14%, #120f1d));
+    border: 2px solid color-mix(in srgb, var(--tc, #888) 75%, transparent);
+    min-height: 62px;
+    font-size: 14px;
+}
+
+.kb-arena .kb-move:hover:not(:disabled) {
+    filter: brightness(1.18);
+}
+
+.kb-arena .kb-move b {
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.kb-arena .kb-move .meta {
+    grid-column: 1;
+    font-size: 12px;
+    color: #dfe6ef;
+}
+
+.kb-arena .kb-move .pp {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    font-size: 12px;
+    font-weight: 800;
+    color: #cfd8e3;
+}
+
+.kb-arena .kb-move em {
+    grid-column: 1 / -1;
+    font-style: normal;
+    font-size: 11px;
+    color: #cfd8e3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.kb-arena .kb-move em.e2 { color: #7dffb0; font-weight: 800; }
+.kb-arena .kb-move em.e5 { color: #ffb08a; }
+.kb-arena .kb-move em.e0 { color: #9aa7b8; }
+
+.kb-arena .kb-move.no {
+    opacity: .4;
+}
+
+.kb-swrow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.kb-swrow .lbl {
+    font-size: 12px;
+    color: #9aa7b8;
+    margin-right: 2px;
+}
+
+.kb-arena .kb-sw {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 6px;
+    align-items: center;
+    min-width: 0;
+    flex: 1 1 150px;
+    max-width: 230px;
+    padding: 5px 10px;
+    border-radius: 10px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid color-mix(in srgb, var(--tc) 60%, transparent);
+    color: #e8edf5;
+    text-align: left;
+    font-size: 13px;
+}
+
+.kb-arena .kb-sw:hover:not(:disabled) {
+    background: rgba(255,255,255,.12);
+}
+
+.kb-arena .kb-sw .ico {
+    grid-row: 1 / 4;
+    font-size: 18px;
+}
+
+.kb-arena .kb-sw .nm {
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.kb-arena .kb-sw small {
+    font-size: 11px;
+    color: #9aa7b8;
+}
+
+.kb-arena .kb-sw:disabled {
+    opacity: .35;
+}
+
+.kb-mhp {
+    display: block;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.12);
+    overflow: hidden;
+}
+
+.kb-mhp i {
+    display: block;
+    height: 100%;
+    background: #7dffb0;
+}
+
+/* Detailansicht: Kampfwerte und Attacken */
+.km-bt {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.km-bsts {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.km-bst {
+    display: grid;
+    grid-template-columns: 34px 34px 1fr;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+}
+
+.km-bst i {
+    display: block;
+    height: 6px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #3da5ff, #7dffb0);
+}
+
+.km-mvs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.km-mv {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: 12px;
+    background: color-mix(in srgb, var(--tc) 18%, transparent);
+    border: 1px solid color-mix(in srgb, var(--tc) 55%, transparent);
+}
+
+.km-mv small {
+    color: #9aa7b8;
+    font-size: 11px;
+}
+
+@media (max-width: 900px) {
+    .kb-main {
+        grid-template-columns: 1fr;
+    }
+
+    .kb-logpane {
+        display: none;
+    }
+
+    .kb-logbox {
+        display: block;
+    }
+}
+
+@media (max-width: 700px) {
+    .kb-moves {
+        gap: 6px;
+    }
+
+    .kb-arena .kb-move {
+        min-height: 0;
+        padding: 6px 8px;
+        font-size: 12px;
+    }
+
+    .kb-arena .kb-move b {
+        font-size: 13px;
+        white-space: normal;
+        line-height: 1.15;
+    }
+
+    .kb-arena .kb-move .meta {
+        font-size: 11px;
+    }
+
+    .kb-arena .kb-sw {
+        flex: 1 1 100px;
+        font-size: 12px;
+    }
+
+    .kb-swrow .lbl {
+        width: 100%;
+    }
+
+    .km-mvs {
+        grid-template-columns: 1fr;
     }
 }

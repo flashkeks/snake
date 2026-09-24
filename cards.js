@@ -6,12 +6,13 @@
 //   Typ       aus Genres (Anime/Serie) bzw. staerkstem Kampfwert (Helden)
 //   Seltenheit aus dem Beliebtheitsrang innerhalb der Reihe
 //   Werte     HP, ATK, DEF, SPD nach Seltenheit (Helden: aus powerstats)
-//   Attacken  zwei, mit Energiekosten, Schaden und Effekt
+//   Kampf     seit 6.0: Kampfwerte und vier Attacken (km-moves.js)
 // Gibt es keine Rohdaten (lokaler Test), nimmt es tools/cards/fixture.json.
 
 const fs = require('fs');
 const path = require('path');
 const M = require('./cards-moves');
+const K = require('./km-moves');
 
 const TYPES = {
     fire: { name: 'Fire', icon: '🔥', color: '#ff6b3d', weak: 'water' },
@@ -139,17 +140,15 @@ function makeCard(raw, rankFrac, num) {
         bigName = sig.big;
         effect = EFFECTS[sig.effect] !== undefined ? sig.effect : 'none';
     }
-    const bigCost = ri >= 4 ? 3 : 2 + (rnd() < 0.5 ? 1 : 0);
-    const attacks = [
-        { name: basic, cost: 1, dmg: round10(atk * 0.45), effect: 'none' },
-        { name: bigName, cost: bigCost, dmg: round10(atk * (bigCost === 3 ? 1.35 : 1.05) * (effect === 'none' ? 1.15 : 1)), effect }
-    ];
-    return {
+    const card = {
         id: raw.id, set: raw.set, num: `${SETS[raw.set].code}-${String(num).padStart(4, '0')}`,
-        name: raw.name, img: raw.img, from: raw.from || '', type, rarity: rarity.id, hp, atk, def, spd, attacks,
+        name: raw.name, img: raw.img, from: raw.from || '', type, rarity: rarity.id, hp, atk, def, spd,
         gender: /^female$/i.test(raw.gender || '') ? 'f' : /^male$/i.test(raw.gender || '') ? 'm' : '',
         weak: TYPES[type].weak
     };
+    // Kampf (6.0): eigener Zufall, damit die Werte oben unveraendert bleiben
+    card.bt = K.kit(card, seeded(raw.id + ':battle'), { basic, big: bigName, effect }, MOVES);
+    return card;
 }
 
 function load(dataDir) {
@@ -265,9 +264,12 @@ function openPack(db, packId) {
 function catalog(db) {
     return {
         types: TYPES, rarities: RARITIES, sets: SETS, packs: PACKS, effects: EFFECTS,
-        odds: ODDS, variants: VARIANTS, sell: SELL, sellMul: SELL_MUL,
+        odds: ODDS, variants: VARIANTS, sell: SELL, sellMul: SELL_MUL, chart: K.CHART, immune: K.IMMUNE,
+        // Kampf (6.0): [style, [hp, atk, def, spa, spd, spe], Attacken als
+        // [name, type, cat, pow, acc, pp, pri, desc, eff]]
         cards: db.cards.map(c => [c.id, c.set, c.num, c.name, c.img, c.from, c.type, c.rarity, c.hp, c.atk, c.def, c.spd,
-            c.attacks.map(a => [a.name, a.cost, a.dmg, a.effect])])
+            [c.bt.style, ['hp', 'atk', 'def', 'spa', 'spd', 'spe'].map(k => c.bt.stats[k]),
+                c.bt.moves.map(m => [m.name, m.type, m.cat, m.pow, m.acc, m.pp, m.pri, m.desc, m.eff || 0])]])
     };
 }
 
