@@ -2267,3 +2267,12 @@ auf der Map, Nachfuellen alle 150 s.
 Der Rest geht an Epic. Schnitt je Kiste jetzt 0,43 % (÷3,3). Gegner-Drops je
 Kill von ~0,22 % auf ~0,08 %. Boss-Loot (`boss`, 3 Items Sovereign-Stufen)
 unveraendert, offen bei Max.
+
+Nachtrag 6.10.1 (Max: „Ja, auf ~1/250"): **Boss-Loot** `boss` Legendary+ je
+Item 1,78 % -> 0,4 % (Leg 0,37 %, Myth 0,03 %, Ultra 0,003 %), Rest an Epic.
+Trifft auch die Top-Gegner-Beute (1 in 50 zieht aus `boss`). CTF bleibt bei
+`sovereign` (Max wollte ausdruecklich Sovereign-Niveau).
+
+**Aufsammel-Anzeige** (`onShLoot`/Toast): jedes Item in der Farbe seiner
+Seltenheit (`TIER_COLOR`, Ultra schillert), Rahmentext bleibt gelb. Passt die
+Zeile nicht in die Breite, faellt sie auf den alten einfarbigen Text zurueck.

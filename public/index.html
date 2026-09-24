@@ -11805,8 +11805,11 @@ function onShHurt(d) {
 }
 
 function onShLoot(d) {
-    const names = d.items.map(it => `${itemIcon(it)} ${it.n}`).join(', ');
-    shToast = { text: d.items.length ? `${d.from ? `Looted ${d.from}: ` : '+ '}${names}${d.full ? ' · backpack full!' : ''}` : (d.full ? 'Backpack full!' : 'Empty'), t: performance.now() };
+    // 6.10.1 (Max): jedes Item in der Farbe seiner Seltenheit statt alles gelb
+    const Y = '#ffd23f';
+    const segs = !d.items.length ? [[d.full ? 'Backpack full!' : 'Empty', Y]]
+        : [[d.from ? `Looted ${d.from}: ` : '+ ', Y], ...d.items.flatMap((it, i) => [...(i ? [[', ', Y]] : []), [`${itemIcon(it)} ${it.n}`, it.t || 'common']]), ...(d.full ? [[' · backpack full!', Y]] : [])];
+    shToast = { text: segs.map(s => s[0]).join(''), segs, t: performance.now() };
     beep(900, 0.08, 0.05);
 }
 
@@ -13158,8 +13161,20 @@ function shFrame() {
         const w = Math.min(W - 40, c.measureText(shToast.text).width + 24);
         c.fillStyle = 'rgba(20,16,4,.85)';
         c.fillRect(W / 2 - w / 2, 108, w, 30);
-        c.fillStyle = '#ffd23f';
-        c.fillText(shToast.text, W / 2, 124, W - 60);
+        if (shToast.segs && w < W - 40) {
+            // Stueck fuer Stueck, jedes in seiner Farbe (Ultra schillert wie im Rest)
+            c.textAlign = 'left';
+            let x = W / 2 - (w - 24) / 2;
+            for (const [txt, col] of shToast.segs) {
+                c.fillStyle = col === 'ultra' ? `hsl(${(now / 4) % 360},100%,70%)` : TIER_COLOR[col] || col;
+                c.fillText(txt, x, 124);
+                x += c.measureText(txt).width;
+            }
+            c.textAlign = 'center';
+        } else {
+            c.fillStyle = '#ffd23f';
+            c.fillText(shToast.text, W / 2, 124, W - 60);
+        }
         c.globalAlpha = 1;
     }
     const nk = shFx.find(f => f.nuke);

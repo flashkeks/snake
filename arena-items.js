@@ -266,7 +266,10 @@ const SOURCES = {
     // Militaerkisten im Lager der Enforcer: nur Ausruestung, wie eine Standard-Case
     military: { t: [0.45, 0.33, 0.15, 0.06, 0.0095, 0.0005, 0], kinds: { weapon: 0.5, armor: 0.45, pack: 0.05 } },
     // Boss: Sovereign-Stufen, aber nur Ausruestung
-    boss: { t: [0, 0, 0.35, 0.6322333, 1 / 60, 0.001, 0.0001], kinds: { weapon: 0.5, armor: 0.4, pack: 0.1 } },
+    // 6.10.1 (Max: Boss seit 6.9 viel oefter -> Legendarys am laufenden Band):
+    // Legendary+ je Item 1,78 % -> 0,4 % (etwa 1/250), Rest an Epic.
+    // Gilt auch fuer die Top-Gegner-Beute (1 in 50) – die zieht aus 'boss'.
+    boss: { t: [0, 0, 0.35, 0.64597, 0.0037, 0.0003, 0.00003], kinds: { weapon: 0.5, armor: 0.4, pack: 0.1 } },
     scrapcase: { t: [0.7, 0.24, 0.055, 0.0049, 0.0001, 0, 0], kinds: { weapon: 0.45, armor: 0.28, util: 0.2, pack: 0.07 } },
     standard: { t: [0.55, 0.3, 0.12, 0.0298, 0.0002, 0, 0], kinds: { weapon: 0.45, armor: 0.28, util: 0.2, pack: 0.07 } },
     mage: { t: [0.4, 0.33, 0.2, 0.069, 0.001, 0.000005, 0], kinds: { weapon: 0.45, armor: 0.25, util: 0.25, pack: 0.05 }, tag: 'mage', tagShare: 0.75 },
