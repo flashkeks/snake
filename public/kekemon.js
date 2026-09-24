@@ -1191,7 +1191,7 @@ function kbDrawGyms() {
             </div>
         </div>`;
     }).join('');
-    return KB_RULES.replace('</ul>', `<li>First win against a gym: coins + a free pack. After that 15 % of the coins, 3 times per gym and day.</li><li>Every card in your team earns XP. Higher level = more HP, attack, defense and speed.</li></ul>`) +
+    return KB_RULES.replace('</ul>', `<li>First win against a gym: coins + a free pack. After that 15 % of the coins, 3 times per gym and day.</li><li>Every card in your team earns XP for each foe you knock out – more for stronger foes, a bonus for winning. Higher level = more HP, attack, defense and speed.</li></ul>`) +
         kbDrawTrain() + `<h3 class="kd-h">🏟️ Gyms</h3><div class="kb-gyms">${tiles}</div>`;
 }
 
@@ -1209,12 +1209,12 @@ function kbDrawTrain() {
     const R = kmCat.rarities, ri = kmCat.ridx;
     const tiles = zs.map(z => `<div class="kb-zone z-${z.id}">
         <div class="kb-gym-head"><span class="ico">${z.icon}</span><div><b>${esc(z.name)}</b><small>Wild Lv ${z.lv[0]}–${z.lv[1]} · ${z.rar.map(r => `<span style="color:${R[ri[r]].color}">${esc(R[ri[r]].name)}</span>`).join(' / ')}</small></div></div>
-        <div class="kb-zone-rw"><span>✨ ${z.xp} XP per card</span><span>🪙 ${z.coins.toLocaleString('en-US')}</span><span>🧩 ${z.fragChance >= 1 ? '+' + z.frag : Math.round(z.fragChance * 100) + ' % for +' + z.frag}</span></div>
+        <div class="kb-zone-rw"><span>✨ ~${z.xp} XP per card</span><span>🪙 ${z.coins.toLocaleString('en-US')}</span><span>🧩 ${z.fragChance >= 1 ? '+' + z.frag : Math.round(z.fragChance * 100) + ' % for +' + z.frag}</span></div>
         <button type="button" class="gold" data-kbgym="${z.id}">🌿 Train</button>
     </div>`).join('');
     const full = zs[0].full;
     return `<h3 class="kd-h">🌿 Training</h3>
-        <div class="hint">Unlimited fights against wild teams around your own level. XP is always full${full ? '' : ' – coins and pieces are lower for the rest of today'}.</div>
+        <div class="hint">Unlimited fights against wild teams around your own level. XP for every foe you knock out${full ? '' : ' – coins and pieces are lower for the rest of today'}.</div>
         <div class="kb-zones">${tiles}</div>${kbFragBox()}`;
 }
 
@@ -1266,7 +1266,7 @@ function kbDrawPick() {
         head = `<button type="button" class="ghost" id="kb-back">← Back</button>
             <b>${g.icon} ${esc(g.name)}</b> <span class="hint">Wild teams Lv ${g.lv[0]}–${g.lv[1]}, matched to your team's level · random types</span>`;
         go = `<button type="button" class="gold" id="kb-fight" ${chosen.length === KB_TEAM ? '' : 'disabled'}>🌿 Train!</button>`;
-        sub = `Pick ${KB_TEAM} different cards. All five earn ${g.xp} XP on a win.`;
+        sub = `Pick ${KB_TEAM} different cards. All five earn XP for every foe you knock out (~${g.xp} for a full win).`;
     } else if (g) {
         head = `<button type="button" class="ghost" id="kb-back">← Gyms</button>
             <b>${g.icon} ${esc(g.name)}</b> <span class="hint">${t ? `Leader uses ${t.icon} ${t.name} – ${kmWeakTo(g.type).map(x => T[x].icon + ' ' + T[x].name).join(', ')} moves hit it ×2` : 'The champion uses every type'}</span>`;
@@ -1388,7 +1388,7 @@ function kbDrawBattle(bp, kind) {
     if (v.over && !bp.busy) {
         const r = bp.result || { win: v.winner === 0 };
         let line;
-        if (kind === 'gym' && r.train) line = r.win ? `${r.coins ? `+🪙 ${r.coins.toLocaleString('en-US')}` : 'no coins'}${r.frag ? ` · 🧩 +${r.frag} booster piece${r.frag > 1 ? 's' : ''} (${r.fragTotal})` : ''} · win ${r.today} today` : 'Lost – your cards still learned something.';
+        if (kind === 'gym' && r.train) line = r.win ? `${r.coins ? `+🪙 ${r.coins.toLocaleString('en-US')}` : 'no coins'}${r.frag ? ` · 🧩 +${r.frag} booster piece${r.frag > 1 ? 's' : ''} (${r.fragTotal})` : ''} · win ${r.today} today` : (r.xp && r.xp.length ? 'Lost – your cards still learned from the foes they beat.' : 'Lost – no foe knocked out, no XP.');
         else if (kind === 'gym') line = r.win ? `${r.coins ? `+🪙 ${r.coins.toLocaleString('en-US')}` : 'No coins left from this gym today'}${r.first ? (r.already ? ' · gym cleared again (first-clear reward was paid before)' : ' · first clear!') : ''}` : 'Try another team – type matchups matter.';
         else line = `${r.stake ? (r.win ? `+🪙 ${r.pot.toLocaleString('en-US')}` : `−🪙 ${r.stake.toLocaleString('en-US')}`) + ' · ' : ''}rating ${r.rating || '?'} (${r.delta >= 0 ? '+' : ''}${r.delta || 0})`;
         // 6.7: XP je Karte, Level-ups hervorgehoben

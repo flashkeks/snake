@@ -72,14 +72,31 @@ function totalFor(lv) {
     return s;
 }
 
-// XP-Belohnung je Kampf und Karte
+// XP-Belohnung je Kampf und Karte (6.8): nur noch fuer besiegte Gegner.
+// Jeder K.o. bringt koXp(Gegner-Level), ein Sieg +WIN_BONUS obendrauf.
+// Vorher gab es feste XP je Bereich/Gym und 40 % schon fuers Durchhalten ab
+// Zug 3 – Lv-1-Karten im hoechsten Training kassierten so mehr als im
+// passenden. Wer nichts umhaut, bekommt jetzt nichts.
+const koXp = lv => 2 + 0.6 * Math.max(1, lv || 1);
+const WIN_BONUS = 1.2;
+// b: fertiger Kampf, s: eigene Seite, mul: Faktor der Kampfart
+function battleXp(b, s, mul = 1) {
+    const ko = b.sides[1 - s].cards.filter(c => c.hp <= 0);
+    const sum = ko.reduce((n, c) => n + koXp(c.lv), 0);
+    return Math.round(sum * (b.winner === s ? WIN_BONUS : 1) * mul);
+}
 const XP = {
-    // Gym: nach Nummer der Arena (0 = Sprout … 7 = Champion)
-    gym: (idx, win) => Math.round((30 + 12 * idx) * (win ? 1 : 0.4)),
-    duel: win => win ? 60 : 30,
-    // Training: fest je Bereich, Niederlage 40 %
-    train: (zone, win) => Math.round(zone.xp * (win ? 1 : 0.4))
+    gym: 1.5,        // Gyms und neue Reihe
+    train: 1,
+    duel: 1          // Duelle: dazu DUEL_FULL/DUEL_LATE je Tag
 };
+// Duelle: volle XP fuer die ersten DUEL_FULL am Tag, danach DUEL_LATE
+const DUEL_FULL = 10, DUEL_LATE = 0.2;
+
+function catalog() {
+    return { max: MAX_LV, curve: CURVE, feed: FEED, feedKeep: FEED_KEEP };
+}
+
 // Verfuettern (Schritt 4): Grund-XP nach Seltenheit der geopferten Kopie,
 // dazu die Haelfte ihrer eigenen XP
 const FEED = { common: 60, uncommon: 120, rare: 250, epic: 600, legendary: 1500, secret: 4000 };
@@ -102,14 +119,7 @@ function feed(u, target, source, rarity) {
     return addXp(u, target, (FEED[rarity] || FEED.common) + Math.round(fed * FEED_KEEP));
 }
 
-// Duelle: volle XP fuer die ersten DUEL_FULL am Tag, danach DUEL_LATE
-const DUEL_FULL = 10, DUEL_LATE = 0.2;
-
-function catalog() {
-    return { max: MAX_LV, curve: CURVE, feed: FEED, feedKeep: FEED_KEEP };
-}
-
-module.exports = { MAX_LV, CURVE, need, levelOf, statMul, normalize, normalizeAll, bestXp, bestLv, addXp, feed, FEED, totalFor, XP, DUEL_FULL, DUEL_LATE, catalog };
+module.exports = { MAX_LV, CURVE, need, levelOf, statMul, normalize, normalizeAll, bestXp, bestLv, addXp, feed, FEED, totalFor, XP, battleXp, koXp, DUEL_FULL, DUEL_LATE, catalog };
 
 // Nachsehen: node km-level.js
 if (require.main === module) {

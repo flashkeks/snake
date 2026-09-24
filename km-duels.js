@@ -292,11 +292,12 @@ module.exports = function createDuels(h) {
         // Karten-XP (6.7): echte Level zaehlen; volle XP fuer DUEL_FULL Duelle am Tag
         const xpOf = (i, win) => {
             const k = d.keys[i], u = accounts.get(k);
-            if (!win && d.b.turn < 3) return [];
             const today = new Date().toISOString().slice(0, 10);
             u.kmXpDay = u.kmXpDay && u.kmXpDay.day === today ? u.kmXpDay : { day: today, duels: 0 };
             const f = u.kmXpDay.duels++ < LV.DUEL_FULL ? 1 : LV.DUEL_LATE;
-            return (d.teams[i] || []).map(key => LV.addXp(u, key, LV.XP.duel(win) * f)).filter(Boolean);
+            // 6.8: nur fuer besiegte Gegner (wie Gyms und Training)
+            const gain = Math.round(LV.battleXp(d.b, i, LV.XP.duel) * f);
+            return gain ? (d.teams[i] || []).map(key => LV.addXp(u, key, gain)).filter(Boolean) : [];
         };
         const xp = [xpOf(0, w === 0), xpOf(1, w === 1)];
         accounts.touch();

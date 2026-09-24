@@ -33,12 +33,12 @@ const REPEAT_SHARE = 0.15, REPEAT_PER_DAY = 3;
 
 // Training (6.7, Karten-Level Schritt 2): wilde KI-Teams, unbegrenzt.
 // Gegner-Level = Durchschnitt des eigenen Teams (+-), eingeklemmt in den
-// Bereich. XP immer voll; Coins und Booster-Teile fallen mit den Siegen am
+// Bereich. XP seit 6.8 je besiegtem Gegner (km-level.js battleXp); Coins und Booster-Teile fallen mit den Siegen am
 // Tag ab (TRAIN_FALL). 10 Teile = 1 Trainer Booster (server.js kmFragBuy).
 const ZONES = [
-    { id: 'meadow', name: 'Wild Meadow', icon: '🌾', lv: [1, 10], rar: ['common', 'uncommon'], smart: 0, xp: 25, coins: 250, frag: 1 },
-    { id: 'canyon', name: 'Wild Canyon', icon: '🏜️', lv: [10, 30], rar: ['uncommon', 'rare'], smart: 1, xp: 70, coins: 600, frag: 1 },
-    { id: 'summit', name: 'Wild Summit', icon: '🏔️', lv: [30, 50], rar: ['rare', 'epic'], smart: 2, xp: 150, coins: 1200, frag: 2 }
+    { id: 'meadow', name: 'Wild Meadow', icon: '🌾', lv: [1, 10], rar: ['common', 'uncommon'], smart: 0, coins: 250, frag: 1 },
+    { id: 'canyon', name: 'Wild Canyon', icon: '🏜️', lv: [10, 30], rar: ['uncommon', 'rare'], smart: 1, coins: 600, frag: 1 },
+    { id: 'summit', name: 'Wild Summit', icon: '🏔️', lv: [30, 50], rar: ['rare', 'epic'], smart: 2, coins: 1200, frag: 2 }
 ];
 // [bis Sieg Nr., Anteil Coins, Chance auf Teile]
 const TRAIN_FALL = [[10, 1, 1], [30, 0.25, 0.3], [Infinity, 0.05, 0.05]];
@@ -163,7 +163,9 @@ module.exports = function createGyms(h) {
     function zones(u) {
         const t = trainDay(u);
         const [, share, chance] = fallOf(t.wins + 1);
-        return ZONES.map(z => ({ id: z.id, name: z.name, icon: z.icon, lv: z.lv, rar: z.rar, xp: z.xp, train: true,
+        return ZONES.map(z => ({ id: z.id, name: z.name, icon: z.icon, lv: z.lv, rar: z.rar, train: true,
+            // XP fuer einen Sieg gegen fuenf Gegner auf Bereichs-Mitte (nur Anzeige)
+            xp: Math.round(B.TEAM_SIZE * LV.koXp((z.lv[0] + z.lv[1]) / 2) * 1.2 * LV.XP.train),
             coins: Math.round(z.coins * share), frag: z.frag, fragChance: chance, full: share === 1 }));
     }
 
@@ -219,7 +221,9 @@ module.exports = function createGyms(h) {
             if (res.frag) u.kmFrag = (u.kmFrag || 0) + res.frag;
             res.today = t.wins;
         }
-        if (win || kb.b.turn >= 3) res.xp = kb.keys.map(k => LV.addXp(u, k, LV.XP.train(z, win))).filter(Boolean);
+        // 6.8: XP nur fuer besiegte Gegner (km-level.js battleXp)
+        const gain = LV.battleXp(kb.b, 0, LV.XP.train);
+        if (gain) res.xp = kb.keys.map(k => LV.addXp(u, k, gain)).filter(Boolean);
         res.fragTotal = u.kmFrag || 0;
         accounts.touch();
         accounts.stat(c.account, st => { st.kmTrain = (st.kmTrain || 0) + 1; });
@@ -268,9 +272,9 @@ module.exports = function createGyms(h) {
             }
             accounts.touch();
         }
-        // Karten-XP (6.7): jede Karte im Team; Niederlage 40 %, sofortiges Aufgeben nichts
-        const idx = GYMS.indexOf(g);
-        if (win || kb.b.turn >= 3) res.xp = kb.keys.map(k => LV.addXp(u, k, LV.XP.gym(idx, win))).filter(Boolean);
+        // Karten-XP: jede Karte im Team, seit 6.8 nur fuer besiegte Gegner
+        const gain = LV.battleXp(kb.b, 0, LV.XP.gym);
+        if (gain) res.xp = kb.keys.map(k => LV.addXp(u, k, gain)).filter(Boolean);
         accounts.touch();
         accounts.stat(c.account, st => { st.kmBattles = (st.kmBattles || 0) + 1; if (win) st.kmWins = (st.kmWins || 0) + 1; });
         if (h.log) h.log(`kekemon: ${u.name} ${win ? 'schlaegt' : 'verliert gegen'} ${g.name}${res.coins ? ` (+${res.coins})` : ''}`);
