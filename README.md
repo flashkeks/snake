@@ -1654,6 +1654,10 @@ Rechts unter dem Chat steht das Panel **📝 Patch notes**, gespeist aus
 Runde, die live geht, bekommt dort einen kurzen Eintrag** – englisch, eine
 Zeile je Aenderung, kein Fliesstext (Wunsch Max, 23.09.2026). Der Eintrag
 gehoert in denselben Commit wie die Aenderung.
+**Seit 24.09.2026 (Max): deutlich kompakter und ohne Spoiler.** Nur Stichworte
+je Bereich, keine Namen, Wellen, Zahlen oder Mechaniken von neuen Inhalten –
+z. B. „Zombie changes: different zombies + bosses", „Visual changes",
+„Menu change and skill trees". Details gehoeren in dieses README.
 
 **Versionen** statt Titeln (Max): normale Runde = +0.1 (2.1 → 2.2), grosse
 Aenderung = naechste Hauptzahl (2.x → 3.0). Stand 23.09.2026 abends: 3.0
