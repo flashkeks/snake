@@ -310,6 +310,15 @@ function buildZombieMap() {
 }
 const ZOMBIE_WORLD = makeWorld(buildZombieMap(), ZMB_W, ZMB_H);
 
+// Zombie-Coins (5.9, Wunsch Max: zweite Coin-Quelle neben Snake). Ausgezahlt
+// am Spielende je Spieler: eigene Kills (Tank/Boss mehr) plus Wellenbonus,
+// der mit jeder ueberlebten Welle waechst (Welle n bringt 50·n).
+// Richtwerte solo: Welle 5 ~1,2k, Welle 10 ~4k, Welle 20 ~15k Coins.
+const Z_COINS = { kill: 5, tank: 20, boss: 250, wave: 50 };
+function zCoins(reached, killCoins) {
+    return Math.floor(killCoins + Z_COINS.wave * reached * (reached + 1) / 2);
+}
+
 const PVP_WORLDS = [[101, 'Courtyard'], [202, 'Depot'], [303, 'Crossing'], [404, 'Yard']].map(([s, n]) => makeWorld(buildPvpMap(s, n), PVP_W, PVP_H));
 
 // Bewegen mit Rutschen: in kleinen Schritten bis an die Wand heran und an
@@ -1605,7 +1614,8 @@ module.exports = function createArena(h, opts = {}) {
     // Tank 150, Boss 1000). Damit: Wandwaffen, Mystery Box, Pack-a-Punch,
     // Perks. Wer stirbt, ist bis zum Ende der Welle raus; sind alle tot, ist
     // Schluss. Wie im PvP mit Kopien des Loadouts: nichts geht verloren.
-    const zb = mode === 'zombies' ? { wave: 0, phase: 'wait', until: 0, toSpawn: 0, spawnAt: 0, over: false, kills: new Map(), dt: 0 } : null;
+    // Coins (5.9): am Ende je Spieler Kill-Coins + Wellenbonus -> zCoins().
+    const zb = mode === 'zombies' ? { wave: 0, phase: 'wait', until: 0, toSpawn: 0, spawnAt: 0, over: false, kills: new Map(), kc: new Map(), dt: 0 } : null;
 
     function joinZombies(c, name) {
         const a = st(c);
@@ -1625,6 +1635,7 @@ module.exports = function createArena(h, opts = {}) {
         gearStats(p);
         players.set(c.id, p);
         zb.kills.set(c.id, 0);
+        zb.kc.set(c.id, 0);
         sendJoined(c);
         sendInv(p);
         return null;
@@ -1719,8 +1730,17 @@ module.exports = function createArena(h, opts = {}) {
         a.zombies.kills += zb.kills.get(p.id) || 0;
         const xp = Math.round(40 * Math.pow(reached, 1.35));
         award(p, xp, `survived ${reached} wave${reached === 1 ? '' : 's'}`);
+        // Coins (5.9): erst jetzt, am Ende des Spiels (alle tot oder verlassen)
+        const coins = zCoins(reached, zb.kc.get(p.id) || 0);
+        if (coins > 0 && p.account) {
+            h.accounts.addCoins(p.account, coins);
+            h.accounts.earn(p.account, 'shooter', coins);
+            a.zombies.coins = (a.zombies.coins || 0) + coins;
+            if (coins >= 5000) h.feed(`🧟 ${p.name} survived ${reached} waves and earned ${coins.toLocaleString('en-US')} coins`, 'gold');
+            h.refresh(p.c);
+        }
         h.accounts.touch();
-        h.send(p.c, { type: 'shLeft', result: 'zombies', wave: reached, kills: zb.kills.get(p.id) || 0, best: a.zombies.bestWave, xp });
+        h.send(p.c, { type: 'shLeft', result: 'zombies', wave: reached, kills: zb.kills.get(p.id) || 0, best: a.zombies.bestWave, xp, coins });
     }
 
     function zFinish() {
@@ -1933,6 +1953,7 @@ module.exports = function createArena(h, opts = {}) {
             if (killer) {
                 killer.pts += def.boss ? 1000 : m.kind === 'tank' ? 150 : 60;
                 zb.kills.set(killer.id, (zb.kills.get(killer.id) || 0) + 1);
+                zb.kc.set(killer.id, (zb.kc.get(killer.id) || 0) + (def.boss ? Z_COINS.boss : m.kind === 'tank' ? Z_COINS.tank : Z_COINS.kill));
                 award(killer, L.XP[def.xp || 'npc'] * (def.boss ? 20 : def.xpMul || 1), def.name.toLowerCase());
             }
             for (const o of [...mobs]) if (o.parent === m.id) mobs.splice(mobs.indexOf(o), 1);
@@ -2484,5 +2505,6 @@ module.exports.slide = WORLD.slide;
 module.exports.WORLD = WORLD;
 module.exports.PVP_WORLDS = PVP_WORLDS;
 module.exports.ZOMBIE_WORLD = ZOMBIE_WORLD;
+module.exports.zCoins = zCoins;
 module.exports.W = W;
 module.exports.H = H;

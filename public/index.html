@@ -10387,7 +10387,7 @@ function hubDraw() {
         html = `<div class="modes">` +
             `<div class="mode ${hubMode === 'extract' ? 'on' : ''}" data-mode="extract"><b>🪂 Extraction</b><small>Loot, enemies, bosses, extract alive. Everything you take in is at risk.</small></div>` +
             `<div class="mode ${hubMode === 'pvp' ? 'on' : ''}" data-mode="pvp"><b>⚔️ PvP arena</b><small>1v1 · 2v2 · 3v3 lobbies, best of 5 – you never lose items</small></div>` +
-            `<div class="mode ${hubMode === 'zombies' ? 'on' : ''}" data-mode="zombies"><b>🧟 Zombies</b><small>Survive the waves, up to 4 players, buy guns and perks – no item loss</small></div></div>` +
+            `<div class="mode ${hubMode === 'zombies' ? 'on' : ''}" data-mode="zombies"><b>🧟 Zombies</b><small>Survive the waves, up to 4 players, buy guns and perks – no item loss · earn coins for kills and waves</small></div></div>` +
             (hubMode === 'pvp' || hubMode === 'zombies' ? (hubMode === 'pvp' ? hubPvp() : hubZombies()) + (hubLast ? `<div class="raid-result ${hubLast.result}">${hubLast.html}</div>` : '') : hubLoadout() +
             `<div class="hub-play"><button type="button" class="gold" id="hub-deploy">🪂 Deploy into the raid</button>` +
             `<div class="hint">${shRoomCount ? `● ${shRoomCount} in the raid right now · ` : ''}Everything you take in is at risk. Get to a 🚁 extraction zone and stand in it for 6 s to keep your loot. ` +
@@ -10825,11 +10825,12 @@ function onShLeft(d) {
     const list = items => (items || []).map(it => `<span class="tier-${it.t}">${itemIcon(it)} ${esc(it.n)}</span>`).join(' · ') || 'nothing';
     const xp = shRunXp;
     if (d.result === 'zombies') {
-        hubLast = { result: d.wave > 0 ? 'ok' : 'dead', html: `🧟 <b>You survived ${d.wave} wave${d.wave === 1 ? '' : 's'}</b> · ${d.kills} kills · +${d.xp.toLocaleString('en-US')} XP · best wave ${d.best}` };
+        const zc = d.coins || 0;
+        hubLast = { result: d.wave > 0 ? 'ok' : 'dead', html: `🧟 <b>You survived ${d.wave} wave${d.wave === 1 ? '' : 's'}</b> · ${d.kills} kills · +${zc.toLocaleString('en-US')} coins · +${d.xp.toLocaleString('en-US')} XP · best wave ${d.best}` };
         hubMode = 'zombies';
         wsSend({ type: 'pvpList' });
         return shResult({ kind: d.wave > 0 ? 'win' : 'dead', big: '🧟 GAME OVER', sub: `You survived <b>${d.wave}</b> wave${d.wave === 1 ? '' : 's'} · best ${d.best}`,
-            stats: [[d.wave, 'waves'], [d.kills, 'kills'], ['+' + xp.toLocaleString('en-US'), 'XP']], again: 'zombies' });
+            stats: [[d.wave, 'waves'], [d.kills, 'kills'], ['+' + zc.toLocaleString('en-US'), 'coins'], ['+' + xp.toLocaleString('en-US'), 'XP']], again: 'zombies' });
     }
     if (d.result === 'pvp') {
         const res = d.left ? '🏳️ YOU LEFT' : d.draw ? '🤝 DRAW' : d.won ? '🏆 VICTORY' : '💀 DEFEAT';

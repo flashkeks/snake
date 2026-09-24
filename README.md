@@ -841,8 +841,15 @@ Detailansicht.
 - **Keine Verluste:** Kopien des Loadouts wie im PvP.
 - **Belohnung:** XP je Welle (20 × n am Wellenende) und am Schluss
   40 × Wellen^1,35 (Welle 10 ≈ 900); Kills XP wie NPCs. Gespeichert in
-  `u.arena.zombies = { bestWave, games, kills }`, Leaderboard „Zombies: best
+  `u.arena.zombies = { bestWave, games, kills, coins }`, Leaderboard „Zombies: best
   wave“.
+- **Coins (5.9):** am Spielende je Spieler (alle tot oder selbst verlassen),
+  `zCoins()` in `shooter.js`: eigene Kills 5 (Tank 20, Abomination 250) plus
+  Wellenbonus 50 × (1 + 2 + … + n) fuer n ueberstandene Wellen. Solo grob:
+  Welle 5 ≈ 1,2k, Welle 10 ≈ 4k, Welle 20 ≈ 15k. Gebucht als
+  `earned.shooter`, ab 5000 Coins eine Zeile im Feed. `shLeft` traegt `coins`.
+- **Kill-Counter** je Spieler: `zb.kills` (Anzeige unten links im Spiel und
+  im Game-Over-Screen), dazu `zb.kc` = Coin-Wert der eigenen Kills.
 - Protokoll: `pvpCreate {kind: 'zombies'}`, `pvpStart`; im Spiel `sh.zmb =
   { wave, phase, left, zombies, pts, perks, team: [[name, pts, kills, tot]] }`.
 

@@ -1,5 +1,14 @@
 [
   {
+    "version": "5.9",
+    "date": "24.09.2026",
+    "items": [
+      "🧟 Zombies now pay coins when the game ends: 5 per zombie you kill (tank 20, Abomination 250) plus a wave bonus that grows every wave (wave n = 50 × n)",
+      "Rough numbers solo: wave 5 ≈ 1,200, wave 10 ≈ 4,000, wave 20 ≈ 15,000 coins",
+      "Your kill counter is on the left during the game, coins and kills show up on the game-over screen"
+    ]
+  },
+  {
     "version": "5.8",
     "date": "24.09.2026",
     "items": [
