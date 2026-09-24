@@ -792,6 +792,12 @@ $('km-menu-open').onclick = () => setWorld('cards');
 let kb = null;               // letzter kbState: { gyms, battle }
 let kd = null;               // letzter kdState: { me, open, mine, duel, online }
 let kbPick = null;           // Team-Auswahl { gym | duel, team: [keys] }
+// Sortierung der Auswahl (6.5, Wunsch Schmoggi): bleibt im Browser gemerkt
+let kbSort = (() => { try { return localStorage.getItem('kbSort') || 'power'; } catch (e) { return 'power'; } })();
+let kbTypeFilter = '';
+// Kampfkraft wie bei den Arenaleitern (km-gyms.js), Variante als Aufschlag
+const kbPower = (c, v) => (c.bst.hp + 1.3 * Math.max(c.bst.atk, c.bst.spa) + 0.8 * (c.bst.def + c.bst.spd) + 0.9 * c.bst.spe) *
+    (1 + (v.includes('s') ? 0.1 : 0) + (v.includes('m') ? 0.08 : v.includes('p') ? 0.03 : 0));
 let kdForm = { stake: 0, target: '' };
 let kdTimerEnd = 0;          // Zugzeit-Ende (Duell), lokal gerechnet
 let kdInvites = [];          // Herausforderungen an mich { id, from, stake, at }
@@ -1146,7 +1152,21 @@ function kbDrawPick() {
         if (!c) continue;
         for (const v of Object.keys(o.vars)) list.push({ c, v, key: kmKeyOf(id, v) });
     }
-    list.sort((a, b) => (b.c.hp + b.c.atk * 2) - (a.c.hp + a.c.atk * 2));
+    // Sortieren und nach Typ filtern
+    const match = x => !t ? 0 : (kbEff(x.c.type, g.type) > 1 ? 2 : 0) + (x.c.moves.some(m => m.pow && kbEff(m.type, g.type) > 1) ? 1 : 0) - (kbEff(g.type, x.c.type) > 1 ? 2 : 0);
+    const byPower = (a, b) => kbPower(b.c, b.v) - kbPower(a.c, a.v);
+    const sorters = {
+        power: byPower,
+        rarity: (a, b) => kmCat.ridx[b.c.rarity] - kmCat.ridx[a.c.rarity] || byPower(a, b),
+        match: (a, b) => match(b) - match(a) || byPower(a, b),
+        type: (a, b) => a.c.type.localeCompare(b.c.type) || byPower(a, b),
+        name: (a, b) => a.c.name.localeCompare(b.c.name) || kmVRank(b.v) - kmVRank(a.v),
+        speed: (a, b) => b.c.bst.spe - a.c.bst.spe || byPower(a, b)
+    };
+    const sortKey = sorters[kbSort] && (kbSort !== 'match' || t) ? kbSort : 'power';
+    list.sort(sorters[sortKey]);
+    const typesHave = [...new Set(list.map(x => x.c.type))].sort();
+    const shown = kbTypeFilter && typesHave.includes(kbTypeFilter) ? list.filter(x => x.c.type === kbTypeFilter) : list;
     const chosen = kbPick.team;
     const slots = Array.from({ length: KB_TEAM }, (_, i) => i).map(i => {
         const k = chosen[i];
@@ -1154,7 +1174,7 @@ function kbDrawPick() {
         const { id, v } = kmParse(k);
         return `<div class="kb-slot" data-kbunpick="${i}">${kmCard(kmCat.byId[id], { mini: true, v })}</div>`;
     }).join('');
-    const grid = list.map(x => {
+    const grid = shown.map(x => {
         const on = chosen.includes(x.key);
         const blocked = !on && chosen.some(k => kmParse(k).id === x.c.id);
         // Typ-Tabelle 6.0: eigene Attacken treffen den Leiter-Typ stark / Leiter trifft uns stark
@@ -1180,6 +1200,12 @@ function kbDrawPick() {
     return `<div class="kb-pick-head">${head}</div>
         <div class="kb-slots">${slots}${go}</div>
         <div class="hint">${sub}</div>
+        <div class="kb-sortbar">
+            <label>Sort <select id="kb-sort">${[['power', '💪 Strongest'], ...(t ? [['match', '🎯 Best vs this gym']] : []), ['rarity', '💎 Rarity'], ['speed', '⚡ Speed'], ['type', '🏷️ Type'], ['name', '🔤 Name']]
+        .map(([k, l]) => `<option value="${k}" ${k === sortKey ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+            <label>Type <select id="kb-type"><option value="">All</option>${typesHave.map(k => `<option value="${k}" ${k === kbTypeFilter ? 'selected' : ''}>${T[k].icon} ${T[k].name}</option>`).join('')}</select></label>
+            <span class="hint">${shown.length} cards</span>
+        </div>
         <div class="km-grid">${grid || '<div class="km-note" style="grid-column:1/-1">You need cards first – open packs in 📦 Packs.</div>'}</div>`;
 }
 
@@ -1449,5 +1475,17 @@ $('km-body').addEventListener('input', e => {
         kdForm.target = e.target.value;
         const b = $('kd-create');
         if (b) b.textContent = '⚔️ ' + (kdForm.target.trim() ? 'Challenge' : 'Open duel');
+    }
+});
+
+// Sortierung/Filter der Team-Auswahl (6.5)
+document.addEventListener('change', e => {
+    if (e.target.id === 'kb-sort') {
+        kbSort = e.target.value;
+        try { localStorage.setItem('kbSort', kbSort); } catch (err) { /* egal */ }
+        kmDraw();
+    } else if (e.target.id === 'kb-type') {
+        kbTypeFilter = e.target.value;
+        kmDraw();
     }
 });

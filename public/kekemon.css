@@ -2463,3 +2463,8 @@ body.world-cards #kekemon > .card {
     .kb-slot.empty { width: calc((100vw - 110px) / 5); height: calc((100vw - 110px) / 5 * 1.4); font-size: 22px; }
     .kb-slots #kb-fight { flex-basis: 100%; }
 }
+
+/* 6.5: Sortierung in der Team-Auswahl */
+.kb-sortbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 6px 0 10px; }
+.kb-sortbar label { display: flex; gap: 6px; align-items: center; font-weight: 700; font-size: 13px; opacity: .9; }
+.kb-sortbar select { background: #111a17; color: #e8fff4; border: 1px solid rgba(255,255,255,.2); border-radius: 8px; padding: 5px 8px; font: inherit; font-weight: 600; }

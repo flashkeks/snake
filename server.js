@@ -1635,6 +1635,10 @@ async function handle(c, data) {
                     zb.phase = 'break';
                     zb.until = 0;
                 }
+                if (za && data.zmob && za._players.get(c.id)) {
+                    const p = za._players.get(c.id);
+                    String(data.zmob).split(',').forEach((k, i) => za._spawnMob(k, p.x + 160 + (i % 4) * 90, p.y - 150 + Math.floor(i / 4) * 110));
+                }
                 if (za && data.god) for (const q of za._players.values()) q.protect = Date.now() + 3600e3;
                 if (za && data.zBossHp && za._boss()) za._boss().hp = za._boss().maxHp * Number(data.zBossHp);
             }
