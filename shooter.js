@@ -56,6 +56,8 @@ const BOSS_LIFE = 8 * 60e3;
 // 6.9 (Max: Boss fast tot und dann weg): gegangen wird erst, wenn er seit
 // BOSS_CALM keinen Treffer bekommen hat und kein Spieler in BOSS_NEAR ist
 const BOSS_CALM = 60e3, BOSS_NEAR = 1100;
+// Leerer Raid mit lebendem Boss: so lange bleibt alles stehen (6.10, Max)
+const EMPTY_KEEP = 30e3;
 // Gegner (4.1): so viele laufen herum, geweckt nur in der Naehe von Spielern
 const MOB_BASE = 45, MOB_PER_PLAYER = 8, MOB_MAX = 120;
 const MOB_WAKE = 1700;
@@ -487,6 +489,7 @@ module.exports = function createArena(h, opts = {}) {
     let enforcerAt = [];             // Respawn-Zeiten der Enforcer
     let drop = null;                 // angekuendigter Versorgungsabwurf { x, y, at }
     let nextBossAt = 0, nextDropAt = 0;
+    let emptySince = 0;              // leer seit (Boss-Schonfrist, EMPTY_KEEP)
     let ctf = null, nextCtfAt = 0;    // { x, y, carrier, bx, by, until }
     const boss = () => bossId !== null ? mobs.find(m => m.id === bossId) || null : null;
     let lastTick = Date.now();
@@ -3140,7 +3143,30 @@ module.exports = function createArena(h, opts = {}) {
 
         // Beutel laufen ab
         for (let i = bags.length - 1; i >= 0; i--) if (now > bags[i].expires) bags.splice(i, 1);
+        // 6.10 (Max): wer allein spielt und stirbt, findet den Boss noch vor,
+        // wenn er binnen 30 s wieder reingeht. Solange steht die Welt still
+        // (keine Gegner-KI, keine Timer), erst danach wird geraeumt.
+        if (!players.size && !zb && !pvp && bossId && mobs.some(m => m.id === bossId)) {
+            if (!emptySince) emptySince = now;
+            if (now - emptySince < EMPTY_KEEP / SPEED) {
+                bullets.length = 0;
+                nades.length = 0;
+                hz.clear();
+                return;
+            }
+        }
+        if (players.size && emptySince) {
+            // Pause nicht als "lange kein Treffer" zaehlen, sonst geht der Boss sofort
+            const pause = now - emptySince;
+            for (const m of mobs) if (m.hitAt) m.hitAt += pause;
+            if (nextBossAt) nextBossAt += pause;
+            if (nextDropAt) nextDropAt += pause;
+            if (nextCtfAt) nextCtfAt += pause;
+            if (ctf) ctf.until += pause;
+            emptySince = 0;
+        }
         if (!players.size) {
+            emptySince = 0;
             bullets.length = 0;
             nades.length = 0;
             smokes.length = 0;

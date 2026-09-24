@@ -333,33 +333,35 @@ PATTERNS.titan = {
         return api.enraged ? Math.max(a, wall(api, 2 + Math.floor(Math.random() * 2), 700, LOOK.gaster, api.dmg(60))) : a;
     }
 };
+// 6.10 (Max: Reaper-AOE bissl zu op): alle Flaechen ~20-35 % weniger Schaden,
+// Klingen-Wirbel langsamer, schmaler und kuerzer, Seelenernte mit groesseren Inseln
 PATTERNS.reaper = {
     scythe(api) {
         const m = api.m, t = target(api);
         const a = Math.atan2(t.y - m.y, t.x - m.x);
         const n = api.enraged ? 3 : 2;
-        for (let k = 0; k < n; k++) api.hz.add({ sh: 'k', x: m.x, y: m.y, r: 900, a: a + (k - (n - 1) / 2) * 1.3, span: 1.0, total: 900 + k * 350, dur: 300, dmg: api.dmg(85), look: LOOK.void }, api.now);
+        for (let k = 0; k < n; k++) api.hz.add({ sh: 'k', x: m.x, y: m.y, r: 900, a: a + (k - (n - 1) / 2) * 1.3, span: 1.0, total: 900 + k * 350, dur: 300, dmg: api.dmg(65), look: LOOK.void }, api.now);
         return 900 + n * 350 + 300;
     },
     deathMarks(api) {
         const ps = inBox(api);
-        for (const p of ps) for (let k = 0; k < 3; k++) api.hz.add({ sh: 'c', x: p.x, y: p.y, r: 150, total: 1000 + k * 700, dur: 300, dmg: api.dmg(70), look: LOOK.karma }, api.now);
+        for (const p of ps) for (let k = 0; k < 3; k++) api.hz.add({ sh: 'c', x: p.x, y: p.y, r: 150, total: 1000 + k * 700, dur: 300, dmg: api.dmg(55), look: LOOK.karma }, api.now);
         api.say('☠️ You are marked');
         return 1000 + 3 * 700 + 300;
     },
     harvest(api) {
         api.say('☠️ SOUL HARVEST – find a safe spot!');
-        return islands(api, 2, 160, LOOK.karma, api.dmg(95), 1800);
+        return islands(api, 2, 200, LOOK.karma, api.dmg(70), 1800);
     },
     whirl(api) {
-        const m = api.m, a = rnd(0, Math.PI), va = (Math.random() < 0.5 ? -1 : 1) * (api.enraged ? 1.1 : 0.8);
-        for (const off of [0, Math.PI / 2]) api.hz.add({ sh: 'r', x: m.x, y: m.y, w: 1900, h: 80, a: a + off, va, total: 1100, dur: 3800, dps: api.dmg(110), look: LOOK.blade }, api.now);
-        return 1100 + 3800;
+        const m = api.m, a = rnd(0, Math.PI), va = (Math.random() < 0.5 ? -1 : 1) * (api.enraged ? 0.85 : 0.6);
+        for (const off of [0, Math.PI / 2]) api.hz.add({ sh: 'r', x: m.x, y: m.y, w: 1900, h: 70, a: a + off, va, total: 1300, dur: 3000, dps: api.dmg(70), look: LOOK.blade }, api.now);
+        return 1300 + 3000;
     },
     stillness(api) {
         api.say('☠️ DEATH IS WATCHING – don\'t move');
         const B = boxOf(api);
-        api.hz.add({ sh: 's', x: api.m.x, y: api.m.y, lim: (B.x1 - B.x0) / 2, safe: [], blue: true, total: 1200, dur: 1400, dps: api.dmg(60), look: LOOK.blue }, api.now);
+        api.hz.add({ sh: 's', x: api.m.x, y: api.m.y, lim: (B.x1 - B.x0) / 2, safe: [], blue: true, total: 1200, dur: 1400, dps: api.dmg(45), look: LOOK.blue }, api.now);
         return 2600;
     }
 };

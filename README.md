@@ -2217,3 +2217,34 @@ Stichprobe 400k: uncommon 159k, rare 160k, epic 79k, legendary 2003, mythic 29, 
 **Voll-Anzeige.** Der Tab-Knopf „🎒 Inventory" zeigt ab 90 % `used/max` in
 Orange und bei vollem Lager (oder wartenden Items) ein rotes `FULL`. In der
 Liste steht bei vollem Lager ein Banner, der Zaehler faerbt sich mit.
+
+### 6.10, Teil 4: Wand-Glitch in Haeusern, Reaper-Nerf, Boss-Schonfrist (Max)
+
+**Wand-Glitch in Haeusern.** Ursache gefunden: die optionale Trennwand in
+normalen Haeusern begann 60 px unter der Oberkante, also 38 px Schlitz zur
+Aussenwand (22 px dick) – der Spieler ist 36 px breit (`R = 18`) und quetschte
+sich durch, Client-Vorhersage und Server liefen dabei auseinander. Scan der
+Extraction-Map: 19 Schlitze < 40 px, alle in Haeusern, draussen keiner.
+Jetzt setzt die Trennwand an der Aussenwand an; liegt oben eine Tuer davor,
+beginnt sie 80 px unter der Aussenwand (sonst teilt sie die Tuer in zwei
+Schlitze). Unteres Ende und `rand()`-Folge unveraendert, der Rest der Map
+bleibt gleich. Nachher: engste Luecke 53 px. Kisten in/an Waenden 3 -> 1.
+
+**Reaper-Nerf** (`PATTERNS.reaper` in `arena-hazards.js`):
+
+| Angriff | vorher | jetzt |
+|---|---|---|
+| Sensen (Kegel) | 85 | 65 |
+| Todesmarken | 70 | 55 |
+| Seelenernte | 95, Inseln r 160 | 70, Inseln r 200 |
+| Klingen-Wirbel | 110/s, 3,8 s, Drehung 0,8 (wuetend 1,1), 80 breit | 70/s, 3,0 s, 0,6 (0,85), 70 breit, Warnung 1,3 s |
+| Stillstand | 60/s | 45/s |
+
+**Boss-Schonfrist.** Leert sich der Raid (letzter Spieler tot oder raus),
+solange ein Boss lebt, steht die Welt `EMPTY_KEEP = 30 s` still: keine KI,
+keine Timer, Geschosse und Gefahrenzonen weg, Boss behaelt seine HP. Kommt in
+der Zeit jemand rein, laeuft es weiter; die Pause wird auf `hitAt` der Gegner
+und die Event-Uhren (Boss, Drop, CTF) aufgeschlagen, sonst ginge der Boss
+sofort wegen „lange kein Treffer". Nach 30 s wird wie bisher geraeumt. Nur
+Extraction (nicht Zombies/PvP). Test: 10 s Pause -> Boss da, HP gleich;
+35 s -> weg.
