@@ -54,9 +54,82 @@ const MOBS = {
         xp: 'npc', xpMul: 0.8
     },
     abomination: {
-        zombie: true, boss: true, name: 'Abomination', icon: '🦠', color: '#b04fff', r: 46, hpBase: 2500, hpPer: 1200, speed: 90, chase: 110, aggro: 99999,
+        zombie: true, boss: true, name: 'Abomination', title: 'The Flesh Heap', icon: '🦠', color: '#b04fff', r: 46, hpBase: 2500, hpPer: 1200, speed: 90, chase: 110, aggro: 99999,
         slam: { r: 230, dmg: 60, ms: 6000 }, contact: 50, summon: { kind: 'runner', n: 3, ms: 9000, max: 9 }, melee: 50,
         charge: { ms: 9000, warn: 900, dur: 700, speed: 560 }, strikes: { n: 4, r: 100, dmg: 45, warn: 1200, ms: 11000, spread: 220 }
+    },
+    // 6.5: mehr Arten mit Faehigkeiten (Max). Ab welcher Welle: shooter.js zSpawn
+    bloater: {
+        zombie: true, name: 'Bloater', icon: '🤮', color: '#a6e22e', r: 24, hp: 140, speed: 70, chase: 78, aggro: 99999,
+        melee: 10, boom: { r: 130, dmg: 55, acid: true }, pts: 90, coins: 8, xp: 'npc', xpMul: 1
+    },
+    leaper: {
+        zombie: true, name: 'Leaper', icon: '🐺', color: '#d9a066', r: 14, hp: 45, speed: 150, chase: 165, aggro: 99999,
+        melee: 22, charge: { ms: 4500, warn: 600, dur: 450, speed: 720 }, pts: 70, coins: 6, xp: 'npc', xpMul: 0.7
+    },
+    shade: {
+        zombie: true, name: 'Shade', icon: '👻', color: '#9fb7ff', r: 15, hp: 55, speed: 120, chase: 135, aggro: 99999,
+        melee: 28, blink: { ms: 4500, dist: [90, 170] }, ghost: true, pts: 80, coins: 7, xp: 'npc', xpMul: 0.8
+    },
+    riot: {
+        zombie: true, name: 'Riot', icon: '🪖', color: '#8aa0b8', r: 22, hp: 220, speed: 80, chase: 88, aggro: 99999,
+        melee: 38, taken: 0.55, armored: true, pts: 120, coins: 12, xp: 'npc', xpMul: 1.5
+    },
+    acid: {
+        zombie: true, name: 'Acid Spewer', icon: '🧪', color: '#39ff88', r: 17, hp: 75, speed: 95, aggro: 99999, range: 620, keep: 300,
+        strikes: { n: 2, r: 80, dmg: 30, warn: 1000, ms: 5000, spread: 90, acid: true }, pts: 90, coins: 8, xp: 'npc', xpMul: 1
+    },
+    screamer: {
+        zombie: true, name: 'Screamer', icon: '😱', color: '#ff6bd5', r: 18, hp: 95, speed: 110, chase: 118, aggro: 99999,
+        melee: 20, summon: { kind: 'runner', n: 2, ms: 9000, max: 4, ring: true }, pts: 110, coins: 10, xp: 'npc', xpMul: 1.2
+    },
+    spiderling: {
+        zombie: true, name: 'Spiderling', icon: '🕷️', color: '#8a5a3c', r: 11, hp: 30, speed: 230, chase: 230, aggro: 99999,
+        melee: 12, xp: 'npc', xpMul: 0.2
+    },
+    // ---------- Zombie-Bosse (6.5): feste Reihenfolge, je 5 Wellen einer ----------
+    // Neue Faehigkeiten (shooter.js mobTick): blink (Teleport), spiral (Kugel-
+    // Spirale), trail (Feuerspur), vortex (zieht Spieler an), beam (drehender
+    // Strahl), enrage (ab halber HP schneller). strikes.fire/zap aendern nur
+    // Wirkung und Optik der Einschlaege, gun.slow/burn die der Kugeln.
+    necro: {
+        zombie: true, boss: true, name: 'Lord Morvath', title: 'The Necromancer', icon: '💀', color: '#7cffb2', r: 40, hpBase: 5000, hpPer: 2200,
+        speed: 85, aggro: 99999, range: 650, keep: 280, contact: 40,
+        gun: { dmg: 18, speed: 380, ms: 1600, burst: 3, spread: 0.5, life: 3, homing: 1.1 },
+        summon: { kind: 'zombie', n: 5, ms: 11000, max: 12, ring: true }, blink: { ms: 7000 },
+        strikes: { n: 5, r: 90, dmg: 50, warn: 1100, ms: 9000, spread: 240 },
+        spiral: { ms: 16000, dur: 3200, every: 110, arms: 3, turn: 0.33 }, enrage: 0.5
+    },
+    brood: {
+        zombie: true, boss: true, name: 'Arachna', title: 'The Brood Mother', icon: '🕷️', color: '#ff7b3a', r: 52, hpBase: 8000, hpPer: 3200,
+        speed: 130, chase: 150, aggro: 99999, melee: 60, contact: 50,
+        gun: { dmg: 10, speed: 520, ms: 2600, burst: 5, spread: 0.35, life: 1.4, fan: true, slow: 0.45 },
+        charge: { ms: 6000, warn: 700, dur: 600, speed: 900 },
+        summon: { kind: 'spiderling', n: 4, ms: 7000, max: 14 }, enrage: 0.5
+    },
+    inferno: {
+        zombie: true, boss: true, name: 'Ignis', title: 'The Inferno Titan', icon: '🔥', color: '#ff5a1e', r: 58, hpBase: 12000, hpPer: 4500,
+        speed: 75, chase: 85, aggro: 99999, melee: 70, contact: 60, taken: 0.9,
+        slam: { r: 300, dmg: 85, ms: 6500, fire: true }, trail: { every: 350, r: 55, dur: 5000, dps: 22 },
+        ring: { n: 16, ms: 5500 }, gun: { dmg: 16, speed: 360, ms: 99999, burst: 1, spread: 0, life: 2.4, burn: 10 },
+        strikes: { n: 6, r: 115, dmg: 70, warn: 1400, ms: 9000, spread: 320, fire: true }, enrage: 0.5
+    },
+    storm: {
+        zombie: true, boss: true, name: 'Voltra', title: 'The Storm Wraith', icon: '⚡', color: '#5ad8ff', r: 44, hpBase: 16000, hpPer: 6000,
+        speed: 170, aggro: 99999, range: 600, keep: 260, contact: 45,
+        gun: { dmg: 22, speed: 950, ms: 1100, burst: 2, spread: 0.12, life: 1.2 },
+        blink: { ms: 4500 }, strikes: { n: 8, r: 85, dmg: 60, warn: 800, ms: 7000, spread: 300, zap: true },
+        beam: { ms: 12000, warn: 1100, dur: 3500, len: 900, width: 30, dps: 95, turn: 1.1 }, enrage: 0.5
+    },
+    overlord: {
+        zombie: true, boss: true, name: 'The Kek Eye', title: 'Void Overlord', icon: '👁️', color: '#c86bff', r: 66, hpBase: 24000, hpPer: 8000,
+        speed: 65, aggro: 99999, range: 700, keep: 320, contact: 70, taken: 0.9,
+        gun: { dmg: 20, speed: 420, ms: 1800, burst: 4, spread: 0.6, life: 2.6, homing: 0.7 },
+        spiral: { ms: 11000, dur: 4000, every: 90, arms: 5, turn: 0.21 },
+        vortex: { ms: 15000, dur: 3500, r: 700, pull: 170, dps: 12 },
+        beam: { ms: 17000, warn: 1200, dur: 4000, len: 1000, width: 34, dps: 110, turn: 0.9, twin: true },
+        summon: { kind: 'runner', n: 4, ms: 12000, max: 10, ring: true },
+        strikes: { n: 7, r: 110, dmg: 75, warn: 1300, ms: 10000, spread: 320 }, enrage: 0.5
     },
     // ---------- Bosse (einer zur Zeit, reihum zufaellig) ----------
     king: {
@@ -80,12 +153,14 @@ const MOBS = {
 };
 
 const BOSSES = Object.keys(MOBS).filter(k => MOBS[k].boss && !MOBS[k].zombie);
+// Zombie-Bosse in fester Reihenfolge: Welle 5, 10, 15, 20, 25, 30, danach von vorn (staerker)
+const ZBOSSES = ['abomination', 'necro', 'brood', 'inferno', 'storm', 'overlord'];
 // Wer normal auf der Map herumlaeuft (Gewichte); Enforcer bewachen das Militaerlager
 const ROAMERS = [['scav', 55], ['brute', 18], ['sniper', 14], ['drone', 13]];
 
 // Fuer den Browser: was er zum Zeichnen braucht
 function catalog() {
-    return Object.fromEntries(Object.entries(MOBS).map(([k, m]) => [k, { name: m.name, icon: m.icon, color: m.color, r: m.r, boss: !!m.boss, crown: !!m.crown, elite: !!m.elite || (!!m.boss && !!m.zombie), slamR: m.slam ? m.slam.r : 0 }]));
+    return Object.fromEntries(Object.entries(MOBS).map(([k, m]) => [k, { name: m.name, icon: m.icon, color: m.color, r: m.r, boss: !!m.boss, zombie: !!m.zombie, crown: !!m.crown, elite: !!m.elite || (!!m.boss && !!m.zombie), slamR: m.slam ? m.slam.r : 0, title: m.title || '', ghost: !!m.ghost, armored: !!m.armored, boom: m.boom ? m.boom.r : 0, beamLen: m.beam ? m.beam.len : 0, beamW: m.beam ? m.beam.width : 0, beamTwin: !!(m.beam && m.beam.twin), vortexR: m.vortex ? m.vortex.r : 0 }]));
 }
 
-module.exports = { MOBS, BOSSES, ROAMERS, catalog };
+module.exports = { MOBS, BOSSES, ZBOSSES, ROAMERS, catalog };

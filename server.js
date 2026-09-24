@@ -1625,6 +1625,18 @@ async function handle(c, data) {
                 if (data.drop) shooter._spawnDrop();
                 if (data.bossHp && shooter._boss()) shooter._boss().hp = Number(data.bossHp);
                 if (data.clearMobs) shooter._mobs.length = 0;
+                // Zombies: naechste Welle vorgeben (z. B. 10 = Boss-Welle), god = unverwundbar
+                const za = rooms.arenaOf(c);
+                if (za && za.zState() && data.zwave) {
+                    const zb = za.zState();
+                    za._mobs.length = 0;
+                    zb.toSpawn = 0;
+                    zb.wave = Number(data.zwave) - 1;
+                    zb.phase = 'break';
+                    zb.until = 0;
+                }
+                if (za && data.god) for (const q of za._players.values()) q.protect = Date.now() + 3600e3;
+                if (za && data.zBossHp && za._boss()) za._boss().hp = za._boss().maxHp * Number(data.zBossHp);
             }
             return;
 

@@ -315,6 +315,18 @@ const ZOMBIE_WORLD = makeWorld(buildZombieMap(), ZMB_W, ZMB_H);
 // der mit jeder ueberlebten Welle waechst (Welle n bringt 50·n).
 // Richtwerte solo: Welle 5 ~1,2k, Welle 10 ~4k, Welle 20 ~15k Coins.
 const Z_COINS = { kill: 5, tank: 20, boss: 250, wave: 50 };
+
+// 6.5 (Max: bis Welle 10 viel zu einfach, auch mit Level 3 und Mystery-Box-
+// Waffen): Zombies werden je Welle zaeher, staerker und schneller.
+//   HP     Welle 5 ×2,4 · 10 ×5,3 · 15 ×8,1 · 20 ×12 · 25 ×17
+//   Schaden Welle 10 ×1,5 · 25 ×2,4
+//   Tempo  +1,5 % je Welle, hoechstens +40 %
+const zHp = w => 1 + 0.3 * (w - 1) + 0.015 * (w - 1) * (w - 1);
+const zDmg = w => 1 + 0.06 * (w - 1);
+const Z_PTS_PER_DMG = 1;
+// Kugel-Optik der Zombie-Bosse (tier-Feld der Kugel, 1024 = Boss-Kugel)
+const BOSS_LOOK = { abomination: 5, necro: 11, brood: 12, inferno: 13, storm: 14, overlord: 15 };
+const zSpd = w => Math.min(1.4, 1 + 0.015 * (w - 1));
 function zCoins(reached, killCoins) {
     return Math.floor(killCoins + Z_COINS.wave * reached * (reached + 1) / 2);
 }
@@ -1686,15 +1698,35 @@ module.exports = function createArena(h, opts = {}) {
     function zWave(now) {
         zb.wave++;
         zb.phase = 'wave';
-        zb.toSpawn = Math.round((6 + 4 * zb.wave) * (1 + 0.5 * (players.size - 1)));
-        zb.spawnAt = now;
-        if (zb.wave % 5 === 0) {
-            const s = MAP.zspawns[Math.floor(Math.random() * MAP.zspawns.length)];
-            const m = spawnMob('abomination', s.x, s.y, now);
-            m.hp = m.maxHp = Math.round(m.maxHp * (1 + 0.25 * (zb.wave / 5 - 1)));
+        const bossWave = zb.wave % 5 === 0;
+        // Bosswellen: weniger Fussvolk, der Boss ist die Welle
+        zb.toSpawn = Math.round((8 + 5 * zb.wave) * (1 + 0.6 * (players.size - 1)) * (bossWave ? 0.5 : 1));
+        zb.spawnAt = now + (bossWave ? 3500 / SPEED : 0);
+        if (bossWave) {
+            // Feste Reihenfolge (Max): 5 Abomination, 10 Necromancer, 15 Brood Mother,
+            // 20 Inferno Titan, 25 Storm Wraith, 30 Void Overlord, dann von vorn und staerker
+            const idx = zb.wave / 5 - 1;
+            const kind = M.ZBOSSES[idx % M.ZBOSSES.length];
+            const cycle = Math.floor(idx / M.ZBOSSES.length);
+            const alive = [...players.values()].filter(p => !p.dead);
+            // Weit weg von den Spielern auftauchen
+            const spots = MAP.zspawns.slice().sort((a, b) => Math.min(...alive.map(p => Math.hypot(p.x - b.x, p.y - b.y))) - Math.min(...alive.map(p => Math.hypot(p.x - a.x, p.y - a.y))));
+            const s = spots[0] || MAP.zspawns[0];
+            const m = spawnMob(kind, s.x, s.y, now);
+            m.hp = m.maxHp = Math.round(m.maxHp * (1 + 1.2 * cycle));
+            m.dm = zDmg(zb.wave);
+            m.sp = 1 + 0.1 * cycle;
+            m.bossIdx = idx;
+            // Auftritt: erst nach der Vorstellung loslegen
+            m.nextThink = m.nextShot = m.nextSlam = m.nextCharge = m.nextStrike = m.nextSummon = m.nextRing = now + 3000 / SPEED;
+            m.nextBlink = m.nextSpiral = m.nextVortex = m.nextBeam = now + 6000 / SPEED;
+            m.introUntil = now + 2800 / SPEED;
             bossId = m.id;
+            const d = m.def;
+            fxAt(m.x, m.y, { type: 'shFx', kind: 'bossin', x: Math.round(m.x), y: Math.round(m.y), boss: kind });
+            for (const p of players.values()) h.send(p.c, { type: 'shBossIntro', kind, icon: d.icon, name: d.name, title: d.title || '', wave: zb.wave, hp: m.maxHp, cycle });
         }
-        for (const p of players.values()) h.send(p.c, { type: 'shEvent', text: `🧟 Wave ${zb.wave}${zb.wave % 5 === 0 ? ' – the Abomination is here!' : ''}`, kind: 'boss' });
+        for (const p of players.values()) h.send(p.c, { type: 'shEvent', text: `🧟 Wave ${zb.wave}${bossWave ? ` – ${M.MOBS[M.ZBOSSES[(zb.wave / 5 - 1) % M.ZBOSSES.length]].icon} ${M.MOBS[M.ZBOSSES[(zb.wave / 5 - 1) % M.ZBOSSES.length]].name} is here!` : ''}`, kind: 'boss' });
     }
 
     function zSpawn(now) {
@@ -1702,11 +1734,16 @@ module.exports = function createArena(h, opts = {}) {
         const spots = MAP.zspawns.filter(s => alive.every(p => Math.hypot(p.x - s.x, p.y - s.y) > 350));
         const s = (spots.length ? spots : MAP.zspawns)[Math.floor(Math.random() * (spots.length || MAP.zspawns.length))];
         const w = zb.wave;
-        const pool = [['zombie', 60], ['runner', w >= 2 ? 22 : 0], ['spitter', w >= 3 ? 12 : 0], ['tank', w >= 4 ? 8 : 0]].filter(([, n]) => n > 0);
+        // 6.5: je spaeter, desto mehr Runner, Spitter und Tanks
+        const pool = [['zombie', 60], ['runner', w >= 2 ? Math.min(45, 18 + 2 * w) : 0], ['spitter', w >= 3 ? Math.min(25, 8 + w) : 0], ['tank', w >= 4 ? Math.min(30, 3 + 1.3 * w) : 0],
+            ['bloater', w >= 5 ? Math.min(14, 6 + 0.5 * w) : 0], ['leaper', w >= 6 ? Math.min(18, 8 + 0.6 * w) : 0], ['shade', w >= 8 ? Math.min(14, 5 + 0.5 * w) : 0],
+            ['riot', w >= 9 ? Math.min(12, 4 + 0.5 * w) : 0], ['acid', w >= 10 ? Math.min(10, 4 + 0.4 * w) : 0], ['screamer', w >= 12 ? Math.min(6, 2 + 0.2 * w) : 0]].filter(([, n]) => n > 0);
         let r = Math.random() * pool.reduce((a, [, n]) => a + n, 0), kind = 'zombie';
         for (const [k, n] of pool) if ((r -= n) < 0) { kind = k; break; }
         const m = spawnMob(kind, s.x + (Math.random() - 0.5) * 60, s.y + (Math.random() - 0.5) * 60, now);
-        m.hp = m.maxHp = Math.round(m.maxHp * (1 + 0.2 * (w - 1)));
+        m.hp = m.maxHp = Math.round(m.maxHp * zHp(w));
+        m.dm = zDmg(w);
+        m.sp = zSpd(w);
     }
 
     function zTick(now, dt) {
@@ -1714,11 +1751,11 @@ module.exports = function createArena(h, opts = {}) {
         if (players.size && ![...players.values()].some(p => !p.dead)) return zFinish();
         if (zb.phase === 'break' && now >= zb.until) zWave(now);
         else if (zb.phase === 'wave') {
-            const cap = 22 + 4 * players.size;
+            const cap = 24 + 5 * players.size;
             if (zb.toSpawn > 0 && now >= zb.spawnAt && mobs.length < cap) {
                 zSpawn(now);
                 zb.toSpawn--;
-                zb.spawnAt = now + Math.max(220, 1100 - 60 * zb.wave) / SPEED;
+                zb.spawnAt = now + Math.max(180, 1000 - 55 * zb.wave) / SPEED;
             }
             if (zb.toSpawn === 0 && !mobs.length) {
                 zb.phase = 'break';
@@ -1950,7 +1987,11 @@ module.exports = function createArena(h, opts = {}) {
         const b = boss();
         return b ? [Math.round(b.x), Math.round(b.y), Math.max(0, Math.round(b.hp)), b.maxHp, Math.round(b.a * 100) / 100,
             b.slamAt ? Math.max(0, Math.round(b.slamAt - now)) : 0, b.kind,
-            b.chargeAt ? Math.max(0, Math.round(b.chargeAt - now)) : 0, Math.round(b.cx), Math.round(b.cy), b.charging ? 1 : 0] : null;
+            b.chargeAt ? Math.max(0, Math.round(b.chargeAt - now)) : 0, Math.round(b.cx), Math.round(b.cy), b.charging ? 1 : 0,
+            // 6.5: Zustand der neuen Faehigkeiten fuer die Optik
+            b.enraged ? 1 : 0, now < (b.spiralUntil || 0) ? 1 : 0, now < (b.vortexUntil || 0) ? 1 : 0,
+            b.beamAt ? Math.max(0, Math.round(b.beamAt - now)) : 0, b.beamAt || now < (b.beamUntil || 0) ? Math.round(b.beamA * 100) / 100 : null,
+            b.introUntil && now < b.introUntil ? Math.round(b.introUntil - now) : 0] : null;
     }
 
     // Spieler trifft Gegner
@@ -1975,7 +2016,9 @@ module.exports = function createArena(h, opts = {}) {
             if (w.frost) m.slowUntil = now + 1500 / SPEED;
             if (w.vamp && attacker) attacker.hp = Math.min(attacker.maxHp, attacker.hp + dmg * w.vamp);
         }
-        if (zb && attacker && players.has(attacker.id) && !(w && w.dot)) attacker.pts += 10;
+        // Punkte nach Schaden statt je Treffer (6.5, Feedback Schmoggi: mit der SMG
+        // liess sich Geld farmen, mit allem anderen nicht). Nur echter Schaden zaehlt.
+        if (zb && attacker && players.has(attacker.id)) attacker.pts += real * Z_PTS_PER_DMG;
         if (m.hp <= 0) mobDies(m, attacker && players.has(attacker.id) ? attacker : null, now);
     }
 
@@ -1987,13 +2030,30 @@ module.exports = function createArena(h, opts = {}) {
         if (zb) {
             if (m.id === bossId) bossId = null;
             if (killer) {
-                killer.pts += def.boss ? 1000 : m.kind === 'tank' ? 150 : 60;
+                const bi = def.boss ? (m.bossIdx || 0) + 1 : 0;
+                killer.pts += def.boss ? 1000 * bi : m.kind === 'tank' ? 150 : def.pts || 60;
                 zb.kills.set(killer.id, (zb.kills.get(killer.id) || 0) + 1);
-                zb.kc.set(killer.id, (zb.kc.get(killer.id) || 0) + (def.boss ? Z_COINS.boss : m.kind === 'tank' ? Z_COINS.tank : Z_COINS.kill));
-                award(killer, L.XP[def.xp || 'npc'] * (def.boss ? 20 : def.xpMul || 1), def.name.toLowerCase());
+                zb.kc.set(killer.id, (zb.kc.get(killer.id) || 0) + (def.boss ? Z_COINS.boss * bi : m.kind === 'tank' ? Z_COINS.tank : def.coins || Z_COINS.kill));
+                award(killer, L.XP[def.xp || 'npc'] * (def.boss ? 20 * bi : def.xpMul || 1), def.name.toLowerCase());
+            }
+            if (def.boss) {
+                // Alle, die mitgeschossen haben: Punkte und XP anteilig (Boss zaehlt fuer das Team)
+                const total = [...m.dmgBy.values()].reduce((a, n) => a + n, 0);
+                for (const [id, n] of m.dmgBy) {
+                    const q = players.get(id);
+                    if (q && total > 0) award(q, L.XP.bossHelp * ((m.bossIdx || 0) + 1) * n / total, 'boss damage');
+                }
+                fxAt(m.x, m.y, { type: 'shFx', kind: 'bossdie', x: Math.round(m.x), y: Math.round(m.y), boss: m.kind });
+                for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `${def.icon} ${killer ? killer.name + ' killed' : 'Down goes'} ${def.name}!`, kind: 'drop' });
             }
             for (const o of [...mobs]) if (o.parent === m.id) mobs.splice(mobs.indexOf(o), 1);
-            fxAt(m.x, m.y, { type: 'shFx', kind: 'mobdie', x: Math.round(m.x), y: Math.round(m.y), icon: def.icon });
+            fxAt(m.x, m.y, { type: 'shFx', kind: 'mobdie', x: Math.round(m.x), y: Math.round(m.y), icon: def.icon, col: def.color });
+            // Bloater platzt: Saeure-Explosion, danach eine Pfuetze
+            if (def.boom) {
+                fxAt(m.x, m.y, { type: 'shFx', kind: 'acidboom', x: Math.round(m.x), y: Math.round(m.y), r: def.boom.r });
+                for (const q of near(m.x, m.y, def.boom.r + R)) damage(q, null, def.boom.dmg * (m.dm || 1), now, q.x, q.y, { how: 'npc', by: def.icon + ' ' + def.name, noDodge: true });
+                if (def.boom.acid) fires.push({ id: ++seqId, x: m.x, y: m.y, r: def.boom.r * 0.6, until: now + 4000 / SPEED, owner: null, dps: 14 * (m.dm || 1), acid: true });
+            }
             return;
         }
         if (m.id === bossId) {
@@ -2035,15 +2095,16 @@ module.exports = function createArena(h, opts = {}) {
     }
 
     // Gegner-Kugel
-    function mobShot(m, a, now) {
+    function mobShot(m, a, now, speedMul) {
         const g = m.def.gun;
         bullets.push({
             id: ++seqId, owner: m.id,
             x: m.x + Math.cos(a) * (m.def.r + 6), y: m.y + Math.sin(a) * (m.def.r + 6),
-            vx: Math.cos(a) * g.speed, vy: Math.sin(a) * g.speed,
+            vx: Math.cos(a) * g.speed * (speedMul || 1), vy: Math.sin(a) * g.speed * (speedMul || 1),
             dies: now + g.life * 1000 / SPEED, pierce: 0, bounce: 0, hits: new Set(),
-            w: { dmg: g.dmg, how: m.def.boss ? 'boss' : 'npc', by: m.def.icon + ' ' + m.def.name, homing: g.homing || 0, mobBoom: g.explode || 0, big: !!g.big, mob: true },
-            fx: m.def.boss ? 1024 : 2048, tier: m.def.boss ? 5 : 0
+            w: { dmg: g.dmg * (m.dm || 1), how: m.def.boss ? 'boss' : 'npc', by: m.def.icon + ' ' + m.def.name, homing: g.homing || 0, mobBoom: g.explode || 0, big: !!g.big, mob: true, frost: g.slow || 0, burn: g.burn || 0 },
+            // 6.5: Zombie-Bosse haben eigene Kugel-Optik (tier = Art, Browser zeichnet danach)
+            fx: m.def.boss ? 1024 : 2048, tier: m.def.boss ? (BOSS_LOOK[m.kind] || 5) : 0
         });
     }
 
@@ -2065,7 +2126,7 @@ module.exports = function createArena(h, opts = {}) {
     function mobMove(m, gx, gy, speed, dt) {
         const d = Math.hypot(gx - m.x, gy - m.y);
         if (d < 1) return;
-        const step = Math.min(d, speed * dt * (m.slowUntil > Date.now() ? 0.5 : 1));
+        const step = Math.min(d, speed * (m.sp || 1) * (m.enraged ? 1.25 : 1) * dt * (m.slowUntil > Date.now() ? 0.5 : 1));
         const [nx, ny] = slide(m.x, m.y, (gx - m.x) / d * step, (gy - m.y) / d * step, m.def.r, mobBlocked);
         const moved = Math.hypot(nx - m.x, ny - m.y);
         m.x = nx;
@@ -2078,6 +2139,107 @@ module.exports = function createArena(h, opts = {}) {
             m.ty = m.y + (Math.random() - 0.5) * 500;
             m.strafe = -m.strafe;
         }
+    }
+
+    // Faehigkeiten der Zombie-Bosse (6.5). true = Boss ist beschaeftigt (steht,
+    // feuert Spirale oder Strahl), der Rest von mobTick entfaellt dann.
+    function bossSkills(m, now, dt, cd) {
+        const def = m.def;
+        if (!def.zombie) return false;
+        const by = def.icon + ' ' + def.name;
+        const dm = m.dm || 1;
+        // Feuerspur hinter sich her
+        if (def.trail && now >= (m.nextTrail || 0) && Math.hypot(m.x - (m.trailX || 0), m.y - (m.trailY || 0)) > 30) {
+            m.nextTrail = now + def.trail.every / SPEED;
+            m.trailX = m.x;
+            m.trailY = m.y;
+            fires.push({ id: ++seqId, x: m.x, y: m.y, r: def.trail.r, until: now + def.trail.dur / SPEED, owner: null, dps: def.trail.dps * dm });
+        }
+        // Spirale: steht und dreht einen Kugelkranz
+        if (now < (m.spiralUntil || 0)) {
+            if (now >= m.spiralShot) {
+                m.spiralShot = now + def.spiral.every / SPEED;
+                const arms = def.spiral.arms + (m.enraged ? 1 : 0);
+                for (let k = 0; k < arms; k++) mobShot(m, m.spA + k / arms * Math.PI * 2, now, 0.7);
+                m.spA += def.spiral.turn;
+            }
+            return true;
+        }
+        // Strahl: erst Vorwarnung (Linie), dann dreht er sich; Wände halten ihn nicht auf
+        if (m.beamAt) {
+            if (now >= m.beamAt) {
+                m.beamAt = 0;
+                m.beamUntil = now + def.beam.dur / SPEED;
+            }
+            return true;
+        }
+        if (now < (m.beamUntil || 0)) {
+            const B = def.beam;
+            m.beamA += B.turn * m.beamDir * (m.enraged ? 1.3 : 1) * dt;
+            const angles = B.twin ? [m.beamA, m.beamA + Math.PI] : [m.beamA];
+            for (const q of players.values()) {
+                if (q.dead) continue;
+                for (const a of angles) {
+                    const dx = q.x - m.x, dy = q.y - m.y, ca = Math.cos(a), sa = Math.sin(a);
+                    const along = dx * ca + dy * sa, side = Math.abs(-dx * sa + dy * ca);
+                    if (along > 0 && along < B.len && side < B.width + R) {
+                        damage(q, null, B.dps * dm * dt, now, q.x, q.y, { how: 'boss', by, noDodge: true, dot: true, melee: true });
+                        break;
+                    }
+                }
+            }
+            return true;
+        }
+        // Wirbel: zieht alle Spieler zu sich und brennt leicht
+        if (now < (m.vortexUntil || 0)) {
+            const V = def.vortex;
+            for (const q of players.values()) {
+                if (q.dead) continue;
+                const dx = m.x - q.x, dy = m.y - q.y, d = Math.hypot(dx, dy);
+                if (d > V.r || d < def.r + R + 20) continue;
+                const pull = V.pull * (1 - d / V.r * 0.5) * dt;
+                [q.x, q.y] = slide(q.x, q.y, dx / d * pull, dy / d * pull, R);
+                damage(q, null, V.dps * dm * dt, now, q.x, q.y, { how: 'boss', by, noDodge: true, dot: true });
+            }
+        }
+        const tgt = m.tgt ? players.get(m.tgt) : null;
+        if (!tgt || tgt.dead) return false;
+        if (def.beam && now >= (m.nextBeam || 0)) {
+            m.nextBeam = now + cd(def.beam.ms);
+            m.beamAt = now + def.beam.warn / SPEED;
+            m.beamA = Math.atan2(tgt.y - m.y, tgt.x - m.x);
+            m.beamDir = Math.random() < 0.5 ? 1 : -1;
+            return true;
+        }
+        if (def.spiral && now >= (m.nextSpiral || 0)) {
+            m.nextSpiral = now + cd(def.spiral.ms);
+            m.spiralUntil = now + def.spiral.dur / SPEED;
+            m.spiralShot = now;
+            m.spA = Math.random() * 6.28;
+            return true;
+        }
+        if (def.vortex && now >= (m.nextVortex || 0)) {
+            m.nextVortex = now + cd(def.vortex.ms);
+            m.vortexUntil = now + def.vortex.dur / SPEED;
+            fxAt(m.x, m.y, { type: 'shFx', kind: 'vortex', x: Math.round(m.x), y: Math.round(m.y), boss: m.kind });
+        }
+        // Teleport: taucht neben dem Ziel wieder auf
+        if (def.blink && now >= (m.nextBlink || 0)) {
+            m.nextBlink = now + cd(def.blink.ms);
+            for (let k = 0; k < 12; k++) {
+                const [dmin, dmax] = def.blink.dist || [220, 360];
+                const a = Math.random() * 6.28, r = dmin + Math.random() * (dmax - dmin);
+                const x = tgt.x + Math.cos(a) * r, y = tgt.y + Math.sin(a) * r;
+                if (mobBlocked(x, y, def.r)) continue;
+                fxAt(m.x, m.y, { type: 'shFx', kind: 'zblink', x: Math.round(m.x), y: Math.round(m.y), boss: m.kind });
+                m.x = x;
+                m.y = y;
+                fxAt(x, y, { type: 'shFx', kind: 'zblink', x: Math.round(x), y: Math.round(y), boss: m.kind });
+                m.nextShot = now + 400 / SPEED;
+                break;
+            }
+        }
+        return false;
     }
 
     function mobTick(m, now, dt) {
@@ -2098,6 +2260,15 @@ module.exports = function createArena(h, opts = {}) {
                 if (!(m.hp > 0)) return;
             }
         }
+        // Zombie-Boss (6.5): Auftritt abwarten, ab halber HP Wut
+        if (m.introUntil && now < m.introUntil) return;
+        if (def.enrage && !m.enraged && m.hp < m.maxHp * def.enrage) {
+            m.enraged = true;
+            fxAt(m.x, m.y, { type: 'shFx', kind: 'enrage', x: Math.round(m.x), y: Math.round(m.y), boss: m.kind });
+            for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `${def.icon} ${def.name} is ENRAGED!`, kind: 'boss' });
+        }
+        const cd = ms => ms / SPEED * (m.enraged ? 0.65 : 1);
+        if (bossSkills(m, now, dt, cd)) return;
         if (def.boss && !def.zombie && now - m.born > BOSS_LIFE / SPEED) {
             mobs.splice(mobs.indexOf(m), 1);
             bossId = null;
@@ -2143,10 +2314,15 @@ module.exports = function createArena(h, opts = {}) {
             }
         }
         // Beruehrung: Nahkaempfer und Bosse
+        if (def.boom && players.size && near(m.x, m.y, def.r + R + 12).length) {
+            m.hp = 0;
+            mobDies(m, null, now);
+            return;
+        }
         const touch = def.melee || def.contact;
         if (touch) {
             for (const q of near(m.x, m.y, def.r + R + 4)) {
-                if (Math.hypot(q.x - m.x, q.y - m.y) < def.r + R) damage(q, null, touch * (m.charging ? 2.5 : 1) * dt, now, q.x, q.y, { how: def.boss ? 'boss' : 'npc', by: def.icon + ' ' + def.name, noDodge: true, dot: true, melee: true });
+                if (Math.hypot(q.x - m.x, q.y - m.y) < def.r + R) damage(q, null, touch * (m.dm || 1) * (m.charging ? 2.5 : 1) * dt, now, q.x, q.y, { how: def.boss ? 'boss' : 'npc', by: def.icon + ' ' + def.name, noDodge: true, dot: true, melee: true });
             }
         }
         // Stampfer (Bosse): kuendigt sich an, steht dabei still
@@ -2154,9 +2330,10 @@ module.exports = function createArena(h, opts = {}) {
             if (m.slamAt) {
                 if (now >= m.slamAt) {
                     m.slamAt = 0;
-                    m.nextSlam = now + def.slam.ms / SPEED;
+                    m.nextSlam = now + cd(def.slam.ms);
                     fxAt(m.x, m.y, { type: 'shBoom', x: Math.round(m.x), y: Math.round(m.y), r: def.slam.r, nuke: false });
-                    for (const q of near(m.x, m.y, def.slam.r + R)) damage(q, null, def.slam.dmg, now, q.x, q.y, { how: 'boss', by: def.icon + ' ' + def.name, noDodge: true });
+                    if (def.slam.fire) fires.push({ id: ++seqId, x: m.x, y: m.y, r: def.slam.r * 0.6, until: now + 4000 / SPEED, owner: null, dps: 25 * (m.dm || 1) });
+                    for (const q of near(m.x, m.y, def.slam.r + R)) damage(q, null, def.slam.dmg * (m.dm || 1), now, q.x, q.y, { how: 'boss', by: def.icon + ' ' + def.name, noDodge: true });
                 }
                 return;
             }
@@ -2182,7 +2359,7 @@ module.exports = function createArena(h, opts = {}) {
         if (def.charge && tgt && now >= m.nextCharge) {
             const d = Math.hypot(tgt.x - m.x, tgt.y - m.y);
             if (d > 160 && d < 750) {
-                m.nextCharge = now + def.charge.ms / SPEED;
+                m.nextCharge = now + cd(def.charge.ms);
                 m.chargeAt = now + def.charge.warn / SPEED;
                 m.cx = tgt.x + (tgt.x - m.x) / d * 160;
                 m.cy = tgt.y + (tgt.y - m.y) / d * 160;
@@ -2192,22 +2369,29 @@ module.exports = function createArena(h, opts = {}) {
         }
         // Einschlaege (4.6): Warnkreise, dann Schaden – der erste genau aufs Ziel
         if (def.strikes && tgt && now >= m.nextStrike) {
-            m.nextStrike = now + def.strikes.ms / SPEED;
+            m.nextStrike = now + cd(def.strikes.ms);
             const s = def.strikes;
-            for (let k = 0; k < s.n; k++) {
+            for (let k = 0; k < s.n + (m.enraged ? 3 : 0); k++) {
                 const a = Math.random() * 6.28, rr = k ? Math.random() * s.spread : 0;
-                strikes.push({ id: ++seqId, x: tgt.x + Math.cos(a) * rr, y: tgt.y + Math.sin(a) * rr, r: s.r, dmg: s.dmg, at: now + (s.warn + k * 120) / SPEED, total: s.warn + k * 120, by: def.icon + ' ' + def.name, how: def.boss ? 'boss' : 'npc' });
+                strikes.push({ id: ++seqId, x: tgt.x + Math.cos(a) * rr, y: tgt.y + Math.sin(a) * rr, r: s.r, dmg: s.dmg * (m.dm || 1), at: now + (s.warn + k * 120) / SPEED, total: s.warn + k * 120, by: def.icon + ' ' + def.name, how: def.boss ? 'boss' : 'npc', look: s.fire ? 1 : s.zap ? 2 : s.acid ? 3 : 0, fire: !!s.fire, acid: !!s.acid });
             }
         }
         // Brut rufen (Hive Queen)
         if (def.summon && tgt && now >= m.nextSummon) {
-            m.nextSummon = now + def.summon.ms / SPEED;
+            m.nextSummon = now + cd(def.summon.ms);
             const brood = mobs.filter(o => o.parent === m.id).length;
+            if (def.summon.ring) fxAt(m.x, m.y, { type: 'shFx', kind: 'raise', x: Math.round(m.x), y: Math.round(m.y), boss: m.kind });
             for (let k = 0; k < def.summon.n && brood + k < def.summon.max; k++) {
-                const a = Math.random() * 6.28;
+                const a = def.summon.ring ? k / def.summon.n * Math.PI * 2 : Math.random() * 6.28;
                 const x = m.x + Math.cos(a) * (def.r + 40), y = m.y + Math.sin(a) * (def.r + 40);
                 if (blocked(x, y, 16)) continue;
                 const d = spawnMob(def.summon.kind, x, y, now);
+                // Im Zombie-Modus waechst die Brut mit der Welle (etwas schwaecher als normal)
+                if (zb) {
+                    d.hp = d.maxHp = Math.round(d.maxHp * (1 + (zHp(zb.wave) - 1) * 0.6));
+                    d.dm = zDmg(zb.wave);
+                    d.sp = zSpd(zb.wave);
+                }
                 d.parent = m.id;
                 d.tgt = tgt.id;
                 d.seen = now;
@@ -2246,7 +2430,7 @@ module.exports = function createArena(h, opts = {}) {
                 }
             } else if (!tgt || now - m.seen >= 400) m.aimAt = 0;
             if (def.ring && now >= m.nextRing) {
-                m.nextRing = now + def.ring.ms / SPEED;
+                m.nextRing = now + cd(def.ring.ms);
                 for (let k = 0; k < def.ring.n; k++) mobShot(m, k / def.ring.n * Math.PI * 2, now);
             }
         } else {
@@ -2356,6 +2540,7 @@ module.exports = function createArena(h, opts = {}) {
             strikes.splice(i, 1);
             fxAt(s.x, s.y, { type: 'shBoom', x: Math.round(s.x), y: Math.round(s.y), r: s.r, nuke: false });
             for (const q of near(s.x, s.y, s.r + R)) damage(q, null, s.dmg, now, q.x, q.y, { how: s.how, by: s.by, noDodge: true });
+            if (s.fire || s.acid) fires.push({ id: ++seqId, x: s.x, y: s.y, r: s.r * 0.8, until: now + 3500 / SPEED, owner: null, dps: s.acid ? 12 : 18, acid: !!s.acid });
         }
         if (mode === 'extract') eventTick(now, dt);
         if (pvp) pvpTick(now);
@@ -2511,12 +2696,13 @@ module.exports = function createArena(h, opts = {}) {
                 bags: bags.filter(b => inView(b.x, b.y)).map(b => [b.id, Math.round(b.x), Math.round(b.y), b.items.length, b.kind === 'boss' ? 2 : b.kind === 'drop' ? 1 : 0]),
                 // Events sieht jeder, egal wo (Karte und Pfeil am Rand)
                 boss: bossView(now),
-                strikes: strikes.filter(s => inView(s.x, s.y)).map(s => [s.id, Math.round(s.x), Math.round(s.y), s.r, Math.max(0, Math.round(s.at - now)), s.total]),
-                mobs: mobs.filter(m => !m.def.boss && inView(m.x, m.y)).map(m => [m.id, m.kind, Math.round(m.x), Math.round(m.y), Math.max(0, Math.round(m.hp)), m.maxHp, Math.round(m.a * 100) / 100, m.aimAt ? Math.max(0, Math.round(m.aimAt - now)) : 0]),
+                strikes: strikes.filter(s => inView(s.x, s.y)).map(s => [s.id, Math.round(s.x), Math.round(s.y), s.r, Math.max(0, Math.round(s.at - now)), s.total, s.look || 0]),
+                mobs: mobs.filter(m => !m.def.boss && inView(m.x, m.y)).map(m => [m.id, m.kind, Math.round(m.x), Math.round(m.y), Math.max(0, Math.round(m.hp)), m.maxHp, Math.round(m.a * 100) / 100, m.aimAt ? Math.max(0, Math.round(m.aimAt - now)) : 0,
+                    m.chargeAt ? Math.max(0, Math.round(m.chargeAt - now)) : 0, m.charging ? 1 : 0, Math.round(m.cx || 0), Math.round(m.cy || 0)]),
                 drop: drop ? [Math.round(drop.x), Math.round(drop.y), Math.max(0, Math.round(drop.at - now))] : null,
                 nades: nades.filter(g => inView(g.x, g.y)).map(g => [g.id, Math.round(g.x), Math.round(g.y), g.base, g.landed ? 1 : 0, g.fuseAt ? Math.max(0, Math.round(g.fuseAt - now)) : 0]),
                 smokes: smokes.filter(s => inView(s.x, s.y)).map(s => [s.id, Math.round(s.x), Math.round(s.y), s.r, Math.round(s.until - now)]),
-                fires: fires.filter(f => inView(f.x, f.y)).map(f => [f.id, Math.round(f.x), Math.round(f.y), f.r, Math.round(f.until - now)]),
+                fires: fires.filter(f => inView(f.x, f.y)).map(f => [f.id, Math.round(f.x), Math.round(f.y), f.r, Math.round(f.until - now), f.acid ? 1 : 0]),
                 holes: holes.filter(o => inView(o.x, o.y)).map(o => [o.id, Math.round(o.x), Math.round(o.y), o.r, Math.round(o.until - now)])
             });
         }
