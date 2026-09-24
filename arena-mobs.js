@@ -35,6 +35,24 @@ const MOBS = {
         gun: { dmg: 8, speed: 820, ms: 1250, burst: 6, spread: 0.4, life: 0.6 },
         xp: 'elite', xpMul: 1, drop: { chance: 1, src: 'elite', n: 1 }
     },
+    // ---------- Labor (6.12, Max): Monster aus den DNA-Tanks, Ebene -2 ----------
+    mutant: {
+        name: 'Mutant', icon: '🧬', color: '#7dff6a', r: 21, hp: 520, speed: 150, chase: 300, aggro: 620,
+        melee: 60, lab: true, xp: 'npc', xpMul: 3, drop: { chance: 0.55, src: 'npcdrop', n: 1 }
+    },
+    stalker: {
+        name: 'Stalker', icon: '🦎', color: '#b6ff3a', r: 16, hp: 300, speed: 210, chase: 390, aggro: 560,
+        melee: 48, lab: true, xp: 'npc', xpMul: 2.5, drop: { chance: 0.45, src: 'npcdrop', n: 1 }
+    },
+    horror: {
+        name: 'Acid Horror', icon: '🦠', color: '#35ffc0', r: 23, hp: 460, speed: 120, aggro: 700, range: 560, keep: 330, lab: true,
+        gun: { dmg: 20, speed: 540, ms: 1400, burst: 3, spread: 0.28, life: 1.4, burn: 4 },
+        xp: 'npc', xpMul: 3, drop: { chance: 0.55, src: 'npcdrop', n: 1 }
+    },
+    hulk: {
+        name: 'Failed Experiment', icon: '🧟‍♂️', color: '#ff4fd8', r: 34, hp: 2400, speed: 105, chase: 200, aggro: 680, taken: 0.85, elite: true,
+        melee: 95, lab: true, xp: 'elite', xpMul: 2, drop: { chance: 1, src: 'npcrare', n: 2 }
+    },
     // ---------- Zombies (4.4): jagen immer den naechsten Spieler, HP wachsen je Welle ----------
     zombie: {
         zombie: true, name: 'Zombie', icon: '🧟', color: '#7fbf5f', r: 17, hp: 60, speed: 95, chase: 95, aggro: 99999,

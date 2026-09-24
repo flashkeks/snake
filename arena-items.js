@@ -300,6 +300,9 @@ const SOURCES = {
     // wuerde pickBase auch alles darunter nehmen und die Chancen verwaschen)
     zubox: { t: [0, 0.397445, 0.4, 0.19745, 0.005, 0.0001, 0.00001], kinds: { util: 1 }, exact: true },
     zubox_s: { t: [0, 0, 0.33223337, 0.6322333, 1 / 30, 0.002, 0.0002], kinds: { util: 1 }, exact: true },
+    // 6.12 Labor-Kisten (Ebene -2): etwas besser als die Militaerkiste,
+    // Legendary+ ~0,9 % je Item (1–2 Items). Keller-Kisten ziehen aus 'military'.
+    labcrate: { t: [0.2, 0.33, 0.28, 0.1811, 0.0082, 0.0006, 0.00005], kinds: { weapon: 0.4, armor: 0.35, util: 0.2, pack: 0.05 } },
     // Scrap-Shop: Waffe mit garantiert einem Effekt
     modded: { t: [0.6, 0.3, 0.1, 0, 0, 0, 0], kinds: { weapon: 1 }, effects: [0, 0.9, 0.095, 0.005] }
 };

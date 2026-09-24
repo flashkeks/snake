@@ -62,6 +62,14 @@ const EMPTY_KEEP = 30e3;
 const MOB_BASE = 45, MOB_PER_PLAYER = 8, MOB_MAX = 120;
 const MOB_WAKE = 1700;
 const MIL_RESPAWN = 5 * 60e3;
+// Untergrund (6.12, Max: Gegner dort „gerne deutlich staerker")
+// n = so viele leben gleichzeitig, hp/dmg/spd = Faktoren auf die Grundwerte
+const UNDER_MOBS = {
+    bunker: { n: 16, hp: 2.5, dmg: 1.7, spd: 1.1, kinds: [['scav', 40], ['brute', 22], ['sniper', 16], ['drone', 12], ['enforcer', 10]], max: { enforcer: 3 } },
+    lab: { n: 13, hp: 1, dmg: 1, spd: 1, kinds: [['mutant', 40], ['stalker', 26], ['horror', 24], ['hulk', 10]], max: { hulk: 2 } }
+};
+const UNDER_CRATE_RESPAWN = 4 * 60e3;
+const PORTAL_CD = 1500;
 const ENFORCERS = 4, ENFORCER_RESPAWN = 3 * 60e3;
 // Stationen: Sani heilt voll gegen Scrap, Haendler kauft und verkauft
 const MEDIC_COST = 40, MEDIC_CD = 60e3;
@@ -200,6 +208,15 @@ function buildMap() {
 }
 
 const MAP = buildMap();
+// 6.12 (Max): Keller (Militaerstuetzpunkt) und Labor darunter, siehe arena-under.js
+{
+    const UNDER = require('./arena-under').buildUnder({ w: W, h: H, walls: MAP.walls });
+    MAP.regions = [{ id: 'surface', name: 'Surface', level: 0, x: 0, y: 0, w: W, h: H }, ...UNDER.regions];
+    MAP.walls.push(...UNDER.walls);
+    MAP.crates.push(...UNDER.crates);
+    MAP.stations.push(...UNDER.stations);
+    MAP.deco = UNDER.deco;
+}
 
 // Raster fuer schnelle Wandtests
 const CELL = 200;
@@ -222,8 +239,12 @@ function makeWorld(map, w, hh) {
             }
         }
     });
+    // 6.12: Karten mit Ebenen (Untergrund) – stehen darf man nur innerhalb einer Ebene
+    const outside = (x, y, r = 0) => map.regions
+        ? !map.regions.some(g => x >= g.x + r && y >= g.y + r && x <= g.x + g.w - r && y <= g.y + g.h - r)
+        : x < r || y < r || x > w - r || y > hh - r;
     function blocked(x, y, r) {
-        if (x < r || y < r || x > w - r || y > hh - r) return true;
+        if (outside(x, y, r)) return true;
         for (let gx = Math.floor((x - r) / CELL); gx <= Math.floor((x + r) / CELL); gx++) {
             for (let gy = Math.floor((y - r) / CELL); gy <= Math.floor((y + r) / CELL); gy++) {
                 const list = grid.get(gx + ',' + gy);
@@ -232,7 +253,7 @@ function makeWorld(map, w, hh) {
         }
         return false;
     }
-    return { map, w, h: hh, blocked, slide: (x, y, dx, dy, r, isBlocked = blocked) => slideWith(x, y, dx, dy, r, isBlocked) };
+    return { map, w, h: hh, blocked, outside, slide: (x, y, dx, dy, r, isBlocked = blocked) => slideWith(x, y, dx, dy, r, isBlocked) };
 }
 
 const WORLD = makeWorld(MAP, W, H);
@@ -464,6 +485,8 @@ module.exports = function createArena(h, opts = {}) {
     const world = opts.world || WORLD;
     const mode = opts.mode || 'extract';
     const MAP = world.map, W = world.w, H = world.h, blocked = world.blocked, slide = world.slide;
+    // Ebene eines Punkts (6.12): 'surface' | 'bunker' | 'lab'; Karten ohne Ebenen -> 'surface'
+    const regionAt = (x, y) => { const g = (MAP.regions || []).find(q => x >= q.x && y >= q.y && x <= q.x + q.w && y <= q.y + q.h); return g ? g.id : 'surface'; };
     // h: { accounts, send, feed, refresh(c), changed() }
     const players = new Map();       // client id -> Spieler im Raid
     const bullets = [];
@@ -1027,7 +1050,7 @@ module.exports = function createArena(h, opts = {}) {
                 extracts: MAP.extracts, extractR: EXTRACT_R, r: R, move: MOVE, view: VIEW, throwRange: I.THROW_RANGE,
                 stations: MAP.stations, town: MAP.town, outpost: MAP.outpost, military: MAP.military, mobs: M.catalog(),
                 trader: { buy: TRADER_BUY, sell: TRADER_SELL }, medic: { cost: MEDIC_COST, cd: MEDIC_CD },
-                perks: ZMB_PERKS, arena: MAP.arena || null, name: MAP.name || null
+                perks: ZMB_PERKS, arena: MAP.arena || null, name: MAP.name || null, regions: MAP.regions || null, deco: MAP.deco || null
             },
             packMax: p0PackMax(c), feed: pvp ? [] : feedLog.slice(-6), mode, team: players.get(c.id) ? players.get(c.id).team : undefined,
             mapName: MAP.name || null
@@ -1297,7 +1320,14 @@ module.exports = function createArena(h, opts = {}) {
         if (!best) return;
         if (best.s) return station(p, best.s, now);
         let got = [];
-        if (best.cr && best.cr.t === 'mil') {
+        if (best.cr && (best.cr.t === 'bunker' || best.cr.t === 'lab')) {
+            // 6.12: Untergrund-Kisten – Keller wie das Militaerlager, Labor besser
+            const lab = best.cr.t === 'lab';
+            best.cr.readyAt = now + (lab ? UNDER_CRATE_RESPAWN * 1.5 : UNDER_CRATE_RESPAWN);
+            const n = 1 + (Math.random() < (lab ? 0.5 : 0.3) + p.b.loot ? 1 : 0);
+            got = Array.from({ length: n }, () => I.generate(lab ? 'labcrate' : 'military'));
+            award(p, L.XP.crate * (lab ? 6 : 4), lab ? 'lab crate' : 'bunker crate');
+        } else if (best.cr && best.cr.t === 'mil') {
             best.cr.readyAt = now + MIL_RESPAWN;
             const n = 1 + (Math.random() < 0.25 + p.b.loot ? 1 : 0);
             got = Array.from({ length: n }, () => I.generate('military'));
@@ -1327,6 +1357,26 @@ module.exports = function createArena(h, opts = {}) {
 
     // F an einer Station: Sani heilt sofort, Haendler oeffnet sein Angebot
     function station(p, s, now) {
+        // 6.12: Treppe/Luke in den Untergrund und zurueck
+        if (s.kind === 'portal') {
+            if (!s.to) return;
+            if (ctf && ctf.carrier === p.id) return h.send(p.c, { type: 'shEvent', text: '🚩 The flag stays on the surface', kind: 'self' });
+            if (now < (p.portalAt || 0)) return;
+            p.portalAt = now + PORTAL_CD / SPEED;
+            // nicht direkt auf die Gegen-Treppe stellen, sonst geht F gleich wieder zurueck
+            let spot = null;
+            for (const [dx, dy] of [[0, 95], [95, 0], [-95, 0], [0, -95]]) if (!blocked(s.to.x + dx, s.to.y + dy, R + 4)) { spot = { x: s.to.x + dx, y: s.to.y + dy }; break; }
+            spot = spot || freeNear(s.to.x, s.to.y + 95, R + 4) || { x: s.to.x, y: s.to.y };
+            fxAt(p.x, p.y, { type: 'shFx', kind: 'nova', x: Math.round(p.x), y: Math.round(p.y), r: 90 });
+            p.x = spot.x;
+            p.y = spot.y;
+            p.exAt = 0;
+            p.protect = Math.max(p.protect || 0, now + PORTAL_CD / SPEED);
+            fxAt(p.x, p.y, { type: 'shFx', kind: 'nova', x: Math.round(p.x), y: Math.round(p.y), r: 90 });
+            const g = (MAP.regions || []).find(q => q.id === regionAt(p.x, p.y));
+            h.send(p.c, { type: 'shEvent', text: s.dir === 'down' ? `🕳️ You climb down: ${g ? g.name : s.dest}${g && g.level <= -2 ? ' – something moves in the dark…' : ' – watch out, it is dangerous down here'}` : `🪜 You climb up: ${g ? g.name : s.dest}`, kind: 'self' });
+            return;
+        }
         if (s.kind === 'medic') {
             if (now < (p.medicAt || 0)) return h.send(p.c, { type: 'shEvent', text: `⛑️ Medic again in ${Math.ceil((p.medicAt - now) / 1000)} s`, kind: 'self' });
             if (p.hp >= p.maxHp) return h.send(p.c, { type: 'shEvent', text: '⛑️ You are already at full health', kind: 'self' });
@@ -3061,7 +3111,8 @@ module.exports = function createArena(h, opts = {}) {
     // Bestand halten: Streuner nachschieben, Enforcer im Militaerlager
     function populate(now) {
         const want = Math.min(MOB_MAX, MOB_BASE + MOB_PER_PLAYER * players.size);
-        let roam = mobs.filter(m => !m.def.boss && m.kind !== 'enforcer' && !m.parent).length;
+        let roam = mobs.filter(m => !m.def.boss && m.kind !== 'enforcer' && !m.parent && !m.under).length;
+        populateUnder(now);
         for (let k = 0; k < 3 && roam < want; k++) {
             const s = mobSpot();
             if (!s) break;
@@ -3082,6 +3133,34 @@ module.exports = function createArena(h, opts = {}) {
                     spawnMob('enforcer', x, y, now, { x: z[0] + z[2] / 2, y: z[1] + z[3] / 2 });
                     break;
                 }
+            }
+        }
+    }
+
+    // 6.12: Untergrund-Bestand. Keller: bekannte Gegner, deutlich staerker;
+    // Labor: Monster aus den Tanks. Nachschub nie in Sichtweite von Spielern.
+    function populateUnder(now) {
+        for (const g of MAP.regions || []) {
+            const U = UNDER_MOBS[g.id];
+            if (!U) continue;
+            const have = mobs.filter(m => m.under === g.id);
+            if (have.length >= U.n) continue;
+            const total = U.kinds.reduce((a, [, w]) => a + w, 0);
+            let r = Math.random() * total, kind = U.kinds[0][0];
+            for (const [kk, w] of U.kinds) if ((r -= w) < 0) { kind = kk; break; }
+            if (U.max && U.max[kind] && have.filter(m => m.kind === kind).length >= U.max[kind]) continue;
+            for (let t = 0; t < 20; t++) {
+                const x = g.x + 120 + Math.random() * (g.w - 240), y = g.y + 120 + Math.random() * (g.h - 240);
+                const def = M.MOBS[kind];
+                if (blocked(x, y, def.r + 6)) continue;
+                if ([...players.values()].some(p => Math.hypot(p.x - x, p.y - y) < 900)) continue;
+                if ((MAP.stations || []).some(s => s.kind === 'portal' && Math.hypot(s.x - x, s.y - y) < 400)) continue;
+                const m = spawnMob(kind, x, y, now);
+                m.under = g.id;
+                m.hp = m.maxHp = Math.round(m.maxHp * U.hp);
+                m.dm = U.dmg;
+                m.sp = U.spd;
+                break;
             }
         }
     }
@@ -3299,6 +3378,7 @@ module.exports = function createArena(h, opts = {}) {
                 const px = b.x, py = b.y;
                 b.x += b.vx * dt / steps;
                 b.y += b.vy * dt / steps;
+                if (b.w.erase && world.outside(b.x, b.y)) { gone = true; break; }
                 if (!b.w.erase && blocked(b.x, b.y, 3)) {
                     if (b.bounce > 0) {
                         b.bounce--;
@@ -3390,7 +3470,7 @@ module.exports = function createArena(h, opts = {}) {
                     };
                 }),
                 bullets: bullets.filter(b => inView(b.x, b.y)).map(b => b.w.look ? [b.id, Math.round(b.x), Math.round(b.y), Math.round(b.vx), Math.round(b.vy), b.owner, b.fx, b.tier, b.w.look] : [b.id, Math.round(b.x), Math.round(b.y), Math.round(b.vx), Math.round(b.vy), b.owner, b.fx, b.tier]),
-                crates: crates.filter(cr => inView(cr.x, cr.y)).map(cr => [cr.id, cr.x, cr.y, now >= cr.readyAt ? 1 : 0, cr.t === 'mil' ? 1 : 0, cr.g || 0]),
+                crates: crates.filter(cr => inView(cr.x, cr.y)).map(cr => [cr.id, cr.x, cr.y, now >= cr.readyAt ? 1 : 0, cr.t === 'mil' ? 1 : cr.t === 'bunker' ? 2 : cr.t === 'lab' ? 3 : 0, cr.g || 0]),
                 bags: bags.filter(b => inView(b.x, b.y)).map(b => [b.id, Math.round(b.x), Math.round(b.y), b.items.length, b.kind === 'boss' ? 2 : b.kind === 'drop' ? 1 : b.kind === 'mob1' ? 3 : b.kind === 'mob2' ? 4 : b.kind === 'mob3' || b.kind === 'ctf' ? 5 : 0]),
                 // Events sieht jeder, egal wo (Karte und Pfeil am Rand)
                 boss: bossView(now),
