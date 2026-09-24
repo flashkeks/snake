@@ -146,7 +146,18 @@ function buildMap() {
             // Innen: Kisten und eine Trennwand
             const n = 1 + Math.floor(rand() * 2);
             for (let i = 0; i < n; i++) crates.push({ x: x + 60 + rand() * (w - 120), y: y + 60 + rand() * (hh - 120), t: 'crate' });
-            if (rand() < 0.5) walls.push([x + w / 2 - T / 2, y + 60, T, hh * 0.45]);
+            // 6.10 (Max: man buggt an Waenden in Haeusern): die Trennwand begann
+            // 60 px unter der Oberkante -> 38 px Schlitz zur Aussenwand, Spieler
+            // ist 36 px breit und quetschte sich durch. Jetzt an die Aussenwand
+            // angesetzt, unteres Ende wie vorher (rand()-Folge unveraendert).
+            // Liegt oben eine Tuer davor, bleibt stattdessen ein breiter Gang (80 px),
+            // sonst teilt die Wand die Tuer in zwei Schlitze.
+            if (rand() < 0.5) {
+                const wx = x + w / 2 - T / 2, end = y + 60 + hh * 0.45;
+                const door = doorRects.some(d => d[3] === T && Math.abs(d[1] - y) < 1 && d[0] < wx + T + 2 * R + 10 && d[0] + d[2] > wx - 2 * R - 10);
+                const top = door ? y + T + 80 : y;
+                walls.push([wx, top, T, end - top]);
+            }
         });
     }
     // Hindernisse draussen: Felsen und Mauern (Kisten-Hindernisse seit 3.1 weg)
