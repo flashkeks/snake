@@ -1,0 +1,13 @@
+{
+  "name": "snake",
+  "version": "1.0.0",
+  "description": "Multiplayer-Snake mit Items, Mystery-Boxen, Double or Nothing, Chat und Bestenliste",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^8.21.3"
+  }
+}

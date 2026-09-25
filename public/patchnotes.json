@@ -1,0 +1,565 @@
+[
+  {
+    "version": "6.12.2",
+    "date": "25.09.2026",
+    "items": [
+      "🧟 Zombies: far fewer points",
+      "💉 Healing gets pricier every wave and every time you use it",
+      "🎯 Zombie bosses take less damage the farther away you shoot from",
+      "👑 Raid bosses drop loot by difficulty: easy ones 1–2 items, the toughest up to 5",
+      "🧬 Lab event: containment breach – tanks crack open and monsters break out",
+      "🎖️ Military base event: patrols sweep through the rooms"
+    ]
+  },
+  {
+    "version": "6.12.1",
+    "date": "25.09.2026",
+    "items": [
+      "📦 Fewer crates underground, and they are less generous",
+      "🦎 Stalker toned down",
+      "🎯 You can now hit enemies that are right on top of you",
+      "👹 Brutes no longer roam the surface – only underground"
+    ]
+  },
+  {
+    "version": "6.12",
+    "date": "25.09.2026",
+    "items": [
+      "🕳️ Raid: hatches lead down into an abandoned military base – and below it, a lab where something escaped",
+      "🎨 Raid got a new look: grass, rocks, brick walls, new enemy designs",
+      "🔬 New in the Market: the Analyser – see exactly how rare your stuff is",
+      "🧲 Homing bullets now chase enemies too",
+      "🔌 Losing connection in a raid drops your items like leaving",
+      "🪟 New confirmation dialogs"
+    ]
+  },
+  {
+    "version": "6.11.1",
+    "date": "25.09.2026",
+    "items": [
+      "🔥 Fuse now works for armor too"
+    ]
+  },
+  {
+    "version": "6.11",
+    "date": "25.09.2026",
+    "items": [
+      "🔥 New: Fuse – feed copies of a weapon into your main one to level up its effects",
+      "🎒 Drag consumables straight out of your Q/G slots to drop them",
+      "🛒 \"Weapon with a random effect\" left the scrap shop"
+    ]
+  },
+  {
+    "version": "6.10.3",
+    "date": "25.09.2026",
+    "items": [
+      "🐛 Consumables kept their rarity after a raid – no more \"common\" Chidori (existing ones are fixed)"
+    ]
+  },
+  {
+    "version": "6.10.2",
+    "date": "24.09.2026",
+    "items": [
+      "📦 Raid loot rebalanced: better crates, military crates, supply drops and Capture the Flag drop Legendary and better less often"
+    ]
+  },
+  {
+    "version": "6.10.1",
+    "date": "24.09.2026",
+    "items": [
+      "📦 Raid crates, rare enemy drops and raid bosses: Legendary and better are rarer",
+      "🌈 Picked-up items show in their rarity color"
+    ]
+  },
+  {
+    "version": "6.10",
+    "date": "24.09.2026",
+    "items": [
+      "🧟 Zombies: pick Easy, Normal or Hard when you create a lobby",
+      "🧟 Zombies: fewer points per kill",
+      "🎁 Mystery box and power-up altar get pricier with every use – the box rolls Legendary and better twice as often",
+      "⚡ Pack-a-Punch costs more per level",
+      "🧪 Zombies: new Utility box – random consumables, same odds as the mystery box",
+      "🎒 Stash doubled to 200 slots, and the Inventory tab tells you when it's full",
+      "🔇 Burning enemies no longer spam hit sounds",
+      "☠️ The Reaper's area attacks hit softer",
+      "⏳ Raid bosses wait 30 s for you if you're the last one out",
+      "🧱 No more getting stuck on walls inside houses"
+    ]
+  },
+  {
+    "version": "6.9",
+    "date": "24.09.2026",
+    "items": [
+      "🧟 Three new zombie bosses at waves 30, 35 and 40 – dodge or die",
+      "🤖 Two new raid bosses, and bosses show up more often",
+      "🚩 New raid event: Capture the Flag",
+      "⭐ Protect items so they can't be salvaged",
+      "🎒 Drag a stack out of your backpack to drop all of it",
+      "📦 Landed supply drops stay on the map",
+      "🐛 Bosses no longer leave mid-fight, no more endless running after opening the inventory, smoother walls"
+    ]
+  },
+  {
+    "version": "6.8",
+    "date": "24.09.2026",
+    "items": [
+      "🎮 New: Game Booster – 1000+ video game characters (Waifu Booster retired)",
+      "🏆 New gym series: the Ace League",
+      "🏟️ Type gyms are much stronger",
+      "💾 Team slots – save up to 6 teams",
+      "📈 Cards earn XP for every foe they knock out",
+      "🧩 Trainer Booster: 3 guaranteed Rare or better",
+      "🧟 Zombies: fewer points in later waves",
+      "⚙️ Minigun nerfed",
+      "🖱️ Lists keep their scroll position"
+    ]
+  },
+  {
+    "version": "6.7",
+    "date": "24.09.2026",
+    "items": [
+      "📈 Kekémon cards level up – higher level, stronger card",
+      "🌿 New: Training – unlimited fights for XP, coins and booster pieces",
+      "🍪 Feed spare copies to level up a card",
+      "🤝 Levels stay with the card when you trade or sell it",
+      "🏟️ Gyms have levels now – gym progress was reset"
+    ]
+  },
+  {
+    "version": "6.6.1",
+    "date": "24.09.2026",
+    "items": [
+      "🎒 Full stash: items wait in your inventory instead of turning into scrap",
+      "✨ Special effects are more common"
+    ]
+  },
+  {
+    "version": "6.6",
+    "date": "24.09.2026",
+    "items": [
+      "🎁 Crates and enemy drops come in different rarities now",
+      "🔫 Lots of new weapons, armor and consumables – some of them very rare and very strong",
+      "✨ New animations",
+      "👹 Raid bosses find their way around walls"
+    ]
+  },
+  {
+    "version": "6.5.1",
+    "date": "24.09.2026",
+    "items": [
+      "🧟 Zombie balance: zombies block each other and find their way around walls, faster waves, less money",
+      "🛒 More to spend your points on in Zombies",
+      "🏬 Zombie map redesign",
+      "🏹 Piercing hits at most 3 enemies",
+      "🎪 Shorter end screen after Snake events"
+    ]
+  },
+  {
+    "version": "6.5",
+    "date": "24.09.2026",
+    "items": [
+      "🧟 Zombie changes: different zombies + bosses",
+      "💰 Zombie points now scale with damage, not hits",
+      "✨ Visual changes",
+      "🎮 Arena menu change + skill trees per mode, saved loadouts",
+      "🃏 Kekémon: sort and filter cards when picking a team"
+    ]
+  },
+  {
+    "version": "6.4",
+    "date": "24.09.2026",
+    "items": [
+      "⚔️ Kekémon battles are now 5 vs 5",
+      "🏟️ Gyms are much harder",
+      "🔄 Gym progress reset – first-clear packs you already got won't drop again"
+    ]
+  },
+  {
+    "version": "6.2",
+    "date": "24.09.2026",
+    "items": [
+      "🎁 New case opening: full-screen, the case shakes and bursts open, the reel clicks past every item and slows down",
+      "The rarer the item, the bigger the show: rays from Epic, confetti from Legendary, shaking screen from Mythic – and the sound gets louder with every tier",
+      "The reel no longer runs out on wide screens",
+      "Buying cases moved to the 🛒 Shop tab, which is now much more compact"
+    ]
+  },
+  {
+    "version": "6.1",
+    "date": "24.09.2026",
+    "items": [
+      "🎡 Daily Pack Wheel (idea by SINTHSBen): one free spin a day – 1 to 3 Daily Boosters, 20 % Mega Booster, 5 % Jackpot Booster (only on the wheel: Mega odds, 12 cards)",
+      "📦 New Packs tab: bought packs, gym rewards and wheel prizes wait there unopened – open them whenever you like. The old tab is now 🛒 Pack Shop, the Trade tab is gone",
+      "While opening: rarity, value, Pokéball/Masterball and Shiny shown next to each card",
+      "🤝 Packs and cases can be traded and sold in the Market",
+      "🔫 Arena cases work the same: buy them, they wait in Your cases, open them later",
+      "🎡 Daily Case Wheel in the arena: 1 to 3 Elite cases, 20 % Elite+ case, 5 % Jackpot case (only on the wheel, Sovereign odds)"
+    ]
+  },
+  {
+    "version": "6.0.2",
+    "date": "24.09.2026",
+    "items": [
+      "🔒 Security fixes: the server now rejects more kinds of invalid game requests"
+    ]
+  },
+  {
+    "version": "6.0.1",
+    "date": "24.09.2026",
+    "items": [
+      "Kekémon packs: locked buy button only shows the price, no more \"need X more\""
+    ]
+  },
+  {
+    "version": "6.0",
+    "date": "24.09.2026",
+    "items": [
+      "⚔️ New Kekémon battle system, inspired by Pokémon Showdown: every card now has 4 moves with type, power, accuracy and PP – no more energy",
+      "Both sides pick at the same time (move or switch). Switches go first, then priority moves, then the faster card",
+      "Real type chart: super effective ×2, not very effective ×½, and some types are immune. Moves of the card's own type hit ×1.5",
+      "Physical vs special attacks, stat boosts (Swords Dance, Calm Mind, …), Protect, healing, priority moves, critical hits",
+      "Status conditions: burn, paralysis, poison, sleep",
+      "Move buttons show type, power, accuracy, PP and how much damage they would do right now",
+      "Battle log like Showdown, card details show stats and all moves",
+      "Gyms rebalanced for the new system, duels now give 45 s per turn",
+      "📱 Phone: the page no longer scrolls sideways"
+    ]
+  },
+  {
+    "version": "5.10",
+    "date": "24.09.2026",
+    "items": [
+      "⚔️ Kekémon duels: fight other players with your cards – open a duel for everyone or challenge someone who is online",
+      "Optional stake up to 100,000 coins: both pay it, the winner takes both. Plus a duel rating and its own leaderboard",
+      "30 s per turn in duels. Miss it and you charge automatically, miss 3 in a row and you give up. Reloading the page keeps your duel",
+      "🎨 New battle screen (gyms too): fits on one screen, clear turn marker, energy dots, bench as buttons, attack buttons show when they knock out or how much energy is missing",
+      "Kekémon tabs: ⚔️ Gym battles is now 🏟️ Gyms, next to the new ⚔️ Duels"
+    ]
+  },
+  {
+    "version": "5.9",
+    "date": "24.09.2026",
+    "items": [
+      "🧟 Zombies now pay coins when the game ends: 5 per zombie you kill (tank 20, Abomination 250) plus a wave bonus that grows every wave (wave n = 50 × n)",
+      "Rough numbers solo: wave 5 ≈ 1,200, wave 10 ≈ 4,000, wave 20 ≈ 15,000 coins",
+      "Your kill counter is on the left during the game, coins and kills show up on the game-over screen"
+    ]
+  },
+  {
+    "version": "5.8",
+    "date": "24.09.2026",
+    "items": [
+      "Main menu: logo and title removed, straight to the point"
+    ]
+  },
+  {
+    "version": "5.7",
+    "date": "24.09.2026",
+    "items": [
+      "⚔️ Gym battles: attacks now use up their energy – save up for the big one or hit small every turn",
+      "All gyms rebalanced for the new energy rules"
+    ]
+  },
+  {
+    "version": "5.6",
+    "date": "24.09.2026",
+    "items": [
+      "⚔️ Kekémon gym battles: 8 AI gyms from Sprout Gym to the Kek Champion, each with its own type and leader – beat one to unlock the next",
+      "3 vs 3 with energy: your active card gets +1 energy per turn, attack, charge up or switch. Weakness ×1.5, burn, stun, heal, drain, boost and pierce work as written on the card",
+      "Pokéball, Masterball and Shiny cards are a bit stronger in battle (+3 % / +8 % / +10 %)",
+      "First win against a gym: coins + a free pack. After that a smaller reward, 3 times per gym and day",
+      "Trade tab in Kekémon now points to the Market"
+    ]
+  },
+  {
+    "version": "5.5",
+    "date": "24.09.2026",
+    "items": [
+      "🐍 Snake cash out: score stays unlimited, but coins are 1:1 only up to 10,000. Above that every point is worth less: 100k score ≈ 30k coins, 1M ≈ 100k. Your HUD shows what a cash out would pay",
+      "🃏 Kekémon: all cards were reset once more – everyone starts at 0 again, fair for all"
+    ]
+  },
+  {
+    "version": "5.4",
+    "date": "24.09.2026",
+    "items": [
+      "Fix: pack opening stuck after the pack pops, and cards not clickable under Market → Sell. Cause: after an update your browser kept old game files for up to 4 hours. Every update now forces fresh files",
+      "Performance logging on the server to track down the reported lags",
+      "🃏 Kekémon odds much lower on every pack: Legendary now ~1.6 % per standard pack (was 3.3 %), ~7.8 % per Mega (was 16 %), Secret Rare 1 in 556 / 1 in 100",
+      "Cards now carry clear POKÉBALL / MASTERBALL / ✦ SHINY labels",
+      "Zombies and bosses no longer spawn inside walls (and get pushed out if they ever end up in one)",
+      "Less network traffic: the snake field is only sent while you are in the Snake world"
+    ]
+  },
+  {
+    "version": "5.3",
+    "date": "24.09.2026",
+    "items": [
+      "🎨 All cosmetics cost twice as much (rarities stay the same)",
+      "Arena cases: Mage case removed. Elite case is now 'Elite case General' (everything can drop), new 'Elite case Weapons' and 'Elite case Armor' (armor + backpacks) – 10k each",
+      "New Elite+ versions of all three for 50k: better odds, a quarter of the way to the Sovereign case",
+      "Kekémon: packs you cannot afford now say how many coins you are missing",
+      "Market: clear hint when you have no cards to sell yet"
+    ]
+  },
+  {
+    "version": "5.2",
+    "date": "24.09.2026",
+    "items": [
+      "🏛️ New world: Market – next to Snake, Arena and Kekémon",
+      "Auction Hall: sell arena items, Kekémon cards and bought cosmetics – as Buy it now or as an auction (optional buy-out, 1–48 h). Bids are held right away and come back if you get outbid; a bid in the last minute extends the auction. 5 % fee for the seller",
+      "Lobby: walk around a plaza with fountain, lanterns and the Auction Hall – no fighting. Press F next to a player to trade, F at a stall to jump to Kekémon, Arena, Cosmetics or the Casino. Chat shows as speech bubbles",
+      "Trading moved from the arena to the market and now works with items, cards, cosmetics, scrap and coins. Requests pop up wherever you are",
+      "💖 New Waifu Booster: only female characters from anime and comics",
+      "Arena: drag an item out of the raid inventory to drop it on the ground (equipped gear too)",
+      "When the server updates, the page now reconnects by itself instead of sitting there dead"
+    ]
+  },
+  {
+    "version": "5.1",
+    "date": "23.09.2026",
+    "items": [
+      "🃏 Kekémon collections were reset once (new prices and odds) – everyone got the coins back they spent on packs",
+      "Packs cost 10,000 (Anime, Heroes & Series) and 50,000 (Kek Mega, 8 cards, 3 guaranteed Rare+). Secret Rares are now truly rare: about 1 in 263 packs",
+      "New variants on every card: Pokéball (rare), Masterball (very rare) and ✦ Shiny (extremely rare). SUPER MEGA = Secret Rare + Masterball + Shiny",
+      "Drop chance table in the pack shop",
+      "New pack opening: the cards fan out face down, get shuffled into a deck, the deck flips – then swipe card by card, the best one comes last",
+      "Attacks now fit the character: signature moves for the famous ones (Kamehameha, Hollow Purple, Web Shot, I Am the One Who Knocks …), series moves for everyone else",
+      "Card art is zoomed out – you see the whole picture",
+      "Duplicates sell for more; Pokéball ×3, Masterball ×20, Shiny ×25"
+    ]
+  },
+  {
+    "version": "5.0",
+    "date": "23.09.2026",
+    "items": [
+      "🃏 Kekémon is here: trading cards of 2000 anime, comic/film and series characters – each with type, HP, two attacks with energy costs, weakness and rarity",
+      "Open packs for coins (Anime, Heroes & Series, Kek Mega), flip the cards one by one – the last card is always Rare or better, Epic and up shine holo",
+      "Collection with filters, search and progress per set; duplicates sell for coins",
+      "Battles against AI gyms (5.1) and PvP duels + card trading (5.2) are next",
+      "In game list now also shows who is in Slots, Casino tables, Arena raids, PvP, Zombies or Kekémon",
+      "Chat: smaller titles (🏷️ hides them), @name pings with highlight and a soft sound (🔔 toggles it), Tab completes names",
+      "Mystery boxes in Snake can now contain coins: mostly 10–100, rarely up to 10,000",
+      "🤏 Heist from mystery boxes now steals 10% of everyone's length instead of a flat 3 (Star protects)",
+      "🏆 Achievements show how many percent of all players have them, like on Steam"
+    ]
+  },
+  {
+    "version": "4.7",
+    "date": "23.09.2026",
+    "items": [
+      "Zombie perks renamed: Juggernaut, Rapid Fire, Stamina, Regeneration"
+    ]
+  },
+  {
+    "version": "4.6",
+    "date": "23.09.2026",
+    "items": [
+      "Getting hit in melee now shows the red flash and a damage number",
+      "Bosses got their own shapes and new attacks: charges with a warning lane, rock/acid strikes with warning circles, summoned guards",
+      "New raid result screen: YOU DIED / EXTRACTED with time, kills, XP and the items you lost or secured – deploy again with one click",
+      "Zombies: full heal after every wave, new 💉 heal stations, smaller buy spots",
+      "Extraction: trader, medic, town and outpost removed – enemies and the military base stay"
+    ]
+  },
+  {
+    "version": "4.5",
+    "date": "23.09.2026",
+    "items": [
+      "🤝 Trading: send a trade request to any online player (Arena → Trade)",
+      "Offer items from your stash plus scrap and coins, see exactly what the other side gives",
+      "Both press Ready and everything swaps at once – any change resets Ready, so no last-second tricks",
+      "Items in your loadout are locked while you trade"
+    ]
+  },
+  {
+    "version": "4.4",
+    "date": "23.09.2026",
+    "items": [
+      "🧟 Zombies: survive as many waves as you can, alone or with up to 4 players (Play → Zombies)",
+      "Zombies, Runners, Spitters, Tanks – and the Abomination every 5th wave",
+      "Points for every hit and kill: wall guns, mystery box, Pack-a-Punch (×1.6 damage per level) and four perks",
+      "No item loss, fallen players return after the wave, XP for every wave survived",
+      "Leaderboard: Zombies best wave"
+    ]
+  },
+  {
+    "version": "4.3",
+    "date": "23.09.2026",
+    "items": [
+      "⚔️ PvP arena: create or join 1v1, 2v2 and 3v3 lobbies (Play → PvP arena)",
+      "Best of 5 rounds on 4 small symmetric maps, no friendly fire",
+      "You fight with copies of your loadout – you never lose items in PvP",
+      "PvP rating (Elo): win +300 XP, each kill +60 XP; leaving a match counts as a loss",
+      "Leaderboard: new PvP rating category"
+    ]
+  },
+  {
+    "version": "4.2",
+    "date": "23.09.2026",
+    "items": [
+      "Extraction map is about three times bigger: 48 buildings, 130 crates, 6 extraction zones",
+      "Enemies to farm: Scavs, Brutes, Snipers (watch the red laser), Drones – they drop loot and give XP",
+      "Military base guarded by Enforcers with 🎖️ military crates (weapons and armor)",
+      "Three bosses now: Raccoon King, Iron Golem and Hive Queen (she calls drones)",
+      "Town and outpost are safe from enemies: 🏪 trader (buy consumables with scrap, sell your loot) and ⛑️ medic (full heal for 40 scrap)"
+    ]
+  },
+  {
+    "version": "4.1",
+    "date": "23.09.2026",
+    "items": [
+      "Cleaner top bar: just the Snake / Arena switch",
+      "Arena uses the full page width – cases and shop no longer look like a phone",
+      "The raid fits on the screen without scrolling"
+    ]
+  },
+  {
+    "version": "4.0",
+    "date": "23.09.2026",
+    "items": [
+      "Snake / Arena switch at the top – the arena is now its own full page",
+      "Arena levels: earn XP from kills, bosses, extractions, crates and time in raid",
+      "Every level: 2 stat points (HP, defense, carry weight, speed, damage, fire rate, regen, luck) and 1 skill point",
+      "Skill tree with 30 skills in Assault, Survival and Tactics – resetting costs a lot of coins and scrap",
+      "New Profile tab with your level, record and build; Inventory now holds Equip, List and Salvage",
+      "Leaderboard: new Arena level category",
+      "💡 Suggest an improvement – button under the patch notes, goes straight to us as a ticket"
+    ]
+  },
+  {
+    "version": "3.6",
+    "date": "23.09.2026",
+    "items": [
+      "Leaderboard fix: old records that dropped off (e.g. big Starlight multis) are back",
+      "Wins and snake runs that are still in progress during a server update now count"
+    ]
+  },
+  {
+    "version": "3.5",
+    "date": "23.09.2026",
+    "items": [
+      "New event: 🥤 Shell Game – follow the stone under 3 cups, 5 rounds, faster each time",
+      "Labyrinth: driving into a dead end sends you back to the start",
+      "Mystery box Jackpot: +50 length (was +12)",
+      "Poker: no more flickering cards, big win banner with coin rain and sounds",
+      "Leaderboard: every win counts for Best multi (e.g. Starlight) and Biggest win too"
+    ]
+  },
+  {
+    "version": "3.4",
+    "date": "23.09.2026",
+    "items": [
+      "No more default music – Sunny pop is now in the Cosmetic Shop (18,000)"
+    ]
+  },
+  {
+    "version": "3.3",
+    "date": "23.09.2026",
+    "items": [
+      "Default music is now Sunny pop: quieter, upbeat, with a beat"
+    ]
+  },
+  {
+    "version": "3.2",
+    "date": "23.09.2026",
+    "items": [
+      "Arena: drag & drop items onto weapon, armor, backpack and Q/G slots",
+      "Equip tab shows your stash – drag a slot back to take it off",
+      "Raid inventory: drag from the backpack onto slots and back"
+    ]
+  },
+  {
+    "version": "3.1",
+    "date": "23.09.2026",
+    "items": [
+      "Arena: smoother movement, no more getting stuck on corners",
+      "Boss: the Raccoon King roams the map every 2–10 min – kill him for 3 Sovereign-tier drops",
+      "Supply drops with gear every 3–6 min, announced 15 s ahead",
+      "Crates now only give grenades and heals",
+      "Box obstacles removed from the map",
+      "Salvage gives less scrap",
+      "Free default music for everyone: Sunny jazz",
+      "Leaderboard: every run counts, you can hold several spots"
+    ]
+  },
+  {
+    "version": "3.0",
+    "date": "23.09.2026",
+    "items": [
+      "New name: Kek-Game, new address game.flashkeks.com",
+      "New logo: raccoon with beer and döner",
+      "Main menu with Games, Gamba and Kekémon (coming soon)",
+      "Cosmetic Shop banner right in the menu, with countdown",
+      "Events: fewer coins, three times more length",
+      "Salvaging several items always asks first and shows the scrap",
+      "ESC always takes you one menu back",
+      "Patch notes live here now",
+      "Slots: the feed no longer spoils a big win before the reels stop"
+    ]
+  },
+  {
+    "version": "2.1",
+    "date": "23.09.2026",
+    "items": [
+      "Arena hub split into Equip, Inventory and Salvage",
+      "Equip: click a slot to pick from matching items",
+      "Salvage: one click for all Common/Uncommon/Rare/Epic",
+      "Compact cards (Rare · ⚡ score), details on hover",
+      "Backpacks: new slot, 12 to 50 raid slots",
+      "Raid inventory in the middle, Apex style",
+      "Burning is quiet: just a red edge for the one who burns",
+      "Railgun: instant beam through walls, 250 damage",
+      "Fat Boy: real mini nuke with mushroom cloud",
+      "Singularity: every hit opens a black hole",
+      "Glowing tracers from Epic up, rockets, magic orbs, new sounds"
+    ]
+  },
+  {
+    "version": "2.0",
+    "date": "23.09.2026",
+    "items": [
+      "Arena: rarity rolled per case, Legendary to Ultra rare",
+      "New cases: Mage, Demolition, Sovereign (100k)",
+      "Special items from Epic up: Flamethrower, Railgun, Fat Boy …",
+      "Effects equally rare on every tier",
+      "Two consumable slots (Q/G): nuke, black hole, flashbang, blink …",
+      "Armor only from cases and crates",
+      "Doors on buildings are visible"
+    ]
+  },
+  {
+    "version": "1.3",
+    "date": "23.09.2026",
+    "items": [
+      "Arena: helmet, vest, pants, boots with set bonuses",
+      "Grenades, hiding in buildings, bushes and smoke",
+      "Slow health regeneration, raid inventory (Tab)"
+    ]
+  },
+  {
+    "version": "1.2",
+    "date": "23.09.2026",
+    "items": [
+      "Arena becomes an extraction shooter: loadout, loot crates, extraction zones",
+      "Cases, shop, salvage to scrap"
+    ]
+  },
+  {
+    "version": "1.1",
+    "date": "23.09.2026",
+    "items": [
+      "Cosmetic Shop: 134 designs, daily and weekly offers"
+    ]
+  },
+  {
+    "version": "1.0",
+    "date": "23.09.2026",
+    "items": [
+      "Poker lobbies, Plinko, blackjack side bets",
+      "Achievements with titles, stats, leaderboard filters",
+      "Map events: Maze, Coin Rush, Last Snake Standing"
+    ]
+  }
+]

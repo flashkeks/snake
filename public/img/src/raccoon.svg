@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Kek-Game: Waschbaer mit Bier und Doener (Quelle fuer logo.png und die Favicons) -->
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="65%">
+      <stop offset="0" stop-color="#1c3b2c"/>
+      <stop offset="1" stop-color="#07130d"/>
+    </radialGradient>
+    <linearGradient id="fur" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9aa3ad"/>
+      <stop offset="1" stop-color="#6d7680"/>
+    </linearGradient>
+    <linearGradient id="beer" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffcf4a"/>
+      <stop offset="1" stop-color="#e08a12"/>
+    </linearGradient>
+  </defs>
+  <circle cx="256" cy="256" r="256" fill="url(#bg)"/>
+  <!-- Ohren -->
+  <path d="M112 196 L128 70 L214 140 Z" fill="#5d656e"/>
+  <path d="M400 196 L384 70 L298 140 Z" fill="#5d656e"/>
+  <path d="M132 170 L140 102 L190 144 Z" fill="#2b2f35"/>
+  <path d="M380 170 L372 102 L322 144 Z" fill="#2b2f35"/>
+  <!-- Kopf -->
+  <ellipse cx="256" cy="262" rx="176" ry="150" fill="url(#fur)"/>
+  <!-- helle Stirn und Wangen -->
+  <path d="M256 150 C 226 150 214 190 218 214 L 294 214 C 298 190 286 150 256 150 Z" fill="#e9edf0"/>
+  <ellipse cx="160" cy="318" rx="70" ry="54" fill="#e9edf0"/>
+  <ellipse cx="352" cy="318" rx="70" ry="54" fill="#e9edf0"/>
+  <ellipse cx="256" cy="330" rx="70" ry="62" fill="#e9edf0"/>
+  <!-- Maske -->
+  <path d="M96 262 C 110 214 168 204 214 226 C 236 236 244 250 256 250 C 268 250 276 236 298 226 C 344 204 402 214 416 262 C 404 300 356 304 318 288 C 294 278 276 272 256 272 C 236 272 218 278 194 288 C 156 304 108 300 96 262 Z" fill="#23272c"/>
+  <!-- Augen -->
+  <circle cx="186" cy="254" r="24" fill="#ffffff"/>
+  <circle cx="326" cy="254" r="24" fill="#ffffff"/>
+  <circle cx="190" cy="258" r="15" fill="#15181c"/>
+  <circle cx="322" cy="258" r="15" fill="#15181c"/>
+  <circle cx="196" cy="251" r="5" fill="#ffffff"/>
+  <circle cx="328" cy="251" r="5" fill="#ffffff"/>
+  <!-- Nase und Mund -->
+  <ellipse cx="256" cy="310" rx="26" ry="18" fill="#15181c"/>
+  <ellipse cx="249" cy="304" rx="7" ry="4" fill="#5b6068"/>
+  <path d="M256 328 L256 344 M256 344 C 244 358 228 356 222 346 M256 344 C 268 358 284 356 290 346" stroke="#15181c" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <!-- Schnurrhaare -->
+  <g stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity=".85">
+    <path d="M196 320 L118 306"/><path d="M196 332 L116 336"/>
+    <path d="M316 320 L394 306"/><path d="M316 332 L396 336"/>
+  </g>
+  <!-- Bier links -->
+  <g transform="translate(40 330) rotate(-12)">
+    <rect x="0" y="16" width="70" height="92" rx="8" fill="url(#beer)" stroke="#fff" stroke-width="5"/>
+    <path d="M70 36 h 18 a 16 16 0 0 1 0 44 h -18" fill="none" stroke="#fff" stroke-width="8"/>
+    <path d="M-4 22 C 6 0 24 4 30 12 C 40 -2 60 2 70 18 C 80 16 82 30 72 32 L -2 32 Z" fill="#ffffff"/>
+    <g fill="#fff8" ><circle cx="20" cy="60" r="4"/><circle cx="44" cy="80" r="3"/><circle cx="30" cy="92" r="3"/></g>
+  </g>
+  <!-- Doener rechts -->
+  <g transform="translate(372 330) rotate(14)">
+    <path d="M0 10 L 100 0 L 60 118 Z" fill="#f3e3c2" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M14 18 L 88 10 L 76 40 L 22 42 Z" fill="#8b4a22"/>
+    <circle cx="32" cy="22" r="7" fill="#e3342f"/><circle cx="60" cy="18" r="7" fill="#3cb043"/>
+    <circle cx="74" cy="26" r="6" fill="#e3342f"/><circle cx="46" cy="30" r="6" fill="#ffffff"/>
+  </g>
+</svg>
