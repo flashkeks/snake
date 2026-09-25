@@ -339,6 +339,10 @@ const ZMB_WALL = { smg: 750, shotgun: 1000, rifle: 1400, sniper: 1500 };
 const ZMB_BOX = 2000, ZMB_PAP = 5000, ZMB_PAP_MAX = 5;
 const zPapPrice = lvl => Math.round(ZMB_PAP * (1 + lvl));
 const ZMB_HEAL = 600, ZMB_HEAL_CD = 25000;
+// 6.12.2 (Max: Heilen pro Runde und pro Kauf teurer): +60 je Welle, +300 je eigenem Kauf
+// Welle 1 erster Kauf 660, Welle 10 erster 1200, dritter 1800, Welle 20 fuenfter 3000
+const ZMB_HEAL_WAVE = 60, ZMB_HEAL_STEP = 300;
+const zHealPrice = (wave, n) => ZMB_HEAL + ZMB_HEAL_WAVE * wave + ZMB_HEAL_STEP * n;
 function buildZombieMap() {
     const rand = rng(777);
     const walls = [];
@@ -421,7 +425,10 @@ const zDmg = w => 1 + 0.06 * (w - 1);
 // gibt es nur ueber mehr Zombies. Solo je Welle: W10 ~12k -> ~4,6k, W20 ~46k -> ~8,6k.
 // 6.10 (Max: immer noch zu viel, schmoggi Welle 11 Waffe voll): 0,5/50 -> 0,35/30,
 // normaler Zombie ~80 -> ~51 Punkte (-36 %).
-const Z_PTS_PER_DMG = 0.35, Z_PTS_KILL = 30;
+// 6.12.2 (Max: „knapp 60 % weniger Geld"): alle Punkte ×0,4 – Zombie ~51 -> ~20,
+// dazu Tank/Boss-Kill und Nuke-Bonus ueber Z_PTS_MUL
+const Z_PTS_MUL = 0.4;
+const Z_PTS_PER_DMG = 0.35 * Z_PTS_MUL, Z_PTS_KILL = 30 * Z_PTS_MUL;
 // Kugel-Optik der Zombie-Bosse (tier-Feld der Kugel, 1024 = Boss-Kugel)
 const BOSS_LOOK = { abomination: 5, necro: 11, brood: 12, inferno: 13, storm: 14, overlord: 15, judge: 11, seraph: 13, omega: 15 };
 const HZ = require('./arena-hazards');
@@ -2339,7 +2346,8 @@ module.exports = function createArena(h, opts = {}) {
             const now = Date.now();
             if (now < (p.healAt || 0)) return say(`💉 Again in ${Math.ceil((p.healAt - now) / 1000)} s`);
             if (p.hp >= p.maxHp) return say('💉 You are at full health');
-            if (!pay(s.price)) return;
+            if (!pay(zHealPrice(zb.wave, p.healN || 0))) return;
+            p.healN = (p.healN || 0) + 1;
             p.hp = p.maxHp;
             p.burn = null;
             p.healAt = now + ZMB_HEAL_CD / SPEED;
@@ -2376,7 +2384,7 @@ module.exports = function createArena(h, opts = {}) {
                     fxAt(m.x, m.y, { type: 'shFx', kind: 'mobdie', x: Math.round(m.x), y: Math.round(m.y), icon: m.def.icon, col: m.def.color });
                     mobs.splice(mobs.indexOf(m), 1);
                 }
-                p.pts += 400;
+                p.pts += 400 * Z_PTS_MUL;
                 fxAt(p.x, p.y, { type: 'shBoom', x: Math.round(p.x), y: Math.round(p.y), r: 900, nuke: true });
             } else zb.fx[k] = now + d.ms / SPEED;
             fxAt(s.x, s.y, { type: 'shFx', kind: 'nova', x: s.x, y: s.y, r: 220 });
@@ -2564,7 +2572,7 @@ module.exports = function createArena(h, opts = {}) {
             if (m.id === bossId) bossId = null;
             if (killer) {
                 const bi = def.boss ? (m.bossIdx || 0) + 1 : 0;
-                killer.pts += (def.boss ? 1000 * bi : m.kind === 'tank' ? 150 : def.pts || Z_PTS_KILL) * zPtsMul(killer, now);
+                killer.pts += (def.boss ? 1000 * bi * Z_PTS_MUL : m.kind === 'tank' ? 150 * Z_PTS_MUL : def.pts ? def.pts * Z_PTS_MUL : Z_PTS_KILL) * zPtsMul(killer, now);
                 // Kettenreaktion (Zombie-Baum): der Tote explodiert
                 if (killer.b.zChain && !def.boss && Math.random() < killer.b.zChain) {
                     fxAt(m.x, m.y, { type: 'shBoom', x: Math.round(m.x), y: Math.round(m.y), r: 90, nuke: false });
@@ -3493,7 +3501,7 @@ module.exports = function createArena(h, opts = {}) {
                 zmb: zb ? { diff: zdId, wave: zb.wave, phase: zb.phase, left: Math.max(0, Math.round(zb.until - now)), zombies: mobs.length + zb.toSpawn, pts: Math.floor(p.pts), perks: p.perks,
                     disc: p.b.zDisc, perkDisc: p.b.zDisc * p.b.zPerk,
                     fx: Object.fromEntries(Object.entries(zb.fx).filter(([, t]) => t > now).map(([k, t]) => [k, Math.round(t - now)])),
-                    pap: zPapPrice((p.gear[p.slot] && p.gear[p.slot].pap) || 0), box: zBoxPrice(p.boxN || 0), ubox: zUboxPrice(p.uboxN || 0), shrine: zShrinePrice(zb.shrineN), armor: p.armorN || 0,
+                    pap: zPapPrice((p.gear[p.slot] && p.gear[p.slot].pap) || 0), box: zBoxPrice(p.boxN || 0), heal: zHealPrice(zb.wave, p.healN || 0), ubox: zUboxPrice(p.uboxN || 0), shrine: zShrinePrice(zb.shrineN), armor: p.armorN || 0,
                     team: plist.map(q => [q.name, Math.floor(q.pts), zb.kills.get(q.id) || 0, q.dead ? 1 : 0]) } : undefined,
                 players: plist.filter(q => q === p || (inView(q.x, q.y) && canSee(p, q, now))).map(q => {
                     const qw = q.gear[q.slot] || q.gear.primary;

@@ -2461,3 +2461,13 @@ Nachtrag 6.12.1 (Max: „Stalker zu op, man kann ihn nicht hitten, wenn er an ei
   Sicht 560 -> 460.
 - **Brutes** (Max: zu stark fuers Early Game) laufen oben nicht mehr herum
   (`ROAMERS` ohne `brute`), nur noch im Keller.
+
+### 6.12.2: Zombie-Punkte −60 %, Heilen gestaffelt (Max)
+
+- **Punkte** (Max: „knapp 60 % weniger Geld" – wie bei Bens Runde als Punkte in der
+  Runde gelesen): `Z_PTS_MUL = 0.4` auf alles, was Punkte gibt – Schaden, Kill, Tank-
+  und Boss-Kill, Nuke-Bonus. Normaler Zombie ~51 -> ~20 Punkte. Die Coins am Ende der
+  Runde (`Z_COINS`, nach Wellen und Kills) sind davon unberuehrt.
+- **Heil-Stationen:** `zHealPrice(welle, kaeufe) = 600 + 60 × Welle + 300 × eigene Kaeufe`.
+  Test: Welle 1 -> 660, 960, 1260; Welle 10 (nach 3 Kaeufen) -> 2100, 2400.
+  Snapshot `zmb.heal`, Preisschild zeigt den echten naechsten Preis.

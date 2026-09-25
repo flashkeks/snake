@@ -12208,7 +12208,7 @@ function stationLook(s) {
         const w = arenaCat.weapons[s.base] || {};
         return { icon: w.icon || '🔫', rgb: '120,180,255', label: `${w.name || s.base} · 💰 ${zPrice(s)}`, hint: `F · buy ${w.name || s.base} (${zPrice(s)} points)` };
     }
-    if (s.kind === 'box' || s.kind === 'ubox' || s.kind === 'shrine') {
+    if (s.kind === 'box' || s.kind === 'ubox' || s.kind === 'shrine' || s.kind === 'heal') {
         const z = shSnaps.length && shSnaps[shSnaps.length - 1].zmb;
         if (z && z[s.kind]) s = { ...s, price: z[s.kind] };
     }
