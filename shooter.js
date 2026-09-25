@@ -3591,7 +3591,7 @@ module.exports = function createArena(h, opts = {}) {
             // Boss-Phasen (25.09.2026): erreichte Phase, Schild ms uebrig
             b.phase || 0, now < (b.shieldUntil || 0) ? Math.round(b.shieldUntil - now) : now < (b.karmaUntil || 0) ? Math.round(b.karmaUntil - now) : 0,
             b.shieldKind || 0, b.orbX !== undefined ? Math.round(b.orbX) : null, b.orbY !== undefined ? Math.round(b.orbY) : null,
-            b.phaseKey === 'lastlight' ? 1 : 0, b.phaseKey || ''] : null;
+            b.phaseKey === 'lastlight' ? 1 : 0, b.phaseKey || '', b.burn ? (b.burn.black ? 2 : 1) : 0] : null;
     }
 
     // Spieler trifft Gegner
@@ -3682,7 +3682,7 @@ module.exports = function createArena(h, opts = {}) {
             if (!(w && w.dot) || m.hp <= 0) h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: Math.round(dmg), kill: m.hp <= 0, crit: !!crit });
         }
         if (m.hp > 0 && w) {
-            if (w.burn) m.burn = { dps: w.burn, until: now + 3000 / SPEED, from: attacker ? attacker.id : null, spread: !!(w.awake && w.base === 'amaterasu') };
+            if (w.burn) m.burn = { dps: w.burn, until: now + 3000 / SPEED, from: attacker ? attacker.id : null, spread: !!(w.awake && w.base === 'amaterasu'), black: w.base === 'amaterasu' };
             if (w.frost) m.slowUntil = now + 1500 / SPEED;
             if (w.vamp && attacker) attacker.hp = Math.min(attacker.maxHp, attacker.hp + dmg * w.vamp);
         }
@@ -5468,7 +5468,9 @@ module.exports = function createArena(h, opts = {}) {
                 strikes: strikes.filter(s => inView(s.x, s.y)).map(s => [s.id, Math.round(s.x), Math.round(s.y), s.r, Math.max(0, Math.round(s.at - now)), s.total, s.look || 0]),
                 mobs: mobs.filter(m => !m.def.boss && inView(m.x, m.y)).map(m => [m.id, m.kind, Math.round(m.x), Math.round(m.y), Math.max(0, Math.round(m.hp)), m.maxHp, Math.round(m.a * 100) / 100, m.aimAt ? Math.max(0, Math.round(m.aimAt - now)) : 0,
                     m.chargeAt ? Math.max(0, Math.round(m.chargeAt - now)) : 0, m.charging ? 1 : 0, Math.round(m.cx || 0), Math.round(m.cy || 0), m.charm ? 1 : 0, m.lv || 0,
-                    m.phase || 0, now < (m.shieldUntil || 0) ? Math.round(m.shieldUntil - now) : 0, m.parent || 0]),
+                    m.phase || 0, now < (m.shieldUntil || 0) ? Math.round(m.shieldUntil - now) : 0, m.parent || 0,
+                    // Brennen sichtbar (25.09.2026, Schmoggi): 1 Feuer, 2 Amaterasu (schwarz)
+                    m.burn ? (m.burn.black ? 2 : 1) : 0]),
                 portals: portals.size ? [...portals.values()].flatMap(prs => prs.pairs.flatMap(pr => [pr.a ? [Math.round(pr.a.x), Math.round(pr.a.y), 0, pr.b ? 1 : 0] : null, pr.b ? [Math.round(pr.b.x), Math.round(pr.b.y), 1, pr.a ? 1 : 0] : null])).filter(x => x && inView(x[0], x[1])) : undefined,
                 zones: zones.length ? zones.filter(z => inView(z.x, z.y)).map(z => [Math.round(z.x), Math.round(z.y), z.r]) : undefined,
                 turrets: turrets.length ? turrets.filter(t => inView(t.x, t.y)).map(t => [t.id, Math.round(t.x), Math.round(t.y), Math.round(t.a * 100) / 100, Math.max(0, Math.round(t.until - now))]) : undefined,

@@ -12799,10 +12799,10 @@ function shMobsInterp() {
     }
     const k = b.recv > a.recv ? Math.max(0, Math.min(1, (t - a.recv) / (b.recv - a.recv))) : 1;
     const prev = new Map((a.mobs || []).map(x => [x[0], x]));
-    return (b.mobs || []).map(([id, kind, x, y, hp, mh, ang, aim, warn, charging, cx, cy, charm, lv, phase, shield, parent]) => {
+    return (b.mobs || []).map(([id, kind, x, y, hp, mh, ang, aim, warn, charging, cx, cy, charm, lv, phase, shield, parent, burn]) => {
         const q = prev.get(id);
-        if (!q || Math.hypot(x - q[2], y - q[3]) > 120) return { id, kind, x, y, hp, mh, a: ang, aim, warn, charging, cx, cy, charm, lv, phase, shield, parent };
-        return { id, kind, x: q[2] + (x - q[2]) * k, y: q[3] + (y - q[3]) * k, hp, mh, a: ang, aim, warn, charging, cx, cy, charm, lv, phase, shield, parent };
+        if (!q || Math.hypot(x - q[2], y - q[3]) > 120) return { id, kind, x, y, hp, mh, a: ang, aim, warn, charging, cx, cy, charm, lv, phase, shield, parent, burn };
+        return { id, kind, x: q[2] + (x - q[2]) * k, y: q[3] + (y - q[3]) * k, hp, mh, a: ang, aim, warn, charging, cx, cy, charm, lv, phase, shield, parent, burn };
     });
 }
 
@@ -12819,9 +12819,9 @@ function shBossPos() {
         }
     }
     if (!b.boss) return null;
-    const [x, y, hp, mh, ang, slam, kind, warn, cx, cy, charging, enraged, spiral, vortex, beamWarn, beamA, intro, , phase, shield, shieldKind, orbX, orbY, dark, pkey] = b.boss;
+    const [x, y, hp, mh, ang, slam, kind, warn, cx, cy, charging, enraged, spiral, vortex, beamWarn, beamA, intro, , phase, shield, shieldKind, orbX, orbY, dark, pkey, burn] = b.boss;
     const def = (sh && sh.map.mobs && sh.map.mobs[kind]) || { name: 'Raccoon King', icon: '🦝', r: 44, crown: true, color: '#ff3b3b', slamR: 250 };
-    const extra = { hp, mh, a: ang, slam, def, kind, warn, cx, cy, charging, enraged, spiral, vortex, beamWarn, beamA, intro, phase: phase || 0, shield: shield || 0, shieldKind: shieldKind || 0, orbX, orbY, dark: !!dark, pkey: pkey || '' };
+    const extra = { hp, mh, a: ang, slam, def, kind, warn, cx, cy, charging, enraged, spiral, vortex, beamWarn, beamA, intro, phase: phase || 0, shield: shield || 0, shieldKind: shieldKind || 0, orbX, orbY, dark: !!dark, pkey: pkey || '', burn: burn || 0 };
     if (!a || !a.boss) return { x, y, ...extra };
     const k = b.recv > a.recv ? Math.max(0, Math.min(1, (t - a.recv) / (b.recv - a.recv))) : 1;
     return { x: a.boss[0] + (x - a.boss[0]) * k, y: a.boss[1] + (y - a.boss[1]) * k, ...extra };
@@ -13383,7 +13383,7 @@ function shFrame() {
         const drawn = PX[mb.kind] ? bDrawSide(c, mb, def, now) : false;
         if (def.phases) zPhaseShield(c, mb.x, mb.y, def.r || 20, (mb.shield || 0) - (now - latest.recv), 'void', mb.shield > 0 ? 1 : 0, now);
         // 6.5: Zombies mit eigener Figur (public/zfx.js)
-        if (!drawn && zDrawMob(c, mb, def, now)) continue;
+        if (!drawn && zDrawMob(c, mb, def, now)) { zBurnFx(c, mb.x, mb.y, def.r || 20, mb.burn, now); continue; }
         // 6.12: eigene Figuren fuer Raid-Gegner (public/rfx.js), sonst Kreis mit Emoji
         if (!drawn && !bDrawMob(c, mb, def, now) && !rDrawMob(c, mb, def, now)) {
             c.fillStyle = 'rgba(0,0,0,.35)';
@@ -13405,6 +13405,8 @@ function shFrame() {
             c.stroke();
             drawEmojiC(c, def.icon, mb.x, mb.y + 2, def.r * 1.4);
         }
+        // Brennen (25.09.2026): Flammen ueber der Figur
+        zBurnFx(c, mb.x, mb.y, def.r || 20, mb.burn, now);
         if (mb.hp < mb.mh) {
             const bw = def.r * 2.4;
             c.fillStyle = 'rgba(0,0,0,.7)';
@@ -13575,6 +13577,7 @@ function shFrame() {
         }
         if (bs.orbX != null) zPhaseOrb(c, bs.orbX, bs.orbY, now);
         drawBoss(c, bs, BR, now);
+        zBurnFx(c, bs.x, bs.y, BR, bs.burn, now);
         zPhaseShield(c, bs.x, bs.y, BR, bs.shield - (now - latest.recv), bs.pkey, bs.shieldKind, now);
         const bw = 120;
         c.fillStyle = 'rgba(0,0,0,.7)';
@@ -14227,13 +14230,8 @@ function shDrawPlayer(c, p, x, y, a, mine, now, my) {
         c.arc(0, 0, m.r + 22 + pulse * 6, 0, Math.PI * 2);
         c.fill();
     }
-    if (p.burn) {
-        c.strokeStyle = 'rgba(255,120,40,.7)';
-        c.lineWidth = 2;
-        c.beginPath();
-        c.arc(0, 0, m.r + 2, 0, Math.PI * 2);
-        c.stroke();
-    }
+    // Brennen (25.09.2026, Schmoggi): Flammen statt duennem Ring
+    if (p.burn) zBurnFx(c, 0, 0, m.r, 1, now);
     if (p.slow) drawEmojiC(c, '❄️', -12, -12, 16);
     c.globalAlpha = 1;
     if (!mine) {

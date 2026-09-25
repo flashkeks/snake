@@ -2741,3 +2741,46 @@ function zPhaseTicks(c, x0, y0, w, h, n, ths) {
         c.fillRect(x0 + w * t - 1, y0 - 2, 2, h + 4);
     });
 }
+
+// ---------- Brennen (25.09.2026, Schmoggi: „Burn-Effekte visuell deutlicher") ----------
+// Flammenzungen, die ueber der Figur hochzuengeln, Glut-Funken, Schein am Boden.
+// kind 1 = Feuer (orange), 2 = Amaterasu (schwarz mit violettem Rand)
+function zBurnFx(c, x, y, r, kind, now) {
+    if (!kind) return;
+    const black = kind === 2;
+    r = Math.max(r, 22);
+    zGlow(c, x, y + r * .3, r * 2, black ? '120,40,200' : '255,110,20', black ? .35 : .45);
+    const n = Math.max(6, Math.round(r / 3));
+    for (let i = 0; i < n; i++) {
+        const ph = (now / 420 + i * .618) % 1;
+        const ox = (i / (n - 1) - .5) * r * 1.6 + Math.sin(now / 130 + i * 2) * r * .12;
+        const h = r * (1.6 + .7 * Math.sin(i * 1.7 + now / 210)) * (1 - ph * .35);
+        const bx = x + ox, by = y + r * .55 - ph * r * .5;
+        const g = c.createLinearGradient(bx, by, bx, by - h);
+        if (black) {
+            g.addColorStop(0, 'rgba(10,0,20,.95)');
+            g.addColorStop(.6, 'rgba(40,0,70,.85)');
+            g.addColorStop(1, 'rgba(160,70,255,0)');
+        } else {
+            g.addColorStop(0, 'rgba(255,230,120,.95)');
+            g.addColorStop(.45, 'rgba(255,120,20,.85)');
+            g.addColorStop(1, 'rgba(200,20,0,0)');
+        }
+        c.fillStyle = g;
+        const w = r * .42 * (1 - ph * .45);
+        c.beginPath();
+        c.moveTo(bx - w, by);
+        c.quadraticCurveTo(bx - w * .6, by - h * .55, bx + Math.sin(now / 90 + i) * w * .6, by - h);
+        c.quadraticCurveTo(bx + w * .6, by - h * .55, bx + w, by);
+        c.closePath();
+        c.fill();
+        if (black) { c.strokeStyle = 'rgba(190,110,255,.7)'; c.lineWidth = 1.5; c.stroke(); }
+    }
+    // Funken steigen auf
+    for (let i = 0; i < 10; i++) {
+        const ph = (now / 700 + i / 10) % 1;
+        const sx = x + Math.sin(i * 3.1 + now / 400) * r * .8, sy = y - ph * r * 2.2;
+        c.fillStyle = black ? `rgba(190,120,255,${1 - ph})` : `rgba(255,${200 - 120 * ph},60,${1 - ph})`;
+        c.fillRect(sx - 2, sy - 2, 4, 4);
+    }
+}

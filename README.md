@@ -3015,3 +3015,20 @@ Test (72/72): alle sieben Phasen-Bosse unter Dauerfeuer (Venuzdonoa Ultra, PaP 5
 richtige Zahl Phasen, auf jeder Zeit-Schwelle ≥1,5 s gehalten, kein Schaden durch
 Schild/Karma, Power-up, 3 Wächter / 4 Reaktoren, Karma-Treffer, Sog bei Omega, Orb aktiv;
 acht Bosse ohne Phasen bleiben ohne. Dazu Screenshot der sechs Animationen.
+
+## 🔥 Brennen sichtbar, Fuse mit geschützten Items (25.09.2026, Schmoggi / Max)
+
+**Brennen** (Schmoggi: „Burn-Effekte visuell deutlicher machen"): Bisher schickte der
+Server gar nicht mit, ob ein Gegner brennt – man sah es nur am Schaden. Jetzt trägt das
+Gegner-Array Index 17 und das Boss-Array Index 25 den Zustand (1 Feuer, 2 Amaterasu).
+`zBurnFx` (`public/zfx.js`) zeichnet über der Figur hochzüngelnde Flammen, Glut-Funken und
+einen Schein am Boden; Amaterasu in Schwarz mit violettem Rand. Mindestgröße 22 px, damit
+es auch an kleinen Gegnern auffällt. Spieler, die brennen, bekommen dieselben Flammen statt
+des dünnen orangen Rings.
+
+**Fuse mit geschützten Items** (Schmoggi: „protectede Items erlauben, gefused zu werden,
+aber natürlich immer noch nicht salvagebar"; Max: „nur als Fuse-Main-Item"): war schon so
+und bleibt so – ein geschütztes Item kann Haupt-Item sein (der 🔥-Fuse-Knopf erscheint
+auch bei ⭐), als Opfer wird es abgelehnt („Protected items cannot be fused in"),
+Salvage bleibt gesperrt. Geprüft mit einem echten `arFuse`-Aufruf (Main geschützt → klappt,
+Opfer geschützt → Fehler). Keine Codeänderung.
