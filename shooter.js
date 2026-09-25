@@ -72,6 +72,8 @@ const SILENT_MS = 90e3;
 const BAG_LIFE_LEFT = Math.max(BAG_LIFE, 2 * 60e3);
 // Gegner (4.1): so viele laufen herum, geweckt nur in der Naehe von Spielern
 const MOB_BASE = 45, MOB_PER_PLAYER = 8, MOB_MAX = 120;
+// Extraction nur fuer diese Konten (Kleinbuchstaben), leer = offen fuer alle
+const EXTRACT_ONLY = (process.env.SNAKE_EXTRACT_ONLY !== undefined ? process.env.SNAKE_EXTRACT_ONLY : 'kek').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
 // 25.09.2026 (Max: Gegner droppen zu viel, mit Railgun zu einfach): Dropchance
 // aller normalen Gegner halbiert, Seltenheiten bleiben. Dazu Gegner-Level je
 // Ebene: HP/Schaden steigen innerhalb der Ebene mit dem Level (zusaetzlich zu den
@@ -79,7 +81,10 @@ const MOB_BASE = 45, MOB_PER_PLAYER = 8, MOB_MAX = 120;
 // wuerfeln Epic und hoeher bei Gegner-Beute nur halb so oft, das Labor wie bisher.
 const MOB_DROP_MUL = 0.5;
 const MOB_LEVELS = { surface: [1, 10], bunker: [20, 30], lab: [40, 50] };
-const MOB_LV_HP = 0.06, MOB_LV_DMG = 0.04, MOB_LV_XP = 0.05;
+// 25.09.2026 (Max: Labor mit Lv-8-Railgun zu leicht, Level muessen ~200 % mehr machen):
+// Faktor jetzt ab Level 1 statt ab Ebenen-Beginn – Lv 10 x1,4 HP, Lv 25 x2,1,
+// Lv 45 x3,0 (+200 %), Schaden Lv 45 x2,3. Obendrauf die Ebenen-Faktoren (UNDER_MOBS).
+const MOB_LV_HP = 0.045, MOB_LV_DMG = 0.03, MOB_LV_XP = 0.05;
 const MOB_EPIC_MUL = { surface: 0.5, bunker: 0.5, lab: 1 };
 const MOB_WAKE = 1700;
 const MIL_RESPAWN = 5 * 60e3;
@@ -1115,6 +1120,9 @@ module.exports = function createArena(h, opts = {}) {
 
     function join(c, name, color, team) {
         if (!c.account) return 'Log in to raid';
+        // 25.09.2026 (Max): Extraction waehrend des Umbaus nur fuer Kek. Zum Oeffnen
+        // EXTRACT_ONLY leeren (oder SNAKE_EXTRACT_ONLY='' in snake.service setzen).
+        if (mode === 'extract' && EXTRACT_ONLY.length && !EXTRACT_ONLY.includes(String(c.account).toLowerCase()) && !players.has(c.id)) return '🚧 Extraction is closed for a rebuild – back soon!';
         if (players.has(c.id)) {
             sendJoined(c);
             return null;
@@ -3249,7 +3257,7 @@ module.exports = function createArena(h, opts = {}) {
         if (mode === 'extract' && !def.boss && !def.zombie) {
             const [lo, hi] = MOB_LEVELS[regionAt(x, y)] || MOB_LEVELS.surface;
             m.lv = lo + Math.floor(Math.random() * (hi - lo + 1));
-            const k = m.lv - lo;
+            const k = m.lv - 1;
             m.hp = m.maxHp = Math.round(m.maxHp * (1 + MOB_LV_HP * k));
             m.dm = 1 + MOB_LV_DMG * k;
         }
@@ -3419,7 +3427,8 @@ module.exports = function createArena(h, opts = {}) {
             for (let k = 0; k < nLoot; k++) {
                 const a = k / nLoot * Math.PI * 2;
                 const x = m.x + Math.cos(a) * 55, y = m.y + Math.sin(a) * 55;
-                dropBag(blocked(x, y, 10) ? m.x : x, blocked(x, y, 10) ? m.y : y, [I.generate('boss')], 'boss');
+                // 25.09.2026 (Max): Bosse an der Oberflaeche -30 % auf Legendary und hoeher
+                dropBag(blocked(x, y, 10) ? m.x : x, blocked(x, y, 10) ? m.y : y, [I.generate('boss', 1, regionAt(m.x, m.y) === 'surface' ? 0.7 : 1)], 'boss');
             }
             fxAt(m.x, m.y, { type: 'shBoom', x: Math.round(m.x), y: Math.round(m.y), r: 220, nuke: false });
             const line = { killer: killer ? killer.name : null, victim: def.icon + ' ' + def.name, how: 'shot', loot: nLoot };
@@ -3516,7 +3525,10 @@ module.exports = function createArena(h, opts = {}) {
     // die sonst an Tueren und Ecken haengen blieben). Frei = mobBlocked, also
     // auch keine Wege durch Stadt und Aussenposten.
     const NAV_CELL = 40, NAV_MS = 250;
-    const NAV_W = Math.ceil(W / NAV_CELL), NAV_H = Math.ceil(H / NAV_CELL);
+    // 25.09.2026: Raster ueber die ganze Welt samt Ebenen (Keller/Labor liegen rechts
+    // neben der Oberflaeche) – vorher endete es bei W, unten liefen alle geradeaus
+    const NAV_W = Math.ceil(Math.max(W, ...(MAP.regions || []).map(g => g.x + g.w)) / NAV_CELL);
+    const NAV_H = Math.ceil(Math.max(H, ...(MAP.regions || []).map(g => g.y + g.h)) / NAV_CELL);
     const NAVS = { small: { r: 20 }, big: { r: 44 } };
     let navFree = null, navDist = null;
     const NAV_DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
@@ -3575,7 +3587,9 @@ module.exports = function createArena(h, opts = {}) {
     }
     // Wegpunkt fuer einen Zombie: direkt, wenn nah und frei, sonst das beste Nachbarfeld
     function zNav(m, tgt, d) {
-        if (d < 160 || (d < 500 && clearFor(m.x, m.y, tgt.x, tgt.y, m.def.r))) return tgt;
+        // direkt nur, wenn der Koerper frei durchkommt (vorher: unter 160 px immer –
+        // durch duenne Waende liefen sie dann dagegen)
+        if (d < 50 || (d < 500 && clearFor(m.x, m.y, tgt.x, tgt.y, m.def.r))) return tgt;
         navBuild(Date.now(), m.def.r > 30 ? 'big' : 'small');
         const cx = Math.floor(m.x / NAV_CELL), cy = Math.floor(m.y / NAV_CELL);
         if (cx < 0 || cy < 0 || cx >= NAV_W || cy >= NAV_H) return tgt;
@@ -3998,7 +4012,8 @@ module.exports = function createArena(h, opts = {}) {
             const d = Math.hypot(tgt.x - m.x, tgt.y - m.y);
             m.a = Math.atan2(tgt.y - m.y, tgt.x - m.x);
             // Zombies (6.5.1): um Ecken herum ueber das Wegfeld statt geradeaus
-            const goal = (zb && def.zombie) || def.boss ? zNav(m, tgt, d) : tgt;
+            // 25.09.2026 (Max: Pathfinding mau): in der Extraction laufen alle ueber das Wegfeld
+            const goal = (zb && def.zombie) || def.boss || mode === 'extract' ? zNav(m, tgt, d) : tgt;
             if (def.melee) {
                 mobMove(m, goal.x, goal.y, def.chase, dt);
             } else {
