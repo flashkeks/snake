@@ -6491,8 +6491,22 @@ body.watch-mode #world-switch {
 @keyframes uiDlgIn { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
 
 /* 6.12: Analyser im Markt */
-.ana-wrap { display: flex; flex-direction: column; gap: 12px; }
-.ana-wrap .mk-pickgrid { max-height: 340px; overflow-y: auto; }
+.hub-sortbar { align-items: center; margin-top: 4px; }
+.lv-plus { font-style: normal; color: #7dffb0; font-weight: 700; }
+.hub-sortbar input { min-width: 150px; flex: 1; max-width: 260px; padding: 4px 8px; }
+.hub-sortbar button { padding: 3px 9px; font-size: 12px; }
+.cr-diffs button small { opacity: .65; font-size: 10.5px; }
+.ana-wrap { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 900px) { .ana-wrap { grid-template-columns: 1fr; } }
+.ana-wrap .mk-pickgrid { max-height: 66vh; overflow-y: auto; }
+.ana-wrap .ana-res { position: sticky; top: 8px; max-height: 76vh; overflow-y: auto; }
+.ana-tools, .ana-filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+.ana-tools input { flex: 1; min-width: 160px; padding: 6px 10px; }
+.ana-tools span { color: #8592a3; font-size: 12px; }
+.ana-tools .ana-count { margin-left: auto; }
+.ana-tools button, .ana-filters button { padding: 4px 10px; font-size: 12px; border-radius: 8px; }
+.ana-tools button.on, .ana-filters button.on { background: #3da5ff; color: #fff; border-color: #3da5ff; }
+.ana-filters small { opacity: .7; }
 .ana-res { background: linear-gradient(180deg, #171b25, #11141b); border: 1px solid rgba(90,200,255,.35); border-radius: 12px; padding: 12px 14px; }
 .ana-res h3 { margin: 0 0 8px; display: flex; align-items: center; gap: 8px; font-size: 18px; }
 .ana-res h4 { margin: 12px 0 4px; font-size: 13px; color: #9fb4c8; text-transform: uppercase; letter-spacing: .06em; }
@@ -10733,7 +10747,9 @@ function itemDetail(it) {
         `<small class="it-tier">${tierName(itTier(it))}${odds > 1 ? ` · 1 in ${odds.toLocaleString('en-US')}` : ''}${sc ? ` · ⚡ ${scoreText(sc)}` : ''}</small></div></div>`;
     if (k === 'weapon') {
         const wl = arenaCat.wlv ? wLevel(it) : { lv: 1, dmg: 1, rate: 1, to: null };
-        const dmg = def.dmg * (1 + bonus) * (1 + L('sharp') * 0.12) * wl.dmg, rate = 1000 / (def.ms / (1 + L('rapid') * 0.1) / wl.rate), pel = def.pellets + L('multishot');
+        // 25.09.2026 (Max): Level-Anteil getrennt zeigen – „30 (+4)" statt verrechnet
+        const dmg0 = def.dmg * (1 + bonus) * (1 + L('sharp') * 0.12), dmg = dmg0 * wl.dmg;
+        const rate0 = 1000 / (def.ms / (1 + L('rapid') * 0.1)), rate = rate0 * wl.rate, pel = def.pellets + L('multishot');
         if (def.unique) s += `<div class="set-box unique-box"><b>✦ Unique</b><small>${esc(def.desc || '')}</small></div>`;
         if (def.awake) s += `<div class="set-box ${wl.lv >= arenaCat.wlv.awake ? 'unique-box' : ''}"><b>${wl.lv >= arenaCat.wlv.awake ? '✦ Awakened' : '🔒 Awakens at level ' + arenaCat.wlv.awake}</b><small>${esc(def.awake)}</small></div>`;
         if (arenaCat.wlv && !it.starter && !it.s) {
@@ -10742,7 +10758,8 @@ function itemDetail(it) {
                 `<div style="height:6px;background:rgba(255,255,255,.12);border-radius:3px;margin:4px 0"><div style="height:6px;width:${pct}%;background:#ffd23f;border-radius:3px"></div></div>` +
                 `<small>${wl.to ? `${(wl.xp - wl.from).toLocaleString('en-US')} / ${(wl.to - wl.from).toLocaleString('en-US')} XP to level ${wl.lv + 1} · kills with this weapon level it` : 'Max level'}${wl.lv > 1 ? ` · +${Math.round((wl.dmg - 1) * 100)}% damage` : ''}${wl.rate > 1 ? `, +${Math.round((wl.rate - 1) * 100)}% fire rate` : ''}</small></div>`;
         }
-        s += `<div class="it-stats"><span>💥 ${Math.round(dmg)}${pel > 1 ? ' × ' + pel : ''}</span><span>⚡ ${rate.toFixed(1)}/s</span>` +
+        const lvPlus = (v, d) => v > 0.05 ? ` <em class="lv-plus" title="from the item level">(+${d ? v.toFixed(d) : Math.round(v)})</em>` : '';
+        s += `<div class="it-stats"><span>💥 ${Math.round(dmg0)}${lvPlus(dmg - dmg0)}${pel > 1 ? ' × ' + pel : ''}</span><span>⚡ ${rate0.toFixed(1)}${lvPlus(rate - rate0, 1)}/s</span>` +
             `<span>📏 ${Math.round(def.speed * def.life * (1 + L('velocity') * 0.25) * (1 + L('velocity') * 0.15))}</span>` +
             (def.explode ? '<span>💣 explodes</span>' : '') + '</div>' +
             (Object.keys(inn).length ? `<div class="set-box"><b>Built in</b>${Object.entries(inn).map(([id, l]) => `<small>${(arenaCat.weaponMods[id] || {}).icon || ''} ${esc(INNATE_TEXT[id] ? INNATE_TEXT[id](l) : id)}</small>`).join('')}</div>` : '');
@@ -10751,7 +10768,8 @@ function itemDetail(it) {
         const al = arenaCat.wlv ? wLevel(it) : { lv: 1, to: null, xp: 0, from: 0 };
         const W = arenaCat.wlv || {};
         const ahp = 1 + (W.armorHp || 0) * (al.lv - 1), ams = (W.milestones || []).filter(m => al.lv >= m).length;
-        s += `<div class="it-stats"><span>❤️ +${Math.round(def.hp * (1 + bonus) * ahp + L('plating') * 8)} HP</span>` +
+        const hp0 = def.hp * (1 + bonus) + L('plating') * 8, hpLv = def.hp * (1 + bonus) * (ahp - 1);
+        s += `<div class="it-stats"><span>❤️ +${Math.round(hp0)} HP${hpLv >= 0.5 ? ` <em class="lv-plus" title="from the armor level">(+${Math.round(hpLv)})</em>` : ''}</span>` +
             (def.speed ? `<span>👟 ${def.speed > 0 ? '+' : ''}${Math.round(def.speed * 100)}% speed</span>` : '') + '</div>' +
             (set ? `<div class="set-box" style="border-color:${set.color}"><b style="color:${set.color}">${set.name} set · ${arenaCat.slotNames[def.slot]}</b>${set.bonus.map(x => `<small>${esc(x)} pieces</small>`).join('')}</div>`
                 : `<div class="set-box ${def.unique ? 'unique-box' : ''}"><b>${def.unique ? '✦ Unique · ' : ''}${def.full ? 'Full body – replaces all armor' : arenaCat.slotNames[def.slot] + ' · no set'}</b>${def.desc ? `<small>${esc(def.desc)}</small>` : ''}</div>`);
@@ -10989,6 +11007,16 @@ function hubPicker() {
         `<button type="button" class="ghost" data-pickclose="1">Close</button></div>` +
         `<div class="inv-grid">${cards || '<div class="hint">Nothing for this slot in your stash.</div>'}</div></div>`;
 }
+
+// Suche im Arena-Inventar (25.09.2026): tippen ohne Fokusverlust
+document.addEventListener('input', e => {
+    if (e.target.id !== 'hub-q') return;
+    hubQ = e.target.value;
+    const pos = e.target.selectionStart;
+    hubDraw();
+    const n = document.getElementById('hub-q');
+    if (n) { n.focus(); n.setSelectionRange(pos, pos); }
+});
 
 // Lager im Equip-Tab: alles Ausruestbare, per Drag & Drop auf die Slots
 function hubStash(filters) {
@@ -11595,9 +11623,25 @@ function hubStacks(list) {
 }
 
 const HUB_FILTERS = [['all', 'All'], ['weapon', '🔫 Weapons'], ['helmet', '🪖 Helmets'], ['vest', '🦺 Vests'], ['pants', '👖 Pants'],
-    ['boots', '🥾 Boots'], ['pack', '🎒 Backpacks'], ['util', '💣 Consumables']];
-const hubFilterFn = x => hubFilter === 'all' || x.kind === hubFilter || (x.kind === 'armor' && x.slot === hubFilter);
-const hubSort = (a, b) => tierIdx(b.tier) - tierIdx(a.tier) || (b.score || 0) - (a.score || 0) || (a.kind > b.kind ? 1 : -1);
+    ['boots', '🥾 Boots'], ['pack', '🎒 Backpacks'], ['util', '💣 Consumables'], ['unique', '✦ Uniques'], ['dup', '👯 Duplicates']];
+// 25.09.2026 (Max): Sortierung waehlbar, Filter fuer Duplikate (gleiche Basis + Seltenheit) und Uniques, Suche
+let hubSortKey = 'rarity', hubQ = '', hubDupKeys = new Set();
+const hubDupRefresh = () => {
+    const seen = {};
+    hubDupKeys = new Set();
+    for (const x of (hub && hub.inv) || []) { if (x.kind === 'util') continue; const k = x.base + '|' + x.tier; seen[k] = (seen[k] || 0) + 1; if (seen[k] > 1) hubDupKeys.add(k); }
+};
+const hubFilterFn = x => (hubFilter === 'all' || x.kind === hubFilter || (x.kind === 'armor' && x.slot === hubFilter)
+    || (hubFilter === 'dup' && hubDupKeys.has(x.base + '|' + x.tier)) || (hubFilter === 'unique' && !!itemDef(x).unique))
+    && (!hubQ || String(x.name).toLowerCase().includes(hubQ.toLowerCase()));
+const HUB_SORTS = {
+    rarity: (a, b) => tierIdx(b.tier) - tierIdx(a.tier) || (b.score || 0) - (a.score || 0) || (a.kind > b.kind ? 1 : -1),
+    score: (a, b) => (b.score || 0) - (a.score || 0),
+    level: (a, b) => (b.wxp || 0) - (a.wxp || 0) || tierIdx(b.tier) - tierIdx(a.tier),
+    name: (a, b) => String(a.name).localeCompare(String(b.name)) || tierIdx(b.tier) - tierIdx(a.tier),
+    value: (a, b) => (b.sv || 0) - (a.sv || 0)
+};
+const hubSort = (a, b) => (HUB_SORTS[hubSortKey] || HUB_SORTS.rarity)(a, b);
 
 function hubDraw() {
     return keepScroll('hub', hubTab, $('arenahub'), hubDrawRaw);
@@ -11628,7 +11672,10 @@ function hubDrawRaw() {
         return;
     }
     const inv = hub.inv;
-    const filters = `<div class="cr-diffs">${HUB_FILTERS.map(([k, n]) => `<button type="button" data-filter="${k}" class="${hubFilter === k ? 'on' : ''}">${n}</button>`).join('')}</div>`;
+    hubDupRefresh();
+    const cnt = k => { const o = hubFilter, q = hubQ; hubFilter = k; hubQ = ''; const n = inv.filter(hubFilterFn).length; hubFilter = o; hubQ = q; return n; };
+    const filters = `<div class="cr-diffs">${HUB_FILTERS.map(([k, n]) => { const c = cnt(k); return c || k === 'all' || hubFilter === k ? `<button type="button" data-filter="${k}" class="${hubFilter === k ? 'on' : ''}">${n} <small>${c}</small></button>` : ''; }).join('')}</div>` +
+        `<div class="cr-diffs hub-sortbar"><input id="hub-q" placeholder="🔎 Search…" value="${esc(hubQ)}"><span class="hint">Sort</span>${[['rarity', 'Rarity'], ['score', 'Score'], ['level', 'Level'], ['value', 'Scrap value'], ['name', 'A–Z']].map(([k, n]) => `<button type="button" data-hubsort="${k}" class="${hubSortKey === k ? 'on' : ''}">${n}</button>`).join('')}</div>`;
     let html = '';
     if (hubTab === 'play') {
         html = (hubMode === 'pvp' || hubMode === 'zombies' ? hubPresets(true) + (hubMode === 'pvp' ? hubPvp() : hubZombies()) + (hubLast ? `<div class="raid-result ${hubLast.result}">${hubLast.html}</div>` : '') : hubPresets(true) + hubLoadout() +
@@ -12078,6 +12125,7 @@ $('hub-body').addEventListener('click', e => {
     if (ds.salvtier) return hubSalvage(hub.inv.filter(x => x.tier === ds.salvtier && x.kind !== 'util' && !x.fav && !hubEquippedAs(x.uid)).map(x => x.uid));
     if (ds.pickall) { hubMulti.clear(); return hubDraw(); }
     if (ds.filter) { hubFilter = ds.filter; return hubDraw(); }
+    if (ds.hubsort) { hubSortKey = ds.hubsort; return hubDraw(); }
     if (ds.pickclose) { hubPick = null; return hubDraw(); }
     if (ds.takeoff) {
         const s = ds.takeoff;

@@ -3281,3 +3281,17 @@ ragte darüber hinaus. Spieler in Häusern schickt der Server Außenstehenden oh
 Gegner jetzt genauso (`mobHidden`): im Inneren eines Gebäudes nur an Spieler im selben Gebäude
 (oder mit Durchblick-Effekt). In der Tür (auf der Wandlinie) bleiben sie sichtbar. Test: von
 außen über dem Haus versteckt, im selben Haus sichtbar, mit Durchblick sichtbar.
+
+## 🔬 Analyser, Arena-Inventar, Level-Werte (25.09.2026 spät, Max)
+
+- **Analyser größer, mit Suche/Filter/Sortierung** (`public/market.js`): Auswahl links (bis 66 %
+  Bildschirmhöhe), Ergebnis rechts daneben und mitlaufend (schmal untereinander). Suche nach Namen,
+  Filter mit Zählern (Waffen, Rüstung, Verbrauchsgut, Rucksäcke, ✦ Uniques, 👯 Duplikate = gleiche
+  Basis und Seltenheit mehrfach; bei Karten/Packs „mehr als eins"), Sortierung Seltenste zuerst,
+  Score, Level, A–Z.
+- **Arena-Inventar** (Hub: Inventory, Salvage, Equip-Lager): Sortierung wählbar (Seltenheit, Score,
+  Level, Scrap-Wert, A–Z), Suche, neue Filter ✦ Uniques und 👯 Duplikate, Zähler an jedem Filter,
+  leere Filter ausgeblendet.
+- **Level-Werte getrennt:** In den Item-Details (Tooltip, Detailspalte) steht der Grundwert und der
+  Anteil aus dem Item-Level in Grün dahinter – Rüstung `❤️ +30 HP (+40)`, Waffen `💥 26 (+7)` und
+  `⚡ 6.7 (+0.7)/s`. Vorher war beides verrechnet.

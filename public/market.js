@@ -186,16 +186,52 @@ let anaSrc = 'item';
 let anaSel = null;              // JSON der gewaehlten ref
 let anaRes = null;              // Antwort des Servers
 let anaInv = null;              // alle Arena-Items (auch ausgeruestete)
-function anaList() {
-    if (anaSrc === 'item') return (anaInv || []).map(it => ({ ref: { k: 'item', uid: it.uid }, asset: { k: 'item', item: it } }))
-        .sort((a, b) => (b.asset.item.odds || 1) - (a.asset.item.odds || 1));
+// 25.09.2026 (Max): groesser, mit Suche, Filter und Sortierung
+let anaQ = '', anaF = 'all', anaSort = 'rare';
+const ANA_F = [['all', 'All'], ['weapon', '🔫 Weapons'], ['armor', '🛡️ Armor'], ['util', '💣 Consumables'], ['pack', '🎒 Backpacks'], ['unique', '✦ Uniques'], ['dup', '👯 Duplicates']];
+function anaLv(it) { return typeof wLevel === 'function' && (it.kind === 'weapon' || it.kind === 'armor') ? wLevel(it).lv : 0; }
+function anaAll() {
+    if (anaSrc === 'item') return (anaInv || []).map(it => ({ ref: { k: 'item', uid: it.uid }, asset: { k: 'item', item: it } }));
     return mkMine(anaSrc).map(x => ({ ...x, ref: x.ref.k === 'card' ? { k: 'card', key: x.ref.key, xp: x.ref.xp } : x.ref }));
+}
+function anaFilterOk(x, f, dupKeys) {
+    if (f === 'all') return true;
+    if (anaSrc !== 'item') return f === 'dup' ? (x.asset.n || 1) > 1 : true;
+    const it = x.asset.item, def = typeof itemDef === 'function' ? itemDef(it) : {};
+    if (f === 'unique') return !!def.unique;
+    if (f === 'dup') return dupKeys.has(it.base + '|' + it.tier);
+    return it.kind === f;
+}
+function anaList() {
+    const all = anaAll(), q = anaQ.trim().toLowerCase();
+    const dupKeys = new Set();
+    if (anaSrc === 'item') {
+        const seen = {};
+        for (const x of all) { const k = x.asset.item.base + '|' + x.asset.item.tier; seen[k] = (seen[k] || 0) + 1; if (seen[k] > 1) dupKeys.add(k); }
+    }
+    const list = all.filter(x => anaFilterOk(x, anaF, dupKeys) && (!q || mkAssetText(x.asset).toLowerCase().includes(q)));
+    const it = x => x.asset.item || {};
+    const S = {
+        rare: (a, b) => (it(b).odds || 1) - (it(a).odds || 1),
+        score: (a, b) => (it(b).score || 0) - (it(a).score || 0),
+        level: (a, b) => anaLv(it(b)) - anaLv(it(a)) || (it(b).odds || 1) - (it(a).odds || 1),
+        name: (a, b) => mkAssetName(a.asset).localeCompare(mkAssetName(b.asset))
+    };
+    return list.sort(anaSrc === 'item' ? (S[anaSort] || S.rare) : S.name);
 }
 function anaView() {
     if (anaSrc === 'item' && !anaInv) wsSend({ type: 'mkAnaInv' });
     const srcs = Object.entries(MK_KIND).map(([k, n]) => `<button type="button" class="${anaSrc === k ? 'on' : ''}" data-anasrc="${k}">${n}</button>`).join('');
-    const list = anaList();
+    const list = anaList(), all = anaAll();
     const pick = list.map((x, i) => `<div class="mk-pick ${anaSel === JSON.stringify(x.ref) ? 'sel' : ''}" data-anapick="${i}">${mkAsset(x.asset)}</div>`).join('');
+    const dupKeys = new Set();
+    if (anaSrc === 'item') { const seen = {}; for (const x of all) { const k = x.asset.item.base + '|' + x.asset.item.tier; seen[k] = (seen[k] || 0) + 1; if (seen[k] > 1) dupKeys.add(k); } }
+    const fl = (anaSrc === 'item' ? ANA_F : [['all', 'All'], ['dup', '👯 More than one']]).map(([k, n]) => {
+        const c = all.filter(x => anaFilterOk(x, k, dupKeys)).length;
+        return c || k === 'all' ? `<button type="button" class="${anaF === k ? 'on' : ''}" data-anaf="${k}">${n} <small>${c}</small></button>` : '';
+    }).join('');
+    const sorts = anaSrc === 'item' ? [['rare', 'Rarest'], ['score', 'Score'], ['level', 'Level'], ['name', 'A–Z']].map(([k, n]) => `<button type="button" class="${anaSort === k ? 'on' : ''}" data-anasort="${k}">${n}</button>`).join('') : '';
+    const tools = `<div class="ana-tools"><input id="ana-q" placeholder="🔎 Search…" value="${esc(anaQ)}">${sorts ? `<span>Sort</span>${sorts}` : ''}<span class="ana-count">${list.length} of ${all.length}</span></div><div class="ana-filters">${fl}</div>`;
     let res = '<div class="hint">Pick something on the left to analyse it.</div>';
     if (anaSel && anaRes === 'wait') res = '<div class="hint">Analysing…</div>';
     else if (anaSel && anaRes === null) res = '<div class="hint">Nothing to analyse here.</div>';
@@ -208,7 +244,7 @@ function anaView() {
             r.sections.map(s => `<h4>${esc(s.title)}</h4><table>${s.rows.map(row).join('')}${s.total ? `<tr class="total"><td>${esc(s.total[0])}</td><td>${esc(s.total[1])}</td></tr>` : ''}</table>`).join('');
     }
     return `<div class="cr-diffs mk-sub2">${srcs}</div><div class="hint">🔬 Pick anything you own and see exactly how rare it is – down to the effect levels – and how many exist on this server.</div>` +
-        `<div class="ana-wrap">${anaSel ? `<div class="ana-res">${res}</div>` : ''}<div class="mk-pickgrid">${pick || '<div class="hint">Nothing here.</div>'}</div>${anaSel ? '' : `<div class="ana-res">${res}</div>`}</div>`;
+        `<div class="ana-wrap"><div class="ana-left">${tools}<div class="mk-pickgrid">${pick || '<div class="hint">Nothing matches.</div>'}</div></div><div class="ana-res">${res}</div></div>`;
 }
 function onMkAna(d) {
     if (JSON.stringify(d.ref) !== anaSel) return;
@@ -835,7 +871,10 @@ $('mk-body').addEventListener('click', e => {
     const ds = (t.closest('[data-mksub],[data-mksrc],[data-mkpick],[data-mkbuy],[data-mkbid],[data-mkcancel]') || {}).dataset || {};
     if (ds.mksub) { mkSub = ds.mksub; return mkDraw(); }
     const an = (t.closest('[data-anasrc],[data-anapick]') || {}).dataset || {};
-    if (an.anasrc) { anaSrc = an.anasrc; anaSel = null; anaRes = null; if (anaSrc === 'item') anaInv = null; return mkDraw(); }
+    if (an.anasrc) { anaSrc = an.anasrc; anaSel = null; anaRes = null; anaF = 'all'; if (anaSrc === 'item') anaInv = null; return mkDraw(); }
+    const af = (t.closest('[data-anaf],[data-anasort]') || {}).dataset || {};
+    if (af.anaf) { anaF = af.anaf; return mkDraw(); }
+    if (af.anasort) { anaSort = af.anasort; return mkDraw(); }
     if (an.anapick !== undefined) {
         const x = anaList()[Number(an.anapick)];
         if (!x) return;
@@ -940,3 +979,13 @@ setInterval(() => {
 }, 1000);
 
 $('mk-menu-open') && ($('mk-menu-open').onclick = () => setWorld('market'));
+
+// Analyser-Suche (25.09.2026): tippen ohne Fokusverlust
+document.addEventListener('input', e => {
+    if (e.target.id !== 'ana-q') return;
+    anaQ = e.target.value;
+    const pos = e.target.selectionStart;
+    mkDraw();
+    const n = document.getElementById('ana-q');
+    if (n) { n.focus(); n.setSelectionRange(pos, pos); }
+});
