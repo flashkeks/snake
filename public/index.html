@@ -10562,6 +10562,7 @@ function itemDetail(it) {
         const wl = arenaCat.wlv ? wLevel(it) : { lv: 1, dmg: 1, rate: 1, to: null };
         const dmg = def.dmg * (1 + bonus) * (1 + L('sharp') * 0.12) * wl.dmg, rate = 1000 / (def.ms / (1 + L('rapid') * 0.1) / wl.rate), pel = def.pellets + L('multishot');
         if (def.unique) s += `<div class="set-box unique-box"><b>✦ Unique</b><small>${esc(def.desc || '')}</small></div>`;
+        if (def.awake) s += `<div class="set-box ${wl.lv >= arenaCat.wlv.awake ? 'unique-box' : ''}"><b>${wl.lv >= arenaCat.wlv.awake ? '✦ Awakened' : '🔒 Awakens at level ' + arenaCat.wlv.awake}</b><small>${esc(def.awake)}</small></div>`;
         if (arenaCat.wlv && !it.starter && !it.s) {
             const pct = wl.to ? Math.round((wl.xp - wl.from) / (wl.to - wl.from) * 100) : 100;
             s += `<div class="set-box"><b>🔫 Weapon level ${wl.lv}${wl.to ? '' : ' (max)'}</b>` +
@@ -10574,10 +10575,20 @@ function itemDetail(it) {
             (Object.keys(inn).length ? `<div class="set-box"><b>Built in</b>${Object.entries(inn).map(([id, l]) => `<small>${(arenaCat.weaponMods[id] || {}).icon || ''} ${esc(INNATE_TEXT[id] ? INNATE_TEXT[id](l) : id)}</small>`).join('')}</div>` : '');
     } else if (k === 'armor') {
         const set = def.set && arenaCat.sets[def.set];
-        s += `<div class="it-stats"><span>❤️ +${Math.round(def.hp * (1 + bonus) + L('plating') * 8)} HP</span>` +
+        const al = arenaCat.wlv ? wLevel(it) : { lv: 1, to: null, xp: 0, from: 0 };
+        const W = arenaCat.wlv || {};
+        const ahp = 1 + (W.armorHp || 0) * (al.lv - 1), ams = (W.milestones || []).filter(m => al.lv >= m).length;
+        s += `<div class="it-stats"><span>❤️ +${Math.round(def.hp * (1 + bonus) * ahp + L('plating') * 8)} HP</span>` +
             (def.speed ? `<span>👟 ${def.speed > 0 ? '+' : ''}${Math.round(def.speed * 100)}% speed</span>` : '') + '</div>' +
             (set ? `<div class="set-box" style="border-color:${set.color}"><b style="color:${set.color}">${set.name} set · ${arenaCat.slotNames[def.slot]}</b>${set.bonus.map(x => `<small>${esc(x)} pieces</small>`).join('')}</div>`
                 : `<div class="set-box ${def.unique ? 'unique-box' : ''}"><b>${def.unique ? '✦ Unique · ' : ''}${def.full ? 'Full body – replaces all armor' : arenaCat.slotNames[def.slot] + ' · no set'}</b>${def.desc ? `<small>${esc(def.desc)}</small>` : ''}</div>`);
+        if (def.awake && arenaCat.wlv) s += `<div class="set-box ${al.lv >= W.awake ? 'unique-box' : ''}"><b>${al.lv >= W.awake ? '✦ Awakened' : '🔒 Awakens at level ' + W.awake}</b><small>${esc(def.awake)}</small></div>`;
+        if (arenaCat.wlv) {
+            const pct = al.to ? Math.round((al.xp - al.from) / (al.to - al.from) * 100) : 100;
+            s += `<div class="set-box"><b>🛡️ Armor level ${al.lv}${al.to ? '' : ' (max)'}</b>` +
+                `<div style="height:6px;background:rgba(255,255,255,.12);border-radius:3px;margin:4px 0"><div style="height:6px;width:${pct}%;background:#7dffb0;border-radius:3px"></div></div>` +
+                `<small>${al.to ? `${(al.xp - al.from).toLocaleString('en-US')} / ${(al.to - al.from).toLocaleString('en-US')} XP to level ${al.lv + 1} · kills while you wear it level it` : 'Max level'}${al.lv > 1 ? ` · +${Math.round((ahp - 1) * 100)}% HP` : ''}${ams ? `, −${Math.round((1 - Math.pow(1 - W.armorTaken, ams)) * 100)}% damage taken` : ''}</small></div>`;
+        }
     } else if (k === 'pack') {
         s += `<div class="it-stats"><span>🎒 ${def.cap} slots in the raid</span></div><div class="hint">Without a backpack you have ${arenaCat.basePack}.</div>`;
     } else {
@@ -13199,6 +13210,22 @@ function shFrame() {
         }
     }
 
+    // Rasenshuriken-Zonen (Awakening)
+    for (const [zx, zy, zr] of latest.zones || []) {
+        c.strokeStyle = `rgba(120,200,255,${.5 + .3 * Math.sin(now / 70)})`;
+        c.lineWidth = 3;
+        for (let i = 0; i < 4; i++) {
+            const a = now / 90 + i * Math.PI / 2;
+            c.beginPath();
+            c.arc(zx, zy, zr * 0.9, a, a + 0.9);
+            c.stroke();
+        }
+        c.fillStyle = 'rgba(120,200,255,.12)';
+        c.beginPath();
+        c.arc(zx, zy, zr, 0, Math.PI * 2);
+        c.fill();
+    }
+
     // Hoi-Poi-Tuerme und eigene Killer-Queen-Bomben (25.09.2026)
     for (const [, tx, ty, ta, left] of latest.turrets || []) {
         c.fillStyle = 'rgba(0,0,0,.4)';
@@ -13233,7 +13260,7 @@ function shFrame() {
     }
 
     // Explosionen, Blitze
-    const fxMs = f => zFxMs(f) || (f.type === 'shBeam' && f.look ? 900 : 0) || (f.nuke ? 1400 : f.type === 'shBeam' ? 450 : f.kind === 'phoenix' || f.kind === 'hole' ? 1100 : f.kind === 'jumpwarn' ? 750 : 500);
+    const fxMs = f => zFxMs(f) || (f.type === 'shBeam' && f.look ? 900 : 0) || (f.nuke ? 1400 : f.type === 'shBeam' ? 450 : f.kind === 'phoenix' || f.kind === 'hole' ? 1100 : f.kind === 'jumpwarn' || f.kind === 'swordrain' ? 900 : 500);
     shFx = shFx.filter(f => now - f.t < fxMs(f));
     for (const f of shFx) {
         const k = (now - f.t) / fxMs(f);
@@ -13366,9 +13393,19 @@ function shFrame() {
                 c.beginPath();
                 c.arc(f.x, f.y, f.r * (0.3 + k * 0.7), 0, Math.PI * 2);
                 c.stroke();
-            } else if (['doom', 'weights', 'dragon', 'door', 'mirror', 'charm', 'titan', 'poof', 'portal'].includes(f.kind)) {
+            } else if (f.kind === 'swordrain') {
+                for (let i = 0; i < 10; i++) {
+                    const a = i * 2.4, rr = (i * 37) % f.r;
+                    drawEmojiC(c, '🗡️', f.x + Math.cos(a) * rr, f.y + Math.sin(a) * rr - 120 * (1 - k), 22);
+                }
+                c.strokeStyle = `rgba(255,210,80,${1 - k})`;
+                c.lineWidth = 3;
+                c.beginPath();
+                c.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+                c.stroke();
+            } else if (['doom', 'weights', 'dragon', 'door', 'mirror', 'charm', 'titan', 'poof', 'portal', 'punch', 'haki', 'shield', 'vortex'].includes(f.kind)) {
                 c.globalAlpha = 1 - k;
-                drawEmojiC(c, { doom: '📓', weights: '🏋️', dragon: '🐉', door: '🚪', mirror: '🪞', charm: '🔴', titan: '🦖', poof: '💨', portal: '🌀' }[f.kind], f.x, f.y - 40 - k * 40, 40 + k * 20);
+                drawEmojiC(c, { doom: '📓', weights: '🏋️', dragon: '🐉', door: '🚪', mirror: '🪞', charm: '🔴', titan: '🦖', poof: '💨', portal: '🌀', punch: '👊', haki: '👒', shield: '👹', vortex: '🌀' }[f.kind], f.x, f.y - 40 - k * 40, 40 + k * 20);
                 c.globalAlpha = 1;
             } else if (f.kind === 'jumpwarn') {
                 // Boss-Sprung (25.09.2026): Landestelle blinkt, Linie vom Boss
@@ -13557,6 +13594,8 @@ function shFrame() {
         for (const b of (my.buff || '').split(',').filter(Boolean)) tags.push(b === 'hollow' ? ['👹 Hollow', '#ff5b5b'] : b === 'stone' ? ["💎 Philosopher's Stone", '#ff5bd6'] : ['⛓️ CHAINED', '#ffb14d']);
         const ab = (my.abil || '').split(',');
         if (ab.includes('titan')) tags.push(['R · 🦖 Titan Shift (once per raid)', '#ff9f1a']);
+        if (ab.includes('odm')) tags.push(['R · 🪝 grapple to wall', '#7dffb0']);
+        if (ab.includes('missiles')) tags.push(['R · 🚀 missile barrage', '#ff5b5b']);
         if (my.titan) tags.push([`🦖 Titan ${Math.ceil(my.titan / 1000)} s`, '#ff9f1a']);
         if (ab.includes('weights')) tags.push(['R · 🏋️ drop weights', '#ffd23f']);
         if (ab.includes('kq')) tags.push([`R · 💣 detonate ${(my.kq || []).length}`, '#ff5b8a']);
@@ -13671,13 +13710,21 @@ function drawEmojiC(c, ch, x, y, size) {
 function shDrawPlayer(c, p, x, y, a, mine, now, my) {
     // Senbonzakura (25.09.2026): Bluetenkreis
     if (p.ob) {
-        for (let i = 0; i < 24; i++) {
-            const t = i / 24 * Math.PI * 2 + now / 260, rr = 70 + 30 * Math.sin(i * 1.7 + now / 400);
+        for (let i = 0; i < (p.ob === 2 ? 36 : 24); i++) {
+            const t = i / (p.ob === 2 ? 36 : 24) * Math.PI * 2 + now / 260, rr = (70 + 30 * Math.sin(i * 1.7 + now / 400)) * (p.ob === 2 ? 1.5 : 1);
             c.fillStyle = `hsla(${330 + (i % 5) * 6},90%,75%,.85)`;
             c.beginPath();
             c.ellipse(x + Math.cos(t) * rr, y + Math.sin(t) * rr, 5, 2.5, t + 1.2, 0, Math.PI * 2);
             c.fill();
         }
+    }
+    // Susanoo-Schild (Awakening)
+    if (p.sh) {
+        c.strokeStyle = `rgba(160,90,255,${.6 + .3 * Math.sin(now / 90)})`;
+        c.lineWidth = 5;
+        c.beginPath();
+        c.arc(x, y, sh.map.r + 16, 0, Math.PI * 2);
+        c.stroke();
     }
     // Titan: gross zeichnen; Klon: halb durchsichtig
     if (p.ti || p.cl) {

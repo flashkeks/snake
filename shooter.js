@@ -542,6 +542,9 @@ module.exports = function createArena(h, opts = {}) {
     const portals = new Map();       // Portal Gun: owner -> { a, b, next, until }
     const clones = [];               // Kage Bunshin { id, owner, k, x, y, a, until, next }
     let zw = null;                   // Za Warudo { by, until }
+    // Awakenings (Lv 20)
+    const zones = [];                // Rasenshuriken: Schadenszone nur fuer Gegner { x, y, r, until, owner, dps }
+    const blasts = [];               // Enuma Elish: verzoegerter Einschlag nur fuer Gegner { x, y, r, dmg, at, owner }
     let seqId = 0;
     const mobs = [];                 // Gegner und Boss (4.1), siehe arena-mobs.js
     const strikes = [];              // angekuendigte Einschlaege der Bosse (4.6)
@@ -638,23 +641,30 @@ module.exports = function createArena(h, opts = {}) {
     }
 
     // Waffen-Level: XP an die gehaltene Waffe; in PvP/Zombies (Kopien) auch ans Original im Lager
+    // Item-XP (25.09.2026): gehaltene Waffe und alle angelegten Ruestungsteile
     function weaponXp(p, n) {
-        const it = p && (p.gear[p.slot] || p.gear.primary);
-        if (!it || it.starter || it.kind !== 'weapon' || !(n > 0) || !p.account) return;
-        const before = I.weaponLevel(it).level;
+        if (!p || !(n > 0) || !p.account) return;
         const got = Math.round(n);
-        it.wxp = (it.wxp || 0) + got;
-        if (mode !== 'extract') {
-            const orig = st(p.c).inv.find(x => x.uid === it.uid);
-            if (orig && orig !== it) orig.wxp = (orig.wxp || 0) + got;
+        const w = p.gear[p.slot] || p.gear.primary;
+        const items = [w, ...['helmet', 'vest', 'pants', 'boots'].map(sl => p.gear[sl])].filter(it => it && !it.starter && (it.kind === 'weapon' || it.kind === 'armor'));
+        let armorUp = false;
+        for (const it of items) {
+            const before = I.itemLevel(it).level;
+            it.wxp = (it.wxp || 0) + got;
+            if (mode !== 'extract') {
+                const orig = st(p.c).inv.find(x => x.uid === it.uid);
+                if (orig && orig !== it) orig.wxp = (orig.wxp || 0) + got;
+            }
+            const after = I.itemLevel(it).level;
+            if (after <= before) continue;
+            const ms = I.WLV.milestones.includes(after), aw = after === I.WLV.awake && (it.kind === 'armor' ? I.ARMORS : I.WEAPONS)[it.base].unique;
+            if (it.kind === 'armor') armorUp = true;
+            h.send(p.c, { type: 'shEvent', text: `${it.kind === 'armor' ? '🛡️' : '🔫'} ${it.name} reached level ${after}!${aw ? ' ✦ AWAKENED' : ms ? (it.kind === 'armor' ? ' −2% damage taken' : ' +5% fire rate') : ''}`, kind: 'self' });
+            if (aw) h.feed(`✦ ${p.name}'s ${it.name} awakened!`, 'gold');
+            else if (after === I.WLV.max) h.feed(`🔫 ${p.name} maxed out a ${it.name} (level ${after})!`, 'gold');
         }
+        if (armorUp) gearStats(p);
         h.accounts.touch();
-        const after = I.weaponLevel(it).level;
-        if (after > before) {
-            const ms = I.WLV.milestones.includes(after);
-            h.send(p.c, { type: 'shEvent', text: `🔫 ${it.name} reached level ${after}!${ms ? ' +5% fire rate' : ''}`, kind: 'self' });
-            if (after === I.WLV.max) h.feed(`🔫 ${p.name} maxed out a ${it.name} (level ${after})!`, 'gold');
-        }
     }
 
     function count(a, base) {
@@ -1039,6 +1049,10 @@ module.exports = function createArena(h, opts = {}) {
         p.flashstep = s.flashstep;
         p.mirror = s.mirror;
         p.titanSuit = s.titan;
+        p.aw = new Set(s.awake);
+        if (p.aw.has('scouter')) p.critArmor += 0.08;
+        if (p.aw.has('geppo')) p.speedMul += 0.1;
+        if (p.aw.has('killua')) p.dodge += 0.06;
         if (s.weights && p.weightsOff) {
             p.speedMul += 0.4;
             p.rateMul *= 1.25;
@@ -1537,20 +1551,42 @@ module.exports = function createArena(h, opts = {}) {
     // Taste R (25.09.2026): Faehigkeit der angelegten Ausruestung
     function ability(p, now) {
         if (p.dead || (pvp && pvp.phase !== 'fight')) return;
+        if (zwFrozen(p, now)) return;
+        const aw = p.aw || new Set();
         if (p.weights && !p.weightsOff) {
             p.weightsOff = true;
             gearStats(p);
+            if (aw.has('rocklee')) p.gateUntil = now + 6000 / SPEED;
             fxAt(p.x, p.y, { type: 'shFx', kind: 'weights', x: Math.round(p.x), y: Math.round(p.y) });
             h.send(p.c, { type: 'shEvent', text: '🏋️ Weights off – full speed!', kind: 'self' });
         }
-        if (zwFrozen(p, now)) return;
-        // Titan Shift: einmal je Raid 15 s Titan
+        // ODM Gear (Lv 20): Enterhaken zur Wand, auf die man zielt
+        if (aw.has('odm') && now >= (p.odmCd || 0)) {
+            const dx = Math.cos(p.a), dy = Math.sin(p.a);
+            let d = 40;
+            while (d < 520 && !blocked(p.x + dx * d, p.y + dy * d, 3)) d += 10;
+            if (d < 520) {
+                p.odmCd = now + 4000 / SPEED;
+                startGrapple(p, p.x + dx * d, p.y + dy * d, now);
+            }
+        }
+        // Iron Man Suit (Lv 20): 8 zielsuchende Raketen
+        if (aw.has('ironman') && now >= (p.missileCd || 0)) {
+            p.missileCd = now + 12000 / SPEED;
+            for (let k = 0; k < 8; k++) {
+                const a = p.a + (k / 7 - 0.5) * 1.6;
+                const w = { ...TURRET_W, dmg: 70 * p.dmgMul, speed: 650, life: 2.2, homing: 2, explode: 0.8, rocket: true };
+                bullets.push({ id: ++seqId, owner: p.id, x: p.x + Math.cos(a) * (R + 8), y: p.y + Math.sin(a) * (R + 8), vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed, dies: now + w.life * 1000 / SPEED, w, pierce: 0, bounce: 0, hits: new Set(), fx: 1 | 16 | 256, tier: 6 });
+            }
+        }
+        // Titan Shift: einmal je Raid 15 s Titan (Lv 20: 25 s, +2500 HP)
         if (p.titanSuit && !p.titanUsed) {
+            const tAw = aw.has('titan');
             p.titanUsed = true;
-            p.titanUntil = now + 15000 / SPEED;
-            p.titanHp = 1500;
-            p.maxHp += 1500;
-            p.hp += 1500;
+            p.titanUntil = now + (tAw ? 25000 : 15000) / SPEED;
+            p.titanHp = tAw ? 2500 : 1500;
+            p.maxHp += p.titanHp;
+            p.hp += p.titanHp;
             fxAt(p.x, p.y, { type: 'shBoom', x: Math.round(p.x), y: Math.round(p.y), r: 260, nuke: false });
             fxAt(p.x, p.y, { type: 'shFx', kind: 'titan', x: Math.round(p.x), y: Math.round(p.y) });
             for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `🦖 ${p.name} turned into a Titan!`, kind: q === p ? 'self' : 'boss' });
@@ -1578,8 +1614,12 @@ module.exports = function createArena(h, opts = {}) {
                 p.x += dx * dist;
                 p.y += dy * dist;
                 p.lastMove = now;
-                p.stepCd = now + 3000 / SPEED;
+                p.stepCd = now + (aw.has('flashstep') ? 1500 : 3000) / SPEED;
                 p.protect = Math.max(p.protect || 0, now + 300 / SPEED);
+                if (aw.has('flashstep')) {
+                    decoys.push({ id: 'dc' + p.id + '_' + now, pid: p.id, x: from[0], y: from[1], a: p.a, until: now + 1500 / SPEED });
+                    for (const m of mobs) if (m.tgt === p.id && Math.random() < 0.7) { m.tgt = null; m.seen = 0; }
+                }
                 fxAt(p.x, p.y, { type: 'shFx', kind: 'blink', x: Math.round(p.x), y: Math.round(p.y), from });
             }
         }
@@ -1598,11 +1638,18 @@ module.exports = function createArena(h, opts = {}) {
         if (q && !q.dead) return [q.x, q.y];
         return [k.x, k.y];
     }
-    function kqBlast(p, x, y, now) {
+    function kqBlast(p, x, y, now, depth = 0) {
         const r = 110, dmg = 95 * p.dmgMul;
         fxAt(x, y, { type: 'shBoom', x: Math.round(x), y: Math.round(y), r, nuke: false });
         for (const q of near(x, y, r + R)) if (q !== p && !(p.team && p.team === q.team)) damage(q, p, dmg, now, q.x, q.y, { how: 'explosion', noDodge: true });
-        for (const m of mobsNear(x, y, r + 60)) if (Math.hypot(m.x - x, m.y - y) < r + m.def.r) hurtMob(m, p, dmg, now, m.x, m.y);
+        const kw = p.gear[p.slot];
+        const chain = depth < 3 && kw && kw.base === 'killerqueen' && I.isAwake(kw);
+        for (const m of mobsNear(x, y, r + 60)) {
+            if (Math.hypot(m.x - x, m.y - y) >= r + m.def.r) continue;
+            hurtMob(m, p, dmg, now, m.x, m.y);
+            // Bites the Dust (Lv 20): wer daran stirbt, explodiert selbst
+            if (chain && !(m.hp > 0)) kqBlast(p, m.x, m.y, now, depth + 1);
+        }
     }
 
     // Gum-Gum: Spieler wird zum Punkt gezogen (30 px davor)
@@ -1611,7 +1658,32 @@ module.exports = function createArena(h, opts = {}) {
         const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
         if (d < 50) return;
         p.grap = { x: tx - dx / d * 30, y: ty - dy / d * 30, until: now + 700 / SPEED };
+        const gw = p.gear[p.slot];
+        if (gw && gw.base === 'gomu' && I.isAwake(gw)) p.gear2Until = now + 3700 / SPEED;
         fxAt(p.x, p.y, { type: 'shFx', kind: 'gomu', x: Math.round(tx), y: Math.round(ty), from: [Math.round(p.x), Math.round(p.y)] });
+    }
+
+    // Awakenings: Feind-Test und Schaden nur an Gegner (Mobs + fremde Spieler)
+    const foe = (p, q) => q !== p && !q.dead && !(p.team && p.team === q.team);
+    function hurtFoes(p, x, y, r, dmg, now, dot) {
+        for (const q of near(x, y, r + R)) if (foe(p, q)) damage(q, p, dmg, now, q.x, q.y, { how: 'explosion', noDodge: true, dot });
+        for (const m of mobsNear(x, y, r + 60)) if (Math.hypot(m.x - x, m.y - y) < r + m.def.r) hurtMob(m, p, dmg, now, m.x, m.y, false, dot ? { dot: true } : undefined);
+    }
+    // Saitama (10. Treffer x5), Byakugan (nah +15 %), Venuzdonoa (entbloesst +50 %)
+    function awakeHitMul(attacker, target, now, isPlayer) {
+        let k = 1;
+        // bei Spielern rechnet damage() die Entbloessung selbst
+        if (!isPlayer && now < (target.exposeUntil || 0)) k *= 1.5;
+        if (!attacker || !attacker.aw) return k;
+        if (attacker.aw.has('saitama')) {
+            attacker.sHits = (attacker.sHits || 0) + 1;
+            if (attacker.sHits % 10 === 0) {
+                k *= 5;
+                fxAt(target.x, target.y, { type: 'shFx', kind: 'punch', x: Math.round(target.x), y: Math.round(target.y) });
+            }
+        }
+        if (attacker.aw.has('byakugan') && Math.hypot(target.x - attacker.x, target.y - attacker.y) < 400) k *= 1.15;
+        return k;
     }
 
     // Tesla (Mod, Innate) und Mjoelnir: Blitz vom getroffenen Gegner auf die zwei
@@ -1674,10 +1746,11 @@ module.exports = function createArena(h, opts = {}) {
         if (!best) { p.gaze = null; return; }
         if (!p.gaze || p.gaze.id !== best.id) { p.gaze = { id: best.id, since: now }; return; }
         if (now - p.gaze.since < 1000 / SPEED) return;
-        best.charm = { by: p.id, until: now + 8000 / SPEED };
+        const gAw = p.aw && p.aw.has('geass');
+        best.charm = { by: p.id, until: now + (gAw ? 15000 : 8000) / SPEED };
         best.tgt = null;
         p.gaze = null;
-        p.geassCd = now + 3000 / SPEED;
+        p.geassCd = now + (gAw ? 1500 : 3000) / SPEED;
         fxAt(best.x, best.y, { type: 'shFx', kind: 'charm', x: Math.round(best.x), y: Math.round(best.y) });
     }
 
@@ -1723,17 +1796,27 @@ module.exports = function createArena(h, opts = {}) {
 
     // Kaneki's Mask: jeder Kill heilt und gibt Tempo
     function onKill(killer, now) {
-        if (!killer || !killer.killHeal || killer.dead) return;
-        killer.hp = Math.min(killer.maxHp, killer.hp + killer.maxHp * 0.25);
+        if (!killer || killer.dead || !players.has(killer.id)) return;
+        const aw = killer.aw || new Set();
+        if (aw.has('kamina')) killer.kaminaStacks = Math.min(10, (killer.kaminaStacks || 0) + 1);
+        // Dragonslayer (Lv 20): Berserker-Stapel
+        const cw = killer.gear[killer.slot];
+        if (cw && cw.base === 'dragonslayer' && I.isAwake(cw)) {
+            killer.berserkN = now < (killer.berserkUntil || 0) ? Math.min(5, (killer.berserkN || 0) + 1) : 1;
+            killer.berserkUntil = now + 5000 / SPEED;
+        }
+        if (!killer.killHeal) return;
+        const kan = aw.has('kaneki');
+        killer.hp = Math.min(killer.maxHp, killer.hp + killer.maxHp * (kan ? 0.4 : 0.25));
         killer.stim = Math.max(now < killer.stimUntil ? killer.stim : 0, 0.25);
-        killer.stimUntil = now + 3000 / SPEED;
+        killer.stimUntil = now + (kan ? 5000 : 3000) / SPEED;
         fxAt(killer.x, killer.y, { type: 'shFx', kind: 'heal', x: Math.round(killer.x), y: Math.round(killer.y) });
     }
 
     // Nichirin Blade: Treffer innerhalb 1,5 s stapeln
     function comboHit(attacker, w, now) {
         if (!attacker || !w || !w.combo || w.dragon || !players.has(attacker.id)) return;
-        attacker.combo = now - (attacker.comboAt || 0) > 1500 / SPEED ? 1 : Math.min(10, (attacker.combo || 0) + 1);
+        attacker.combo = now - (attacker.comboAt || 0) > (w.awake ? 3000 : 1500) / SPEED ? 1 : Math.min(w.awake ? 8 : 10, (attacker.combo || 0) + 1);
         attacker.comboAt = now;
     }
 
@@ -1745,13 +1828,13 @@ module.exports = function createArena(h, opts = {}) {
             if (q === v || (v.team && v.team === q.team)) continue;
             const d = Math.hypot(q.x - v.x, q.y - v.y) || 1;
             [q.x, q.y] = slide(q.x, q.y, (q.x - v.x) / d * 160, (q.y - v.y) / d * 160, R);
-            damage(q, v, 150, now, q.x, q.y, { how: 'explosion', noDodge: true });
+            damage(q, v, v.aw && v.aw.has('allmight') ? 300 : 150, now, q.x, q.y, { how: 'explosion', noDodge: true });
         }
         for (const m of [...mobs]) {
             const d = Math.hypot(m.x - v.x, m.y - v.y) || 1;
             if (d > 300 + m.def.r) continue;
             if (!m.def.boss) [m.x, m.y] = slide(m.x, m.y, (m.x - v.x) / d * 160, (m.y - v.y) / d * 160, m.def.r, mobBlocked);
-            hurtMob(m, v, 150, now, m.x, m.y);
+            hurtMob(m, v, v.aw && v.aw.has('allmight') ? 300 : 150, now, m.x, m.y);
         }
         for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `💪 ${v.name}: PLUS ULTRA!`, kind: q === v ? 'self' : 'boss' });
     }
@@ -1766,16 +1849,24 @@ module.exports = function createArena(h, opts = {}) {
         const sp = Math.hypot(b.vx, b.vy) || 1;
         for (let k = 0; k < 20 && blocked(x, y, R); k++) { x -= b.vx / sp * 4; y -= b.vy / sp * 4; }
         if (blocked(x, y, R)) return;
-        const pr = portals.get(b.owner) || { a: null, b: null, next: 'a', until: 0 };
-        pr[pr.next] = { x, y };
-        pr.next = pr.next === 'a' ? 'b' : 'a';
+        // Paare: normal eins, erwacht (Lv 20) bis zu drei
+        const pr = portals.get(b.owner) || { pairs: [], until: 0 };
+        const maxPairs = b.w.awake ? 3 : 1;
+        let cur = pr.pairs[pr.pairs.length - 1];
+        if (!cur || (cur.a && cur.b)) {
+            if (cur && pr.pairs.length >= maxPairs) { cur = pr.pairs.shift(); cur.a = null; cur.b = null; pr.pairs.push(cur); }
+            else if (!cur || pr.pairs.length < maxPairs) { cur = { a: null, b: null }; pr.pairs.push(cur); }
+        }
+        if (!cur.a) cur.a = { x, y };
+        else cur.b = { x, y };
         pr.until = now + 30000 / SPEED;
         portals.set(b.owner, pr);
         fxAt(x, y, { type: 'shFx', kind: 'portal', x: Math.round(x), y: Math.round(y) });
     }
     function portalTick(now) {
-        for (const [owner, pr] of portals) {
-            if (now > pr.until || !players.has(owner)) { portals.delete(owner); continue; }
+        for (const [owner, prs] of portals) {
+            if (now > prs.until || !players.has(owner)) { portals.delete(owner); continue; }
+            for (const pr of prs.pairs) {
             if (!pr.a || !pr.b) continue;
             const pairs = [[pr.a, pr.b], [pr.b, pr.a]];
             for (const [from, to] of pairs) {
@@ -1801,6 +1892,7 @@ module.exports = function createArena(h, opts = {}) {
                     b.portCd = now + 250 / SPEED;
                 }
             }
+            }
         }
     }
 
@@ -1810,7 +1902,8 @@ module.exports = function createArena(h, opts = {}) {
         const on = !!(cw && I.WEAPONS[cw.base] && I.WEAPONS[cw.base].orbit && !bullets.some(b => b.owner === p.id && b.w.orbit));
         p.orbitOn = on;
         if (!on) return;
-        const dps = 130 * p.dmgMul, rr = 110;
+        const dps = 130 * p.dmgMul, rr = I.isAwake(cw) ? 165 : 110;
+        p.orbitBig = rr > 110;
         for (const q of near(p.x, p.y, rr + R)) {
             if (q === p || (p.team && p.team === q.team)) continue;
             damage(q, p, dps * dt, now, q.x, q.y, { how: 'shot', dot: true, noDodge: true });
@@ -2244,6 +2337,11 @@ module.exports = function createArena(h, opts = {}) {
             w.ms /= Math.pow(1.12, item.pap);
         }
         if (now < p.rampUntil) w.ms /= 1.25;
+        // Awakenings / Ruestung, die den Schuss veraendern
+        if (p.kaminaStacks) w.dmg *= 1 + 0.03 * p.kaminaStacks;
+        if (now < (p.gateUntil || 0)) w.dmg *= 1.6;
+        if (now < (p.gear2Until || 0)) w.ms /= 1.4;
+        if (now < (p.berserkUntil || 0)) w.ms /= 1 + 0.1 * (p.berserkN || 0);
         // Hollow Mask
         if (now < (p.hollowUntil || 0)) {
             w.dmg *= 1.6;
@@ -2255,23 +2353,43 @@ module.exports = function createArena(h, opts = {}) {
             const miss = Math.max(0, Math.min(1, (1 - p.hp / p.maxHp) / 0.9));
             w.dmg *= 1 + 1.5 * miss;
             w.vamp = (w.vamp || 0) + 0.08 + 0.2 * miss;
+            // Kagune (Lv 20): unter 30 % ein zweiter Faecher
+            if (w.awake && p.hp < p.maxHp * 0.3) w.pellets *= 2;
         }
-        if (now < (p.jailUntil || 0) || zwFrozen(p, now)) return;
+        if ((now < (p.jailUntil || 0) && !(p.aw && p.aw.has('geppo'))) || zwFrozen(p, now)) return;
         if (now < (p.titanUntil || 0)) return titanStomp(p, now);
         if (now - p.lastShot < w.ms / SPEED) return;
         // Kettensaege: Dauerfeuer dreht hoch, heilt
         if (w.rev) {
             if (now - (p.revLast || 0) > 400 / SPEED) p.revStart = now;
             p.revLast = now;
-            w.dmg *= 1 + 2 * Math.min(1, (now - p.revStart) / (3000 / SPEED));
-            w.vamp = (w.vamp || 0) + 0.25;
+            const rev = Math.min(1, (now - p.revStart) / (3000 / SPEED));
+            w.dmg *= 1 + 2 * rev;
+            w.vamp = (w.vamp || 0) + (w.awake && rev >= 1 ? 0.5 : 0.25);
         }
         p.lastShot = now;
+        // Waffen-Awakenings (Lv 20), die den einzelnen Schuss aendern
+        if (w.awake) {
+            p.awShots = (p.awShots || 0) + 1;
+            if (w.base === 'getsuga' && p.awShots % 3 === 0) { w.dmg *= 2; w.hitR *= 1.8; }
+            if (w.base === 'spiritgun' && p.awShots % 4 === 0) { w.pellets = 8; w.spread = 0.6; w.dmg *= 0.45; w.explode = 0; }
+            if (w.base === 'gob' && now >= (p.gobCd || 0)) {
+                p.gobCd = now + 10000 / SPEED;
+                const tx = p.x + Math.cos(p.a) * 450, ty = p.y + Math.sin(p.a) * 450;
+                let tg = null, td = 350;
+                for (const m of mobs) { const d = Math.hypot(m.x - tx, m.y - ty); if (m.hp > 0 && d < td) { tg = m; td = d; } }
+                for (const q of players.values()) { const d = Math.hypot(q.x - tx, q.y - ty); if (foe(p, q) && d < td) { tg = q; td = d; } }
+                const bx = tg ? tg.x : tx, by = tg ? tg.y : ty;
+                blasts.push({ x: bx, y: by, r: 170, dmg: w.dmg * 4, at: now + 900 / SPEED, owner: p.id });
+                fxAt(bx, by, { type: 'shFx', kind: 'swordrain', x: Math.round(bx), y: Math.round(by), r: 170 });
+            }
+            if (w.base === 'kamehameha') p.kameUntil = now + 1000 / SPEED;
+        }
         // Nichirin Blade: Combo, bei 10 Stacks ein Wasserdrache
         if (w.combo) {
-            if (now - (p.comboAt || 0) > 1500 / SPEED) p.combo = 0;
+            if (now - (p.comboAt || 0) > (w.awake ? 3000 : 1500) / SPEED) p.combo = 0;
             w.dmg *= 1 + 0.1 * (p.combo || 0);
-            if ((p.combo || 0) >= 10) {
+            if ((p.combo || 0) >= (w.awake ? 8 : 10)) {
                 p.combo = 0;
                 Object.assign(w, { dragon: true, wave: true, hitR: 70, life: w.life * 3, speed: w.speed * 1.2, look: 'getsuga' });
                 w.dmg *= 2.5;
@@ -2302,6 +2420,7 @@ module.exports = function createArena(h, opts = {}) {
                     (w.rocket ? 256 : 0) | (w.magic ? 512 : 0),
                 tier: I.TIER_IDX[item.tier] || 0
             };
+            if (w.awake && w.pin) b.pierce = 999;
             // Mjoelnir: fliegt hin, kehrt um, kommt zurueck
             if (w.boomerang) {
                 b.pierce = 999;
@@ -2333,12 +2452,12 @@ module.exports = function createArena(h, opts = {}) {
     }
 
     // Railgun: sofortiger Strahl durch Waende und alle Gegner auf der Linie
-    function railBeam(p, w, now) {
+    function railBeam(p, w, now, quiet) {
         const len = w.speed * w.life;
         const dx = Math.cos(p.a), dy = Math.sin(p.a);
         const x1 = p.x + dx * (R + 6), y1 = p.y + dy * (R + 6);
         const x2 = p.x + dx * len, y2 = p.y + dy * len;
-        fxAt(p.x, p.y, { type: 'shBeam', x1: Math.round(x1), y1: Math.round(y1), x2: Math.round(x2), y2: Math.round(y2), owner: p.id, look: w.look || undefined, bw: w.beamW || undefined });
+        if (!quiet) fxAt(p.x, p.y, { type: 'shBeam', x1: Math.round(x1), y1: Math.round(y1), x2: Math.round(x2), y2: Math.round(y2), owner: p.id, look: w.look || undefined, bw: w.beamW || undefined });
         // Breite (6.6): Kamehameha und Venuzdonoa treffen einen breiten Streifen
         const bw = w.beamW || 10;
         for (const q of [...players.values()]) {
@@ -2354,7 +2473,8 @@ module.exports = function createArena(h, opts = {}) {
             const t = (m.x - p.x) * dx + (m.y - p.y) * dy;
             if (t >= 0 && t <= len && Math.abs((m.x - p.x) * dy - (m.y - p.y) * dx) < m.def.r + bw) {
                 // Venuzdonoa: Risse ins Nichts an bis zu drei Getroffenen
-                if (w.rift && rifts < 3 && m.hp > 0) {
+                if (w.rift && w.awake) m.exposeUntil = now + 5000 / SPEED;
+                if (w.rift && rifts < 3 && m.hp > 0 && !quiet) {
                     rifts++;
                     bulletHole({ x: m.x, y: m.y, owner: p.id, w: { dmg: w.dmg * 0.3 } }, now);
                 }
@@ -2385,6 +2505,16 @@ module.exports = function createArena(h, opts = {}) {
         if (attacker && attacker !== v && attacker.team && attacker.team === v.team) return false;
         // Geppo: Feuer und Saeure (beides 'fire') tun nichts
         if (v.geppo && opts.how === 'fire') return false;
+        // Straw Hat (Lv 20): Haki – alle 20 s geht ein grosser Treffer daneben
+        if (v.aw && v.aw.has('strawhat') && !opts.dot && dmg >= 30 && now >= (v.hakiCd || 0)) {
+            v.hakiCd = now + 20000 / SPEED;
+            if (attacker) h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: 0, dodge: true });
+            fxAt(v.x, v.y, { type: 'shFx', kind: 'haki', x: Math.round(v.x), y: Math.round(v.y) });
+            return false;
+        }
+        // Susanoo (Lv 20): Schild schluckt 80 %
+        if (now < (v.shieldUntil || 0)) dmg *= 0.2;
+        if (now < (v.exposeUntil || 0)) dmg *= 1.5;
         if (!opts.noDodge && !opts.pure && v.dodge && Math.random() < v.dodge) {
             if (attacker) h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: 0, dodge: true });
             // Killua: jeder Dodge schlaegt mit einem Blitz zurueck
@@ -2395,6 +2525,11 @@ module.exports = function createArena(h, opts = {}) {
                     fxAt(v.x, v.y, { type: 'shZap', pts: [[Math.round(v.x), Math.round(v.y)], [Math.round(src.x), Math.round(src.y)]] });
                     if (src.def) hurtMob(src, v, 120, now, src.x, src.y);
                     else damage(src, v, 120, now, src.x, src.y, { how: 'tesla', noDodge: true });
+                    if (v.aw && v.aw.has('killua')) {
+                        const more = mobs.filter(o => o !== src && o.hp > 0 && Math.hypot(o.x - src.x, o.y - src.y) < 300).slice(0, 2);
+                        if (more.length) fxAt(src.x, src.y, { type: 'shZap', pts: [[Math.round(src.x), Math.round(src.y)], ...more.map(o => [Math.round(o.x), Math.round(o.y)])] });
+                        for (const o of more) hurtMob(o, v, 60, now, o.x, o.y);
+                    }
                 }
             }
             return false;
@@ -2426,7 +2561,7 @@ module.exports = function createArena(h, opts = {}) {
         }
         // All Might: unter 25 % (auch toedlich) Schockwelle und 3 s unverwundbar, einmal je Minute
         if (v.plusUltra && v.hp < v.maxHp * 0.25 && now >= (v.plusUltraCd || 0)) {
-            v.plusUltraCd = now + 60000 / SPEED;
+            v.plusUltraCd = now + (v.aw && v.aw.has('allmight') ? 30000 : 60000) / SPEED;
             if (killed) v.hp = 1;
             killed = false;
             v.protect = now + 3000 / SPEED;
@@ -2450,10 +2585,17 @@ module.exports = function createArena(h, opts = {}) {
             v.stim = Math.max(now < v.stimUntil ? v.stim : 0, 0.3);
             v.stimUntil = now + 3000 / SPEED;
         }
+        // Susanoo (Lv 20): unter 30 % Schild, alle 45 s
+        if (!killed && v.aw && v.aw.has('susanoo') && v.hp < v.maxHp * 0.3 && now >= (v.shieldCd || 0)) {
+            v.shieldCd = now + 45000 / SPEED;
+            v.shieldUntil = now + 4000 / SPEED;
+            fxAt(v.x, v.y, { type: 'shFx', kind: 'shield', x: Math.round(v.x), y: Math.round(v.y) });
+        }
         // Kyoka Suigetsu: Trugbild bleibt stehen, man selbst verschwindet
         if (!killed && v.mirror && !opts.dot && dmg >= 1 && now >= (v.mirrorCd || 0)) {
-            v.mirrorCd = now + 12000 / SPEED;
-            v.invisUntil = now + 2000 / SPEED;
+            const kyAw = v.aw && v.aw.has('kyoka');
+            v.mirrorCd = now + (kyAw ? 8000 : 12000) / SPEED;
+            v.invisUntil = now + (kyAw ? 3500 : 2000) / SPEED;
             decoys.push({ id: 'dc' + v.id + '_' + now, pid: v.id, x: v.x, y: v.y, a: v.a, until: now + 3000 / SPEED });
             for (const m of mobs) if (m.tgt === v.id) { m.tgt = null; m.seen = 0; }
             fxAt(v.x, v.y, { type: 'shFx', kind: 'mirror', x: Math.round(v.x), y: Math.round(v.y) });
@@ -2483,7 +2625,9 @@ module.exports = function createArena(h, opts = {}) {
         const crit = w.crit && Math.random() < w.crit;
         if (crit) dmg *= shooter ? shooter.b.critMul : 2;
         const src = !shooter && isMob(b.owner) ? mobs.find(m => m.id === b.owner) : null;
+        dmg *= awakeHitMul(shooter, v, now, true);
         const killed = damage(v, shooter, dmg, now, b.x, b.y, { crit, execute: w.execute, how: w.how, by: w.by, pure: w.pure, src });
+        if (!killed && w.awake && w.rift) v.exposeUntil = now + 5000 / SPEED;
         if (shooter && w.vamp) shooter.hp = Math.min(shooter.maxHp, shooter.hp + dmg * w.vamp);
         comboHit(shooter, w, now);
         if (!killed && w.pin && players.has(v.id)) {
@@ -2509,6 +2653,11 @@ module.exports = function createArena(h, opts = {}) {
 
     function explode(b, now, skipId) {
         const w = b.w;
+        // Rasengan (Lv 20): Rasenshuriken – schneidende Zone fuer 2 s
+        if (w.awake && w.base === 'rasengan' && players.has(b.owner)) {
+            zones.push({ x: b.x, y: b.y, r: 150, until: now + 2000 / SPEED, owner: b.owner, dps: w.dmg * 0.6 });
+            fxAt(b.x, b.y, { type: 'shFx', kind: 'vortex', x: Math.round(b.x), y: Math.round(b.y), r: 150 });
+        }
         const r = w.nukeShell ? 300 : 70 + w.explode * 40;
         fxAt(b.x, b.y, { type: 'shBoom', x: Math.round(b.x), y: Math.round(b.y), r: Math.round(r), nuke: !!w.nukeShell });
         const shooter = players.get(b.owner);
@@ -3170,6 +3319,8 @@ module.exports = function createArena(h, opts = {}) {
             }
         }
         if (!(w && w.pure)) dmg *= m.def.taken || 1;
+        if (!(w && w.dot)) dmg *= awakeHitMul(attacker && players.has(attacker.id) ? attacker : null, m, now);
+        else if (now < (m.exposeUntil || 0)) dmg *= 1.5;
         comboHit(attacker, w, now);
         // Longinus: festnageln (Bosse nur verlangsamen, sonst waeren sie dauerhaft betaeubt)
         if (w && w.pin && attacker) {
@@ -3200,7 +3351,7 @@ module.exports = function createArena(h, opts = {}) {
             if (!(w && w.dot) || m.hp <= 0) h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: Math.round(dmg), kill: m.hp <= 0, crit: !!crit });
         }
         if (m.hp > 0 && w) {
-            if (w.burn) m.burn = { dps: w.burn, until: now + 3000 / SPEED, from: attacker ? attacker.id : null };
+            if (w.burn) m.burn = { dps: w.burn, until: now + 3000 / SPEED, from: attacker ? attacker.id : null, spread: !!(w.awake && w.base === 'amaterasu') };
             if (w.frost) m.slowUntil = now + 1500 / SPEED;
             if (w.vamp && attacker) attacker.hp = Math.min(attacker.maxHp, attacker.hp + dmg * w.vamp);
         }
@@ -3215,6 +3366,12 @@ module.exports = function createArena(h, opts = {}) {
         if (i < 0) return;
         mobs.splice(i, 1);
         onKill(killer, now);
+        // Amaterasu (Lv 20): der Brand springt ueber
+        if (m.burn && m.burn.spread) {
+            const from = players.get(m.burn.from);
+            for (const o of mobs) if (o.hp > 0 && Math.hypot(o.x - m.x, o.y - m.y) < 220) o.burn = { ...m.burn, until: now + 3000 / SPEED };
+            if (from) fxAt(m.x, m.y, { type: 'shFx', kind: 'nova', x: Math.round(m.x), y: Math.round(m.y), r: 220 });
+        }
         const def = m.def;
         if (def.pattern) hz.clear();
         if (zb) {
@@ -4164,6 +4321,8 @@ module.exports = function createArena(h, opts = {}) {
             portals.clear();
             clones.length = 0;
             zw = null;
+            zones.length = 0;
+            blasts.length = 0;
             // leerer Raid: Events und Gegner weg, Uhr startet mit dem naechsten Spieler neu
             mobs.length = 0;
             strikes.length = 0;
@@ -4186,6 +4345,20 @@ module.exports = function createArena(h, opts = {}) {
         } else if (hz.list.length) hz.tick(now, dt);
         portalTick(now);
         cloneTick(now, dt);
+        // Rasenshuriken-Zonen und Enuma-Elish-Einschlaege (nur Gegner)
+        for (let i = zones.length - 1; i >= 0; i--) {
+            const z = zones[i], o = players.get(z.owner);
+            if (now > z.until || !o) { zones.splice(i, 1); continue; }
+            hurtFoes(o, z.x, z.y, z.r, z.dps * dt, now, true);
+        }
+        for (let i = blasts.length - 1; i >= 0; i--) {
+            const bl = blasts[i];
+            if (now < bl.at) continue;
+            blasts.splice(i, 1);
+            const o = players.get(bl.owner);
+            fxAt(bl.x, bl.y, { type: 'shBoom', x: Math.round(bl.x), y: Math.round(bl.y), r: bl.r, nuke: false });
+            if (o) hurtFoes(o, bl.x, bl.y, bl.r, bl.dmg, now, false);
+        }
         turretTick(now);
         for (let i = kqBombs.length - 1; i >= 0; i--) if (now > kqBombs[i].until || !players.has(kqBombs[i].owner)) kqBombs.splice(i, 1);
         for (let i = decoys.length - 1; i >= 0; i--) if (now > decoys[i].until) decoys.splice(i, 1);
@@ -4249,7 +4422,7 @@ module.exports = function createArena(h, opts = {}) {
                 p.titanHp = 0;
                 p.hp = Math.min(p.hp, p.maxHp);
             }
-            const sp = now < (p.jailUntil || 0) || zwFrozen(p, now) ? 0 : MOVE * p.speedMul * (now < p.slowUntil && !p.geppo ? 1 - p.slow : 1) * (now < p.stimUntil ? 1 + p.stim : 1);
+            const sp = (now < (p.jailUntil || 0) && !(p.aw && p.aw.has('geppo'))) || zwFrozen(p, now) ? 0 : MOVE * p.speedMul * (now < p.slowUntil && !p.geppo ? 1 - p.slow : 1) * (now < p.stimUntil ? 1 + p.stim : 1);
             const ox = p.x, oy = p.y;
             const phase = now < (p.phaseUntil || 0);
             if (p.grap) {
@@ -4278,6 +4451,19 @@ module.exports = function createArena(h, opts = {}) {
             }
             geassTick(p, now);
             if (!zwFrozen(p, now)) orbitTick(p, now, dt);
+            // Kamehameha (Lv 20): Strahl haelt 1 s und folgt dem Zielen
+            if (now < (p.kameUntil || 0) && !zwFrozen(p, now)) {
+                const kw = p.gear[p.slot];
+                if (kw && kw.base === 'kamehameha') {
+                    const ws = { ...I.weaponStats(kw) };
+                    ws.dmg *= p.dmgMul * 1.2 * dt;
+                    const loud = now - (p.kameFx || 0) > 120 / SPEED;
+                    if (loud) p.kameFx = now;
+                    railBeam(p, ws, now, !loud);
+                } else p.kameUntil = 0;
+            }
+            // Hokage Cloak (Lv 20): unter 50 % doppelte Regeneration
+            if (p.aw && p.aw.has('hokage') && p.hp < p.maxHp * 0.5) p.hp = Math.min(p.maxHp, p.hp + 3 * dt);
             if (p.x !== ox || p.y !== oy) p.lastMove = now;
             p.zone = zoneOf(p.x, p.y);
             const sm = smokes.find(s => Math.hypot(s.x - p.x, s.y - p.y) < s.r);
@@ -4302,6 +4488,20 @@ module.exports = function createArena(h, opts = {}) {
             // Portal Gun: Schuss ohne Treffer -> Portal am Ende der Reichweite
             if (gone && b.w.portal && !b.hitAny && !blocked(b.x, b.y, 3)) placePortal(b, b.x, b.y, now);
             const steps = Math.max(2, Math.ceil(Math.hypot(b.vx, b.vy) * dt / 12));
+            // Hollow Purple (Lv 20): zieht Gegner in die Bahn
+            if (b.w.erase && b.w.awake && !gone) {
+                const bo = players.get(b.owner);
+                for (const m of mobsNear(b.x, b.y, 280)) {
+                    if (m.def.boss) continue;
+                    const d = Math.hypot(b.x - m.x, b.y - m.y) || 1;
+                    [m.x, m.y] = slide(m.x, m.y, (b.x - m.x) / d * 260 * dt, (b.y - m.y) / d * 260 * dt, m.def.r, mobBlocked);
+                }
+                if (bo) for (const q of near(b.x, b.y, 240)) {
+                    if (!foe(bo, q)) continue;
+                    const d = Math.hypot(b.x - q.x, b.y - q.y) || 1;
+                    [q.x, q.y] = slide(q.x, q.y, (b.x - q.x) / d * 200 * dt, (b.y - q.y) / d * 200 * dt, R);
+                }
+            }
             // Mjoelnir: nach der halben Zeit (oder an der Wand) zurueck zur Hand, dann durch Waende
             if (b.w.boomerang && !gone) {
                 const bo = players.get(b.owner);
@@ -4439,6 +4639,10 @@ module.exports = function createArena(h, opts = {}) {
                         if (b.w.grapple) startGrapple(shooter, m.x, m.y, now);
                         if (b.w.stick) plantBomb(b, m, m.x, m.y, now);
                         if (b.w.tesla || b.w.chain) teslaArc(m, shooter, b.w, now);
+                        if (b.w.boomerang && b.w.chain && b.w.awake && b.back && m.hp > 0) {
+                            fxAt(m.x, m.y, { type: 'shBoom', x: Math.round(m.x), y: Math.round(m.y), r: 70, nuke: false });
+                            hurtMob(m, shooter, b.w.dmg * 0.6, now, m.x, m.y, false, { dot: true });
+                        }
                         // Getsuga / Hollow Purple: schneiden durch alles, ohne Grenze
                         if (sweep) continue;
                         if (b.pierce > 0) b.pierce--;
@@ -4468,9 +4672,9 @@ module.exports = function createArena(h, opts = {}) {
                     spd: now < (p.jailUntil || 0) ? 0 : Math.round(p.speedMul * (now < p.slowUntil && !p.geppo ? 1 - p.slow : 1) * (now < p.stimUntil ? 1 + p.stim : 1) * 100) / 100,
                     // 25.09.2026 Uniques: Kunai-Marke, Combo, Death-Note-Uhr, Faehigkeit bereit
                     kunai: p.kunai && now < p.kunai.until ? [Math.round(p.kunai.x), Math.round(p.kunai.y)] : undefined,
-                    combo: p.combo && now - (p.comboAt || 0) < 1500 / SPEED ? p.combo : undefined,
+                    combo: p.combo && now - (p.comboAt || 0) < 3000 / SPEED ? p.combo : undefined,
                     doom: p.doom ? Math.max(0, Math.round(p.doom.at - now)) : undefined,
-                    abil: [p.titanSuit && !p.titanUsed ? 'titan' : '', p.weights && !p.weightsOff ? 'weights' : '', p.flashstep ? (now >= (p.stepCd || 0) ? 'step' : 'step-cd') : '', kqBombs.some(k => k.owner === p.id) ? 'kq' : ''].filter(Boolean).join(',') || undefined,
+                    abil: [p.aw && p.aw.has('odm') && now >= (p.odmCd || 0) ? 'odm' : '', p.aw && p.aw.has('ironman') && now >= (p.missileCd || 0) ? 'missiles' : '', p.titanSuit && !p.titanUsed ? 'titan' : '', p.weights && !p.weightsOff ? 'weights' : '', p.flashstep ? (now >= (p.stepCd || 0) ? 'step' : 'step-cd') : '', kqBombs.some(k => k.owner === p.id) ? 'kq' : ''].filter(Boolean).join(',') || undefined,
                     kq: kqBombs.some(k => k.owner === p.id) ? kqBombs.filter(k => k.owner === p.id).map(k => kqPos(k).map(Math.round)) : undefined,
                     phase: now < (p.phaseUntil || 0) ? 1 : undefined,
                     gaze: p.gaze ? Math.min(1, Math.round((now - p.gaze.since) / (1000 / SPEED) * 100) / 100) : undefined,
@@ -4499,7 +4703,7 @@ module.exports = function createArena(h, opts = {}) {
                         ar: q.gear.vest ? I.ARMORS[q.gear.vest.base].set : null, hm: q.gear.helmet ? I.ARMORS[q.gear.helmet.base].set : null,
                         fb: ['helmet', 'vest', 'pants', 'boots'].map(sl => q.gear[sl] && I.ARMORS[q.gear[sl].base] && I.ARMORS[q.gear[sl].base].full ? q.gear[sl].base : null).find(Boolean) || undefined,
                         burn: !!q.burn, slow: now < q.slowUntil, pr: now < q.protect,
-                        ob: q.orbitOn ? 1 : undefined, ti: now < (q.titanUntil || 0) ? 1 : undefined, cl: q.clone ? 1 : undefined
+                        ob: q.orbitOn ? (q.orbitBig ? 2 : 1) : undefined, sh: now < (q.shieldUntil || 0) ? 1 : undefined, ti: now < (q.titanUntil || 0) ? 1 : undefined, cl: q.clone ? 1 : undefined
                     };
                 }),
                 bullets: bullets.filter(b => inView(b.x, b.y)).map(b => b.w.look ? [b.id, Math.round(b.x), Math.round(b.y), Math.round(b.vx), Math.round(b.vy), b.owner, b.fx, b.tier, b.w.look] : [b.id, Math.round(b.x), Math.round(b.y), Math.round(b.vx), Math.round(b.vy), b.owner, b.fx, b.tier]),
@@ -4513,7 +4717,8 @@ module.exports = function createArena(h, opts = {}) {
                 strikes: strikes.filter(s => inView(s.x, s.y)).map(s => [s.id, Math.round(s.x), Math.round(s.y), s.r, Math.max(0, Math.round(s.at - now)), s.total, s.look || 0]),
                 mobs: mobs.filter(m => !m.def.boss && inView(m.x, m.y)).map(m => [m.id, m.kind, Math.round(m.x), Math.round(m.y), Math.max(0, Math.round(m.hp)), m.maxHp, Math.round(m.a * 100) / 100, m.aimAt ? Math.max(0, Math.round(m.aimAt - now)) : 0,
                     m.chargeAt ? Math.max(0, Math.round(m.chargeAt - now)) : 0, m.charging ? 1 : 0, Math.round(m.cx || 0), Math.round(m.cy || 0), m.charm ? 1 : 0, m.lv || 0]),
-                portals: portals.size ? [...portals.values()].flatMap(pr => [pr.a ? [Math.round(pr.a.x), Math.round(pr.a.y), 0, pr.b ? 1 : 0] : null, pr.b ? [Math.round(pr.b.x), Math.round(pr.b.y), 1, pr.a ? 1 : 0] : null]).filter(x => x && inView(x[0], x[1])) : undefined,
+                portals: portals.size ? [...portals.values()].flatMap(prs => prs.pairs.flatMap(pr => [pr.a ? [Math.round(pr.a.x), Math.round(pr.a.y), 0, pr.b ? 1 : 0] : null, pr.b ? [Math.round(pr.b.x), Math.round(pr.b.y), 1, pr.a ? 1 : 0] : null])).filter(x => x && inView(x[0], x[1])) : undefined,
+                zones: zones.length ? zones.filter(z => inView(z.x, z.y)).map(z => [Math.round(z.x), Math.round(z.y), z.r]) : undefined,
                 turrets: turrets.length ? turrets.filter(t => inView(t.x, t.y)).map(t => [t.id, Math.round(t.x), Math.round(t.y), Math.round(t.a * 100) / 100, Math.max(0, Math.round(t.until - now))]) : undefined,
                 drop: drop ? [Math.round(drop.x), Math.round(drop.y), Math.max(0, Math.round(drop.at - now)), drop.landed ? 1 : 0] : null,
                 // Capture the Flag (6.9): [Flagge x, y, Traeger-Id|0, Ziel x, y, ms uebrig]

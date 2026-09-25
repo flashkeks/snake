@@ -2601,3 +2601,41 @@ zufaelligen neuen Uniques ohne Absturz.
   `bossJump` an eine freie Stelle mit kleinerer Wegfeld-Entfernung, nie naeher
   als r+R+80 an Spielern; 700 ms Warnkreis, Landung mit Druckwelle, 5 s CD.
 - **Tesla-Fix** (`teslaArc`): Tesla springt auch zwischen Mobs (vorher nur Spieler).
+
+### Ruestungs-Level und Awakenings (6.15, 25.09.2026)
+- **Ruestungs-Level:** gleiche Kurve wie Waffen (`itemLevel`, `item.wxp`). Jeder
+  Kill gibt der gehaltenen Waffe UND jedem angelegten Ruestungsteil die volle XP.
+  Je Level +2 % HP des Teils (`WLV.armorHp`), je Meilenstein 10/20/30 2 % weniger
+  Schaden (`WLV.armorTaken`). Fuse gibt auch bei Ruestung die halbe XP weiter.
+  Level-up einer Ruestung ruft `gearStats` neu auf.
+- **Awakening ab Level 20** (`WLV.awake`, `isAwake`, Text im Feld `awake` am
+  Eintrag, im Tooltip gesperrt/erwacht): Waffen ueber `w.awake`/`w.base` aus
+  `weaponStats`, Ruestung ueber `armorStats().awake` -> `p.aw` (Set der Basen).
+  - Waffen: Rasengan Schneide-Zone 2 s (`zones`); Zangetsu jeder 3. Hieb x2 und
+    breiter; Amaterasu Brand springt beim Tod ueber (`burn.spread`); Spirit Gun
+    jeder 4. Schuss 8 Kugeln; Gate of Babylon alle 10 s Schwert-Regen (`blasts`,
+    x4 Schaden, r 170); Kamehameha Strahl 1 s haltend (`kameUntil`, `railBeam`
+    leise); Dragonslayer Kill = +10 % Rate 5 s (x5); Venuzdonoa Getroffene 5 s
+    +50 % (`exposeUntil`); Hollow Purple zieht Gegner in die Bahn; Nichirin Combo
+    3 s, Drache bei 8; Cutlasses 5 Abpraller; Gum-Gum Gear Second (+40 % Tempo
+    und Rate 3 s); Chainsaw voll hochgedreht 50 % Lifesteal; Kagune unter 30 % HP
+    doppelter Faecher; Longinus unbegrenzt durchbohrend; Mjoelnir Blitzschlag auf
+    dem Rueckweg (60 %); Killer Queen Kettenexplosion (Tiefe 3); Portal Gun bis 3
+    Paare (`portals` jetzt `{ pairs, until }`); Senbonzakura Kreis 165 statt 110.
+  - Ruestung: Scouter +8 % Crit; Straw Hat Haki (alle 20 s ein Treffer ab 30
+    daneben); ODM R-Enterhaken zur anvisierten Wand (4 s); Hokage unter 50 %
+    +3 HP/s; Kamina je Kill +3 % Schaden (max +30 %, bis Raid-Ende); Saitama
+    jeder 10. Treffer x5 (Explosionen zaehlen als Treffer); Iron Man R 8
+    zielsuchende Raketen (12 s); Susanoo unter 30 % Schild 4 s, 80 % weniger
+    (45 s); Byakugan +15 % Schaden bis 400 px; Kaneki Kill heilt 40 %, 5 s Tempo;
+    Rock Lee Gewichte ab = 6 s +60 % Schaden; Geppo +10 % Tempo, Chain Jail
+    wirkungslos; All Might alle 30 s, 300 Schaden; Killua +6 % Dodge, Konter
+    springt auf 2 weitere; Geass 15 s, 1,5 s CD; Flash Step 1,5 s CD mit
+    Nachbild; Kyoka 3,5 s unsichtbar, 8 s CD; Titan 25 s, +2500 HP.
+- **Bekannt, nicht geaendert:** Die schwarzen Loecher von Singularity und den
+  Venuzdonoa-Rissen treffen beim Zusammenfallen auch den eigenen Schuetzen
+  (`blast()` wie bei Granaten) – im Test 921 Schaden am Schuetzen, wenn er
+  neben dem getroffenen Gegner steht.
+- Tests: Einzelpruefung je Awakening (31/31), Extraction-Chaos, PvP und
+  Zombies mit allen Items auf Level 20 ohne Absturz. Dabei gefunden und
+  behoben: `ability()` nutzte `aw` vor der Definition (Rock Lee + R).
