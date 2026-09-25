@@ -3098,3 +3098,21 @@ auf der Oberfläche und in je zwei Bunker- und Labor-Dungeons, 50 s Jagd, gezäh
 Wand oder Fels, auch für gespawnte Adds. Alter Code: Rick, Gojo, Meeseeks, Queen, Golem u. a.
 hunderte Ticks im Fels. Neuer Code: sauber – bis auf den Golem im Labor, der ist mit 52 px
 Radius zu breit für einen 80-px-Gang; Raid-Bosse kommen aber nur auf der Oberfläche vor.
+
+## 🔉 Gegner machen Geräusche (25.09.2026, Max: „irgendwie machen die Gegner keinen Sound?")
+
+Normale Gegner waren nie vertont – man hörte nur eigene Schüsse, Treffer und Boss-Effekte.
+`shEnemySounds` (`public/index.html`, bei jedem Snapshot) erzeugt jetzt Synth-Sounds wie der
+Rest des Spiels (keine Clips):
+
+- **Schuss:** neue Kugel eines Gegners (`owner` beginnt mit `m#`) – kurzer Knall, Bosse tiefer
+  und dumpfer. Schrot/Salve zählt je Gegner und Snapshot einmal.
+- **Zielen:** Sniper u. a. beginnen zu zielen → heller Piep.
+- **Ansturm:** Vorwarnung eines Charge → tiefes Knurren.
+- **Tod:** Gegner verschwindet mit < 35 % HP → dumpfer Schlag.
+- Lautstärke nach Entfernung (quadratisch, ab 1.100 px still), höchstens 6 Gegner-Sounds je
+  250 ms, damit volle Räume nicht zum Lärmteppich werden. Hängt am normalen Sound-Regler/Mute.
+
+Test (7/7, Logik mit nachgebauten Snapshots): Salve einmal, keine Wiederholung derselben
+Kugel, weit weg still, Tod, Knurren, Drossel bei 30 gleichzeitigen Schützen, Spielerkugeln
+ignoriert.

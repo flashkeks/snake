@@ -12340,6 +12340,62 @@ function onSh(d) {
     shSnaps.push(d);
     if (shSnaps.length > 8) shSnaps.shift();
     shReconcile(d);
+    shEnemySounds(d);
+}
+
+// Gegner-Sounds (25.09.2026, Max: „die Gegner machen keinen Sound"): Schuesse, Zielen,
+// Ansturm, Tod. Synth wie der Rest, nach Entfernung leiser, hoechstens 6 je 250 ms.
+const shEn = { seen: new Set(), mobs: new Map(), win: 0, n: 0 };
+function shEnemySounds(d) {
+    if (typeof sfxOk !== 'function' || !sfxOk() || !sh) return;
+    const self = shPred || (d.players || []).find(p => p.id === sh.id);
+    if (!self) return;
+    const ox = self.x, oy = self.y;
+    const gain = (x, y) => { const k = 1 - Math.hypot(x - ox, y - oy) / 1100; return k > 0 ? k * k : 0; };
+    const now = performance.now();
+    if (now - shEn.win > 250) { shEn.win = now; shEn.n = 0; }
+    const ok = g => g > .04 && shEn.n < 6 && ++shEn.n;
+    // Schuesse: je Gegner und Snapshot ein Knall (Schrot/Salve zaehlt einmal)
+    const seen = new Set(), shot = new Set();
+    for (const b of d.bullets || []) {
+        const [id, x, y, , , owner, fx] = b;
+        seen.add(id);
+        if (shEn.seen.has(id) || typeof owner !== 'string' || !owner.startsWith('m#') || shot.has(owner)) continue;
+        shot.add(owner);
+        const g = gain(x, y);
+        if (!ok(g)) continue;
+        if (fx & 1024) {
+            sNoise({ dur: .22, vol: .16 * g, type: 'lowpass', f: 900, f2: 150, rev: .25, a: .002 });
+            sTone(95, { dur: .2, type: 'square', vol: .05 * g, slide: 55, rev: .2 });
+        } else {
+            sNoise({ dur: .08, vol: .09 * g, type: 'bandpass', f: 1500, f2: 700, q: 1.2, rev: .12, a: .001 });
+            sTone(240, { dur: .06, type: 'square', vol: .025 * g, slide: 120, rev: .1 });
+        }
+    }
+    shEn.seen = seen;
+    // Gegner: Zielen, Ansturm, Tod
+    const cur = new Map();
+    for (const mb of d.mobs || []) {
+        const [id, kind, x, y, hp, mh, , aim, warn] = mb;
+        cur.set(id, { x, y, hp, mh });
+        const was = shEn.mobs.get(id);
+        if (!was) continue;
+        const g = gain(x, y);
+        if (aim && !was.aim && ok(g)) sTone(1250, { dur: .07, type: 'sine', vol: .05 * g, rev: .1 });
+        if (warn && !was.warn && ok(g)) {
+            sTone(85, { dur: .45, type: 'sawtooth', vol: .09 * g, slide: 55, rev: .3, lp: 700 });
+            sNoise({ dur: .35, vol: .06 * g, type: 'lowpass', f: 500, f2: 200, rev: .2, a: .05 });
+        }
+        cur.get(id).aim = aim; cur.get(id).warn = warn;
+    }
+    for (const [id, m] of shEn.mobs) {
+        if (cur.has(id) || !(m.hp < m.mh * .35)) continue;
+        const g = gain(m.x, m.y);
+        if (!ok(g)) continue;
+        sNoise({ dur: .3, vol: .12 * g, type: 'lowpass', f: 650, f2: 90, rev: .25, a: .002 });
+        sTone(160, { dur: .3, type: 'triangle', vol: .05 * g, slide: 60, rev: .2 });
+    }
+    shEn.mobs = cur;
 }
 
 function onShKill(k) {
