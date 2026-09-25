@@ -2471,3 +2471,7 @@ Nachtrag 6.12.1 (Max: „Stalker zu op, man kann ihn nicht hitten, wenn er an ei
 - **Heil-Stationen:** `zHealPrice(welle, kaeufe) = 600 + 60 × Welle + 300 × eigene Kaeufe`.
   Test: Welle 1 -> 660, 960, 1260; Welle 10 (nach 3 Kaeufen) -> 2100, 2400.
   Snapshot `zmb.heal`, Preisschild zeigt den echten naechsten Preis.
+- **Boss-Schaden nach Entfernung** (Max: Railgun macht Bosse von ultra weit weg platt),
+  nur Zombie-Modus: `zBossFalloff(d)` in `hurtMob` – bis 500 px voll, dann linear bis
+  30 % ab 1400 px, gemessen vom Schuetzen zum Boss. Test mit Legendary-Railgun:
+  300/500 px 310, 800 px 238, 1000 px 189, 1400/2000 px 93 Schaden.

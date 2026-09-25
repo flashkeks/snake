@@ -428,6 +428,9 @@ const zDmg = w => 1 + 0.06 * (w - 1);
 // 6.12.2 (Max: „knapp 60 % weniger Geld"): alle Punkte ×0,4 – Zombie ~51 -> ~20,
 // dazu Tank/Boss-Kill und Nuke-Bonus ueber Z_PTS_MUL
 const Z_PTS_MUL = 0.4;
+// Schaden an Zombie-Bossen nach Entfernung des Schuetzen (6.12.3)
+const Z_BOSS_NEAR = 500, Z_BOSS_FAR = 1400, Z_BOSS_MIN = 0.3;
+const zBossFalloff = d => d <= Z_BOSS_NEAR ? 1 : Math.max(Z_BOSS_MIN, 1 - (1 - Z_BOSS_MIN) * (d - Z_BOSS_NEAR) / (Z_BOSS_FAR - Z_BOSS_NEAR));
 const Z_PTS_PER_DMG = 0.35 * Z_PTS_MUL, Z_PTS_KILL = 30 * Z_PTS_MUL;
 // Kugel-Optik der Zombie-Bosse (tier-Feld der Kugel, 1024 = Boss-Kugel)
 const BOSS_LOOK = { abomination: 5, necro: 11, brood: 12, inferno: 13, storm: 14, overlord: 15, judge: 11, seraph: 13, omega: 15 };
@@ -2539,6 +2542,13 @@ module.exports = function createArena(h, opts = {}) {
             }
         }
         dmg *= m.def.taken || 1;
+        // 6.12.3 (Max: Railgun macht Bosse von ultra weit weg platt): im Zombie-Modus
+        // weniger Schaden an Bossen, je weiter der Schuetze weg ist – bis 500 px voll,
+        // dann linear runter bis 30 % ab 1400 px
+        if (zb && m.def.boss && attacker && attacker.x !== undefined) {
+            const d = Math.hypot(attacker.x - m.x, attacker.y - m.y);
+            dmg *= zBossFalloff(d);
+        }
         if (now < (m.stunUntil || 0)) dmg *= 1.5;
         const real = Math.min(dmg, m.hp);
         m.hp -= dmg;
