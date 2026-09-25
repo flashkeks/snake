@@ -3320,6 +3320,19 @@ body.world-arena h1 {
 .sh-guild .gd-party span:not(.hint) { padding: 3px 9px; border-radius: 9px; background: rgba(255,255,255,.08); }
 .sh-guild .gd-row { display: flex; gap: 8px; align-items: center; margin: 10px 0 4px; }
 
+/* Creative Mode */
+.sh-creative { border-color: #5bffb0; box-shadow: 0 0 40px rgba(91,255,176,.3); width: min(900px, 94%); max-height: 78%; }
+.sh-creative .st-head button { padding: 4px 10px; }
+.sh-creative .cr-diffs { flex-wrap: wrap; }
+.sh-creative .cr-tile { display: flex; gap: 3px; }
+.sh-creative .cr-tile > button:first-child { flex: 1; min-width: 0; }
+.sh-creative .cr-tile > button:first-child span { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.sh-creative .cr-tile > button:not(:first-child) { width: 30px; padding: 0; background: rgba(91,255,176,.15); border: 1px solid rgba(91,255,176,.5); color: #5bffb0; }
+.sh-creative .cr-tile small { color: #ffd23f; font-size: 10px; }
+.sh-creative .st-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.sh-creative .cr-diffs button.on span { color: #111; }
+.sh-creative .cr-tile svg.gi { width: 2em; height: 2em; }
+
 /* Guild-Panels im Holz-Look, Quest Board (25.09.2026, Max: „bissl schicker") */
 .sh-guild.gd-wood {
     background:
@@ -7292,6 +7305,7 @@ ws.onmessage = event => {
         case 'pvpError': showMsg('hub-msg', data.error, 'err'); break;
         case 'shTrader': onShTrader(data); break;
         case 'msMenu': case 'gStash': case 'gInsure': onGuild(data); break;
+        case 'crMenu': crDraw(true); break;
         case 'arError': showMsg('hub-msg', data.error, 'err'); break;
         case 'shopOk': onShopOk(data); break;
         case 'shopRot': onShopRot(data.rot); break;
@@ -7689,6 +7703,7 @@ document.addEventListener('keydown', e => {
     if (sh) {
         if (shTraderOpen) onShTrader({ close: true });
         else if (guildOpen) onGuild({ close: true });
+        else if (crOpen) crDraw(false);
         else if (shInvOpen) shInvToggle(false);
         return;
     }
@@ -11338,6 +11353,53 @@ function onGuildRaw(d) {
     }
 }
 
+// ---------- Creative Mode (25.09.2026, Max): Taste C im Raid, nur wenn im Admin-Panel an ----------
+let crOpen = false, crKind = 'weapon', crTier = 4, crQ = '';
+function crDraw(open) {
+    let el = $('sh-creative');
+    if (!open || !sh) {
+        if (el) el.hidden = true;
+        crOpen = false;
+        return;
+    }
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'sh-creative';
+        el.className = 'sh-trader sh-creative';
+        document.querySelector('#shooter .card').appendChild(el);
+        el.addEventListener('click', e => {
+            const b = e.target.closest('button');
+            if (!b) return;
+            const ds = b.dataset;
+            if (ds.close) return crDraw(false);
+            if (ds.crkind) { crKind = ds.crkind; return crDraw(true); }
+            if (ds.crtier) { crTier = Number(ds.crtier); return crDraw(true); }
+            if (ds.crheal) return wsSend({ type: 'crHeal' });
+            if (ds.crclear) return wsSend({ type: 'crClear' });
+            if (ds.crgive) wsSend({ type: 'crGive', kind: crKind, base: ds.crgive, tier: crTier, equip: !!ds.equip, slot: ds.slot, n: crKind === 'util' ? 99 : 1 });
+        });
+        el.addEventListener('input', e => { if (e.target.id === 'cr-q') { crQ = e.target.value.toLowerCase(); crList(); } });
+    }
+    crOpen = true;
+    el.hidden = false;
+    const kinds = [['weapon', 'Weapons'], ['armor', 'Armor'], ['util', 'Consumables'], ['pack', 'Backpacks']];
+    el.innerHTML = `<div class="st-head"><b>🛠️ Creative mode</b><span>You can't take damage. Items go straight into your raid.</span><button type="button" data-crheal="1">❤️ Heal</button><button type="button" class="ghost" data-crclear="1">🗑️ Empty backpack</button><button type="button" class="ghost" data-close="1">✕</button></div>` +
+        `<div class="cr-diffs">${kinds.map(([k, n]) => `<button type="button" data-crkind="${k}" class="${crKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>` +
+        (crKind === 'weapon' || crKind === 'armor' ? `<div class="cr-diffs">${arenaCat.tiers.map((t, i) => `<button type="button" data-crtier="${i}" class="tier-${t.id} ${crTier === i ? 'on' : ''}"><span class="tier-${t.id}">${t.name}</span></button>`).join('')}</div>` : '') +
+        `<input id="cr-q" placeholder="Search…" value="${esc(crQ)}" style="width:100%;margin:6px 0"><div class="st-grid" id="cr-list"></div>`;
+    crList();
+}
+function crList() {
+    const box = $('cr-list');
+    if (!box) return;
+    const defs = crKind === 'weapon' ? arenaCat.weapons : crKind === 'armor' ? arenaCat.armors : crKind === 'util' ? arenaCat.utils : arenaCat.packs;
+    const tierOf = (b, d) => crKind === 'weapon' || crKind === 'armor' ? arenaCat.tiers[crTier].id : (arenaCat.tiers[d.tier || 0] || {}).id;
+    box.innerHTML = Object.entries(defs).filter(([b, d]) => !crQ || d.name.toLowerCase().includes(crQ) || b.includes(crQ))
+        .sort((a, b) => (b[1].unique ? 1 : 0) - (a[1].unique ? 1 : 0) || (a[1].tier || 0) - (b[1].tier || 0))
+        .map(([b, d]) => `<div class="cr-tile tier-${tierOf(b, d)}"><button type="button" class="ghost" data-crgive="${b}" title="Into your backpack">${itemIcon({ kind: crKind, base: b, tier: tierOf(b, d) })}<span>${esc(d.name)}</span>${d.unique ? '<small>✦ unique</small>' : ''}</button>` +
+            (crKind === 'util' ? '' : crKind === 'weapon' ? `<button type="button" data-crgive="${b}" data-equip="1" data-slot="primary" title="Equip as primary">1</button><button type="button" data-crgive="${b}" data-equip="1" data-slot="secondary" title="Equip as secondary">2</button>` : `<button type="button" data-crgive="${b}" data-equip="1" title="Equip">⚡</button>`) + '</div>').join('');
+}
+
 // XP im Raid: kleine Einblendung, Level-Up gross
 function onArXp(d) {
     const el = document.createElement('div');
@@ -14432,6 +14494,7 @@ document.addEventListener('keydown', e => {
     if (k === 'f' || k === 'e') wsSend({ type: 'shInteract' });
     if (k === 'g') shUse(1);
     if (k === 'r') wsSend({ type: 'shAbility' });
+    if (k === 'c') { if (crOpen) crDraw(false); else wsSend({ type: 'crOpen' }); }
     if (e.key === 'Tab' || k === 'i') {
         e.preventDefault();
         shInvToggle();

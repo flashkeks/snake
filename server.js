@@ -1666,6 +1666,7 @@ async function handle(c, data) {
         case 'shAbility':
         case 'msOpen': case 'msClose': case 'msCreate': case 'msJoin': case 'msLeave': case 'msSet': case 'msStart':
         case 'gDeposit': case 'gWithdraw': case 'gInsure':
+        case 'crOpen': case 'crGive': case 'crHeal': case 'crClear':
         case 'shInv':
         case 'shTrade':
             (rooms.arenaOf(c) || dungeons.arenaOf(c) || shooter).action(c, data);

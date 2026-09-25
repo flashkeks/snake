@@ -408,9 +408,10 @@ module.exports = function startAdmin(h) {
                     }
                 } else if (mm[2] === 'arena') {
                     err = h.accounts.adminArena(key, String(b.op), b);
+                    if (!err && b.op === 'creative' && h.creativeChanged) h.creativeChanged(key, !!b.on);
                     if (!err) log(email, 'arena-' + b.op, u.name, b.op === 'give'
                         ? { kind: String(b.kind), base: String(b.base), tier: Number(b.tier) || 0, mods: (b.mods || []).map(x => `${x.id}${x.lvl}`).join(' '), count: Number(b.count) || 1 }
-                        : b.op === 'scrap' || b.op === 'xp' ? { set: Number(b.set) } : b.op === 'delete' ? { items: (Array.isArray(b.uids) ? b.uids : [b.uid]).length } : undefined);
+                        : b.op === 'creative' ? { on: !!b.on } : b.op === 'scrap' || b.op === 'xp' ? { set: Number(b.set) } : b.op === 'delete' ? { items: (Array.isArray(b.uids) ? b.uids : [b.uid]).length } : undefined);
                 }
                 if (err) return json(res, 400, { error: err });
                 return json(res, 200, detail(key));

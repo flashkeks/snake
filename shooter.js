@@ -1426,11 +1426,46 @@ module.exports = function createArena(h, opts = {}) {
             missionAction(p, d, now);
         } else if (d.type === 'gDeposit' || d.type === 'gWithdraw' || d.type === 'gInsure') {
             guildAction(p, d);
+        } else if (d.type === 'crOpen' || d.type === 'crGive' || d.type === 'crHeal' || d.type === 'crClear') {
+            creativeAction(p, d);
         } else if (d.type === 'shInv') {
             invOp(p, d);
         } else if (d.type === 'shTrade') {
             trade(p, d);
         }
+    }
+
+    // Creative Mode (25.09.2026, Max): Schalter im Admin-Panel (accounts adminArena 'creative').
+    // Im Raid: kein Schaden, Taste C oeffnet ein Menue mit jedem Item.
+    function creativeOf(p) {
+        if (!p || !p.account) return false;
+        const a = h.accounts.arena(p.account);
+        return !!(a && a.creative);
+    }
+    function creativeAction(p, d) {
+        if (!creativeOf(p)) return h.send(p.c, { type: 'shEvent', text: '🛠️ Creative mode is off for your account', kind: 'self' });
+        if (d.type === 'crOpen') return h.send(p.c, { type: 'crMenu' });
+        if (d.type === 'crHeal') { p.hp = p.maxHp; return h.send(p.c, { type: 'shEvent', text: '🛠️ Healed', kind: 'self' }); }
+        if (d.type === 'crClear') { p.pack = []; sendInv(p); return; }
+        const kind = String(d.kind), base = String(d.base);
+        const defs = kind === 'weapon' ? I.WEAPONS : kind === 'armor' ? I.ARMORS : kind === 'util' ? I.UTILS : kind === 'pack' ? I.PACKS : null;
+        if (!defs || !Object.prototype.hasOwnProperty.call(defs, base)) return;
+        const tier = kind === 'util' || kind === 'pack' ? defs[base].tier : Math.max(0, Math.min(6, Math.floor(Number(d.tier)) || 0));
+        const mdefs = kind === 'weapon' ? I.WEAPON_MODS : I.ARMOR_MODS;
+        const mods = (kind === 'weapon' || kind === 'armor') && Array.isArray(d.mods) ? d.mods.filter(m => m && Object.prototype.hasOwnProperty.call(mdefs, m.id)).slice(0, 3).map(m => ({ id: m.id, lvl: Math.max(1, Math.min(mdefs[m.id].max, Math.floor(Number(m.lvl)) || 1)) })) : [];
+        const n = kind === 'util' ? Math.max(1, Math.min(defs[base].stack || 1, Math.floor(Number(d.n)) || 1)) : 1;
+        const made = [];
+        for (let i = 0; i < n; i++) made.push(I.craft(kind, base, tier, mods));
+        const it = made[0];
+        if (d.equip && kind !== 'util') {
+            const slot = kind === 'weapon' ? (d.slot === 'secondary' ? 'secondary' : 'primary') : kind === 'pack' ? 'backpack' : it.slot;
+            const old = p.gear[slot];
+            if (old && !old.starter) p.pack.push(old);
+            p.gear[slot] = it;
+            gearStats(p);
+        } else p.pack.push(...made); // Creative darf ueber das Rucksack-Limit
+        sendInv(p);
+        h.send(p.c, { type: 'shEvent', text: `🛠️ ${n > 1 ? n + '× ' : ''}${it.name}${d.equip && kind !== 'util' ? ' equipped' : ' in your backpack'}`, kind: 'drop' });
     }
 
     // Raid-Inventar: ausruesten, ablegen, fallen lassen, Verbrauchsgut in Slots
@@ -2711,6 +2746,8 @@ module.exports = function createArena(h, opts = {}) {
     // Schaden mit allen Folgen; true = tot
     function damage(v, attacker, dmg, now, x, y, opts = {}) {
         if (!players.has(v.id) || now < v.protect || v.dead) return false;
+        // Creative Mode (25.09.2026, Max, im Admin-Panel schaltbar): unverwundbar
+        if (creativeOf(v)) return false;
         // PvP: kein Schaden unter Teamkameraden
         if (attacker && attacker !== v && attacker.team && attacker.team === v.team) return false;
         // Guild House (25.09.2026): kein Schaden unter Spielern drinnen oder von drinnen

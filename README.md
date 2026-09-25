@@ -2752,3 +2752,13 @@ Basis -> Icon-Name(n) ergaenzen, `ITEM_SVG` aus `icons.json` (`body`, ohne
   Spirit Bomb, Infinite Void – Mjoelnir, Straw Hat, Portal Gun, Kaneki-Maske, Death Note,
   Scouter „9000" usw. `itemIcon` nimmt sie vor den einfarbigen game-icons. Bilder aus dem
   Netz gehen aus dem Container nicht (Bild-Hosts gesperrt), deshalb selbst gezeichnet.
+
+## 🛠️ Creative Mode (25.09.2026, Max)
+Pro Konto im Admin-Panel schaltbar (Arena-Bereich, „Creative mode", `adminArena` Op
+`creative`, Feld `arena.creative`). Wirkt sofort, auch mitten im Raid:
+- `damage()` tut nichts, solange das Konto Creative hat (Raid, Missionen, PvP).
+- Taste **C** im Raid: Menue mit jedem Item (Waffen, Ruestung je Stufe, Verbrauchsgut,
+  Rucksaecke, Suche). Klick = in den Rucksack (ueber das Limit), „1"/„2"/„⚡" = sofort
+  anlegen. Dazu Heilen und Rucksack leeren. Server: `crOpen`/`crGive`/`crHeal`/`crClear`,
+  ohne Creative kommt nur ein Hinweis.
+- Was man rausbringt, landet wie normal im Lager – der Modus ist fuers Testen gedacht.

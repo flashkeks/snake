@@ -552,7 +552,7 @@ module.exports = function createAccounts(dataDir) {
             const a = u.arena || { inv: [], loadout: {}, scrap: 0 };
             return {
                 inventory: u.inventory || [], equipped: u.equipped || {}, rig: u.rig || {},
-                arena: { inv: a.inv.map(it => ({ ...it, sv: arenaItems.salvageValue(it) })), loadout: a.loadout, scrap: a.scrap, prog: a.prog || null, level: a.prog ? arenaLevel.levelOf(a.prog.xp).level : 1 }
+                arena: { inv: a.inv.map(it => ({ ...it, sv: arenaItems.salvageValue(it) })), loadout: a.loadout, scrap: a.scrap, creative: !!a.creative, prog: a.prog || null, level: a.prog ? arenaLevel.levelOf(a.prog.xp).level : 1 }
             };
         },
 
@@ -648,6 +648,9 @@ module.exports = function createAccounts(dataDir) {
                 a.scrap = v;
             } else if (op === 'clear') {
                 a.inv = [];
+            } else if (op === 'creative') {
+                // 25.09.2026 (Max): Creative Mode – im Raid unverwundbar, Item-Menue (Taste C)
+                a.creative = !!d.on;
             } else if (op === 'xp') {
                 // Arena-Level (4.0): Gesamt-XP setzen; Punkte ueber dem neuen Level verfallen
                 const v = Math.floor(Number(d.set));
