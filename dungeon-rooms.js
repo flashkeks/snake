@@ -52,6 +52,10 @@ module.exports = function createDungeons(h) {
             if (of(c) || !h.surface.has(c)) continue;
             const p = h.surface.detach(c);
             if (!p) continue;
+            // 25.09.2026 (Max): wer auf dieser Stufe noch keine Mission geschafft hat, verliert beim Tod nichts
+            const u = p.account && h.accounts.get && h.accounts.get(p.account);
+            p.safeRun = !!u && !((u.stats || {})['missions_' + diff] > 0);
+            if (p.safeRun) h.send(c, { type: 'shEvent', text: '🛡️ First mission on this difficulty – if you fall, you keep all your gear', kind: 'drop' });
             d.members.set(c.id, { back });
             c.missionBack = back; // Tod in der Mission: Respawn im naechsten Guild House
             d.arena.attach(c, p, map.spawn);

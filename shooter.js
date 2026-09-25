@@ -1317,6 +1317,17 @@ module.exports = function createArena(h, opts = {}) {
                 const it = p.gear[sl];
                 if (it && it.insured && !it.starter) { delete it.insured; a.inv.push(it); saved.push(brief(it)); p.gear[sl] = sl === 'primary' ? starterPistol() : null; }
             }
+            // Erste Mission dieser Stufe (25.09.2026, Max): alles Mitgebrachte und Gefundene zurueck ins Lager
+            if (p.safeRun) {
+                const keep = lootOf(p);
+                if (keep.length) {
+                    addItems(p.c, keep);
+                    saved.push(...keep.map(brief));
+                    for (const sl of GEAR) if (p.gear[sl] && !p.gear[sl].starter) p.gear[sl] = sl === 'primary' ? starterPistol() : null;
+                    p.pack = [];
+                    p.util = [null, null];
+                }
+            }
             if (saved.length) h.accounts.touch();
         }
         const loot = lootOf(p);
@@ -1356,7 +1367,7 @@ module.exports = function createArena(h, opts = {}) {
             type: 'shLeft', result: how === 'left' ? 'left' : 'died', by: killer ? killer.name : by || null, lost: loot.map(brief),
             kills: p.kills, secs: Math.round((Date.now() - p.joinedAt) / 1000), weapon: line.weapon, wtier: line.tier,
             // Mission: Uebersicht mit Stufe, Boss-Stand, zurueckgegebener Versicherung; danach Guild House
-            mission: opts.mission && how !== 'left' ? { diff: opts.mission.diff, name: MISSION_DIFF[opts.mission.diff].name, kind: opts.kind, place: MISSION_KINDS[opts.kind] || '', boss: missionDone, saved } : undefined
+            mission: opts.mission && how !== 'left' ? { diff: opts.mission.diff, name: MISSION_DIFF[opts.mission.diff].name, kind: opts.kind, place: MISSION_KINDS[opts.kind] || '', boss: missionDone, saved, safe: !!p.safeRun } : undefined
         });
         h.changed();
     }
@@ -1670,6 +1681,8 @@ module.exports = function createArena(h, opts = {}) {
                 return h.enterDungeon(p.c, s.dungeon, { key: s.x + ',' + s.y, x: s.x, y: s.y });
             }
             if (s.exit && (opts.leaveDungeon || h.leaveDungeon)) {
+                // 25.09.2026 (Max): aus der Mission erst raus, wenn der Boss liegt
+                if (opts.mission && !missionDone) return h.send(p.c, { type: 'shEvent', text: '🔒 The exit opens once the boss is down', kind: 'self' });
                 if (now < (p.portalAt || 0)) return h.send(p.c, { type: 'shEvent', text: `🪜 Just arrived – wait ${Math.ceil((p.portalAt - now) / 1000)} s`, kind: 'self' });
                 return (opts.leaveDungeon || h.leaveDungeon)(p.c);
             }
@@ -2289,6 +2302,7 @@ module.exports = function createArena(h, opts = {}) {
         if (!u || now - p.lastUse < 600 * p.b.utilCd / SPEED) return;
         if (zwFrozen(p, now)) return;
         const def = I.UTILS[u.base];
+        if (def.use === 'throw' && safeIn(p)) return h.send(p.c, { type: 'shEvent', text: '🏰 No throwing inside the Guild House', kind: 'self' });
         if (def.use === 'heal') {
             if (def.full) {
                 p.hp = p.maxHp;
@@ -2642,6 +2656,10 @@ module.exports = function createArena(h, opts = {}) {
 
     function shoot(p, now) {
         if (p.dead || (pvp && pvp.phase !== 'fight')) return;
+        if (safeIn(p)) {
+            if (now >= (p.safeMsgAt || 0)) { p.safeMsgAt = now + 3000 / SPEED; h.send(p.c, { type: 'shEvent', text: '🏰 No shooting inside the Guild House', kind: 'self' }); }
+            return;
+        }
         const item = p.gear[p.slot] || p.gear.primary;
         const w = { ...I.weaponStats(item) };
         w.dmg *= p.dmgMul;
@@ -2824,6 +2842,8 @@ module.exports = function createArena(h, opts = {}) {
         if (creativeOf(v)) return false;
         // PvP: kein Schaden unter Teamkameraden
         if (attacker && attacker !== v && attacker.team && attacker.team === v.team) return false;
+        // Missionen (25.09.2026, Max): Spieler koennen sich gegenseitig nicht treffen
+        if (opts.mission && attacker && attacker !== v && players.has(attacker.id)) return false;
         // Guild House (25.09.2026): kein Schaden unter Spielern drinnen oder von drinnen
         // drinnen ist man ganz sicher (auch vor Mob-Schuessen durchs Tor), wer drinnen steht, trifft keine Spieler draussen
         if (attacker !== v && safeIn(v)) return false;
@@ -2947,6 +2967,7 @@ module.exports = function createArena(h, opts = {}) {
         const shooter = players.get(b.owner);
         const w = b.w;
         if (shooter !== v && safeIn(v)) return;
+        if (opts.mission && shooter && shooter !== v) return;
         let dmg = w.dmg;
         const crit = w.crit && Math.random() < w.crit;
         if (crit) dmg *= shooter ? shooter.b.critMul : 2;
@@ -3596,6 +3617,8 @@ module.exports = function createArena(h, opts = {}) {
             const [lo, hi] = MOB_LEVELS[regionAt(x, y)] || MOB_LEVELS.surface;
             m.lv = def.special ? hi + 5 : lo + Math.floor(Math.random() * (hi - lo + 1));
             if (opts.mission) m.lv = Math.max(1, m.lv + MISSION_DIFF[opts.mission.diff].lv);
+            // 25.09.2026 (Max): Hunde in fruehen Missionen etwas langsamer
+            if (opts.mission && kind === 'k9') m.sp = (m.sp || 1) * ({ easy: 0.7, normal: 0.8 }[opts.mission.diff] || 1);
             const k = m.lv - 1;
             m.hp = m.maxHp = Math.round(m.maxHp * (1 + MOB_LV_HP * k));
             m.dm = 1 + MOB_LV_DMG * k;
@@ -3628,7 +3651,9 @@ module.exports = function createArena(h, opts = {}) {
     const inGuild = (x, y, m = 0) => (MAP.guilds || []).some(g => inZone(x, y, g, m));
     // Safe Zone (25.09.2026, Max: „ich werd komplett vom Boss belagert"): wer im Guild House
     // oder im Tor steht, ist fuer Gegner unsichtbar und unangreifbar – und greift selbst nicht an
-    const GUILD_SAFE = 40;
+    // 25.09.2026 abends (Max: oben an der Mauer unsterblich und ballern): kein Rand mehr – nur drinnen
+    // und in den Toren; wer drin steht, kann nicht schiessen oder werfen
+    const GUILD_SAFE = 0;
     const safeIn = q => !!q && inGuild(q.x, q.y, GUILD_SAFE);
     const mobBlocked = (x, y, r) => blocked(x, y, r) || inZone(x, y, MAP.town, r) || inZone(x, y, MAP.outpost, r) || inGuild(x, y, r + 120);
 

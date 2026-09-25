@@ -12452,14 +12452,14 @@ function onShLeft(d) {
     // Mission (25.09.2026, Max): Uebersicht, danach zurueck ins Guild House
     if (d.mission) {
         const ms = d.mission;
-        hubLast = { result: 'dead', html: `💀 <b>Mission failed</b> – ${esc(ms.place)} (${esc(ms.name)}). Lost: ${list(d.lost)}${ms.saved.length ? ` · insured back in your stash: ${list(ms.saved)}` : ''}` };
+        hubLast = { result: 'dead', html: `💀 <b>Mission failed</b> – ${esc(ms.place)} (${esc(ms.name)}). Lost: ${list(d.lost)}${ms.saved.length ? ` · ${ms.safe ? 'first mission – everything back in your stash' : 'insured back in your stash'}: ${list(ms.saved)}` : ''}` };
         return shResult({
             kind: 'dead', big: '💀 MISSION FAILED',
             sub: `<div class="shr-mission">${ms.kind === 'lab' ? '🧬' : '🎖️'} ${esc(ms.place)} · ${({ easy: '💀', normal: '💀💀', hard: '💀💀💀' })[ms.diff] || ''} ${esc(ms.name)}</div>` +
                 (d.by ? `Killed by <b>${esc(d.by)}</b>${d.weapon ? ` with <span class="tier-${d.wtier}">${esc(d.weapon)}</span>` : ''}` : '') +
                 `<br>${ms.boss ? '✅ The boss was already down – but nobody made it out with you.' : '👑 The boss is still standing.'} You wake up in the Guild House.`,
-            stats: [[t, 'time'], [d.kills || 0, 'kills'], ['+' + xp.toLocaleString('en-US'), 'XP'], [ms.saved.length, 'insured saved']],
-            items: d.lost, itemsTitle: 'Lost', saved: ms.saved, again: 'guild'
+            stats: [[t, 'time'], [d.kills || 0, 'kills'], ['+' + xp.toLocaleString('en-US'), 'XP'], [ms.saved.length, ms.safe ? 'kept (first mission)' : 'insured saved']],
+            items: d.lost, itemsTitle: 'Lost', saved: ms.saved, savedTitle: ms.safe ? '🛡️ First mission on this difficulty – you keep everything' : '', again: 'guild'
         });
     }
     hubLast = { result: 'dead', html: `💀 <b>${d.result === 'left' ? 'You left the raid' : 'You died'}${d.by ? ` – killed by ${esc(d.by)}` : ''}.</b> Lost: ${list(d.lost)}` };
@@ -12498,7 +12498,7 @@ function shResult(r) {
     const items = r.items && r.items.length
         ? `<div class="shr-items"><h5>${r.itemsTitle} (${r.items.length})</h5><div>${r.items.map(it => `<span class="shr-it tier-${it.t}" title="${esc(it.n)}">${itemIcon(it)}<small>${esc(it.n)}</small></span>`).join('')}</div></div>`
         : r.itemsTitle ? `<div class="shr-items"><h5>${r.itemsTitle}</h5><div class="hint">nothing</div></div>` : '';
-    const saved = r.saved && r.saved.length ? `<div class="shr-items shr-saved"><h5>🛡️ Insurance – back in your stash (${r.saved.length})</h5><div>${r.saved.map(it => `<span class="shr-it tier-${it.t}" title="${esc(it.n)}">${itemIcon(it)}<small>${esc(it.n)}</small></span>`).join('')}</div></div>` : '';
+    const saved = r.saved && r.saved.length ? `<div class="shr-items shr-saved"><h5>${r.savedTitle || '🛡️ Insurance – back in your stash'} (${r.saved.length})</h5><div>${r.saved.map(it => `<span class="shr-it tier-${it.t}" title="${esc(it.n)}">${itemIcon(it)}<small>${esc(it.n)}</small></span>`).join('')}</div></div>` : '';
     el.className = 'sh-result ' + r.kind;
     el.hidden = false;
     el.innerHTML = `<div class="shr-box"><div class="shr-big">${r.big}</div>${r.sub ? `<div class="shr-sub">${r.sub}</div>` : ''}` +
@@ -15044,8 +15044,9 @@ function drawShopRaw() {
         $('shop-timer').textContent = r ? `New ${shopTab === 'daily' ? 'daily' : 'weekly'} offers in ${leftText(r.ends - performance.now())}` : '';
     } else {
         const owned = new Set((me && me.inventory) || []);
-        list = shopInfo.items.filter(it => it.cat === shopCat && (shopTab === 'all' || owned.has(it.id)));
-        const all = shopInfo.items.filter(it => it.cat === shopCat).length;
+        // Admin-Skins (hidden) sieht nur, wer sie hat
+        list = shopInfo.items.filter(it => it.cat === shopCat && (!it.hidden || owned.has(it.id)) && (shopTab === 'all' || owned.has(it.id)));
+        const all = shopInfo.items.filter(it => it.cat === shopCat && !it.hidden).length;
         $('shop-timer').textContent = shopTab === 'owned' ? `${list.length} of ${all} owned` : `${all} designs – buyable only while in the daily or weekly shop`;
     }
     $('shop-grid').innerHTML = list.map(shopCard).join('') ||

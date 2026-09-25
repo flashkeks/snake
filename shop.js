@@ -229,10 +229,15 @@ const ITEMS = [
     { id: 'char_cyborg', cat: 'char', name: 'Cyborg', icon: '🤖', price: 100000, desc: 'Half metal, one glowing eye', look: { h: 'cyborg', pal: { H: '#2a2a2a', G: '#8a929e', R: '#ff2020', C: '#3a4048', c: '#22262c', A: '#8a929e', B: '#00e5ff', P: '#3a4048', p: '#22262c', K: '#18181c' }, glow: { x: 4.5, y: 6.5, col: '255,40,40' } } },
     { id: 'char_hacker', cat: 'char', name: 'Neon Hacker', icon: '💻', price: 130000, desc: 'Dark hood, green glowing eyes', look: { h: 'hood', pal: { H: '#0a0a14', X: '#000000', e: '#00ff9c', C: '#0a0a14', c: '#141428', A: '#0a0a14', B: '#00ff9c', P: '#0a0a14', p: '#060610', K: '#00ff9c' }, glow: { x: 6.5, y: 6.5, col: '0,255,156' } } },
     { id: 'char_reaper', cat: 'char', name: 'Shadow Reaper', icon: '💀', price: 140000, desc: 'Shadow cloak, violet soul eyes', look: { h: 'hood', t: 'cape', pal: { H: '#1a1a22', X: '#000000', e: '#b06bff', Z: '#1a1a22', C: '#22222c', c: '#14141a', A: '#22222c', B: '#b06bff', P: '#14141a', p: '#0a0a0e', K: '#000000' }, glow: { x: 6.5, y: 6.5, col: '176,107,255' } } },
+    // Admin-Skins (25.09.2026, Max): nicht im Shop, nur ueber das Admin-Panel (Cosmetics → give)
+    { id: 'char_trump', cat: 'char', name: 'Trump', icon: '🇺🇸', price: 0, hidden: true, rarity: 'legendary', desc: 'Admin gift only', look: { h: 'swoop', t: 'suit', pal: { Y: '#f2c14e', s: '#f0b58a', C: '#1a2a4a', c: '#101a30', A: '#1a2a4a', S: '#ffffff', R: '#c01818', P: '#1a2a4a', p: '#101a30', K: '#111111' } } },
+    { id: 'char_kirk', cat: 'char', name: 'Charlie Kirk', icon: '🎤', price: 0, hidden: true, rarity: 'legendary', desc: 'Admin gift only', look: { h: 'short', t: 'suit', pal: { H: '#3a2a1a', C: '#1f2a44', c: '#141c30', A: '#1f2a44', S: '#ffffff', R: '#2a5ab8', P: '#1f2a44', p: '#141c30', K: '#111111' } } },
+    { id: 'char_generalissimo', cat: 'char', name: 'The Generalissimo', icon: '🎖️', price: 0, hidden: true, rarity: 'legendary', desc: 'A made-up dictator – admin gift only', look: { h: 'general', t: 'uniform', pal: { H: '#3a4a2a', Y: '#ffd23f', G: '#1a1a1a', k: '#0a0a0a', M: '#2a1a0a', C: '#4a5a36', c: '#34422a', A: '#4a5a36', Z: '#c01818', R: '#c01818', B: '#1a1a1a', P: '#34422a', p: '#26301e', K: '#111111' } } },
     { id: 'char_emperor', cat: 'char', name: 'Golden Emperor', icon: '👑', price: 160000, desc: 'Crown, gold armor, royal cape', look: { h: 'crown', t: 'cape', pal: { Y: '#ffd23f', J: '#ff2080', Z: '#a01020', C: '#ffd23f', c: '#c9a200', A: '#ffd23f', B: '#a01020', P: '#f4f0e6', p: '#d8d0c0', K: '#c9a200' }, glow: { x: 5.5, y: 4, col: '255,210,63' } } }
 ];
 
 for (const it of ITEMS) {
+    if (it.hidden && it.rarity) continue; // Admin-Skins: Seltenheit fest, nicht nach Preis
     let r = RARITIES[0];
     for (const x of RARITIES) if (it.price >= x.min) r = x;
     it.rarity = r.id;
@@ -310,7 +315,7 @@ function rotation(now = Date.now()) {
         const taken = new Set();
         // Weekly: ein Legendary-Skin, eine Epic/Legendary-Figur + drei weitere Epic/Legendary
         const wr = seeded('W' + week);
-        const premium = ITEMS.filter(it => !it.free && (it.rarity === 'epic' || it.rarity === 'legendary'));
+        const premium = ITEMS.filter(it => !it.free && !it.hidden && (it.rarity === 'epic' || it.rarity === 'legendary'));
         const weekIds = [
             ...pick(wr, premium.filter(it => it.cat === 'skin' && it.rarity === 'legendary'), 1, taken),
             // 25.09.2026: jede Woche eine Epic/Legendary-Figur
@@ -319,7 +324,7 @@ function rotation(now = Date.now()) {
         ];
         // Daily: 2 Skins, 2 Koepfe, Trail, Tod, Name, Charakter (25.09.2026), dazu ein beliebiges (ohne Legendary)
         const dr = seeded('D' + b.day);
-        const daily = ITEMS.filter(it => !it.free && it.rarity !== 'legendary');
+        const daily = ITEMS.filter(it => !it.free && !it.hidden && it.rarity !== 'legendary');
         const of = cat => daily.filter(it => it.cat === cat);
         const dayIds = [
             ...pick(dr, of('skin'), 2, taken), ...pick(dr, of('head'), 2, taken),

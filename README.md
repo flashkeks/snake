@@ -3247,3 +3247,29 @@ Jetzt (`gdRedraw`, `public/index.html`):
 - **„Store all →"** lagert den ganzen Rucksack ein.
 - Server: `gDeposit`/`gWithdraw` nehmen jetzt auch `uids` (bis 60), hören auf, sobald das
   Ziel voll ist. Test: 5 auf einmal eingelagert, Rucksack-Limit stoppt, altes Einzelformat geht weiter.
+
+## 🏰 Missionen und Safe Zone nachgeschärft, Admin-Skins (25.09.2026 abends, Max)
+
+- **Kein PvP in Missionen:** `damage()` und `hitPlayer` ignorieren Spieler-gegen-Spieler, solange
+  die Instanz eine Mission ist (auch Brennen/Frost/Festnageln greifen nicht).
+- **Hunde** (`k9`) in Missionen langsamer: Easy ×0,7, Normal ×0,8, Hard unverändert.
+- **Erste Mission je Stufe verliert nichts:** Beim Start prüft `dungeon-rooms.js`, ob das Konto
+  auf dieser Stufe schon eine Mission geschafft hat (`missions_<stufe>`); wenn nicht, `p.safeRun`
+  und Ansage „First mission on this difficulty – if you fall, you keep all your gear". Stirbt man
+  (oder die Verbindung reißt), geht alles Mitgebrachte und Gefundene ins Lager (`addItems`, bei
+  vollem Lager in die Warteschlange); die Todesübersicht sagt „kept (first mission)".
+  Solange man die Stufe nicht geschafft hat, gilt der Schutz bei jedem Versuch.
+- **Ausgang erst nach dem Boss:** Der Missions-Ausgang meldet „🔒 The exit opens once the boss is
+  down", bis `missionDone`.
+- **Safe Zone:** kein Rand mehr (`GUILD_SAFE = 0`) – nur drinnen und in den Toren. Vorher zählte
+  ein 40-px-Streifen außen an der Mauer: oben an die Mauer stellen = unsterblich. Und in der Safe
+  Zone kann man **nicht schießen und nichts werfen** („No shooting inside the Guild House").
+- **Admin-Skins** (`hidden: true`, nie in der Rotation, im Shop-Katalog nur sichtbar, wenn man sie
+  hat; vergeben über Admin-Panel → Konto → Cosmetics): **Trump** (blonde Tolle, Anzug, rote
+  Krawatte), **Charlie Kirk** (kurze dunkle Haare, Anzug, blaue Krawatte), **The Generalissimo**
+  (erfundener Diktator: Schirmmütze, Sonnenbrille, Schnurrbart, Uniform mit Orden und Schärpe).
+  Skins realer faschistischer Diktatoren (Hitler, Mussolini) gibt es bewusst nicht.
+
+Test (6/6): kein Schaden zwischen Spielern in der Mission, Ausgang vor dem Boss zu, Hund ×0,7 auf
+Easy, erste Mission gibt Ausrüstung und Rucksack zurück, drinnen kein Schuss, außen an der oberen
+Mauer wieder verwundbar.

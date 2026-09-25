@@ -26,11 +26,20 @@
         chef: ['....WWWWW.......', '...WWWWWWW......', '...WWWWWWW......', '....WWWWW.......', '...sssessss.....', '...ssssssss.....', '....smmss.......', '.....sss........'],
         hair: ['....HHHHH.......', '...HHHHHHH......', '..HHHHHHHHH.....', '..HHssssssH.....', '..Hsssessss.....', '..Hssssssss.....', '..H.ssmss.......', '.....sss........'],
         tophat: ['....HHHHH.......', '....HHHHH.......', '....RRRRR.......', '..HHHHHHHHH.....', '...ssssssss.....', '...sssessss.....', '....ssmss.......', '.....sss........'],
+        // Admin-Skins (25.09.2026, nicht kaufbar)
+        swoop: ['................', '...YYYYYYY......', '..YYYYYYYYYY....', '..YYssssYYY.....', '...sssessss.....', '...ssssssss.....', '....ssmss.......', '.....sss........'],
+        // erfundener Diktator: Schirmmuetze mit Goldabzeichen, Sonnenbrille, Schnurrbart
+        general: ['...HHHHHHH......', '..HHHHYYHHH.....', '.GGGGGGGGGG.....', '...ssssssss.....', '...skkkkkss.....', '...ssssssss.....', '....MMMMs.......', '.....sss........'],
+        short: ['................', '....HHHHH.......', '...HHHHHHH......', '...HHssssH......', '...sssessss.....', '...ssssssss.....', '....ssmss.......', '.....sss........'],
         cyborg: ['....HHHHH.......', '...HHHHHHH......', '...GGGsssss.....', '...GGGsssss.....', '...GRGsesss.....', '...GGGsssss.....', '....GGmss.......', '.....sss........']
     };
     const TORSO = {
         normal: ['...CCCCCCC......', '..CCCCCCCWWWWWWW', '..CcCCCCCcwwwwww', '..CcCCCCCc......', '..CcBBBBBc......', '..CcCCCCCc......', '...PPPPPP.......', '...PP..PP.......'],
         fat: ['..CCCCCCCCC.....', '.CCCCCCCCCCWWWWW', '.CcCCCCCCCcwwwww', '.CcCCCCCCCCc....', '.CcCCCCCCCCc....', '..CcCCCCCCc.....', '...PPPPPPP......', '...PP...PP......'],
+        // Uniform mit Schaerpe (Z) und Orden (Y, R)
+        uniform: ['...CCCCCCC......', '..CCZCCCCWWWWWWW', '..CcCZYRCcwwwwww', '..CcCCZCCc......', '..CcBBBZBc......', '..CcCCCCZc......', '...PPPPPP.......', '...PP..PP.......'],
+        // Anzug mit Hemdkragen (S) und Krawatte (R)
+        suit: ['...CCSRSCC......', '..CCCCRCCWWWWWWW', '..CcCCRCCcwwwwww', '..CcCCRCCc......', '..CcCCRCCc......', '..CcCCCCCc......', '...PPPPPP.......', '...PP..PP.......'],
         // Umhang hinter dem Ruecken (Charakter-Skins)
         cape: ['.ZZCCCCCCC......', '.ZCCCCCCCCWWWWWWW', '.ZCcCCCCCcwwwwww', 'ZZCcCCCCCc......', 'ZZCcBBBBBc......', 'ZZCcCCCCCc......', 'ZZZPPPPPP.......', 'Z.ZPP..PP.......'].map(r => r.slice(0, 16))
     };
