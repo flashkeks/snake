@@ -3144,7 +3144,8 @@ module.exports = function createArena(h, opts = {}) {
             // 6.5: Zustand der neuen Faehigkeiten fuer die Optik
             b.enraged ? 1 : 0, now < (b.spiralUntil || 0) ? 1 : 0, now < (b.vortexUntil || 0) ? 1 : 0,
             b.beamAt ? Math.max(0, Math.round(b.beamAt - now)) : 0, b.beamAt || now < (b.beamUntil || 0) ? Math.round(b.beamA * 100) / 100 : null,
-            b.introUntil && now < b.introUntil ? Math.round(b.introUntil - now) : 0] : null;
+            b.introUntil && now < b.introUntil ? Math.round(b.introUntil - now) : 0,
+            b.jumpAt ? Math.max(0, Math.round(b.jumpAt - now)) : 0] : null;
     }
 
     // Spieler trifft Gegner
@@ -3581,6 +3582,73 @@ module.exports = function createArena(h, opts = {}) {
         return false;
     }
 
+    // 25.09.2026 (Ticket #6, Maddy + Max): Raid-Bosse haengen zwischen Waenden und
+    // in Haeusern fest. Kein Durch-die-Wand-Laufen, sondern: merkt der Boss, dass er
+    // seit BOSS_STUCK_MS kaum vorankommt, obwohl er irgendwo hin will, springt er an
+    // eine freie Stelle naeher am Ziel (Vorwarnkreis, Druckwelle bei der Landung).
+    const BOSS_STUCK_MS = 2500, BOSS_STUCK_DIST = 60, BOSS_JUMP_WARN = 700, BOSS_JUMP_CD = 5000;
+    function bossStuckCheck(m, tgt, now) {
+        if (!m.progAt || m.jumpAt) { m.progAt = now; m.progX = m.x; m.progY = m.y; return false; }
+        if (now - m.progAt < BOSS_STUCK_MS / SPEED) return false;
+        const moved = Math.hypot(m.x - m.progX, m.y - m.progY);
+        m.progAt = now;
+        m.progX = m.x;
+        m.progY = m.y;
+        if (moved >= BOSS_STUCK_DIST || now < (m.jumpCd || 0)) return false;
+        // will er ueberhaupt irgendwo hin? Mit Ziel: nur wenn keine freie Schusslinie
+        // (sonst steht er absichtlich und schiesst); ohne Ziel: Wanderziel noch weit weg
+        const gx = tgt ? tgt.x : m.tx, gy = tgt ? tgt.y : m.ty;
+        if (tgt ? clear(m.x, m.y, tgt.x, tgt.y) : Math.hypot(gx - m.x, gy - m.y) < 120) return false;
+        return bossJump(m, gx, gy, !!tgt, now);
+    }
+    function bossJump(m, gx, gy, useNav, now) {
+        const r = m.def.r;
+        if (useNav) navBuild(now, 'big');
+        const cost = (x, y) => {
+            if (useNav) {
+                const cx = Math.floor(x / NAV_CELL), cy = Math.floor(y / NAV_CELL);
+                const v = cx >= 0 && cy >= 0 && cx < NAV_W && cy < NAV_H ? navDist[cy * NAV_W + cx] : Infinity;
+                if (Number.isFinite(v)) return v * NAV_CELL;
+            }
+            return Math.hypot(gx - x, gy - y);
+        };
+        const here = cost(m.x, m.y);
+        let best = null, bc = here - 80;
+        for (let d = 160; d <= 480; d += 80) {
+            for (let k = 0; k < 16; k++) {
+                const a = k / 16 * Math.PI * 2, x = m.x + Math.cos(a) * d, y = m.y + Math.sin(a) * d;
+                if (mobBlocked(x, y, r + 4)) continue;
+                // nicht auf jemandem landen
+                if ([...players.values()].some(q => !q.dead && Math.hypot(q.x - x, q.y - y) < r + R + 80)) continue;
+                const c = cost(x, y);
+                if (c < bc) { best = { x, y }; bc = c; }
+            }
+        }
+        // nichts Besseres in Sprungweite: an die freie Stelle nahe dem Ziel
+        if (!best) {
+            const a = Math.atan2(m.y - gy, m.x - gx);
+            best = freeNear(gx + Math.cos(a) * (r + R + 120), gy + Math.sin(a) * (r + R + 120), r + 4);
+        }
+        if (!best) return false;
+        m.jumpAt = now + BOSS_JUMP_WARN / SPEED;
+        m.jx = best.x;
+        m.jy = best.y;
+        m.jumpCd = now + BOSS_JUMP_CD / SPEED;
+        fxAt(best.x, best.y, { type: 'shFx', kind: 'jumpwarn', x: Math.round(best.x), y: Math.round(best.y), r: r + 60, from: [Math.round(m.x), Math.round(m.y)] });
+        return true;
+    }
+    function bossLand(m, now) {
+        m.x = m.jx;
+        m.y = m.jy;
+        m.jumpAt = 0;
+        m.progAt = now;
+        m.progX = m.x;
+        m.progY = m.y;
+        const r = m.def.r + 90;
+        fxAt(m.x, m.y, { type: 'shBoom', x: Math.round(m.x), y: Math.round(m.y), r, nuke: false });
+        for (const q of near(m.x, m.y, r + R)) damage(q, null, 50 * (m.dm || 1), now, q.x, q.y, { how: 'boss', by: m.def.icon + ' ' + m.def.name, noDodge: true });
+    }
+
     function mobTick(m, now, dt) {
         const def = m.def;
         // Steckt trotzdem einer fest (alte Spawns, Rueckstoss): rausschieben, hoechstens alle 0,5 s pruefen
@@ -3663,6 +3731,14 @@ module.exports = function createArena(h, opts = {}) {
                     m.nextShot = Math.max(m.nextShot, now + (600 + Math.random() * 300) / SPEED);
                 }
             }
+        }
+        // Raid-Boss steckt fest -> Sprung (steht waehrend der Vorwarnung)
+        if (def.boss && !def.zombie) {
+            if (m.jumpAt) {
+                if (now >= m.jumpAt) bossLand(m, now);
+                return;
+            }
+            if (!m.charging && !m.chargeAt && !m.slamAt && bossStuckCheck(m, tgt, now)) return;
         }
         // Provozierter Raid-Boss: Einschlaege auf Fernschuetzen ausserhalb der Reichweite
         const provoked = def.boss && !def.zombie && now < (m.provoked || 0);
