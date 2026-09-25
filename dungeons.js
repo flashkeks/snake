@@ -47,6 +47,7 @@ function buildDungeon(kind, seed) {
     const pick = list => { const tot = list.reduce((s, [, w]) => s + w, 0); let r = rand() * tot; for (const [k, w] of list) if ((r -= w) < 0) return k; return list[0][0]; };
     const GW = Math.floor(th.w / TS), GH = Math.floor(th.h / TS);
     const floor = new Uint8Array(GW * GH);          // 1 = Boden
+    const corr = new Uint8Array(GW * GH);           // 1 = Gang (fuer die Optik)
     const solid = new Uint8Array(GW * GH);          // 1 = Deckung/Saeule mitten im Boden (bleibt Wand)
     const at = (x, y) => x >= 0 && y >= 0 && x < GW && y < GH;
     const setF = (x, y) => { if (at(x, y) && x > 0 && y > 0 && x < GW - 1 && y < GH - 1) floor[y * GW + x] = 1; };
@@ -111,10 +112,12 @@ function buildDungeon(kind, seed) {
         }
         if (bj >= 0) edges.push([i, bj, bd]);
     }
+    const inRoom = (x, y) => rooms.some(r => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h);
+    const setC = (x, y) => { if (at(x, y) && !floor[y * GW + x] && !inRoom(x, y)) corr[y * GW + x] = 1; setF(x, y); };
     const carveLine = (x0, y0, x1, y1, wd) => {
         const off = -Math.floor((wd - 1) / 2);
-        if (y0 === y1) for (let x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) for (let k = 0; k < wd; k++) setF(x, y0 + off + k);
-        else for (let y = Math.min(y0, y1); y <= Math.max(y0, y1); y++) for (let k = 0; k < wd; k++) setF(x0 + off + k, y);
+        if (y0 === y1) for (let x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) for (let k = 0; k < wd; k++) setC(x, y0 + off + k);
+        else for (let y = Math.min(y0, y1); y <= Math.max(y0, y1); y++) for (let k = 0; k < wd; k++) setC(x0 + off + k, y);
     };
     for (const [i, j] of edges) {
         const a = rooms[i], b = rooms[j];
@@ -261,12 +264,33 @@ function buildDungeon(kind, seed) {
         if (far[y * GW + x] >= 12 && isFloor(x, y) && free(px(x), px(y), 34)) spawns.push({ x: px(x), y: px(y), d: far[y * GW + x] });
     }
 
+    // Optik (25.09.2026): Kachelraster fuer den Client, Stil je Raum, Lampen
+    // Zeichen: 0 nichts/Wand, 1 Raumboden, 2 Gang, 3 Saeule, 4 Tank, 5 Deckung
+    let tiles = '';
+    for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) {
+        const i = y * GW + x;
+        tiles += !floor[i] ? '0' : solid[i] === 1 ? '3' : solid[i] === 2 ? '4' : solid[i] === 3 ? '5' : corr[i] ? '2' : '1';
+    }
+    const STYLES = kind === 'lab' ? ['clean', 'clean', 'office', 'cryo', 'bio'] : ['concrete', 'concrete', 'hangar', 'barracks', 'armory'];
+    const lights = [];
+    for (const r of rooms) {
+        r.style = r === start ? STYLES[0] : STYLES[ri(0, STYLES.length - 1)];
+        const n = r.w * r.h > 50 ? 2 : 1;
+        for (let k = 0; k < n; k++) {
+            const lx = n === 1 ? r.cx : r.x + (k + 0.5) * r.w / n, ly = r.cy;
+            lights.push([Math.round(px(Math.floor(lx))), Math.round(px(ly)), 420 + ri(0, 160), rand() < 0.15 ? 1 : 0]);
+        }
+    }
+    // Gaenge: alle ~7 Kacheln eine Lampe
+    let cc = 0;
+    for (let y = 1; y < GH - 1; y++) for (let x = 1; x < GW - 1; x++) if (corr[y * GW + x] && ++cc % 9 === 0) lights.push([px(x), px(y), 260, rand() < 0.3 ? 1 : 0]);
+
     return {
-        kind, seed, name: th.name, w: GW * TS, h: GH * TS,
+        kind, seed, name: th.name, w: GW * TS, h: GH * TS, ts: TS, gw: GW, gh: GH, tiles, lights,
         walls: walls.map(w => w.map(Math.round)), buildings: [], doors: [], bushes: [], extracts: [],
         crates, stations, deco, town: null, outpost: null, military: null,
         regions: [{ id: kind, name: th.name, level: th.level, x: 0, y: 0, w: GW * TS, h: GH * TS }],
-        spawn, spawns, rooms: rooms.map(r => ({ x: r.x * TS, y: r.y * TS, w: r.w * TS, h: r.h * TS, cx: px(r.cx), cy: px(r.cy), d: r.d, shape: r.shape })),
+        spawn, spawns, rooms: rooms.map(r => ({ x: r.x * TS, y: r.y * TS, w: r.w * TS, h: r.h * TS, cx: px(r.cx), cy: px(r.cy), d: r.d, shape: r.shape, style: r.style })),
         farRooms: byFar.slice(0, 3).map(r => ({ x: px(r.cx), y: px(r.cy) }))
     };
 }

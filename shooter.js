@@ -1184,7 +1184,10 @@ module.exports = function createArena(h, opts = {}) {
                 extracts: MAP.extracts, extractR: EXTRACT_R, r: R, move: MOVE, view: VIEW, throwRange: I.THROW_RANGE,
                 stations: MAP.stations, town: MAP.town, outpost: MAP.outpost, military: MAP.military, mobs: M.catalog(),
                 trader: { buy: TRADER_BUY, sell: TRADER_SELL }, medic: { cost: MEDIC_COST, cd: MEDIC_CD },
-                perks: ZMB_PERKS, arena: MAP.arena || null, name: MAP.name || null, regions: MAP.regions || null, deco: MAP.deco || null
+                perks: ZMB_PERKS, arena: MAP.arena || null, name: MAP.name || null, regions: MAP.regions || null, deco: MAP.deco || null,
+                // Dungeons (25.09.2026): Raster, Lampen, Raumstile fuer dfx.js
+                tiles: MAP.tiles || undefined, ts: MAP.ts, gw: MAP.gw, gh: MAP.gh, lights: MAP.lights, kind: MAP.kind, seed: MAP.seed,
+                rooms: MAP.tiles ? MAP.rooms.map(r => ({ x: r.x, y: r.y, w: r.w, h: r.h, style: r.style })) : undefined
             },
             packMax: p0PackMax(c), feed: pvp ? [] : feedLog.slice(-6), mode, team: players.get(c.id) ? players.get(c.id).team : undefined,
             mapName: MAP.name || null
@@ -4863,11 +4866,26 @@ module.exports = function createArena(h, opts = {}) {
         if (now - lastSend >= SEND_MS / SPEED) push(now);
     }
 
+    // Dungeons (25.09.2026): Sichtlinie ueber das Kachelraster, wie im Client (dfx.js):
+    // Wand ('0') und Saeule ('3') verdecken, Tanks und Deckung nicht
+    const losT = MAP.tiles ? MAP.ts : 0;
+    function los(x1, y1, x2, y2) {
+        const d = Math.hypot(x2 - x1, y2 - y1), n = Math.ceil(d / 24);
+        for (let i = 1; i < n; i++) {
+            const tx = Math.floor((x1 + (x2 - x1) * i / n) / losT), ty = Math.floor((y1 + (y2 - y1) * i / n) / losT);
+            if (tx < 0 || ty < 0 || tx >= MAP.gw || ty >= MAP.gh) return false;
+            const t = MAP.tiles[ty * MAP.gw + tx];
+            if (t === '0' || t === '3') return false;
+        }
+        return true;
+    }
+
     function push(now) {
         lastSend = now;
         const plist = [...players.values()];
         for (const p of plist) {
-            const inView = (x, y) => Math.abs(x - p.x) < VIEW && Math.abs(y - p.y) < VIEW * 0.75;
+            const inView = losT ? (x, y) => Math.abs(x - p.x) < VIEW && Math.abs(y - p.y) < VIEW * 0.75 && los(p.x, p.y, x, y)
+                : (x, y) => Math.abs(x - p.x) < VIEW && Math.abs(y - p.y) < VIEW * 0.75;
             const w = p.gear[p.slot] || p.gear.primary;
             h.send(p.c, {
                 type: 'sh', t: now, ack: p.seq,
@@ -4899,7 +4917,7 @@ module.exports = function createArena(h, opts = {}) {
                     fx: Object.fromEntries(Object.entries(zb.fx).filter(([, t]) => t > now).map(([k, t]) => [k, Math.round(t - now)])),
                     pap: zPapPrice((p.gear[p.slot] && p.gear[p.slot].pap) || 0), box: zBoxPrice(p.boxN || 0), heal: zHealPrice(zb.wave, p.healN || 0), ubox: zUboxPrice(p.uboxN || 0), shrine: zShrinePrice(zb.shrineN), armor: p.armorN || 0,
                     team: plist.map(q => [q.name, Math.floor(q.pts), zb.kills.get(q.id) || 0, q.dead ? 1 : 0]) } : undefined,
-                players: [...plist.filter(q => q === p || (inView(q.x, q.y) && canSee(p, q, now))), ...decoys.filter(d => d.pid !== p.id && inView(d.x, d.y) && players.has(d.pid)).map(d => ({ ...players.get(d.pid), id: d.id, x: d.x, y: d.y, a: d.a })),
+                players: [...plist.filter(q => q === p || ((losT ? Math.hypot(q.x - p.x, q.y - p.y) < VIEW * 1.5 : inView(q.x, q.y)) && canSee(p, q, now))), ...decoys.filter(d => d.pid !== p.id && inView(d.x, d.y) && players.has(d.pid)).map(d => ({ ...players.get(d.pid), id: d.id, x: d.x, y: d.y, a: d.a })),
                     ...clones.filter(k => inView(k.x, k.y) && players.has(k.owner)).map(k => ({ ...players.get(k.owner), id: k.id, x: k.x, y: k.y, a: k.a, clone: true, orbitOn: false, titanUntil: 0 }))].map(q => {
                     const qw = q.gear[q.slot] || q.gear.primary;
                     return {

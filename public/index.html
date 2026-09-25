@@ -12592,8 +12592,10 @@ function shFrame() {
     c.fillRect(0, 0, cw, ch);
     c.setTransform(s, 0, 0, s, -shCam.x * s, -shCam.y * s);
 
-    // Boden mit Gitter (nur sichtbarer Teil); Zombie-Map hat eigenen Boden (zfx.js)
-    if (!zMallFloor(c, m, shCam, viewW, viewH, now)) {
+    // Boden mit Gitter (nur sichtbarer Teil); Zombie-Map hat eigenen Boden (zfx.js);
+    // Dungeons (25.09.2026) backen Boden und Waende in dfx.js
+    const dun = !!m.tiles && dDraw(c, m, shCam, viewW, viewH);
+    if (dun) { /* Boden und Waende schon gezeichnet */ } else if (!zMallFloor(c, m, shCam, viewW, viewH, now)) {
         rFloor(c, m, reg, shCam, viewW, viewH, now);
         if (reg.id === 'surface') for (const [x, y, w, bh] of m.buildings) if (vis(x, y, Math.max(w, bh))) rBuildingFloor(c, x, y, w, bh);
     }
@@ -12614,7 +12616,7 @@ function shFrame() {
     }
     // Waende
     zMallDecor(c, m, shCam, viewW, viewH, now);
-    for (const [x, y, w, h] of m.walls) {
+    if (!dun) for (const [x, y, w, h] of m.walls) {
         if (!vis(x, y, Math.max(w, h))) continue;
         if (zMallWall(c, m, x, y, w, h)) continue;
         if (rWall(c, reg, x, y, w, h)) continue;
@@ -12626,9 +12628,11 @@ function shFrame() {
         c.fillRect(x, y, w, 5);
     }
     rDeco(c, m, shCam, viewW, viewH, now, latest.tanks ? new Map(latest.tanks) : null);
-    c.strokeStyle = reg.id === 'lab' ? '#29c6a0' : reg.id === 'bunker' ? '#d8a820' : '#ff5bd6';
-    c.lineWidth = 8;
-    c.strokeRect(reg.x + 4, reg.y + 4, reg.w - 8, reg.h - 8);
+    if (!dun) {
+        c.strokeStyle = reg.id === 'lab' ? '#29c6a0' : reg.id === 'bunker' ? '#d8a820' : '#ff5bd6';
+        c.lineWidth = 8;
+        c.strokeRect(reg.x + 4, reg.y + 4, reg.w - 8, reg.h - 8);
+    }
     // Feuerflaechen (Molotov)
     for (const [, x, y, r, , acid] of latest.fires || []) {
         if (acid) {
@@ -13514,6 +13518,12 @@ function shFrame() {
         c.globalAlpha = 1;
     }
 
+    // Dungeons (25.09.2026): Licht und Sichtfeld ueber die Welt, dann weiter in Weltkoordinaten
+    if (dun) {
+        const eye = shPred || shMeServer() || { x: shCam.x + viewW / 2, y: shCam.y + viewH / 2 };
+        dOverlay(c, m, shCam, s, cw, ch, eye.x, eye.y, now);
+        c.setTransform(s, 0, 0, s, -shCam.x * s, -shCam.y * s);
+    }
     // Fadenkreuz
     if (shMouse && !shTouch.aim) {
         const wx = shCam.x + shMouse.x * dpr / s, wy = shCam.y + shMouse.y * dpr / s;
@@ -13547,7 +13557,7 @@ function shFrame() {
         c.fillStyle = g;
         c.fillRect(0, 0, W, H);
     }
-    shMinimap(c, latest, W, H);
+    if (!sh.map.tiles) shMinimap(c, latest, W, H);   // Zufalls-Dungeons: keine Minimap
     shEventHud(c, latest, W, H, now, dpr);
 
     // Kill-Feed
@@ -16215,5 +16225,6 @@ function slotResult(d) {
 <script src="/market.js"></script>
 <script src="/zfx.js"></script>
 <script src="/rfx.js"></script>
+<script src="/dfx.js"></script>
 </body>
 </html>
