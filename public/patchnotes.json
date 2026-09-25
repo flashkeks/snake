@@ -1,5 +1,17 @@
 [
   {
+    "version": "7.0 (preview)",
+    "date": "25.09.2026",
+    "items": [
+      "🏚️ The military base and the lab are now dungeons: your own instance per party, a new twisting layout every run – hatches on the surface take you down, the exit brings you back",
+      "🎖️ New enemies in the military base: Heavy Gunner, Grenadier, Riot Trooper (shield in front – flank him!), Attack Dogs",
+      "🧬 New enemies in the lab: Acid Spitter, Phase Shade, Leech Swarm, Cryo Experiment",
+      "⚠️ Rare special characters: Rick Sanchez and Satoru Gojo in the lab, Tanya Degurechaff and Roy Mustang in the military base",
+      "🧭 Enemies find their way around walls now, and their levels hit much harder (level 45 = triple HP)",
+      "👑 Surface bosses: 30% less chance for Legendary and better"
+    ]
+  },
+  {
     "version": "6.15",
     "date": "25.09.2026",
     "items": [

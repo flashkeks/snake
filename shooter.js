@@ -86,6 +86,9 @@ const MOB_LEVELS = { surface: [1, 10], bunker: [20, 30], lab: [40, 50] };
 // Lv 45 x3,0 (+200 %), Schaden Lv 45 x2,3. Obendrauf die Ebenen-Faktoren (UNDER_MOBS).
 const MOB_LV_HP = 0.045, MOB_LV_DMG = 0.03, MOB_LV_XP = 0.05;
 const MOB_EPIC_MUL = { surface: 0.5, bunker: 0.5, lab: 1 };
+// Spezial-Charaktere (25.09.2026): je Dungeon-Run einmal SPECIAL_CHANCE, nach SPECIAL_AFTER ms
+const SPECIALS = { bunker: ['tanya', 'mustang'], lab: ['rick', 'gojo'] };
+const SPECIAL_CHANCE = 0.15, SPECIAL_AFTER = [45e3, 90e3];
 const MOB_WAKE = 1700;
 const MIL_RESPAWN = 5 * 60e3;
 // Untergrund (6.12, Max: Gegner dort „gerne deutlich staerker")
@@ -3303,7 +3306,7 @@ module.exports = function createArena(h, opts = {}) {
         // Level (nur Extraction, keine Bosse): Ebene bestimmt den Bereich
         if (pve && !def.boss && !def.zombie) {
             const [lo, hi] = MOB_LEVELS[regionAt(x, y)] || MOB_LEVELS.surface;
-            m.lv = lo + Math.floor(Math.random() * (hi - lo + 1));
+            m.lv = def.special ? hi + 5 : lo + Math.floor(Math.random() * (hi - lo + 1));
             const k = m.lv - 1;
             m.hp = m.maxHp = Math.round(m.maxHp * (1 + MOB_LV_HP * k));
             m.dm = 1 + MOB_LV_DMG * k;
@@ -3374,6 +3377,8 @@ module.exports = function createArena(h, opts = {}) {
             }
         }
         if (!(w && w.pure)) dmg *= m.def.taken || 1;
+        // Gojo (25.09.2026): Infinity – aus der Ferne kommt kaum etwas an
+        if (m.def.infinity && attacker && attacker.x !== undefined && Math.hypot(attacker.x - m.x, attacker.y - m.y) > 300) dmg *= 0.15;
         // Riot Trooper (25.09.2026): Schild vorne haelt 80 % ab – flankieren!
         if (m.def.shield && attacker && attacker.x !== undefined && !(w && (w.pure || w.dot))) {
             let da = Math.atan2(attacker.y - m.y, attacker.x - m.x) - m.a;
@@ -3502,6 +3507,19 @@ module.exports = function createArena(h, opts = {}) {
             for (const o of [...mobs]) if (o.parent === m.id) mobs.splice(mobs.indexOf(o), 1);
             return;
         }
+        if (def.special) {
+            const n = def.drop ? def.drop.n : 3;
+            for (let k = 0; k < n; k++) {
+                const a = k / n * Math.PI * 2, x = m.x + Math.cos(a) * 55, y = m.y + Math.sin(a) * 55;
+                dropBag(blocked(x, y, 10) ? m.x : x, blocked(x, y, 10) ? m.y : y, [I.generate('boss')], 'boss');
+            }
+            fxAt(m.x, m.y, { type: 'shBoom', x: Math.round(m.x), y: Math.round(m.y), r: 200, nuke: false });
+            for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `${def.icon} ${killer ? killer.name + ' defeated' : 'Down goes'} ${def.name}! ${n} items dropped`, kind: 'drop' });
+            if (killer) { award(killer, L.XP.boss * 0.6, def.name.toLowerCase()); weaponXp(killer, L.XP.boss * 0.6); }
+            for (const o of [...mobs]) if (o.parent === m.id) mobs.splice(mobs.indexOf(o), 1);
+            fxAt(m.x, m.y, { type: 'shFx', kind: 'mobdie', x: Math.round(m.x), y: Math.round(m.y), icon: def.icon });
+            return;
+        }
         if (m.kind === 'enforcer') enforcerAt.push(now + ENFORCER_RESPAWN / SPEED);
         if (killer) {
             const mxp = L.XP[def.xp] * (def.xpMul || 1) * (1 + MOB_LV_XP * ((m.lv || 1) - 1));
@@ -3555,7 +3573,7 @@ module.exports = function createArena(h, opts = {}) {
         const d = Math.hypot(gx - m.x, gy - m.y);
         if (d < 1) return;
         const step = Math.min(d, speed * (m.sp || 1) * (m.enraged ? 1.25 : 1) * dt * (m.slowUntil > Date.now() ? 0.5 : 1));
-        const [nx, ny] = slide(m.x, m.y, (gx - m.x) / d * step, (gy - m.y) / d * step, m.def.r, mobBlocked);
+        const [nx, ny] = slide(m.x, m.y, (gx - m.x) / d * step, (gy - m.y) / d * step, m.def.r, m.def.fly ? (x, y, r) => world.outside(x, y, r) : mobBlocked);
         const moved = Math.hypot(nx - m.x, ny - m.y);
         m.x = nx;
         m.y = ny;
@@ -3874,6 +3892,80 @@ module.exports = function createArena(h, opts = {}) {
         for (const q of near(m.x, m.y, r + R)) damage(q, null, 50 * (m.dm || 1), now, q.x, q.y, { how: 'boss', by: m.def.icon + ' ' + m.def.name, noDodge: true });
     }
 
+    // Spezial-Charaktere (25.09.2026): eigene Faehigkeiten
+    function specialTick(m, tgt, now, cd) {
+        const def = m.def, dm = m.dm || 1, by = def.icon + ' ' + def.name;
+        const strike = (x, y, r, dmg, warn, look, fire) => strikes.push({ id: ++seqId, x, y, r, dmg: dmg * dm, at: now + warn / SPEED, total: warn, by, how: 'boss', look, fire: !!fire, acid: false });
+        if (m.kind === 'rick') {
+            // Portal-Sprung
+            if (now >= (m.nextBlink || now + 1)) {
+                m.nextBlink = now + cd(5000);
+                for (let k = 0; k < 12; k++) {
+                    const a = Math.random() * 6.28, r = 250 + Math.random() * 150, x = tgt.x + Math.cos(a) * r, y = tgt.y + Math.sin(a) * r;
+                    if (mobBlocked(x, y, def.r)) continue;
+                    fxAt(m.x, m.y, { type: 'shFx', kind: 'portal', x: Math.round(m.x), y: Math.round(m.y) });
+                    m.x = x; m.y = y;
+                    fxAt(x, y, { type: 'shFx', kind: 'portal', x: Math.round(x), y: Math.round(y) });
+                    break;
+                }
+            }
+            if (!m.nextBlink) m.nextBlink = now + cd(3000);
+            // Meeseeks rufen
+            if (now >= (m.nextSummon || 0) && mobs.filter(o => o.parent === m.id).length < 6) {
+                m.nextSummon = now + cd(12000);
+                for (let k = 0; k < 3; k++) {
+                    const a = Math.random() * 6.28, o = spawnMob('meeseeks', m.x + Math.cos(a) * 60, m.y + Math.sin(a) * 60, now);
+                    o.parent = m.id; o.tgt = tgt.id; o.seen = now; o.under = m.under;
+                }
+                for (const q of near(m.x, m.y, 900)) h.send(q.c, { type: 'shEvent', text: "🔵 I'm Mr. Meeseeks, look at me!", kind: 'boss' });
+            }
+            // Flachmann
+            if (!m.flask && m.hp < m.maxHp * 0.5) {
+                m.flask = true;
+                m.hp = Math.min(m.maxHp, m.hp + m.maxHp * 0.15);
+                fxAt(m.x, m.y, { type: 'shFx', kind: 'heal', x: Math.round(m.x), y: Math.round(m.y) });
+            }
+        } else if (m.kind === 'gojo') {
+            if (!m.nextPurple) { m.nextPurple = now + cd(6000); m.nextVoid = now + cd(12000); }
+            // Hollow Purple: langsame Riesenkugel
+            if (now >= m.nextPurple) {
+                m.nextPurple = now + cd(10000);
+                const a = Math.atan2(tgt.y - m.y, tgt.x - m.x);
+                bullets.push({ id: ++seqId, owner: m.id, x: m.x + Math.cos(a) * (def.r + 30), y: m.y + Math.sin(a) * (def.r + 30), vx: Math.cos(a) * 380, vy: Math.sin(a) * 380, dies: now + 2600 / SPEED, pierce: 99, bounce: 0, hits: new Set(),
+                    w: { dmg: 180 * dm, how: 'boss', by, mob: true, big: true, hitR: 50, look: 'purple' }, fx: 1024, tier: 6 });
+                for (const q of near(m.x, m.y, 900)) h.send(q.c, { type: 'shEvent', text: '🟣 Hollow Purple!', kind: 'boss' });
+            }
+            // Infinite Void: alle in der Naehe erstarren, dann Einschlaege
+            if (now >= m.nextVoid) {
+                m.nextVoid = now + cd(18000);
+                fxAt(m.x, m.y, { type: 'shFx', kind: 'void', x: Math.round(m.x), y: Math.round(m.y), r: 650 });
+                for (const q of near(m.x, m.y, 650)) {
+                    if (!(q.aw && q.aw.has('geppo'))) q.jailUntil = now + 2500 / SPEED;
+                    h.send(q.c, { type: 'shEvent', text: '♾️ Domain Expansion: Infinite Void', kind: 'boss' });
+                    if (!q.see) h.send(q.c, { type: 'shFlash', ms: 1200 });
+                    for (let k = 0; k < 4; k++) strike(q.x + (Math.random() - 0.5) * 120, q.y + (Math.random() - 0.5) * 120, 90, 70, 1600 + k * 150, 2);
+                }
+            }
+        } else if (m.kind === 'tanya') {
+            if (!m.nextBarrage) m.nextBarrage = now + cd(4000);
+            if (now >= m.nextBarrage) {
+                m.nextBarrage = now + cd(8000);
+                for (let k = 0; k < 6; k++) { const a = Math.random() * 6.28, r = k ? 60 + Math.random() * 180 : 0; strike(tgt.x + Math.cos(a) * r, tgt.y + Math.sin(a) * r, 100, 70, 900 + k * 120, 1); }
+                for (const q of near(m.x, m.y, 900)) h.send(q.c, { type: 'shEvent', text: '🪄 "Deus lo vult!" – explosion barrage', kind: 'boss' });
+            }
+        } else if (m.kind === 'mustang') {
+            if (!m.nextRing) m.nextRing = now + cd(8000);
+            if (now >= m.nextRing) {
+                m.nextRing = now + cd(15000);
+                for (let k = 0; k < 10; k++) {
+                    const a = k / 10 * Math.PI * 2, x = m.x + Math.cos(a) * 230, y = m.y + Math.sin(a) * 230;
+                    fires.push({ id: ++seqId, x, y, r: 70, until: now + 5000 / SPEED, owner: null, dps: 35 * dm });
+                }
+                fxAt(m.x, m.y, { type: 'shFx', kind: 'nova', x: Math.round(m.x), y: Math.round(m.y), r: 260 });
+            }
+        }
+    }
+
     function mobTick(m, now, dt) {
         const def = m.def;
         // Steckt trotzdem einer fest (alte Spawns, Rueckstoss): rausschieben, hoechstens alle 0,5 s pruefen
@@ -3965,6 +4057,7 @@ module.exports = function createArena(h, opts = {}) {
             }
             if (!m.charging && !m.chargeAt && !m.slamAt && bossStuckCheck(m, tgt, now)) return;
         }
+        if (def.special && tgt) specialTick(m, tgt, now, cd);
         // Phase Shade (25.09.2026): taucht neben dem Ziel auf (bei Zombie-Bossen macht das bossSkills)
         if (def.blink && !def.zombie && tgt && now >= (m.nextBlink || 0)) {
             m.nextBlink = now + cd(def.blink.ms);
@@ -4081,7 +4174,7 @@ module.exports = function createArena(h, opts = {}) {
             m.a = Math.atan2(tgt.y - m.y, tgt.x - m.x);
             // Zombies (6.5.1): um Ecken herum ueber das Wegfeld statt geradeaus
             // 25.09.2026 (Max: Pathfinding mau): in der Extraction laufen alle ueber das Wegfeld
-            const goal = (zb && def.zombie) || def.boss || pve ? zNav(m, tgt, d) : tgt;
+            const goal = def.fly ? tgt : (zb && def.zombie) || def.boss || pve ? zNav(m, tgt, d) : tgt;
             if (def.melee) {
                 mobMove(m, goal.x, goal.y, def.chase, dt);
             } else {
@@ -4168,8 +4261,22 @@ module.exports = function createArena(h, opts = {}) {
     // 6.12: Untergrund-Bestand. Keller: bekannte Gegner, deutlich staerker;
     // Labor: Monster aus den Tanks. Nachschub nie in Sichtweite von Spielern.
     // Dungeon-Instanz (25.09.2026): Gegner nachschieben (mehr bei groesserer Party)
+    let specialAt = 0, specialDone = false;
     function dungeonTick(now, dt) {
         populateUnder(now);
+        if (!specialAt) specialAt = now + randIn(SPECIAL_AFTER) / SPEED;
+        if (!specialDone && now >= specialAt) {
+            specialDone = true;
+            const pool = SPECIALS[opts.kind] || [];
+            if (pool.length && (Math.random() < SPECIAL_CHANCE || opts.forceSpecial)) {
+                const kind = opts.forceSpecial && M.MOBS[opts.forceSpecial] ? opts.forceSpecial : pool[Math.floor(Math.random() * pool.length)];
+                const far = (MAP.farRooms || []).filter(r => [...players.values()].every(p => Math.hypot(p.x - r.x, p.y - r.y) > 700));
+                const at = far[0] || (MAP.farRooms || [])[0] || freeSpot(true);
+                const m = spawnMob(kind, at.x, at.y, now);
+                m.under = opts.kind;
+                for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `⚠️ ${m.def.icon} ${m.def.name} – ${m.def.title} – is somewhere down here…`, kind: 'boss' });
+            }
+        }
         gridMobs();
         const plist = [...players.values()];
         for (const m of [...mobs]) {

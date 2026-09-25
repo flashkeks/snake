@@ -2639,3 +2639,43 @@ zufaelligen neuen Uniques ohne Absturz.
 - Tests: Einzelpruefung je Awakening (31/31), Extraction-Chaos, PvP und
   Zombies mit allen Items auf Level 20 ohne Absturz. Dabei gefunden und
   behoben: `ability()` nutzte `aw` vor der Definition (Rock Lee + R).
+
+## 🏚️ Map-Umbau Phase 1: Dungeons (25.09.2026)
+Max: Labor/Militaer zu einfach und nur 4-eckige Boxen; Gesamtkonzept neu – groessere
+Oberflaeche mit 3–4 Gegner-Stuetzpunkten und 2 Friendly-Bereichen (Missionen,
+PvE-Partys), von dort in Militaerbasis/Labor mit Spezial-Charakteren. Entscheidungen:
+Instanz je Party, danach zurueck zum Friendly-Bereich, Tod wie im Raid, Dungeons zuerst.
+
+**Waehrend des Umbaus** kommt nur Kek in die Extraction (`EXTRACT_ONLY`, Standard
+`kek`; `SNAKE_EXTRACT_ONLY=''` in `snake.service` oeffnet fuer alle).
+
+- **Generator** (`dungeons.js`, Vorschau `node dungeons.js bunker|lab SEED`):
+  Kachelraster 80 px, Raeume Rechteck/L/Kreuz/Halle mit Saeulen/Tank-Raum, Spannbaum
+  plus Schleifen, Gaenge mit L-/Z-Knick. Waende = feste Kacheln an Boden (zeilenweise
+  zusammengefasst). Deckung nur, wenn alles erreichbar bleibt. Kisten in den
+  entferntesten Raeumen, `farRooms` fuer Spezial-Charaktere, Ausgang am Start.
+- **Instanzen** (`dungeon-rooms.js`): Luke oben (Station `dungeon`) -> neue Instanz
+  mit neuem Seed; wer binnen 20 s durch dieselbe Luke steigt, kommt mit (max 4) –
+  Zwischenloesung bis Missionen/Partys. `detach`/`attach` in `shooter.js` uebergeben
+  den Spieler samt Ausruestung, Rucksack und HP. Ausgang (Station `exit`) -> zurueck an
+  die Luke. Tod/Aufgeben/Verbindung weg wie im Raid.
+- **Oberflaeche:** die alten Ebenen daneben sind raus, von `arena-under.js` bleiben die
+  drei Luken-Plaetze (2x Militaerbasis, 1x Labor).
+- **Gegner** (Modus `dungeon`, `pve` teilt Level/Drops/Wegfeld mit der Extraction):
+  neu Heavy Gunner, Grenadier, Riot Trooper (`shield`: -80 % von vorn), Attack Dog
+  (`pack` 3) / Acid Spitter, Phase Shade (`blink` jetzt auch fuer normale Gegner),
+  Leech Swarm (`pack` 5), Cryo Experiment (verlangsamt). Schluessel `trooper`,
+  `acidspit`, `phaseshade`, weil `riot`/`spitter`/`shade` Zombies sind.
+- **Spezial-Charaktere** (`special`, `SPECIALS`, `SPECIAL_CHANCE` 15 % je Run nach
+  45–90 s, Level = Ebene + 5, 3 Beutel aus `boss`, Name + Leiste im Client):
+  Rick Sanchez (Portal-Sprung, Meeseeks, Flachmann), Satoru Gojo (Infinity: > 300 px
+  nur 15 % Schaden; Hollow Purple; Infinite Void setzt 2,5 s fest + Einschlaege),
+  Tanya Degurechaff (fliegt ueber Waende, explodierende Kugeln, Salve), Roy Mustang
+  (Flammen-Schnipp mit Feuerflaeche, Flammenring).
+- **Dazu:** Wegfeld ueber die ganze Welt, alle PvE-Gegner nutzen es; Gegner-Level ab
+  Lv 1 (+4,5 % HP / +3 % Schaden je Level, Lv 45 = x3 HP); Oberflaechen-Bosse
+  Legendary+ -30 %.
+
+**Noch offen (Phase 2/3):** groessere Oberflaeche, Gegner-Stuetzpunkte, zwei schicke
+Friendly-Bereiche, Missions-NPC und Partys, Rueckkehr in den Friendly-Bereich statt an
+die Luke.

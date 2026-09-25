@@ -12980,6 +12980,18 @@ function shFrame() {
             c.stroke();
             drawEmojiC(c, '🔴', mb.x, mb.y - (def.r || 20) - 16, 14);
         }
+        // Spezial-Charaktere (25.09.2026): Name und lange Lebensleiste
+        if (def.special) {
+            const bw = 110, by = mb.y - (def.r || 20) - 56;
+            c.fillStyle = 'rgba(0,0,0,.7)';
+            c.fillRect(mb.x - bw / 2 - 2, by - 2, bw + 4, 12);
+            c.fillStyle = '#ff4d6d';
+            c.fillRect(mb.x - bw / 2, by, bw * Math.max(0, mb.hp / mb.mh), 8);
+            c.font = 'bold 13px system-ui';
+            c.textAlign = 'center';
+            c.fillStyle = '#ffd23f';
+            c.fillText(`${def.icon} ${def.name}`, mb.x, by - 6);
+        }
         // Gegner-Level (25.09.2026): Farbe nach Ebene (1–10 grau, 20–30 orange, 40–50 violett)
         if (mb.lv) {
             c.font = 'bold 11px system-ui';

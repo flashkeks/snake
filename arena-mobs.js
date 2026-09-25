@@ -95,6 +95,32 @@ const MOBS = {
         gun: { dmg: 22, speed: 620, ms: 1500, burst: 3, spread: 0.2, life: 1.2, slow: 0.45 },
         xp: 'npc', xpMul: 3, drop: { chance: 0.55, src: 'npcdrop', n: 1 }
     },
+    // ---------- 25.09.2026 (Max): Spezial-Charaktere in den Dungeons, selten ----------
+    // special: Name/Leiste im Client, Beute wie ein Boss, Level = Ebene + 5; Faehigkeiten in shooter.js specialTick
+    rick: {
+        special: true, lab: true, name: 'Rick Sanchez', title: 'Smartest Man in the Universe', icon: '🧪', color: '#8fe3ff', r: 22, hp: 3000,
+        speed: 140, aggro: 900, range: 560, keep: 300, gun: { dmg: 26, speed: 900, ms: 1100, burst: 3, spread: 0.15, life: 1.0 },
+        xp: 'elite', xpMul: 8, drop: { chance: 1, src: 'boss', n: 3 }
+    },
+    meeseeks: {
+        name: 'Mr. Meeseeks', icon: '🔵', color: '#5ab0ff', r: 15, hp: 140, speed: 170, chase: 250, aggro: 700, lab: true,
+        melee: 22, xp: 'npc', xpMul: 0.5
+    },
+    gojo: {
+        special: true, lab: true, name: 'Satoru Gojo', title: 'The Strongest', icon: '🕶️', color: '#e8f0ff', r: 21, hp: 4000, infinity: true,
+        speed: 150, aggro: 950, range: 520, keep: 260, gun: { dmg: 30, speed: 1000, ms: 900, burst: 2, spread: 0.1, life: 1.0 },
+        xp: 'elite', xpMul: 10, drop: { chance: 1, src: 'boss', n: 3 }
+    },
+    tanya: {
+        special: true, name: 'Tanya Degurechaff', title: 'The Devil of the Rhine', icon: '🪄', color: '#ffd27a', r: 18, hp: 2500, fly: true, taken: 0.7,
+        speed: 170, aggro: 950, range: 620, keep: 380, gun: { dmg: 24, speed: 850, ms: 900, burst: 2, spread: 0.12, life: 1.1, explode: 90 },
+        xp: 'elite', xpMul: 8, drop: { chance: 1, src: 'boss', n: 3 }
+    },
+    mustang: {
+        special: true, name: 'Roy Mustang', title: 'The Flame Alchemist', icon: '🔥', color: '#3a5bd9', r: 20, hp: 2800,
+        speed: 125, aggro: 900, range: 600, keep: 360, strikes: { n: 1, r: 110, dmg: 90, warn: 700, ms: 3000, spread: 0, fire: true },
+        xp: 'elite', xpMul: 8, drop: { chance: 1, src: 'boss', n: 3 }
+    },
     // ---------- Zombies (4.4): jagen immer den naechsten Spieler, HP wachsen je Welle ----------
     zombie: {
         zombie: true, name: 'Zombie', icon: '🧟', color: '#7fbf5f', r: 17, hp: 60, speed: 95, chase: 95, aggro: 99999,
@@ -250,7 +276,7 @@ const ROAMERS = [['scav', 55], ['sniper', 14], ['drone', 13]];
 
 // Fuer den Browser: was er zum Zeichnen braucht
 function catalog() {
-    return Object.fromEntries(Object.entries(MOBS).map(([k, m]) => [k, { name: m.name, icon: m.icon, color: m.color, r: m.r, boss: !!m.boss, zombie: !!m.zombie, crown: !!m.crown, elite: !!m.elite || (!!m.boss && !!m.zombie), slamR: m.slam ? m.slam.r : 0, title: m.title || '', ghost: !!m.ghost, armored: !!m.armored, boom: m.boom ? m.boom.r : 0, beamLen: m.beam ? m.beam.len : 0, beamW: m.beam ? m.beam.width : 0, beamTwin: !!(m.beam && m.beam.twin), vortexR: m.vortex ? m.vortex.r : 0, pattern: m.pattern || '' }]));
+    return Object.fromEntries(Object.entries(MOBS).map(([k, m]) => [k, { name: m.name, icon: m.icon, color: m.color, r: m.r, boss: !!m.boss, zombie: !!m.zombie, crown: !!m.crown, elite: !!m.elite || (!!m.boss && !!m.zombie), slamR: m.slam ? m.slam.r : 0, title: m.title || '', ghost: !!m.ghost, armored: !!m.armored, boom: m.boom ? m.boom.r : 0, beamLen: m.beam ? m.beam.len : 0, beamW: m.beam ? m.beam.width : 0, beamTwin: !!(m.beam && m.beam.twin), vortexR: m.vortex ? m.vortex.r : 0, pattern: m.pattern || '', special: !!m.special }]));
 }
 
 module.exports = { MOBS, BOSSES, ZBOSSES, ROAMERS, catalog };
