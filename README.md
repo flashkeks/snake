@@ -3032,3 +3032,22 @@ und bleibt so – ein geschütztes Item kann Haupt-Item sein (der 🔥-Fuse-Knop
 auch bei ⭐), als Opfer wird es abgelehnt („Protected items cannot be fused in"),
 Salvage bleibt gesperrt. Geprüft mit einem echten `arFuse`-Aufruf (Main geschützt → klappt,
 Opfer geschützt → Fehler). Keine Codeänderung.
+
+## 🧟 Zombies: Welle starten, Autoplay, Radar, Box-Preis je Runde (25.09.2026, Max)
+
+- **▶ Start wave** (Knopf oben in der Leiste, Taste **N**, nur in der Pause): solo startet die
+  nächste Welle nach 1,5 s. Zu zweit oder mehr heißt der Knopf „Ready (x/n)" – erst wenn alle
+  bereit sind, geht es los. Nach jeder Welle wird „bereit" zurückgesetzt.
+- **🔁 Autoplay** (Knopf daneben, pro Spieler an/aus): zählt in jeder Pause automatisch als
+  bereit – wer durchspielen will, hat nur noch 1,5 s Pause. Zu mehreren gilt das nur, wenn alle
+  bereit oder auf Autoplay sind. Server: `zReady`/`zAuto`, `zReadyCheck` jeden Pausen-Tick.
+- **Radar:** Im Zombie-Modus schickt der Server `zmb.radar` = alle Spieler (x, y, ich, tot)
+  und alle Zombies (x, y, Boss) – die Minimap zeigt Mitspieler grün (tot grau) und jeden
+  Zombie, egal wie weit weg. Die Sicht im Spiel selbst bleibt wie bisher.
+- **Mystery-Box:** Der Preis stieg mit jedem Kauf (2000, 2500, 3000 …) und blieb das ganze
+  Spiel oben. Jetzt fällt er nach jeder Welle wieder auf 2000. Utility-Kiste und Altar
+  unverändert.
+
+Test (11/11): solo Knopf → Welle nach ≤1,5 s, Welle vorbei → Box-Preis zurück, bereit
+gelöscht; Autoplay startet die nächste Welle selbst; zu zweit reicht einer nicht, beide
+schon; Radar mit beiden Spielern, `readyN`.

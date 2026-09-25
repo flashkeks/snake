@@ -1440,6 +1440,11 @@ module.exports = function createArena(h, opts = {}) {
             useUtil(p, d.slot === 1 ? 1 : 0, Number(d.x), Number(d.y), now);
         } else if (d.type === 'shInteract') {
             interact(p);
+        } else if ((d.type === 'zReady' || d.type === 'zAuto') && zb) {
+            // Zombies (25.09.2026, Max): Welle selbst starten / Autoplay
+            if (d.type === 'zAuto') p.zAuto = !!d.on;
+            else if (zb.phase === 'break') p.zReady = !p.zReady;
+            zReadyCheck(now);
         } else if (d.type === 'shAbility') {
             ability(p, now);
         } else if (d.type && d.type.startsWith('ms')) {
@@ -3144,6 +3149,18 @@ module.exports = function createArena(h, opts = {}) {
         return null;
     }
 
+    // Welle starten (25.09.2026, Max): sind alle bereit (Knopf oder Autoplay), geht es in
+    // 1,5 s los statt nach der vollen Pause. Solo reicht der eine Knopf.
+    const Z_READY_MS = 1500;
+    function zReadyCheck(now) {
+        if (!zb || zb.phase !== 'break' || !players.size) return;
+        const all = [...players.values()].every(q => q.zReady || q.zAuto);
+        if (all && zb.until - now > Z_READY_MS / SPEED) {
+            zb.until = now + Z_READY_MS / SPEED;
+            for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: '▶ Everyone is ready – next wave!', kind: 'boss' });
+        }
+    }
+
     function zStart() {
         zb.phase = 'break';
         zb.until = Date.now() + 4000 / SPEED;
@@ -3153,6 +3170,7 @@ module.exports = function createArena(h, opts = {}) {
     function zWave(now) {
         zb.wave++;
         zb.phase = 'wave';
+        for (const p of players.values()) p.zReady = false;
         const bossWave = zb.wave % 5 === 0;
         // Bosswellen: weniger Fussvolk, der Boss ist die Welle
         zb.toSpawn = Math.round((8 + 5 * zb.wave) * (1 + 0.6 * (players.size - 1)) * (bossWave ? 0.5 : 1) * zd.count);
@@ -3218,6 +3236,7 @@ module.exports = function createArena(h, opts = {}) {
                 h.send(p.c, { type: 'shEvent', text: '💖 Back on your feet!', kind: 'drop' });
             }
         }
+        if (zb.phase === 'break') zReadyCheck(now);
         if (zb.phase === 'break' && now >= zb.until) zWave(now);
         else if (zb.phase === 'wave') {
             const cap = 24 + 5 * players.size;
@@ -3231,6 +3250,8 @@ module.exports = function createArena(h, opts = {}) {
                 zb.until = now + zBreak(zb.wave) / SPEED;
                 bossId = null;
                 for (const p of players.values()) {
+                    // 25.09.2026 (Max): Mystery-Box-Preis gilt je Runde, danach wieder Grundpreis
+                    p.boxN = 0;
                     award(p, 20 * zb.wave, `wave ${zb.wave}`);
                     // Welle geschafft: alle wieder voll (4.6); wer gefallen ist, kommt zurueck
                     if (!p.dead) p.hp = p.maxHp;
@@ -5443,7 +5464,11 @@ module.exports = function createArena(h, opts = {}) {
                     disc: p.b.zDisc, perkDisc: p.b.zDisc * p.b.zPerk,
                     fx: Object.fromEntries(Object.entries(zb.fx).filter(([, t]) => t > now).map(([k, t]) => [k, Math.round(t - now)])),
                     pap: zPapPrice((p.gear[p.slot] && p.gear[p.slot].pap) || 0), box: zBoxPrice(p.boxN || 0), heal: zHealPrice(zb.wave, p.healN || 0), ubox: zUboxPrice(p.uboxN || 0), shrine: zShrinePrice(zb.shrineN), armor: p.armorN || 0,
-                    team: plist.map(q => [q.name, Math.floor(q.pts), zb.kills.get(q.id) || 0, q.dead ? 1 : 0]) } : undefined,
+                    team: plist.map(q => [q.name, Math.floor(q.pts), zb.kills.get(q.id) || 0, q.dead ? 1 : 0]),
+                    // Welle starten / Autoplay (25.09.2026): ich bereit, ich auto, wie viele bereit
+                    ready: p.zReady ? 1 : 0, auto: p.zAuto ? 1 : 0, readyN: plist.filter(q => q.zReady || q.zAuto).length,
+                    // Radar (25.09.2026, Max): alle Spieler und Zombies fuer die Minimap, egal wie weit weg
+                    radar: [plist.map(q => [Math.round(q.x), Math.round(q.y), q.id === p.id ? 1 : 0, q.dead ? 1 : 0]), mobs.map(m => [Math.round(m.x), Math.round(m.y), m.def.boss ? 1 : 0])] } : undefined,
                 players: [...plist.filter(q => q === p || ((losT ? Math.hypot(q.x - p.x, q.y - p.y) < VIEW * 1.5 : inView(q.x, q.y)) && canSee(p, q, now))), ...decoys.filter(d => d.pid !== p.id && inView(d.x, d.y) && players.has(d.pid)).map(d => ({ ...players.get(d.pid), id: d.id, x: d.x, y: d.y, a: d.a })),
                     ...clones.filter(k => inView(k.x, k.y) && players.has(k.owner)).map(k => ({ ...players.get(k.owner), id: k.id, x: k.x, y: k.y, a: k.a, clone: true, orbitOn: false, titanUntil: 0 }))].map(q => {
                     const qw = q.gear[q.slot] || q.gear.primary;

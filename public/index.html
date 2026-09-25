@@ -6660,6 +6660,8 @@ body.watch-mode #world-switch {
                         <button type="button" class="ghost sh-touchbtn" id="sh-med" title="Consumable Q">Q</button>
                         <button type="button" class="ghost sh-touchbtn" id="sh-use" title="Open crate / take bag (F)">✋</button>
                         <button type="button" class="ghost sh-touchbtn" id="sh-nade" title="Consumable G">G</button>
+                        <button type="button" class="gold" id="sh-zwave" title="Start the next wave now (N)" hidden>▶ Start wave</button>
+                        <button type="button" class="ghost" id="sh-zauto" title="Autoplay: start every wave right away" hidden>🔁 Autoplay</button>
                         <button type="button" class="ghost" id="sh-bag" title="Inventory (Tab / I)">🎒</button>
                         <button type="button" class="s2-icon" id="sh-leave" title="Leave (you lose everything)">✕</button>
                     </div>
@@ -14252,9 +14254,28 @@ function shDrawPlayer(c, p, x, y, a, mine, now, my) {
     c.restore();
 }
 
+// Zombies (25.09.2026, Max): Welle starten und Autoplay – Knoepfe oben in der Leiste
+let shZbKey = '';
+function shZombieButtons(zm) {
+    const key = zm ? [zm.phase, zm.ready, zm.auto, zm.readyN, (zm.team || []).length].join('|') : '';
+    if (key === shZbKey) return;
+    shZbKey = key;
+    const bw = $('sh-zwave'), ba = $('sh-zauto');
+    bw.hidden = !zm || zm.phase !== 'break';
+    ba.hidden = !zm;
+    if (!zm) return;
+    const n = (zm.team || []).length;
+    bw.textContent = n > 1 ? (zm.ready ? `✓ Ready (${zm.readyN}/${n})` : `▶ Ready (${zm.readyN}/${n})`) : '▶ Start wave';
+    bw.classList.toggle('ghost', !!zm.ready);
+    ba.textContent = zm.auto ? '🔁 Autoplay ON' : '🔁 Autoplay';
+    ba.classList.toggle('gold', !!zm.auto);
+    ba.classList.toggle('ghost', !zm.auto);
+}
+
 // Boss-Lebensleiste oben, Pfeile am Bildrand zu Boss und Abwurf, Ansage
 function shEventHud(c, latest, W, H, now, dpr) {
     const zm = latest.zmb;
+    shZombieButtons(zm);
     if (zm) {
         const secs = Math.max(0, Math.ceil((zm.left - (now - latest.recv)) / 1000));
         const perks = (zm.perks || []).map(k => (sh.map.perks[k] || {}).icon).join('');
@@ -14438,7 +14459,10 @@ function shMinimap(c, latest, W, H) {
         c.fillRect(x0 + s.x * k - 2.5, y0 + s.y * k - 2.5, 5, 5);
     }
     c.fillStyle = '#ff9f40';
-    for (const mb of latest.mobs || []) c.fillRect(x0 + mb[2] * k - 1.5, y0 + mb[3] * k - 1.5, 3, 3);
+    const radar = latest.zmb && latest.zmb.radar;
+    // Zombies (25.09.2026, Max): alle Zombies und Mitspieler, auch ausser Sicht
+    if (radar) for (const [x, y, boss] of radar[1]) { if (!boss) c.fillRect(x0 + x * k - 1.5, y0 + y * k - 1.5, 3, 3); }
+    else for (const mb of latest.mobs || []) c.fillRect(x0 + mb[2] * k - 1.5, y0 + mb[3] * k - 1.5, 3, 3);
     if (latest.drop) {
         c.fillStyle = '#5aaaff';
         c.beginPath();
@@ -14461,8 +14485,16 @@ function shMinimap(c, latest, W, H) {
         c.lineWidth = 1.5;
         c.strokeRect(x0 + latest.boss[0] * k - 4.5, y0 + latest.boss[1] * k - 4.5, 9, 9);
     }
+    if (radar) for (const [x, y, me, dead] of radar[0]) {
+        if (me) continue;
+        c.fillStyle = dead ? 'rgba(160,160,160,.8)' : '#4dff88';
+        c.beginPath();
+        c.arc(x0 + x * k, y0 + y * k, 3, 0, Math.PI * 2);
+        c.fill();
+    }
     for (const p of latest.players) {
         const mine = p.id === sh.id;
+        if (radar && !mine) continue;
         const px = mine && shPred ? shPred.x : p.x, py = mine && shPred ? shPred.y : p.y;
         c.fillStyle = mine ? '#fff' : '#ff4d4d';
         c.beginPath();
@@ -14571,6 +14603,8 @@ document.addEventListener('keydown', e => {
     if (k === 'q') shUse(0);
     if (k === 'f' || k === 'e') wsSend({ type: 'shInteract' });
     if (k === 'g') shUse(1);
+    const zl = shSnaps[shSnaps.length - 1];
+    if (k === 'n' && zl && zl.zmb && zl.zmb.phase === 'break') { wsSend({ type: 'zReady' }); return; }
     if (k === 'r') {
         wsSend({ type: 'shAbility' });
         const s = shSnaps[shSnaps.length - 1];
@@ -14669,6 +14703,8 @@ $('sh-leave').onclick = () => {
 };
 $('sh-med').onclick = () => shUse(0);
 $('sh-use').onclick = () => wsSend({ type: 'shInteract' });
+$('sh-zwave').onclick = e => { e.currentTarget.blur(); wsSend({ type: 'zReady' }); };
+$('sh-zauto').onclick = e => { e.currentTarget.blur(); const l = shSnaps[shSnaps.length - 1], z = l && l.zmb; wsSend({ type: 'zAuto', on: !(z && z.auto) }); };
 $('sh-nade').onclick = () => shUse(1);
 $('sh-bag').onclick = () => shInvToggle();
 $('sh-swap').onclick = () => {
