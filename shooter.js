@@ -91,8 +91,9 @@ const MIL_RESPAWN = 5 * 60e3;
 // Untergrund (6.12, Max: Gegner dort „gerne deutlich staerker")
 // n = so viele leben gleichzeitig, hp/dmg/spd = Faktoren auf die Grundwerte
 const UNDER_MOBS = {
-    bunker: { n: 16, hp: 2.5, dmg: 1.7, spd: 1.1, kinds: [['scav', 40], ['brute', 22], ['sniper', 16], ['drone', 12], ['enforcer', 10]], max: { enforcer: 3 } },
-    lab: { n: 13, hp: 1, dmg: 1, spd: 1, kinds: [['mutant', 40], ['stalker', 26], ['horror', 24], ['hulk', 10]], max: { hulk: 2 } }
+    // 25.09.2026: neue Arten fuer die Dungeon-Instanzen (heavy, grenadier, trooper, k9 / acidspit, phaseshade, leech, cryo)
+    bunker: { n: 16, hp: 2.5, dmg: 1.7, spd: 1.1, kinds: [['scav', 26], ['brute', 12], ['sniper', 10], ['drone', 6], ['enforcer', 7], ['heavy', 10], ['grenadier', 10], ['trooper', 10], ['k9', 9]], max: { enforcer: 3, heavy: 3 } },
+    lab: { n: 13, hp: 1, dmg: 1, spd: 1, kinds: [['mutant', 24], ['stalker', 16], ['horror', 14], ['hulk', 7], ['acidspit', 12], ['phaseshade', 11], ['leech', 8], ['cryo', 10]], max: { hulk: 2, cryo: 3 } }
 };
 const UNDER_CRATE_RESPAWN = 4 * 60e3;
 // Untergrund-Events (6.12.3, Max): Labor – ein Tank bricht auf und Monster kommen
@@ -3373,6 +3374,13 @@ module.exports = function createArena(h, opts = {}) {
             }
         }
         if (!(w && w.pure)) dmg *= m.def.taken || 1;
+        // Riot Trooper (25.09.2026): Schild vorne haelt 80 % ab – flankieren!
+        if (m.def.shield && attacker && attacker.x !== undefined && !(w && (w.pure || w.dot))) {
+            let da = Math.atan2(attacker.y - m.y, attacker.x - m.x) - m.a;
+            while (da > Math.PI) da -= Math.PI * 2;
+            while (da < -Math.PI) da += Math.PI * 2;
+            if (Math.abs(da) < 1.0) dmg *= 0.2;
+        }
         if (!(w && w.dot)) dmg *= awakeHitMul(attacker && players.has(attacker.id) ? attacker : null, m, now);
         else if (now < (m.exposeUntil || 0)) dmg *= 1.5;
         comboHit(attacker, w, now);
@@ -3957,6 +3965,20 @@ module.exports = function createArena(h, opts = {}) {
             }
             if (!m.charging && !m.chargeAt && !m.slamAt && bossStuckCheck(m, tgt, now)) return;
         }
+        // Phase Shade (25.09.2026): taucht neben dem Ziel auf (bei Zombie-Bossen macht das bossSkills)
+        if (def.blink && !def.zombie && tgt && now >= (m.nextBlink || 0)) {
+            m.nextBlink = now + cd(def.blink.ms);
+            const [dmin, dmax] = def.blink.dist || [220, 360];
+            for (let k = 0; k < 12; k++) {
+                const a = Math.random() * 6.28, r = dmin + Math.random() * (dmax - dmin);
+                const x = tgt.x + Math.cos(a) * r, y = tgt.y + Math.sin(a) * r;
+                if (mobBlocked(x, y, def.r) || !clear(tgt.x, tgt.y, x, y)) continue;
+                fxAt(m.x, m.y, { type: 'shFx', kind: 'blink', x: Math.round(x), y: Math.round(y), from: [Math.round(m.x), Math.round(m.y)] });
+                m.x = x;
+                m.y = y;
+                break;
+            }
+        }
         // Provozierter Raid-Boss: Einschlaege auf Fernschuetzen ausserhalb der Reichweite
         const provoked = def.boss && !def.zombie && now < (m.provoked || 0);
         if (provoked && tgt && !tgt.dead && now >= (m.nextRetal || 0)
@@ -4146,8 +4168,16 @@ module.exports = function createArena(h, opts = {}) {
     // 6.12: Untergrund-Bestand. Keller: bekannte Gegner, deutlich staerker;
     // Labor: Monster aus den Tanks. Nachschub nie in Sichtweite von Spielern.
     // Dungeon-Instanz (25.09.2026): Gegner nachschieben (mehr bei groesserer Party)
-    function dungeonTick(now) {
+    function dungeonTick(now, dt) {
         populateUnder(now);
+        gridMobs();
+        const plist = [...players.values()];
+        for (const m of [...mobs]) {
+            if (!(m.hp > 0) || !mobs.includes(m)) continue;
+            if (!plist.some(p => Math.abs(p.x - m.x) < MOB_WAKE && Math.abs(p.y - m.y) < MOB_WAKE)) continue;
+            mobTick(m, now, dt);
+        }
+        gridMobs();
     }
     function populateUnder(now) {
         for (const g of MAP.regions || []) {
@@ -4165,11 +4195,14 @@ module.exports = function createArena(h, opts = {}) {
                 if (blocked(x, y, def.r + 6)) continue;
                 if ([...players.values()].some(p => Math.hypot(p.x - x, p.y - y) < 900)) continue;
                 if ((MAP.stations || []).some(s => s.kind === 'portal' && Math.hypot(s.x - x, s.y - y) < 400)) continue;
-                const m = spawnMob(kind, x, y, now);
-                m.under = g.id;
-                m.hp = m.maxHp = Math.round(m.maxHp * U.hp);
-                m.dm = (m.dm || 1) * U.dmg;
-                m.sp = U.spd;
+                // Rudel (Hunde, Leech-Schwarm): gleich mehrere nebeneinander
+                for (let k = 0; k < (def.pack || 1); k++) {
+                    const m = spawnMob(kind, x + (k ? (Math.random() - 0.5) * 120 : 0), y + (k ? (Math.random() - 0.5) * 120 : 0), now);
+                    m.under = g.id;
+                    m.hp = m.maxHp = Math.round(m.maxHp * U.hp);
+                    m.dm = (m.dm || 1) * U.dmg;
+                    m.sp = U.spd;
+                }
                 break;
             }
         }
@@ -4444,7 +4477,7 @@ module.exports = function createArena(h, opts = {}) {
             if (s.fire || s.acid) fires.push({ id: ++seqId, x: s.x, y: s.y, r: s.r * 0.8, until: now + 3500 / SPEED, owner: null, dps: s.acid ? 12 : 18, acid: !!s.acid });
         }
         if (mode === 'extract') eventTick(now, dt);
-        else if (mode === 'dungeon') dungeonTick(now);
+        else if (mode === 'dungeon') dungeonTick(now, dt);
         if (pvp) pvpTick(now);
         if (zb) zTick(now, dt);
         if (!(zw && now < zw.until)) nadeTick(now, dt);
