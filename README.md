@@ -2578,3 +2578,26 @@ Spieler `ob/ti/cl`, `turrets`, `portals`, Mob-Feld 12 = verzaubert.
 je Welle ein Skript mit mindestens einer Pruefung je Item (23 + 15 + 18), dazu
 36 s Zombie-Modus, 90 s PvP und 3 min Extraction-Chaos mit drei Spielern und
 zufaelligen neuen Uniques ohne Absturz.
+
+### Gegner-Drops, Gegner-Level, Waffen-Level, Lager, Boss-Sprung (6.14, 25.09.2026)
+- **Drops** (`MOB_DROP_MUL` 0,5): Dropchance aller normalen Gegner in der
+  Extraction halbiert, ueberall. Seltenheiten der Quelle bleiben; nur Gegner-
+  Beute an der Oberflaeche und im Keller wuerfelt Epic+ mit halbem Gewicht
+  (`MOB_EPIC_MUL`, `generate(src, epicMul)`), das Labor wie vorher.
+- **Gegner-Level** (`MOB_LEVELS`): Oberflaeche 1–10, Keller 20–30, Labor 40–50,
+  gewuerfelt in `spawnMob` nach `regionAt`. Innerhalb der Ebene je Level +6 % HP,
+  +4 % Schaden (auf die Ebenen-Faktoren aus `UNDER_MOBS` obendrauf), XP je Kill
+  x(1 + 0,05 x (Level−1)). Mob-Tupel Feld 13 = Level, Client zeigt „Lv N".
+- **Waffen-Level** (`WLV`, `weaponLevel`): `item.wxp`, Level 1–30, XP gesamt
+  100 x (L−1)^1,7. Je Level +1,5 % Schaden, +5 % Feuerrate bei 10/20/30. XP
+  = die XP des Spielers fuer Kills mit der gehaltenen Waffe (Gegner, Boss,
+  Spieler, Zombies, PvP; in PvP/Zombies auch ans Original im Lager). Fuse:
+  Haupt-Item + halbe XP der gefressenen (Entscheidung Max: halb).
+- **Lager-Upgrade** (`INV_UP`, `invMaxOf`): +25 Plaetze je Stufe, max 12 Stufen
+  (500). Kosten Coins 25k x 1,9^(n−1) und Scrap 150 x 1,75^(n−1), beides noetig.
+  Hub-Aktion `arInvUp`.
+- **Boss-Sprung** (Ticket #6, Maddy): `bossStuckCheck` – unter 60 px Fortschritt
+  in 2,5 s, obwohl der Boss hin will (mit Ziel nur ohne freie Schusslinie) ->
+  `bossJump` an eine freie Stelle mit kleinerer Wegfeld-Entfernung, nie naeher
+  als r+R+80 an Spielern; 700 ms Warnkreis, Landung mit Druckwelle, 5 s CD.
+- **Tesla-Fix** (`teslaArc`): Tesla springt auch zwischen Mobs (vorher nur Spieler).
