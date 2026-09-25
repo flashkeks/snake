@@ -40,7 +40,24 @@ module.exports = function createDungeons(h) {
         if (d.members.size > 1) for (const [cid] of d.members) if (cid !== c.id) { const m = d.arena._players.get(cid); if (m) h.send(m.c, { type: 'shEvent', text: `👥 ${p.name} joined your run`, kind: 'self' }); }
     }
 
-    // Ausgang: zurueck an die Luke auf der Oberflaeche
+    // Mission (25.09.2026): Party aus dem Guild House in eine eigene Instanz, Ziel-Boss drin
+    function startMission(cs, kind, diff, back) {
+        const now = Date.now();
+        const map = buildDungeon(kind, (now ^ (++seq * 7919)) >>> 0);
+        const d = { id: seq, kind, hatch: 'mission' + seq, created: now, members: new Map(), map, arena: null, mission: diff };
+        d.arena = h.createArena({ mode: 'dungeon', world: h.makeWorld(map), kind, mission: { diff }, leaveDungeon: c2 => leave(c2) });
+        insts.set(d.id, d);
+        for (const c of cs) {
+            if (of(c) || !h.surface.has(c)) continue;
+            const p = h.surface.detach(c);
+            if (!p) continue;
+            d.members.set(c.id, { back });
+            d.arena.attach(c, p, map.spawn);
+        }
+        cleanup(d);
+    }
+
+    // Ausgang: zurueck an die Luke bzw. ins Guild House
     function leave(c) {
         const d = of(c);
         if (!d) return;
@@ -48,8 +65,20 @@ module.exports = function createDungeons(h) {
         const back = d.members.get(c.id).back;
         d.members.delete(c.id);
         if (p) {
+            // Mission: Tokens, wenn der Boss liegt; Versicherung ist verbraucht
+            if (d.mission) {
+                const a = h.accounts.arena(p.account);
+                for (const sl of ['primary', 'secondary', 'helmet', 'vest', 'pants', 'boots', 'backpack']) if (p.gear[sl]) delete p.gear[sl].insured;
+                if (d.arena.missionDone()) {
+                    const n = d.arena.missionReward();
+                    a.tokens = (a.tokens || 0) + n;
+                    h.accounts.stat(p.account, s2 => { s2.missions = (s2.missions || 0) + 1; s2['missions_' + d.mission] = (s2['missions_' + d.mission] || 0) + 1; });
+                    h.send(c, { type: 'shEvent', text: `🎟️ +${n} Mission Tokens (now ${a.tokens})`, kind: 'drop' });
+                } else h.send(c, { type: 'shEvent', text: '🏃 Mission aborted – no tokens', kind: 'self' });
+                h.accounts.touch();
+            }
             h.surface.attach(c, p, back);
-            h.send(c, { type: 'shEvent', text: '🪜 Back on the surface', kind: 'self' });
+            h.send(c, { type: 'shEvent', text: d.mission ? '🏰 Back in the Guild House' : '🪜 Back on the surface', kind: 'self' });
         }
         cleanup(d);
     }
@@ -83,7 +112,7 @@ module.exports = function createDungeons(h) {
     }
 
     return {
-        enter, leave, drop, tick, arenaOf,
+        enter, leave, drop, tick, arenaOf, startMission,
         has: c => !!of(c),
         refundAll: () => { for (const d of insts.values()) d.arena.refundAll(); },
         list: () => [...insts.values()].map(d => ({ id: d.id, kind: d.kind, players: d.arena.names() }))

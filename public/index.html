@@ -3309,6 +3309,17 @@ body.world-arena h1 {
     font-size: 13px;
 }
 
+/* Guild House (25.09.2026) */
+.sh-guild { border-color: #ffaa50; box-shadow: 0 0 40px rgba(255,170,80,.3); }
+.sh-guild h5 { color: #ffaa50; }
+.sh-guild .st-grid button small { color: #9aa7b8; font-size: 11px; }
+.sh-guild .st-grid button.on { background: rgba(255,170,80,.3); border-color: #ffaa50; }
+.sh-guild .st-grid button.gd-easy { border-color: rgba(0,214,122,.6); }
+.sh-guild .st-grid button.gd-hard { border-color: rgba(255,91,91,.7); }
+.sh-guild .gd-party { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sh-guild .gd-party span:not(.hint) { padding: 3px 9px; border-radius: 9px; background: rgba(255,255,255,.08); }
+.sh-guild .gd-row { display: flex; gap: 8px; align-items: center; margin: 10px 0 4px; }
+
 /* Vorschlags-Knopf unter den Patch Notes */
 .suggest-btn {
     width: 100%;
@@ -7199,6 +7210,7 @@ ws.onmessage = event => {
         case 'trInvite': case 'trState': case 'trClosed': case 'trDone': case 'trInfo': onTrade(data); break;
         case 'pvpError': showMsg('hub-msg', data.error, 'err'); break;
         case 'shTrader': onShTrader(data); break;
+        case 'msMenu': case 'gStash': case 'gInsure': onGuild(data); break;
         case 'arError': showMsg('hub-msg', data.error, 'err'); break;
         case 'shopOk': onShopOk(data); break;
         case 'shopRot': onShopRot(data.rot); break;
@@ -7595,6 +7607,7 @@ document.addEventListener('keydown', e => {
     }
     if (sh) {
         if (shTraderOpen) onShTrader({ close: true });
+        else if (guildOpen) onGuild({ close: true });
         else if (shInvOpen) shInvToggle(false);
         return;
     }
@@ -11139,6 +11152,85 @@ function onShTraderRaw(d) {
         `<h5>Buy</h5><div class="st-grid">${buy}</div><h5>Sell from your backpack (${Math.round(sh.map.trader.sell * 100)}% of the salvage value)</h5><div class="st-grid">${sell}</div>`;
 }
 
+// ---------- Guild House (25.09.2026): Missionen, Lager, Versicherung ----------
+// Ein Panel fuer drei Stationen; der Server schickt msMenu / gStash / gInsure.
+let guildOpen = null;
+function guildNear() {
+    const k = guildOpen === 'msMenu' ? 'missions' : guildOpen === 'gStash' ? 'stash' : 'insure';
+    if (k === 'missions' && (sh.map.guilds || []).some(g => shPred.x > g[0] && shPred.x < g[0] + g[2] && shPred.y > g[1] && shPred.y < g[1] + g[3])) return true;
+    return (sh.map.stations || []).some(s => s.kind === k && Math.hypot(s.x - shPred.x, s.y - shPred.y) < 150);
+}
+function onGuild(d) {
+    return keepScroll('guild', d.type || 'x', $('sh-guild'), () => onGuildRaw(d));
+}
+function onGuildRaw(d) {
+    let el = $('sh-guild');
+    if (d.close || !sh) {
+        if (el) el.hidden = true;
+        if (guildOpen === 'msMenu') wsSend({ type: 'msClose' });
+        guildOpen = null;
+        return;
+    }
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'sh-guild';
+        el.className = 'sh-trader sh-guild';
+        document.querySelector('#shooter .card').appendChild(el);
+        el.addEventListener('click', e => {
+            const b = e.target.closest('button');
+            if (!b || b.disabled) return;
+            const ds = b.dataset;
+            if (ds.close) return onGuild({ close: true });
+            if (ds.ms) {
+                const o = { type: ds.ms };
+                if (ds.kind) o.kind = ds.kind;
+                if (ds.diff) o.diff = ds.diff;
+                if (ds.id) o.id = Number(ds.id);
+                wsSend(o);
+            }
+            if (ds.dep) wsSend({ type: 'gDeposit', uid: ds.dep });
+            if (ds.wd) wsSend({ type: 'gWithdraw', uid: ds.wd });
+            if (ds.ins) wsSend({ type: 'gInsure', slot: ds.ins });
+        });
+    }
+    if (d.type === 'msMenu' && guildOpen && guildOpen !== 'msMenu' && !el.hidden) return; // offenes Lager nicht ueberschreiben
+    guildOpen = d.type;
+    el.hidden = false;
+    const tk = `🎟️ ${(d.tokens || 0).toLocaleString('en-US')}`;
+    const head = (t, extra) => `<div class="st-head"><b>${t}</b><span>${extra}</span><button type="button" class="ghost" data-close="1">✕</button></div>`;
+    const card = it => `${itemIcon(it)} ${esc(it.n)}`;
+    if (d.type === 'msMenu') {
+        const mine = d.list.find(m => m.id === d.mine);
+        const host = mine && mine.host === d.me;
+        const kinds = Object.entries(d.kinds), diffs = Object.entries(d.diffs);
+        const bossName = k => (d.bosses[k] || []).map(b => (sh.map.mobs && sh.map.mobs[b] || {}).name || b).join(' / ');
+        const diffInfo = x => `Mobs Lv ${x.lv >= 0 ? '+' : ''}${x.lv} · boss HP ×${x.bossHp} · +${x.tokens} 🎟️`;
+        let html = head('📜 Missions', `${tk} Mission Tokens · goal: defeat the boss, then get out`);
+        if (mine) {
+            html += `<h5>Your party · ${esc(d.kinds[mine.kind])} · ${esc(d.diffs[mine.diff].name)}</h5><div class="gd-party">${mine.members.map(n => `<span>${esc(n)}${n === mine.hostName ? ' 👑' : ''}</span>`).join('')}<span class="hint">${mine.members.length}/${d.max}</span></div>`;
+            if (host) {
+                html += `<h5>Dungeon</h5><div class="st-grid">${kinds.map(([k, n]) => `<button type="button" data-ms="msSet" data-kind="${k}" class="${mine.kind === k ? 'on' : ''}">${k === 'lab' ? '🧬' : '🎖️'} ${esc(n)}<small>Boss: ${esc(bossName(k))}</small></button>`).join('')}</div>`;
+                html += `<h5>Difficulty</h5><div class="st-grid">${diffs.map(([k, x]) => `<button type="button" data-ms="msSet" data-diff="${k}" class="gd-${k} ${mine.diff === k ? 'on' : ''}">${esc(x.name)}<small>${diffInfo(x)}</small></button>`).join('')}</div>`;
+                html += `<div class="gd-row"><button type="button" class="gold" data-ms="msStart">🚪 Start mission</button><button type="button" class="ghost" data-ms="msLeave">Leave party</button></div><div class="hint">Everyone in the party who is inside the Guild House comes along. Death works like a raid – only insured gear comes back.</div>`;
+            } else html += `<div class="gd-row"><span class="hint">Waiting for ${esc(mine.hostName)} to start…</span><button type="button" class="ghost" data-ms="msLeave">Leave party</button></div>`;
+        } else {
+            html += `<h5>New mission</h5><div class="st-grid">${kinds.map(([k, n]) => diffs.map(([dk, x]) => `<button type="button" data-ms="msCreate" data-kind="${k}" data-diff="${dk}" class="gd-${dk}">${k === 'lab' ? '🧬' : '🎖️'} ${esc(n)} · ${esc(x.name)}<small>${diffInfo(x)}</small></button>`).join('')).join('')}</div>`;
+        }
+        const others = d.list.filter(m => m.id !== d.mine);
+        html += `<h5>Open parties</h5>` + (others.length ? `<div class="st-grid">${others.map(m => `<button type="button" data-ms="msJoin" data-id="${m.id}" ${m.members.length >= d.max ? 'disabled' : ''}>👑 ${esc(m.hostName)}<small>${esc(d.kinds[m.kind])} · ${esc(d.diffs[m.diff].name)} · ${m.members.length}/${d.max}</small></button>`).join('')}</div>` : '<span class="hint">No open parties – start one</span>');
+        el.innerHTML = html;
+    } else if (d.type === 'gStash') {
+        const pack = d.pack.filter(it => !it.s).map(it => `<button type="button" class="ghost tier-${it.t}" data-dep="${esc(it.uid)}" ${d.inv.length >= d.invMax ? 'disabled' : ''}>${card(it)}<b>→ 📦</b></button>`).join('') || '<span class="hint">Your backpack is empty</span>';
+        const inv = d.inv.slice().sort((a, b) => tierIdx(b.t) - tierIdx(a.t)).map(it => `<button type="button" class="ghost tier-${it.t}" data-wd="${esc(it.uid)}" ${d.pack.length >= d.packMax ? 'disabled' : ''}>${card(it)}<b>→ 🎒</b></button>`).join('') || '<span class="hint">Your stash is empty</span>';
+        el.innerHTML = head('📦 Guild stash', `${tk} · ⚙️ ${(d.scrap || 0).toLocaleString('en-US')}`) +
+            `<h5>Backpack ${d.pack.length}/${d.packMax} – click to store</h5><div class="st-grid">${pack}</div><h5>Stash ${d.inv.length}/${d.invMax} – click to take</h5><div class="st-grid">${inv}</div>`;
+    } else if (d.type === 'gInsure') {
+        const rows = d.gear.map(g => `<button type="button" class="ghost tier-${g.t}" data-ins="${esc(g.slot)}" ${g.insured || d.scrap < g.scrap || d.tokens < g.tokens ? 'disabled' : ''}>${card(g)}<b>${g.insured ? '🛡️ insured' : `⚙️ ${g.scrap} · 🎟️ ${g.tokens}`}</b></button>`).join('') || '<span class="hint">Nothing equipped worth insuring</span>';
+        el.innerHTML = head('🛡️ Insurance', `${tk} · ⚙️ ${(d.scrap || 0).toLocaleString('en-US')}`) +
+            `<div class="hint">Insured gear goes back to your stash if you die on a mission. Lasts one mission, per item.</div><h5>Equipped</h5><div class="st-grid">${rows}</div>`;
+    }
+}
+
 // XP im Raid: kleine Einblendung, Level-Up gross
 function onArXp(d) {
     const el = document.createElement('div');
@@ -12290,6 +12382,10 @@ function stationLook(s) {
     if (s.kind === 'portal') return { icon: s.dir === 'down' ? '🕳️' : '🪜', rgb: '255,207,106', label: s.dest || '', hint: s.dir === 'down' ? `F · climb down: ${s.dest}` : `F · climb up: ${s.dest}` };
     if (s.kind === 'medic') return { icon: '⛑️', rgb: '0,214,122', label: `Medic · ${m.medic.cost} ⚙️`, hint: `F · heal to full (${m.medic.cost} scrap)` };
     if (s.kind === 'trader') return { icon: '🏪', rgb: '255,210,63', label: 'Trader', hint: 'F · trade (buy with scrap, sell your loot)' };
+    // 25.09.2026: Guild House
+    if (s.kind === 'missions') return { icon: '📜', rgb: '255,170,80', label: 'Mission board', hint: 'F · missions: pick a dungeon, difficulty and party' };
+    if (s.kind === 'stash') return { icon: '📦', rgb: '120,190,255', label: 'Guild stash', hint: 'F · stash: store or take items' };
+    if (s.kind === 'insure') return { icon: '🛡️', rgb: '140,255,170', label: 'Insurance', hint: 'F · insure gear for your next mission (scrap + 🎟️ tokens)' };
     if (s.kind === 'wall') {
         const w = arenaCat.weapons[s.base] || {};
         return { icon: w.icon || '🔫', rgb: '120,180,255', label: `${w.name || s.base} · 💰 ${zPrice(s)}`, hint: `F · buy ${w.name || s.base} (${zPrice(s)} points)` };
@@ -12545,6 +12641,7 @@ function shNearLoot(s) {
 function shFrame() {
     if (!sh) return;
     if (shTraderOpen && shPred && !(sh.map.stations || []).some(s => s.kind === 'trader' && Math.hypot(s.x - shPred.x, s.y - shPred.y) < 150)) onShTrader({ close: true });
+    if (guildOpen && shPred && !guildNear()) onGuild({ close: true });
     requestAnimationFrame(shFrame);
     const now = performance.now();
     const dt = Math.min(0.05, (now - shLastFrame) / 1000);
@@ -12613,6 +12710,43 @@ function shFrame() {
         c.stroke();
         c.setLineDash([]);
         drawEmojiC(c, '🚁', e.x, e.y, 44);
+    }
+    // 25.09.2026: Guild Houses (Holzboden, Teppich, Banner) und feindliche Stuetzpunkte
+    for (const g of m.guilds || []) {
+        if (!vis(g[0] + g[2] / 2, g[1] + g[3] / 2, Math.max(g[2], g[3]))) continue;
+        c.fillStyle = '#3a2a1c';
+        c.fillRect(g[0], g[1], g[2], g[3]);
+        c.strokeStyle = 'rgba(0,0,0,.28)';
+        c.lineWidth = 2;
+        for (let yy = g[1] + 40, r = 0; yy < g[1] + g[3]; yy += 40, r++) {
+            c.beginPath(); c.moveTo(g[0], yy); c.lineTo(g[0] + g[2], yy); c.stroke();
+            for (let xx = g[0] + (r % 2 ? 60 : 130); xx < g[0] + g[2]; xx += 180) { c.beginPath(); c.moveTo(xx, yy - 40); c.lineTo(xx, yy); c.stroke(); }
+        }
+        const cx = g[0] + g[2] / 2, cy = g[1] + g[3] / 2;
+        c.fillStyle = 'rgba(140,30,40,.75)';
+        c.fillRect(cx - 110, g[1] + 60, 220, g[3] - 60);
+        c.strokeStyle = 'rgba(255,200,90,.7)';
+        c.lineWidth = 4;
+        c.strokeRect(cx - 100, g[1] + 70, 200, g[3] - 80);
+        const warm = c.createRadialGradient(cx, cy, 40, cx, cy, g[2] * .6);
+        warm.addColorStop(0, 'rgba(255,190,90,.18)');
+        warm.addColorStop(1, 'rgba(255,190,90,0)');
+        c.fillStyle = warm;
+        c.fillRect(g[0], g[1], g[2], g[3]);
+        drawEmojiC(c, '🔥', cx, cy + 40, 34 + Math.sin(now / 200) * 2);
+        c.fillStyle = 'rgba(255,210,120,.8)';
+        c.font = 'bold 28px system-ui';
+        c.textAlign = 'center';
+        c.fillText('🏰 GUILD HOUSE', cx, g[1] - 16);
+    }
+    for (const z of m.posts || []) {
+        if (!vis(z[0] + z[2] / 2, z[1] + z[3] / 2, Math.max(z[2], z[3]))) continue;
+        c.fillStyle = 'rgba(255,91,91,.06)';
+        c.fillRect(z[0], z[1], z[2], z[3]);
+        c.fillStyle = 'rgba(255,91,91,.55)';
+        c.font = 'bold 24px system-ui';
+        c.textAlign = 'left';
+        c.fillText('⚠ ENEMY OUTPOST', z[0] + 18, z[1] - 14);
     }
     // Waende
     zMallDecor(c, m, shCam, viewW, viewH, now);
@@ -14024,7 +14158,11 @@ function shMinimap(c, latest, W, H) {
         c.arc(x0 + e.x * k, y0 + e.y * k, 4, 0, Math.PI * 2);
         c.fill();
     }
-    for (const [z, col] of [[m.town, 'rgba(0,255,136,.35)'], [m.outpost, 'rgba(0,255,136,.35)'], [m.military, 'rgba(255,91,91,.45)']]) {
+    for (const g of m.guilds || []) {
+        c.fillStyle = 'rgba(255,170,80,.35)';
+        c.fillRect(x0 + g[0] * k, y0 + g[1] * k, g[2] * k, g[3] * k);
+    }
+    for (const [z, col] of [[m.town, 'rgba(0,255,136,.35)'], [m.outpost, 'rgba(0,255,136,.35)'], [m.military, 'rgba(255,91,91,.45)'], ...(m.posts || []).map(z2 => [z2, 'rgba(255,91,91,.45)'])]) {
         if (!z) continue;
         c.strokeStyle = col;
         c.lineWidth = 1.5;

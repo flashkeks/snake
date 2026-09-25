@@ -1653,6 +1653,8 @@ async function handle(c, data) {
         case 'shUse':
         case 'shInteract':
         case 'shAbility':
+        case 'msOpen': case 'msClose': case 'msCreate': case 'msJoin': case 'msLeave': case 'msSet': case 'msStart':
+        case 'gDeposit': case 'gWithdraw': case 'gInsure':
         case 'shInv':
         case 'shTrade':
             (rooms.arenaOf(c) || dungeons.arenaOf(c) || shooter).action(c, data);
@@ -2251,6 +2253,7 @@ const dungeons = createDungeons({
     makeWorld: map => createShooter.makeWorld(map, map.w, map.h)
 });
 shooterH.enterDungeon = (c, kind, from) => dungeons.enter(c, kind, from);
+shooterH.startMission = (cs, kind, diff, back) => dungeons.startMission(cs, kind, diff, back);
 // PvP-Lobbys: jedes Match eine eigene Arena-Instanz auf einer kleinen Map
 const rooms = createRooms({
     accounts, send, broadcast, feed, refresh: c => sendAccount(c), worlds: createShooter.PVP_WORLDS, zombieWorld: createShooter.ZOMBIE_WORLD,

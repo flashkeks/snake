@@ -2676,6 +2676,32 @@ Instanz je Party, danach zurueck zum Friendly-Bereich, Tod wie im Raid, Dungeons
   Lv 1 (+4,5 % HP / +3 % Schaden je Level, Lv 45 = x3 HP); Oberflaechen-Bosse
   Legendary+ -30 %.
 
-**Noch offen (Phase 2/3):** groessere Oberflaeche, Gegner-Stuetzpunkte, zwei schicke
-Friendly-Bereiche, Missions-NPC und Partys, Rueckkehr in den Friendly-Bereich statt an
-die Luke.
+## 🏰 Map-Umbau Phase 2: Optik, Missionen, Guild Houses (25.09.2026)
+Max: Labor haesslich -> viel bessere Grafik, keine Minimap auf Zufallskarten, Sicht nur
+drumherum; Missionen im Spiel-Menue mit Easy/Normal/Hard, Bosse je Stufe anders;
+Guild House mit Lager und Versicherung (Scrap + Mission Tokens); groessere Oberflaeche
+mit 3–4 Stuetzpunkten und 2 Friendly-Bereichen. Entscheidungen: versicherte Items
+„Zurueck ins Lager", Versicherung „pro Item", Ziel „Boss besiegen + raus".
+
+- **Dungeon-Optik** (`public/dfx.js`): Boden je Raumstil in Chunks vorgebacken,
+  2,5D-Waende, Lichter mit Flackern, Sicht per Strahlen (nur was in Sichtlinie liegt),
+  Nebel + Vignette; Server schickt nur, was der Spieler sehen kann (`los()`).
+- **Oberflaeche** 9600 x 6400, bis 170 Gegner. **Zwei Guild Houses** (Holzboden,
+  Teppich, Feuer; Tore links/rechts/unten): drinnen kein Schaden, weder von Spielern
+  noch von Gegnern, Gegner kommen nicht rein. **Drei feindliche Stuetzpunkte**
+  (Mauerring mit Luecken, Sandsaecke, Militaerkisten, Wachen mit Respawn).
+- **Missionen** (Station `missions`, Panel `msMenu`): Party erstellen/beitreten (max 4),
+  Host waehlt Dungeon und Stufe. Easy: Gegner-Lv -10, Mobs x0,8, Boss-HP x0,7, 1 🎟️;
+  Normal 2 🎟️; Hard: Lv +10, Mobs x1,4, Boss-HP x1,6, 4 🎟️. Start nimmt alle mit, die
+  im Guild House stehen; eigene Instanz, Ziel-Boss (Spezial-Charakter) im entferntesten
+  Raum. Boss tot + Ausgang = Tokens, zurueck ins Guild House. Bosse je Stufe: Hard
+  bekommt Extras (Rick Falle + Ring, Gojo Red + schnellere Void + staerkere Infinity,
+  Tanya Elinium-Nuke, Mustang Flammenwand), Easy ist langsamer/schwaecher ohne
+  Void/Ring.
+- **Guild stash** (Station `stash`, Panel `gStash`): Rucksack <-> Lager im Raid.
+- **Versicherung** (Station `insure`, Panel `gInsure`): pro angelegtem Item, kostet
+  Scrap `INSURE_SCRAP` und Tokens `INSURE_TOKENS` je Stufe (Common 30/1 … Ultra
+  1000/6), gilt eine Mission. Tod in der Mission -> versicherte Items zurueck ins Lager.
+- Tokens liegen im Konto (`arena.tokens`), Statistik `missions`, `missions_DIFF`.
+
+**Noch offen:** Tokens im Hub anzeigen, weitere Missionsarten.

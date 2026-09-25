@@ -30,7 +30,7 @@ const I = require('./arena-items');
 
 const SPEED = Number(process.env.SNAKE_EVENT_SPEED) || 1;
 
-const W = 7200, H = 5000;       // seit 4.1 (vorher 4000 × 2800)
+const W = 9600, H = 6400;       // 25.09.2026 Map-Umbau Phase 2 (vorher 7200 × 5000, davor 4000 × 2800)
 const R = 18;
 const MOVE = 280;
 const MAX_PLAYERS = 24;
@@ -71,7 +71,9 @@ const SILENT_MS = 90e3;
 // Beutel eines Verlassenen/Getrennten liegen mindestens so lange (Max: min. 2 min)
 const BAG_LIFE_LEFT = Math.max(BAG_LIFE, 2 * 60e3);
 // Gegner (4.1): so viele laufen herum, geweckt nur in der Naehe von Spielern
-const MOB_BASE = 45, MOB_PER_PLAYER = 8, MOB_MAX = 120;
+const MOB_BASE = 70, MOB_PER_PLAYER = 10, MOB_MAX = 170;
+// Gegner-Stuetzpunkte (25.09.2026): Wachmannschaft je Stuetzpunkt, kommt nach dem Raeumen wieder
+const POST_GUARDS = ['enforcer', 'heavy', 'trooper', 'grenadier', 'scav'], POST_RESPAWN = 4 * 60e3;
 // Extraction nur fuer diese Konten (Kleinbuchstaben), leer = offen fuer alle
 const EXTRACT_ONLY = (process.env.SNAKE_EXTRACT_ONLY !== undefined ? process.env.SNAKE_EXTRACT_ONLY : 'kek').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
 // 25.09.2026 (Max: Gegner droppen zu viel, mit Railgun zu einfach): Dropchance
@@ -86,6 +88,16 @@ const MOB_LEVELS = { surface: [1, 10], bunker: [20, 30], lab: [40, 50] };
 // Lv 45 x3,0 (+200 %), Schaden Lv 45 x2,3. Obendrauf die Ebenen-Faktoren (UNDER_MOBS).
 const MOB_LV_HP = 0.045, MOB_LV_DMG = 0.03, MOB_LV_XP = 0.05;
 const MOB_EPIC_MUL = { surface: 0.5, bunker: 0.5, lab: 1 };
+// Missionen (25.09.2026, Max): Schwierigkeit, Belohnung in Mission Tokens, Versicherung
+const MISSION_DIFF = {
+    easy: { name: 'Easy', lv: -10, mobs: 0.8, bossHp: 0.7, tokens: 1 },
+    normal: { name: 'Normal', lv: 0, mobs: 1, bossHp: 1, tokens: 2 },
+    hard: { name: 'Hard', lv: 10, mobs: 1.4, bossHp: 1.6, tokens: 4 }
+};
+const MISSION_KINDS = { bunker: 'Abandoned military base', lab: 'Abandoned lab' };
+const PARTY_MAX = 4, GUILD_R = 260;
+// Versicherung je Stufe (Common … Ultra): Scrap und Tokens, gilt fuer eine Mission
+const INSURE_SCRAP = [30, 50, 90, 160, 300, 550, 1000], INSURE_TOKENS = [1, 1, 1, 2, 3, 4, 6];
 // Spezial-Charaktere (25.09.2026): je Dungeon-Run einmal SPECIAL_CHANCE, nach SPECIAL_AFTER ms
 const SPECIALS = { bunker: ['tanya', 'mustang'], lab: ['rick', 'gojo'] };
 const SPECIAL_CHANCE = 0.15, SPECIAL_AFTER = [45e3, 90e3];
@@ -146,7 +158,12 @@ function buildMap() {
     // 4.6 (Max): Haendler, Sani, Stadt und Aussenposten wieder raus, nur das Lager bleibt
     void town;
     void outpost;
-    const reserved = [military];
+    // 25.09.2026 (Map-Umbau Phase 2): zwei Guild Houses (Safe-Zone, Missionen, Stash,
+    // Versicherung) und drei weitere Gegner-Stuetzpunkte neben dem Militaerlager
+    const guilds = [[Math.round(W * 0.27) - 520, Math.round(H * 0.5) - 360, 1040, 720], [Math.round(W * 0.73) - 520, Math.round(H * 0.5) - 360, 1040, 720]];
+    const posts = [[Math.round(W * 0.1), Math.round(H * 0.12), 760, 560], [Math.round(W * 0.46), Math.round(H * 0.8), 820, 600], [Math.round(W * 0.84), Math.round(H * 0.74), 760, 620]];
+    const guildPad = g => [g[0] - 220, g[1] - 220, g[2] + 440, g[3] + 440];
+    const reserved = [military, ...guilds.map(guildPad), ...posts];
     const stations = [];
     // Gebaeude: Rechteck mit Tueren
     const buildings = [];
@@ -177,12 +194,32 @@ function buildMap() {
         buildings.push([x, y, w, hh]);
         if (inner) inner(x, y, w, hh);
     };
+    // Guild Houses: breite Tore links und rechts, Stationen drinnen
+    for (const [x, y, w, hh] of guilds) {
+        const gate = 180, gy = y + hh / 2 - gate / 2;
+        walls.push([x, y, w, T], [x, y + hh - T, w / 2 - gate / 2, T], [x + w / 2 + gate / 2, y + hh - T, w / 2 - gate / 2, T]);
+        walls.push([x, y, T, gy - y], [x, gy + gate, T, y + hh - gy - gate], [x + w - T, y, T, gy - y], [x + w - T, gy + gate, T, y + hh - gy - gate]);
+        doorRects.push([x, gy, T, gate], [x + w - T, gy, T, gate], [x + w / 2 - gate / 2, y + hh - T, gate, T]);
+        stations.push({ kind: 'missions', x: x + w / 2, y: y + 130 }, { kind: 'stash', x: x + 170, y: y + 170 }, { kind: 'insure', x: x + w - 170, y: y + 170 });
+    }
+    // Stuetzpunkte: Mauerring mit zwei Luecken, Sandsack-Deckung, Militaerkisten
+    for (const [x, y, w, hh] of posts) {
+        const gap = 150;
+        const gx = x + w * (0.3 + rand() * 0.4) - gap / 2, gy = y + hh * (0.3 + rand() * 0.4) - gap / 2;
+        walls.push([x, y, gx - x, T], [gx + gap, y, x + w - gx - gap, T], [x, y + hh - T, w, T]);
+        walls.push([x, y, T, hh], [x + w - T, y, T, gy - y], [x + w - T, gy + gap, T, y + hh - gy - gap]);
+        for (let i = 0; i < 4; i++) {
+            const horiz = i % 2 === 0, bw = horiz ? 140 : 34, bh = horiz ? 34 : 140;
+            walls.push([Math.round(x + 110 + rand() * (w - 260)), Math.round(y + 110 + rand() * (hh - 260)), bw, bh]);
+        }
+        for (let i = 0; i < 3; i++) crates.push({ x: x + 120 + i * (w - 240) / 2, y: y + hh / 2 + (i % 2 ? 110 : -110), t: 'mil' });
+    }
     // Militaerlager zuerst: grosses Gebaeude, drei Militaerkisten, zwei Trennwaende
     addBuilding(military[0], military[1], military[2], military[3], 3, (x, y, w, hh) => {
         for (let i = 0; i < 3; i++) crates.push({ x: x + 180 + i * (w - 360) / 2, y: y + hh / 2 + (i % 2 ? 90 : -90), t: 'mil' });
         walls.push([x + w / 3, y + 80, T, hh * 0.35], [x + 2 * w / 3, y + hh - 80 - hh * 0.35, T, hh * 0.35]);
     });
-    for (let k = 0; k < 1500 && buildings.length < 48; k++) {
+    for (let k = 0; k < 2500 && buildings.length < 80; k++) {
         const bw = 300 + rand() * 240, bh = 240 + rand() * 200;
         const r = [200 + rand() * (W - 400 - bw), 200 + rand() * (H - 400 - bh), bw, bh];
         if (buildings.some(b => overlaps(r, b, 160)) || reserved.some(z => overlaps(r, z, 160)) || nearExtract(r)) continue;
@@ -206,7 +243,7 @@ function buildMap() {
     }
     // Hindernisse draussen: Felsen und Mauern (Kisten-Hindernisse seit 3.1 weg)
     const obstacles = [];
-    for (let k = 0; k < 6000 && obstacles.length < 280; k++) {
+    for (let k = 0; k < 9000 && obstacles.length < 480; k++) {
         const type = 0.35 + rand() * 0.65;
         const r = type < 0.7 ? [0, 0, 70 + rand() * 60, 50 + rand() * 50]              // Felsen
             : type < 0.85 ? [0, 0, 180 + rand() * 120, T]                         // Mauer quer
@@ -218,7 +255,7 @@ function buildMap() {
     }
     walls.push(...obstacles.map(o => o.map(Math.round)));
     // Kisten draussen
-    for (let k = 0; k < 3000 && crates.length < 130; k++) {
+    for (let k = 0; k < 5000 && crates.length < 220; k++) {
         const c = { x: 150 + rand() * (W - 300), y: 150 + rand() * (H - 300), t: 'crate' };
         if (walls.some(w => overlaps([c.x - 30, c.y - 30, 60, 60], w, 20)) || reserved.some(z => overlaps([c.x - 30, c.y - 30, 60, 60], z, 0))) continue;
         crates.push(c);
@@ -237,7 +274,8 @@ function buildMap() {
         walls: walls.map(w => w.map(Math.round)), crates: crates.map(c => ({ x: Math.round(c.x), y: Math.round(c.y), t: c.t })), extracts,
         buildings: buildings.map(b => b.map(Math.round)), bushes, doors: doorRects.map(d => d.map(Math.round)),
         stations: stations.map(s => ({ kind: s.kind, x: Math.round(s.x), y: Math.round(s.y) })),
-        town: null, outpost: null, military: military.map(Math.round)
+        town: null, outpost: null, military: military.map(Math.round),
+        guilds, posts
     };
 }
 
@@ -1182,7 +1220,7 @@ module.exports = function createArena(h, opts = {}) {
             map: {
                 w: W, h: H, walls: MAP.walls, buildings: MAP.buildings, doors: MAP.doors, bushes: MAP.bushes, wallT: WALL_T,
                 extracts: MAP.extracts, extractR: EXTRACT_R, r: R, move: MOVE, view: VIEW, throwRange: I.THROW_RANGE,
-                stations: MAP.stations, town: MAP.town, outpost: MAP.outpost, military: MAP.military, mobs: M.catalog(),
+                stations: MAP.stations, town: MAP.town, outpost: MAP.outpost, military: MAP.military, guilds: MAP.guilds || null, posts: MAP.posts || null, mobs: M.catalog(),
                 trader: { buy: TRADER_BUY, sell: TRADER_SELL }, medic: { cost: MEDIC_COST, cd: MEDIC_CD },
                 perks: ZMB_PERKS, arena: MAP.arena || null, name: MAP.name || null, regions: MAP.regions || null, deco: MAP.deco || null,
                 // Dungeons (25.09.2026): Raster, Lampen, Raumstile fuer dfx.js
@@ -1249,6 +1287,15 @@ module.exports = function createArena(h, opts = {}) {
         if (zb) return how === 'left' ? zLeave(p) : zDown(p);
         if (!players.has(p.id)) return;
         players.delete(p.id);
+        // Mission (25.09.2026): versicherte Ausruestung geht zurueck ins Lager
+        if (opts.mission && p.account) {
+            const a = st(p.c), saved = [];
+            for (const sl of GEAR) {
+                const it = p.gear[sl];
+                if (it && it.insured && !it.starter) { delete it.insured; a.inv.push(it); saved.push(it.name); p.gear[sl] = sl === 'primary' ? starterPistol() : null; }
+            }
+            if (saved.length) { h.accounts.touch(); h.send(p.c, { type: 'shEvent', text: `🛡️ Insurance returned ${saved.join(', ')} to your stash`, kind: 'self' }); }
+        }
         const loot = lootOf(p);
         let rest = loot;
         award(p, L.XP.minute * Math.floor((Date.now() - p.joinedAt) / 60000), 'time in raid');
@@ -1321,6 +1368,7 @@ module.exports = function createArena(h, opts = {}) {
         const p = players.get(c.id);
         if (!p || p.dead) return null;
         players.delete(c.id);
+        for (const m of missions.values()) m.members.delete(p.id);
         for (let i = kqBombs.length - 1; i >= 0; i--) if (kqBombs[i].owner === p.id) kqBombs.splice(i, 1);
         for (let i = turrets.length - 1; i >= 0; i--) if (turrets[i].owner === p.id) turrets.splice(i, 1);
         for (let i = clones.length - 1; i >= 0; i--) if (clones[i].owner === p.id) clones.splice(i, 1);
@@ -1376,6 +1424,10 @@ module.exports = function createArena(h, opts = {}) {
             interact(p);
         } else if (d.type === 'shAbility') {
             ability(p, now);
+        } else if (d.type && d.type.startsWith('ms')) {
+            missionAction(p, d, now);
+        } else if (d.type === 'gDeposit' || d.type === 'gWithdraw' || d.type === 'gInsure') {
+            guildAction(p, d);
         } else if (d.type === 'shInv') {
             invOp(p, d);
         } else if (d.type === 'shTrade') {
@@ -1558,6 +1610,10 @@ module.exports = function createArena(h, opts = {}) {
             h.send(p.c, { type: 'shEvent', text: s.dir === 'down' ? `🕳️ You climb down: ${g ? g.name : s.dest}${g && g.level <= -2 ? ' – something moves in the dark…' : ' – watch out, it is dangerous down here'}` : `🪜 You climb up: ${g ? g.name : s.dest}`, kind: 'self' });
             return;
         }
+        // Guild House (25.09.2026): Menues im Browser
+        if (s.kind === 'missions') { p.msOpen = true; return sendMissions(p); }
+        if (s.kind === 'stash') return sendGuildStash(p);
+        if (s.kind === 'insure') return sendInsure(p);
         if (s.kind === 'medic') {
             if (now < (p.medicAt || 0)) return h.send(p.c, { type: 'shEvent', text: `⛑️ Medic again in ${Math.ceil((p.medicAt - now) / 1000)} s`, kind: 'self' });
             if (p.hp >= p.maxHp) return h.send(p.c, { type: 'shEvent', text: '⛑️ You are already at full health', kind: 'self' });
@@ -1608,6 +1664,101 @@ module.exports = function createArena(h, opts = {}) {
     }
 
     // ---------- Verbrauchsgut ----------
+
+    // ---------- Guild House: Missionen, Stash, Versicherung (25.09.2026) ----------
+    const missions = new Map();      // id -> { id, host, kind, diff, members: Set(pid), created }
+    let missionSeq = 0;
+    const nearStationKind = (p, kind) => (MAP.stations || []).find(s2 => s2.kind === kind && Math.hypot(s2.x - p.x, s2.y - p.y) < GUILD_R);
+    const tokensOf = c => st(c).tokens || 0;
+    const missionOf = p => [...missions.values()].find(m => m.members.has(p.id));
+    function missionView(p) {
+        return {
+            type: 'msMenu', tokens: tokensOf(p.c), mine: (missionOf(p) || {}).id || null, me: p.id,
+            diffs: Object.fromEntries(Object.entries(MISSION_DIFF).map(([k, d]) => [k, { name: d.name, lv: d.lv, tokens: d.tokens, bossHp: d.bossHp, mobs: d.mobs }])),
+            kinds: MISSION_KINDS, bosses: SPECIALS, max: PARTY_MAX,
+            list: [...missions.values()].map(m => ({ id: m.id, host: m.host, hostName: (players.get(m.host) || {}).name || '?', kind: m.kind, diff: m.diff, members: [...m.members].map(id => (players.get(id) || {}).name || '?') }))
+        };
+    }
+    function sendMissions(p) { h.send(p.c, missionView(p)); }
+    function missionsChanged() { for (const q of players.values()) if (q.msOpen) sendMissions(q); }
+    function missionAction(p, d, now) {
+        const at = !!nearStationKind(p, 'missions') || inGuild(p.x, p.y);
+        const cur = missionOf(p);
+        if (d.type === 'msOpen') { p.msOpen = true; return sendMissions(p); }
+        if (d.type === 'msClose') { p.msOpen = false; return; }
+        if (!at) return h.send(p.c, { type: 'shEvent', text: '📜 Go to a Guild House mission board', kind: 'self' });
+        if (d.type === 'msCreate') {
+            if (cur) cur.members.delete(p.id);
+            const kind = MISSION_KINDS[d.kind] ? d.kind : 'bunker', diff = MISSION_DIFF[d.diff] ? d.diff : 'normal';
+            const m = { id: ++missionSeq, host: p.id, kind, diff, members: new Set([p.id]), created: now };
+            missions.set(m.id, m);
+        } else if (d.type === 'msJoin') {
+            const m = missions.get(Number(d.id));
+            if (!m) return;
+            if (m.members.size >= PARTY_MAX) return h.send(p.c, { type: 'shEvent', text: '👥 That party is full', kind: 'self' });
+            if (cur) cur.members.delete(p.id);
+            m.members.add(p.id);
+        } else if (d.type === 'msLeave') {
+            if (cur) cur.members.delete(p.id);
+        } else if (d.type === 'msSet' && cur && cur.host === p.id) {
+            if (MISSION_KINDS[d.kind]) cur.kind = d.kind;
+            if (MISSION_DIFF[d.diff]) cur.diff = d.diff;
+        } else if (d.type === 'msStart' && cur && cur.host === p.id) {
+            // alle, die noch im Guild House stehen, gehen mit
+            const go = [...cur.members].map(id => players.get(id)).filter(q => q && !q.dead && inGuild(q.x, q.y, 60));
+            for (const id of cur.members) if (!go.some(q => q.id === id)) { const q = players.get(id); if (q) h.send(q.c, { type: 'shEvent', text: '👥 The party left without you – be inside the Guild House when the host starts', kind: 'self' }); }
+            missions.delete(cur.id);
+            if (!h.startMission) return;
+            const back = nearStationKind(p, 'missions') || { x: p.x, y: p.y + 120 };
+            h.startMission(go.map(q => q.c), cur.kind, cur.diff, { x: back.x, y: back.y + 150 });
+        }
+        for (const [id, m] of missions) {
+            if (!m.members.size) missions.delete(id);
+            else if (!m.members.has(m.host)) m.host = [...m.members][0];
+        }
+        missionsChanged();
+    }
+    function sendGuildStash(p) {
+        const a = st(p.c);
+        h.send(p.c, { type: 'gStash', inv: a.inv.map(brief), pack: p.pack.map(brief), packMax: p.packMax, invMax: I.invMaxOf(a), tokens: a.tokens || 0, scrap: a.scrap });
+    }
+    function sendInsure(p) {
+        const a = st(p.c);
+        const gear = GEAR.map(sl => p.gear[sl] && !p.gear[sl].starter ? { slot: sl, ...brief(p.gear[sl]), insured: !!p.gear[sl].insured, scrap: INSURE_SCRAP[I.TIER_IDX[p.gear[sl].tier] || 0], tokens: INSURE_TOKENS[I.TIER_IDX[p.gear[sl].tier] || 0] } : null).filter(Boolean);
+        h.send(p.c, { type: 'gInsure', gear, tokens: a.tokens || 0, scrap: a.scrap });
+    }
+    function guildAction(p, d) {
+        const a = st(p.c);
+        if (d.type === 'gInsure') {
+            if (!nearStationKind(p, 'insure')) return;
+            const it = p.gear[String(d.slot)];
+            if (!it || it.starter || it.insured || !GEAR.includes(String(d.slot))) return;
+            const t = I.TIER_IDX[it.tier] || 0, sc = INSURE_SCRAP[t], tk = INSURE_TOKENS[t];
+            if ((a.scrap || 0) < sc || (a.tokens || 0) < tk) return h.send(p.c, { type: 'shEvent', text: `🛡️ Insuring costs ${sc} scrap and ${tk} 🎟️ – finish missions to earn tokens`, kind: 'self' });
+            a.scrap -= sc;
+            a.tokens -= tk;
+            it.insured = true;
+            h.accounts.touch();
+            h.send(p.c, { type: 'shEvent', text: `🛡️ ${it.name} is insured for your next mission`, kind: 'self' });
+            return sendInsure(p);
+        }
+        if (!nearStationKind(p, 'stash')) return;
+        if (d.type === 'gDeposit') {
+            const i = p.pack.findIndex(x => x.uid === String(d.uid));
+            if (i < 0) return;
+            if (a.inv.length >= I.invMaxOf(a)) return h.send(p.c, { type: 'shEvent', text: '📦 Your stash is full', kind: 'self' });
+            a.inv.push(p.pack.splice(i, 1)[0]);
+        } else {
+            const i = a.inv.findIndex(x => x.uid === String(d.uid));
+            if (i < 0) return;
+            if (p.pack.length >= p.packMax) return h.send(p.c, { type: 'shEvent', text: '🎒 Your backpack is full', kind: 'self' });
+            p.pack.push(a.inv.splice(i, 1)[0]);
+            fixLoadout(a);
+        }
+        h.accounts.touch();
+        sendInv(p);
+        sendGuildStash(p);
+    }
 
     // Taste R (25.09.2026): Faehigkeit der angelegten Ausruestung
     function ability(p, now) {
@@ -2564,6 +2715,10 @@ module.exports = function createArena(h, opts = {}) {
         if (!players.has(v.id) || now < v.protect || v.dead) return false;
         // PvP: kein Schaden unter Teamkameraden
         if (attacker && attacker !== v && attacker.team && attacker.team === v.team) return false;
+        // Guild House (25.09.2026): kein Schaden unter Spielern drinnen oder von drinnen
+        // drinnen ist man ganz sicher (auch vor Mob-Schuessen durchs Tor), wer drinnen steht, trifft keine Spieler draussen
+        if (attacker !== v && inGuild(v.x, v.y)) return false;
+        if (attacker && attacker !== v && players.has(attacker.id) && inGuild(attacker.x, attacker.y)) return false;
         // Geppo: Feuer und Saeure (beides 'fire') tun nichts
         if (v.geppo && opts.how === 'fire') return false;
         // Straw Hat (Lv 20): Haki – alle 20 s geht ein grosser Treffer daneben
@@ -3310,6 +3465,7 @@ module.exports = function createArena(h, opts = {}) {
         if (pve && !def.boss && !def.zombie) {
             const [lo, hi] = MOB_LEVELS[regionAt(x, y)] || MOB_LEVELS.surface;
             m.lv = def.special ? hi + 5 : lo + Math.floor(Math.random() * (hi - lo + 1));
+            if (opts.mission) m.lv = Math.max(1, m.lv + MISSION_DIFF[opts.mission.diff].lv);
             const k = m.lv - 1;
             m.hp = m.maxHp = Math.round(m.maxHp * (1 + MOB_LV_HP * k));
             m.dm = 1 + MOB_LV_DMG * k;
@@ -3328,7 +3484,8 @@ module.exports = function createArena(h, opts = {}) {
     }
     const inZone = (x, y, z, m) => !!z && x > z[0] - m && x < z[0] + z[2] + m && y > z[1] - m && y < z[1] + z[3] + m;
     // Stadt und Aussenposten sind Schutzzonen: Gegner kommen nicht hinein (schiessen aber hinein)
-    const mobBlocked = (x, y, r) => blocked(x, y, r) || inZone(x, y, MAP.town, r) || inZone(x, y, MAP.outpost, r);
+    const inGuild = (x, y, m = 0) => (MAP.guilds || []).some(g => inZone(x, y, g, m));
+    const mobBlocked = (x, y, r) => blocked(x, y, r) || inZone(x, y, MAP.town, r) || inZone(x, y, MAP.outpost, r) || inGuild(x, y, r + 120);
 
     function spawnBoss(now, kind) {
         const pool = M.BOSSES.filter(k => k !== lastBoss);
@@ -3381,7 +3538,7 @@ module.exports = function createArena(h, opts = {}) {
         }
         if (!(w && w.pure)) dmg *= m.def.taken || 1;
         // Gojo (25.09.2026): Infinity – aus der Ferne kommt kaum etwas an
-        if (m.def.infinity && attacker && attacker.x !== undefined && Math.hypot(attacker.x - m.x, attacker.y - m.y) > 300) dmg *= 0.15;
+        if (m.def.infinity && attacker && attacker.x !== undefined && Math.hypot(attacker.x - m.x, attacker.y - m.y) > 300) dmg *= m.diff === 'easy' ? 0.4 : m.diff === 'hard' ? 0.08 : 0.15;
         // Riot Trooper (25.09.2026): Schild vorne haelt 80 % ab – flankieren!
         if (m.def.shield && attacker && attacker.x !== undefined && !(w && (w.pure || w.dot))) {
             let da = Math.atan2(attacker.y - m.y, attacker.x - m.x) - m.a;
@@ -3509,6 +3666,10 @@ module.exports = function createArena(h, opts = {}) {
             // Brut der Koenigin faellt mit ihr
             for (const o of [...mobs]) if (o.parent === m.id) mobs.splice(mobs.indexOf(o), 1);
             return;
+        }
+        if (def.special && m.id === missionBoss) {
+            missionDone = true;
+            for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `✅ Mission complete! Head back to the exit to claim ${MISSION_DIFF[opts.mission.diff].tokens} 🎟️ Mission Tokens`, kind: 'drop' });
         }
         if (def.special) {
             const n = def.drop ? def.drop.n : 3;
@@ -3898,11 +4059,17 @@ module.exports = function createArena(h, opts = {}) {
     // Spezial-Charaktere (25.09.2026): eigene Faehigkeiten
     function specialTick(m, tgt, now, cd) {
         const def = m.def, dm = m.dm || 1, by = def.icon + ' ' + def.name;
+        // Missions-Schwierigkeit (25.09.2026): easy schwaecher/langsamer, hard mit Extras
+        const hard = m.diff === 'hard', easy = m.diff === 'easy', slow = easy ? 1.5 : hard ? 0.7 : 1;
+        const tell = t => { for (const q of near(m.x, m.y, 900)) h.send(q.c, { type: 'shEvent', text: t, kind: 'boss' }); };
+        const ring = (n, speed, dmg) => { for (let k = 0; k < n; k++) { const a = k / n * Math.PI * 2; bullets.push({ id: ++seqId, owner: m.id, x: m.x + Math.cos(a) * (def.r + 8), y: m.y + Math.sin(a) * (def.r + 8), vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, dies: now + 1600 / SPEED, pierce: 0, bounce: 0, hits: new Set(), w: { dmg: dmg * dm, how: 'boss', by, mob: true }, fx: 1024, tier: 6 }); } };
         const strike = (x, y, r, dmg, warn, look, fire) => strikes.push({ id: ++seqId, x, y, r, dmg: dmg * dm, at: now + warn / SPEED, total: warn, by, how: 'boss', look, fire: !!fire, acid: false });
         if (m.kind === 'rick') {
             // Portal-Sprung
             if (now >= (m.nextBlink || now + 1)) {
-                m.nextBlink = now + cd(5000);
+                m.nextBlink = now + cd(5000 * slow);
+                // hard: am alten Platz bleibt eine Portal-Falle
+                if (hard) strike(m.x, m.y, 130, 90, 900, 2);
                 for (let k = 0; k < 12; k++) {
                     const a = Math.random() * 6.28, r = 250 + Math.random() * 150, x = tgt.x + Math.cos(a) * r, y = tgt.y + Math.sin(a) * r;
                     if (mobBlocked(x, y, def.r)) continue;
@@ -3914,14 +4081,16 @@ module.exports = function createArena(h, opts = {}) {
             }
             if (!m.nextBlink) m.nextBlink = now + cd(3000);
             // Meeseeks rufen
-            if (now >= (m.nextSummon || 0) && mobs.filter(o => o.parent === m.id).length < 6) {
-                m.nextSummon = now + cd(12000);
-                for (let k = 0; k < 3; k++) {
+            if (now >= (m.nextSummon || 0) && mobs.filter(o => o.parent === m.id).length < (easy ? 4 : hard ? 8 : 6)) {
+                m.nextSummon = now + cd(12000 * slow);
+                for (let k = 0; k < (easy ? 2 : hard ? 4 : 3); k++) {
                     const a = Math.random() * 6.28, o = spawnMob('meeseeks', m.x + Math.cos(a) * 60, m.y + Math.sin(a) * 60, now);
                     o.parent = m.id; o.tgt = tgt.id; o.seen = now; o.under = m.under;
                 }
                 for (const q of near(m.x, m.y, 900)) h.send(q.c, { type: 'shEvent', text: "🔵 I'm Mr. Meeseeks, look at me!", kind: 'boss' });
             }
+            // hard: Laserring aus der Portal-Kanone
+            if (hard && now >= (m.nextRing || 0)) { if (m.nextRing) { ring(14, 520, 30); tell('🧪 "Wubba lubba dub dub!"'); } m.nextRing = now + cd(8000); }
             // Flachmann
             if (!m.flask && m.hp < m.maxHp * 0.5) {
                 m.flask = true;
@@ -3929,18 +4098,29 @@ module.exports = function createArena(h, opts = {}) {
                 fxAt(m.x, m.y, { type: 'shFx', kind: 'heal', x: Math.round(m.x), y: Math.round(m.y) });
             }
         } else if (m.kind === 'gojo') {
-            if (!m.nextPurple) { m.nextPurple = now + cd(6000); m.nextVoid = now + cd(12000); }
+            if (!m.nextPurple) { m.nextPurple = now + cd(6000); m.nextVoid = now + cd(12000); m.nextRed = now + cd(5000); }
+            // hard: Red – Rueckstoss-Explosion um ihn herum
+            if (hard && now >= m.nextRed) {
+                m.nextRed = now + cd(7000);
+                fxAt(m.x, m.y, { type: 'shBoom', x: Math.round(m.x), y: Math.round(m.y), r: 320, nuke: false });
+                for (const q of near(m.x, m.y, 320)) {
+                    const d = Math.hypot(q.x - m.x, q.y - m.y) || 1;
+                    [q.x, q.y] = slide(q.x, q.y, (q.x - m.x) / d * 260, (q.y - m.y) / d * 260, R);
+                    damage(q, null, 90 * dm, now, q.x, q.y, { how: 'boss', by, noDodge: true });
+                }
+                tell('🔴 Reversal: Red');
+            }
             // Hollow Purple: langsame Riesenkugel
             if (now >= m.nextPurple) {
-                m.nextPurple = now + cd(10000);
+                m.nextPurple = now + cd(10000 * slow);
                 const a = Math.atan2(tgt.y - m.y, tgt.x - m.x);
                 bullets.push({ id: ++seqId, owner: m.id, x: m.x + Math.cos(a) * (def.r + 30), y: m.y + Math.sin(a) * (def.r + 30), vx: Math.cos(a) * 380, vy: Math.sin(a) * 380, dies: now + 2600 / SPEED, pierce: 99, bounce: 0, hits: new Set(),
                     w: { dmg: 180 * dm, how: 'boss', by, mob: true, big: true, hitR: 50, look: 'purple' }, fx: 1024, tier: 6 });
                 for (const q of near(m.x, m.y, 900)) h.send(q.c, { type: 'shEvent', text: '🟣 Hollow Purple!', kind: 'boss' });
             }
             // Infinite Void: alle in der Naehe erstarren, dann Einschlaege
-            if (now >= m.nextVoid) {
-                m.nextVoid = now + cd(18000);
+            if (!easy && now >= m.nextVoid) {
+                m.nextVoid = now + cd(hard ? 12000 : 18000);
                 fxAt(m.x, m.y, { type: 'shFx', kind: 'void', x: Math.round(m.x), y: Math.round(m.y), r: 650 });
                 for (const q of near(m.x, m.y, 650)) {
                     if (!(q.aw && q.aw.has('geppo'))) q.jailUntil = now + 2500 / SPEED;
@@ -3951,15 +4131,28 @@ module.exports = function createArena(h, opts = {}) {
             }
         } else if (m.kind === 'tanya') {
             if (!m.nextBarrage) m.nextBarrage = now + cd(4000);
+            // hard: Elinium Type 95 – riesige Explosion mit langer Vorwarnung
+            if (hard && now >= (m.nextNuke || now + 1)) { strike(tgt.x, tgt.y, 300, 250, 2600, 1, true); tell('💥 Elinium Type 95 – RUN!'); m.nextNuke = now + cd(20000); }
+            if (hard && !m.nextNuke) m.nextNuke = now + cd(10000);
             if (now >= m.nextBarrage) {
-                m.nextBarrage = now + cd(8000);
-                for (let k = 0; k < 6; k++) { const a = Math.random() * 6.28, r = k ? 60 + Math.random() * 180 : 0; strike(tgt.x + Math.cos(a) * r, tgt.y + Math.sin(a) * r, 100, 70, 900 + k * 120, 1); }
+                m.nextBarrage = now + cd(easy ? 11000 : hard ? 6000 : 8000);
+                for (let k = 0; k < (easy ? 4 : hard ? 10 : 6); k++) { const a = Math.random() * 6.28, r = k ? 60 + Math.random() * 180 : 0; strike(tgt.x + Math.cos(a) * r, tgt.y + Math.sin(a) * r, 100, 70, 900 + k * 120, 1); }
                 for (const q of near(m.x, m.y, 900)) h.send(q.c, { type: 'shEvent', text: '🪄 "Deus lo vult!" – explosion barrage', kind: 'boss' });
             }
         } else if (m.kind === 'mustang') {
             if (!m.nextRing) m.nextRing = now + cd(8000);
-            if (now >= m.nextRing) {
-                m.nextRing = now + cd(15000);
+            // hard: Flammenwand in Richtung Ziel, dreifacher Schnipp
+            if (hard && now >= (m.nextWall || 0)) {
+                if (m.nextWall) {
+                    const a = Math.atan2(tgt.y - m.y, tgt.x - m.x);
+                    for (let k = 1; k <= 7; k++) fires.push({ id: ++seqId, x: m.x + Math.cos(a) * k * 90, y: m.y + Math.sin(a) * k * 90, r: 60, until: now + 4000 / SPEED, owner: null, dps: 45 * dm });
+                    for (let k = 0; k < 2; k++) strike(tgt.x + (Math.random() - .5) * 200, tgt.y + (Math.random() - .5) * 200, 110, 90, 700 + k * 200, 1, true);
+                    tell('🔥 Flame Alchemy!');
+                }
+                m.nextWall = now + cd(6000);
+            }
+            if (!easy && now >= m.nextRing) {
+                m.nextRing = now + cd(hard ? 9000 : 15000);
                 for (let k = 0; k < 10; k++) {
                     const a = k / 10 * Math.PI * 2, x = m.x + Math.cos(a) * 230, y = m.y + Math.sin(a) * 230;
                     fires.push({ id: ++seqId, x, y, r: 70, until: now + 5000 / SPEED, owner: null, dps: 35 * dm });
@@ -4144,7 +4337,7 @@ module.exports = function createArena(h, opts = {}) {
         }
         // Einschlaege (4.6): Warnkreise, dann Schaden – der erste genau aufs Ziel
         if (def.strikes && tgt && now >= m.nextStrike) {
-            m.nextStrike = now + cd(def.strikes.ms);
+            m.nextStrike = now + cd(def.strikes.ms * (m.diff === 'easy' ? 1.5 : 1));
             const s = def.strikes;
             for (let k = 0; k < s.n + (m.enraged ? 3 : 0); k++) {
                 const a = Math.random() * 6.28, rr = k ? Math.random() * s.spread : 0;
@@ -4233,9 +4426,11 @@ module.exports = function createArena(h, opts = {}) {
     }
 
     // Bestand halten: Streuner nachschieben, Enforcer im Militaerlager
+    const postAt = [];
+    let postInit = false;
     function populate(now) {
         const want = Math.min(MOB_MAX, MOB_BASE + MOB_PER_PLAYER * players.size);
-        let roam = mobs.filter(m => !m.def.boss && m.kind !== 'enforcer' && !m.parent && !m.under).length;
+        let roam = mobs.filter(m => !m.def.boss && m.kind !== 'enforcer' && !m.parent && !m.under && m.post === undefined).length;
         populateUnder(now);
         for (let k = 0; k < 3 && roam < want; k++) {
             const s = mobSpot();
@@ -4246,7 +4441,26 @@ module.exports = function createArena(h, opts = {}) {
             spawnMob(kind, s.x, s.y, now);
             roam++;
         }
-        const enf = mobs.filter(m => m.kind === 'enforcer').length;
+        // Stuetzpunkte (25.09.2026): je 5 Wachen, nach dem Raeumen POST_RESPAWN Pause
+        (MAP.posts || []).forEach((z, i) => {
+            const alive = mobs.filter(m => m.post === i).length;
+            postAt[i] = postAt[i] || 0;
+            if (alive) { postAt[i] = 0; return; }
+            if (!postAt[i]) { postAt[i] = now + (postInit ? POST_RESPAWN : 0) / SPEED; return; }
+            if (now < postAt[i] || [...players.values()].some(p => inZone(p.x, p.y, z, 400))) return;
+            postAt[i] = 0;
+            for (const kind of POST_GUARDS) {
+                for (let tries = 0; tries < 30; tries++) {
+                    const x = z[0] + 90 + Math.random() * (z[2] - 180), y = z[1] + 90 + Math.random() * (z[3] - 180);
+                    if (blocked(x, y, 28)) continue;
+                    const m = spawnMob(kind, x, y, now, { x: z[0] + z[2] / 2, y: z[1] + z[3] / 2 });
+                    m.post = i;
+                    break;
+                }
+            }
+        });
+        postInit = true;
+        const enf = mobs.filter(m => m.kind === 'enforcer' && m.post === undefined).length;
         enforcerAt = enforcerAt.filter(t => t > now);
         const z = MAP.military;
         for (let k = enf + enforcerAt.length; k < ENFORCERS; k++) {
@@ -4264,9 +4478,22 @@ module.exports = function createArena(h, opts = {}) {
     // 6.12: Untergrund-Bestand. Keller: bekannte Gegner, deutlich staerker;
     // Labor: Monster aus den Tanks. Nachschub nie in Sichtweite von Spielern.
     // Dungeon-Instanz (25.09.2026): Gegner nachschieben (mehr bei groesserer Party)
-    let specialAt = 0, specialDone = false;
+    let specialAt = 0, specialDone = false, missionBoss = null, missionDone = false;
     function dungeonTick(now, dt) {
         populateUnder(now);
+        if (opts.mission && !specialDone) {
+            // Mission: Ziel-Boss sitzt von Anfang an im entferntesten Raum
+            specialDone = true;
+            const pool = SPECIALS[opts.kind] || [];
+            const kind = opts.forceSpecial || pool[Math.floor(Math.random() * pool.length)];
+            const at = (MAP.farRooms || [])[0] || freeSpot(true);
+            const m = spawnMob(kind, at.x, at.y, now);
+            m.under = opts.kind;
+            m.diff = opts.mission.diff;
+            m.hp = m.maxHp = Math.round(m.maxHp * MISSION_DIFF[m.diff].bossHp);
+            missionBoss = m.id;
+            for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `🎯 Mission (${MISSION_DIFF[m.diff].name}): defeat ${m.def.icon} ${m.def.name} – somewhere deep inside`, kind: 'boss' });
+        }
         if (!specialAt) specialAt = now + randIn(SPECIAL_AFTER) / SPEED;
         if (!specialDone && now >= specialAt) {
             specialDone = true;
@@ -4294,7 +4521,7 @@ module.exports = function createArena(h, opts = {}) {
             const U = UNDER_MOBS[g.id];
             if (!U) continue;
             const have = mobs.filter(m => m.under === g.id);
-            if (have.length >= U.n + (mode === 'dungeon' ? 4 * Math.max(0, players.size - 1) : 0)) continue;
+            if (have.length >= Math.round((U.n + (mode === 'dungeon' ? 4 * Math.max(0, players.size - 1) : 0)) * (opts.mission ? MISSION_DIFF[opts.mission.diff].mobs : 1))) continue;
             const total = U.kinds.reduce((a, [, w]) => a + w, 0);
             let r = Math.random() * total, kind = U.kinds[0][0];
             for (const [kk, w] of U.kinds) if ((r -= w) < 0) { kind = kk; break; }
@@ -4957,6 +5184,7 @@ module.exports = function createArena(h, opts = {}) {
 
     return {
         join, leave, input, action, tick, refundAll, hubAction, joinedMsg, detach, attach,
+        missionDone: () => missionDone, missionReward: () => opts.mission ? MISSION_DIFF[opts.mission.diff].tokens : 0,
         size: () => players.size, map: MAP,
         startPvp: () => pvpRound(Date.now()), pvpState: () => pvp,
         startZombies: () => zStart(), zState: () => zb,
