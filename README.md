@@ -2747,11 +2747,11 @@ Nur Uniques haben eigene Grafiken:
   `bolt()` (Blitz), `blade()` (Katana), `flame()`. Filter/Verlaeufe haengen einmal im
   Dokument (`UNIQUE_DEFS`). Bilder aus dem Netz gehen aus dem Container nicht (Bild-Hosts
   gesperrt), deshalb gezeichnet.
-- **Spezial-Charaktere in Seitenansicht** (`bDrawSide` in `public/bfx.js`, wie die
-  Zombie-Bosse): Rick (Kittel, Stachelhaar, Portal-Gun), Gojo (Uniform, weisses Haar,
-  Augenbinde, Infinity-Ringe, Hollow Purple in der Hand), Tanya (fliegt, Mana-Schweif,
-  Gewehr mit Bajonett, Elinium), Mustang (Mantel, Handschuhe, Schnipp-Flamme), Meeseeks.
-  Schauen je nach Richtung links/rechts, Beine laufen, Waffenarm zielt.
+- **Spezial-Charaktere als Pixel-Sprites** (`PX` + `bDrawSide` in `public/bfx.js`; Max:
+  die gezeichneten Figuren sahen „interessant" aus -> Pixel-Design): Raster 16 x 22, Palette
+  je Zeichen, zwei Bein-Frames, 1-px-Umriss, einmal gerendert und ohne Glaettung skaliert.
+  Blickrichtung links/rechts, Wippen beim Laufen; Glow an Portal-Gun/Hollow Purple/Elinium,
+  Gojo mit Infinity-Ringen, Tanya fliegt mit Mana-Schweif, Mustang schnippt Funken.
 
 ## 🛠️ Creative Mode (25.09.2026, Max)
 Pro Konto im Admin-Panel schaltbar (Arena-Bereich, „Creative mode", `adminArena` Op

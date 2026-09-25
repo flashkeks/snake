@@ -291,7 +291,7 @@ const B_BOSS = {
 // ================= Dungeon-Gegner und Spezial-Charaktere =================
 function bDrawMob(c, mb, def, now) {
     // Spezial-Charaktere seitlich wie die Zombie-Bosse (Max: „nicht nur von oben")
-    if (B_SIDE[mb.kind]) return bDrawSide(c, mb, def, now);
+    if (PX[mb.kind]) return bDrawSide(c, mb, def, now);
     const f = B_MOB[mb.kind];
     if (!f) return false;
     const r = def.r || 20, h = rHash(String(mb.id || mb.kind));
@@ -540,240 +540,211 @@ function gRRb(c, x, y, w, h, r) {
 }
 
 
-// ================= Spezial-Charaktere in Seitenansicht (25.09.2026) =================
-// Figur steht aufrecht (Kopf oben), schaut nach links/rechts je nach Blickrichtung, Beine
-// laufen, der Waffenarm zeigt auf den Winkel a. Einheit u = r/10, Figur ca. 5r hoch.
+
+// ================= Spezial-Charaktere als Pixel-Sprites (25.09.2026) =================
+// Max: die gezeichneten Figuren sahen „interessant" aus -> Pixel-Design. Je Figur ein Raster
+// (16 breit, Blick nach rechts), zwei Bein-Frames, Palette je Zeichen. Wird einmal in kleine
+// Canvas gerendert (mit 1-px-Umriss) und ohne Glaettung hochskaliert. Glow/Funken obendrauf.
+const PX = {
+    rick: {
+        pal: { B: '#b9d3e6', b: '#7fa6c4', s: '#f2d2b4', S: '#d9a888', U: '#5f7f96', w: '#ffffff', k: '#16161c', R: '#7a2a2a', W: '#f4f6f8', V: '#c9d1d8', c: '#86c3e8', p: '#7a5230', P: '#5a3a20', g: '#b8bfc6', G: '#8dff62', d: '#6b7078' },
+        body: [
+            '...B.B.B........',
+            '..BBBBBBBB......',
+            '.BBbBBBBBBB.....',
+            'BBbBBBBBBBBB....',
+            '.BBBsssssBB.....',
+            '..BsUUUUUUs.....',
+            '..Bsswksswks....',
+            '...sSssssss.....',
+            '...ssRRRRs......',
+            '....sssss.......',
+            '...WWccccW......',
+            '..WWWccccWWWWsgG',
+            '..WVWccccWV..dG.',
+            '..WVWccccWV.....',
+            '..WVWccccWV.....',
+            '..WVWccccWV.....',
+            '.WWVWppppWVW....',
+            '.WW..pppp..WW...',
+        ],
+        legs: [['....pP..pP......', '....pP..pP......', '....pP..pP......', '...kkk..kkk.....'],
+               ['...pP....pP.....', '...pP....pP.....', '..pP......pP....', '..kkk.....kkk...']],
+        glow: { x: 15.5, y: 11.5, col: '140,255,100' }
+    },
+    gojo: {
+        pal: { W: '#ffffff', w: '#d8e4f4', s: '#f4dcc8', S: '#d8b098', K: '#101014', N: '#1e2130', n: '#2c3146', y: '#e8b830', r: '#b86a5a', P: '#c77dff', V: '#f3dcff', k: '#07070a' },
+        body: [
+            '..W..W.W........',
+            '..WW.WWWW.......',
+            '.WWWWWWWWW......',
+            'WWwWWWWWWWW.....',
+            '.WWWWWWWWWW.....',
+            '..WWssssssW.....',
+            '..WKKKKKKKK.....',
+            '..sKKKKKKKK.....',
+            '...sSssssss.....',
+            '...sssrrss......',
+            '....NNNNNN......',
+            '...NNNNNNNNNNsVP',
+            '..NNnNyNNnN..PVP',
+            '..NnNNNNNnN..PP.',
+            '..NnNNyNNnN.....',
+            '..NnNNNNNnN.....',
+            '..NnNNNNNnN.....',
+            '..NNNNNNNNN.....',
+        ],
+        legs: [['....NN..NN......', '....NN..NN......', '....NN..NN......', '...kkk..kkk.....'],
+               ['...NN....NN.....', '...NN....NN.....', '..NN......NN....', '..kkk.....kkk...']],
+        glow: { x: 14.5, y: 12, col: '200,130,255' },
+        ring: '140,200,255'
+    },
+    tanya: {
+        pal: { Y: '#f6d86a', y: '#d8b040', s: '#f8e2cc', S: '#e0bca0', E: '#2a7ae8', O: '#5c5c34', o: '#7a7a48', q: '#8e8e56', g: '#e8c030', k: '#1a140c', r: '#9a3a2a', w: '#5a3a20', l: '#d8e0e8', C: '#9fe8ff', B: '#3a2a18' },
+        body: [
+            '................',
+            '................',
+            '...OOOOOO.......',
+            '..OOOOgOOO......',
+            '..kkkkkkkkk.....',
+            '..YYsssssY......',
+            '..YsssEsss......',
+            '..YYssssS.......',
+            '...YssrSs.......',
+            '....ssss........',
+            '...oqqqqo.......',
+            '..oqqCqqqoswwwwl',
+            '..oqqqqqqo......',
+            '..oBBBBBBo......',
+            '..oqqqqqqo......',
+            '...qqqqqq.......',
+            '...OO..OO.......',
+            '...OO..OO.......',
+        ],
+        legs: [['...OO..OO.......', '...OO..OO.......', '...kk..kk.......', '................'],
+               ['...OO...OO......', '..OO....OO......', '..kk.....kk.....', '................']],
+        glow: { x: 5.5, y: 11.5, col: '140,230,255' },
+        fly: true
+    },
+    mustang: {
+        pal: { K: '#15151c', k: '#07070a', s: '#f2d8c4', S: '#d4ae94', B: '#2a46b0', b: '#3a5ad0', D: '#18286e', y: '#f0c030', W: '#ffffff', R: '#d23c3c', N: '#16204a', e: '#111' },
+        body: [
+            '...KKKKK........',
+            '..KKKKKKKK......',
+            '.KKKKKKKKK......',
+            '.KKsKKsKKKK.....',
+            '..KssssKsK......',
+            '..KsssekesK.....',
+            '...sSssssss.....',
+            '...ssSSSss......',
+            '....sssss.......',
+            '...yBBBBBy......',
+            '..BBBByBBBBBBBWR',
+            '..BbBBBBBbB.....',
+            '..BbBByBBbB.....',
+            '..BbBBBBBbB.....',
+            '..NNNNNNNNN.....',
+            '..BbBByBBbB.....',
+            '.BBbBBBBBbBB....',
+            '.BB.NNNNN.BB....',
+        ],
+        legs: [['....NN..NN......', '....NN..NN......', '....NN..NN......', '...kkk..kkk.....'],
+               ['...NN....NN.....', '...NN....NN.....', '..NN......NN....', '..kkk.....kkk...']],
+        glow: { x: 15, y: 10.5, col: '255,150,40' },
+        snap: true
+    },
+    meeseeks: {
+        pal: { b: '#6cc4ff', B: '#3a8ae0', w: '#ffffff', k: '#111', m: '#1d3a7a' },
+        body: [
+            '................',
+            '................',
+            '.....bbbbb......',
+            '....bbbbbbb.....',
+            '...bbbbbbbbb....',
+            '...bbbbwwbww....',
+            '...bbbbwkbwk....',
+            '...bbbbbbbbb....',
+            '...bbbbmmmmb....',
+            '....bbbbbbb.....',
+            '..b..bbbbb..b...',
+            '..bbbbbbbbbb....',
+            '.....bBbbb......',
+            '.....bBbbb......',
+            '.....bBbbb......',
+            '.....bbbbb......',
+            '.....bb.bb......',
+            '.....bb.bb......',
+        ],
+        legs: [['.....bb.bb......', '.....bb.bb......', '.....bb.bb......', '....bbb.bbb.....'],
+               ['....bb...bb.....', '....bb...bb.....', '...bb.....bb....', '...bbb....bbb...']]
+    }
+};
+const PX_CACHE = {};
+function pxSprite(kind, frame) {
+    const key = kind + frame;
+    if (PX_CACHE[key]) return PX_CACHE[key];
+    const d = PX[kind], rows = d.body.concat(d.legs[frame]), H = rows.length, W = 16;
+    const cv = document.createElement('canvas');
+    cv.width = W + 2; cv.height = H + 2;
+    const g = cv.getContext('2d');
+    const on = (x, y) => y >= 0 && y < H && x >= 0 && x < W && rows[y][x] !== '.' && rows[y][x] !== undefined;
+    // Umriss
+    g.fillStyle = '#0b0b10';
+    for (let y = -1; y <= H; y++) for (let x = -1; x <= W; x++) if (!on(x, y) && (on(x - 1, y) || on(x + 1, y) || on(x, y - 1) || on(x, y + 1))) g.fillRect(x + 1, y + 1, 1, 1);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const ch = rows[y][x];
+        if (!on(x, y)) continue;
+        g.fillStyle = d.pal[ch] || '#f0f';
+        g.fillRect(x + 1, y + 1, 1, 1);
+    }
+    return (PX_CACHE[key] = cv);
+}
+
 function bDrawSide(c, mb, def, now) {
-    const r = (def.r || 20), u = r / 10, h = rHash(String(mb.id || mb.kind));
+    const d = PX[mb.kind];
+    const r = def.r || 20, h = rHash(String(mb.id || mb.kind));
     const a = mb.a || 0, face = Math.cos(a) < 0 ? -1 : 1;
     const moving = mb._px !== undefined && Math.hypot(mb.x - mb._px, mb.y - mb._py) > .3;
     mb._px = mb.x; mb._py = mb.y;
-    const t = now / 120 + h * 20, walk = Math.sin(t);
-    const fly = mb.kind === 'tanya';
-    const hover = fly ? Math.sin(now / 300 + h) * 4 * u - 10 * u : 0;
-    // Schatten und Aura am Boden
-    c.fillStyle = 'rgba(0,0,0,.4)';
-    c.beginPath(); c.ellipse(mb.x, mb.y + r * .9, r * (fly ? .8 : 1.05), r * .3, 0, 0, Math.PI * 2); c.fill();
-    const g = c.createRadialGradient(mb.x, mb.y - r, r * .3, mb.x, mb.y - r, r * 2.8);
-    g.addColorStop(0, B_AURA[mb.kind] || 'rgba(255,210,63,.35)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-    c.fillStyle = g; c.beginPath(); c.arc(mb.x, mb.y - r, r * 2.8, 0, Math.PI * 2); c.fill();
+    const frame = moving && Math.floor(now / 160 + h * 10) % 2 ? 1 : 0;
+    const ps = Math.max(2, Math.round(r / 4.2));          // Pixelgroesse
+    const cv = pxSprite(mb.kind, d.fly ? 0 : frame), w = cv.width * ps, hh = cv.height * ps;
+    const hover = d.fly ? -(10 + Math.sin(now / 300 + h) * 4) * ps / 3 : (moving ? -Math.abs(Math.sin(now / 160)) * ps * .6 : 0);
+    const footY = mb.y + r * .9;
+    // Schatten, Aura
+    c.fillStyle = 'rgba(0,0,0,.42)';
+    c.beginPath(); c.ellipse(mb.x, footY, w * .38, ps * 2.2, 0, 0, Math.PI * 2); c.fill();
+    const col = (B_AURA[mb.kind] || 'rgba(255,210,63,.35)');
+    const g = c.createRadialGradient(mb.x, footY - hh * .5, 4, mb.x, footY - hh * .5, hh * .9);
+    g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = g; c.beginPath(); c.arc(mb.x, footY - hh * .5, hh * .9, 0, Math.PI * 2); c.fill();
     c.save();
-    c.translate(mb.x, mb.y + r * .9 + hover);
-    // Zielwinkel relativ zur Blickrichtung (fuer den Arm), dann spiegeln
-    const aim = face > 0 ? a : Math.PI - a;
+    c.translate(Math.round(mb.x), Math.round(footY + hover));
+    // Gojo: Infinity-Ringe (hinter der Figur)
+    if (d.ring) for (let k = 0; k < 3; k++) {
+        c.strokeStyle = `rgba(${d.ring},${.45 - k * .12})`; c.lineWidth = ps * .6;
+        c.beginPath(); c.ellipse(0, -hh * .5, w * (.62 + k * .1), hh * (.58 + k * .06), 0, now / 450 + k * 2, now / 450 + k * 2 + 4); c.stroke();
+    }
+    // Tanya: Mana-Schweif
+    if (d.fly) for (let k = 0; k < 6; k++) {
+        const p = (now / 600 + k / 6) % 1;
+        c.fillStyle = `rgba(255,230,140,${.6 * (1 - p)})`;
+        c.fillRect(Math.round((-face * (4 + p * 26)) * ps / 2) , Math.round(-ps * (4 + p * 3)), ps * 2, ps * 2);
+    }
     c.scale(face, 1);
-    B_SIDE[mb.kind](c, u, now, { face, walk: moving || fly ? walk : 0, aim: Math.max(-1.3, Math.min(1.3, ((aim + Math.PI) % (Math.PI * 2)) - Math.PI)), h, mb });
+    c.imageSmoothingEnabled = false;
+    c.drawImage(cv, -Math.round(w / 2), -hh, w, hh);
+    // Leuchten an Waffe/Hand (Pixel-Koordinaten im Raster, +1 wegen Umriss)
+    if (d.glow) {
+        const gx = -w / 2 + (d.glow.x + 1) * ps, gy = -hh + (d.glow.y + 1) * ps, pulse = .7 + .3 * Math.sin(now / 180 + h);
+        const gg = c.createRadialGradient(gx, gy, 0, gx, gy, ps * 5);
+        gg.addColorStop(0, `rgba(${d.glow.col},${.85 * pulse})`); gg.addColorStop(1, `rgba(${d.glow.col},0)`);
+        c.fillStyle = gg; c.beginPath(); c.arc(gx, gy, ps * 5, 0, Math.PI * 2); c.fill();
+        if (d.snap && (now / 600) % 1 < .4) {
+            const k = ((now / 600) % 1) / .4;
+            for (let i = 0; i < 6; i++) { const aa = i / 6 * Math.PI * 2 + now / 60, dd = ps * (1 + k * 5); c.fillStyle = `rgba(255,${170 + i * 12},50,${1 - k})`; c.fillRect(Math.round(gx + Math.cos(aa) * dd), Math.round(gy + Math.sin(aa) * dd), ps, ps); }
+        }
+    }
     c.restore();
     return true;
 }
-
-// Bausteine: Bein (Hose + Schuh), Arm mit Winkel, Kopf mit Gesicht
-function sLeg(c, u, x, sw, pants, shoe, len = 16) {
-    c.save(); c.translate(x, -len * u); c.rotate(sw * .45);
-    c.fillStyle = pants; sRR(c, -2.4 * u, 0, 4.8 * u, len * u, 2 * u); c.fill();
-    c.fillStyle = 'rgba(0,0,0,.18)'; c.fillRect(.6 * u, 0, 1.8 * u, len * u);
-    c.fillStyle = shoe; sRR(c, -2.6 * u, (len - 2.2) * u, 7 * u, 3 * u, 1.4 * u); c.fill();
-    c.restore();
-}
-function sArm(c, u, x, y, ang, sleeve, hand, len = 12, item) {
-    c.save(); c.translate(x, y); c.rotate(ang);
-    c.fillStyle = sleeve; sRR(c, -2.1 * u, -2.1 * u, len * u, 4.2 * u, 2 * u); c.fill();
-    c.fillStyle = 'rgba(0,0,0,.18)'; c.fillRect(0, .6 * u, len * u - 2 * u, 1.4 * u);
-    c.fillStyle = hand; c.beginPath(); c.arc(len * u, 0, 2.3 * u, 0, Math.PI * 2); c.fill();
-    if (item) item(len * u);
-    c.restore();
-}
-function sRR(c, x, y, w, h, r) { c.beginPath(); if (c.roundRect) c.roundRect(x, y, w, h, r); else c.rect(x, y, w, h); }
-function sTorso(c, u, top, bot, w, col, dark) {
-    const g = c.createLinearGradient(-w * u, 0, w * u, 0);
-    g.addColorStop(0, dark); g.addColorStop(.45, col); g.addColorStop(1, dark);
-    c.fillStyle = g;
-    c.beginPath();
-    c.moveTo(-w * u, top * u); c.lineTo(w * u, top * u); c.lineTo(w * .85 * u, bot * u); c.lineTo(-w * .85 * u, bot * u); c.closePath();
-    c.fill();
-    c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = 1; c.stroke();
-}
-function sHead(c, u, y, skin, rad = 6.2) {
-    const g = c.createRadialGradient(1.5 * u, y - 2 * u, 1, 0, y, rad * u * 1.2);
-    g.addColorStop(0, '#fff0e0'); g.addColorStop(.35, skin); g.addColorStop(1, 'rgba(120,70,40,1)');
-    c.fillStyle = g;
-    c.beginPath(); c.ellipse(0, y, rad * u, rad * 1.08 * u, 0, 0, Math.PI * 2); c.fill();
-    c.strokeStyle = 'rgba(0,0,0,.4)'; c.lineWidth = 1; c.stroke();
-    // Ohr, Nase (Profil nach rechts)
-    c.fillStyle = skin; c.beginPath(); c.ellipse(-1.2 * u, y + .5 * u, 1.3 * u, 1.9 * u, 0, 0, Math.PI * 2); c.fill();
-    c.fillStyle = skin; c.beginPath(); c.moveTo(rad * .92 * u, y - .5 * u); c.lineTo(rad * 1.18 * u, y + 1.4 * u); c.lineTo(rad * .9 * u, y + 1.8 * u); c.closePath(); c.fill();
-}
-function sGlow(c, x, y, r, col, a = .7) {
-    const g = c.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, col.replace('A', a)); g.addColorStop(1, col.replace('A', 0));
-    c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
-}
-
-const B_SIDE = {
-    // Rick Sanchez: Laborkittel, blaugraues Stachelhaar, Unibrow, Sabber, Portal-Gun, Flachmann
-    rick(c, u, now, o) {
-        const w = o.walk;
-        sLeg(c, u, -2 * u, -w, '#6b4a2a', '#2a1a0e'); // hinteres Bein (dunkler)
-        sArm(c, u, -1 * u, -38 * u, 1.6 + w * .3, '#d8dde2', '#e8cdb0', 11, L => { c.fillStyle = '#9aa3ad'; sRR(c, L - 1, -3 * u, 4 * u, 6 * u, 1 * u); c.fill(); });
-        sLeg(c, u, 2 * u, w, '#7a5a38', '#3a2414');
-        // Kittel (lang, offen), blaues Shirt darunter
-        sTorso(c, u, -42, -12, 7, '#f4f6f8', '#b8c0c8');
-        c.fillStyle = '#7fb8d9'; c.fillRect(1 * u, -41 * u, 4.5 * u, 22 * u);
-        c.fillStyle = '#e8ecef'; c.beginPath(); c.moveTo(-7 * u, -14 * u); c.lineTo(-9 * u, -6 * u + w * u); c.lineTo(-2 * u, -8 * u); c.closePath(); c.fill();
-        c.fillStyle = '#c8ced4'; c.beginPath(); c.moveTo(6 * u, -14 * u); c.lineTo(8 * u, -7 * u - w * u); c.lineTo(3 * u, -9 * u); c.closePath(); c.fill();
-        c.strokeStyle = '#9aa3ad'; c.lineWidth = 1; c.beginPath(); c.moveTo(1 * u, -41 * u); c.lineTo(1 * u, -12 * u); c.stroke();
-        // Kopf
-        const hy = -49 * u;
-        // Haar: Stacheln nach hinten/oben
-        c.fillStyle = '#a8c8e0';
-        c.beginPath();
-        const sp = [[-8, -2], [-11, -7], [-7, -8], [-9, -13], [-4, -11], [-4, -16], [0, -12], [3, -15], [4, -9], [7, -8]];
-        c.moveTo(6 * u, hy - 3 * u);
-        for (const [x, y] of sp.reverse()) c.lineTo(x * u, hy + y * u);
-        c.lineTo(-6 * u, hy + 4 * u); c.closePath(); c.fill();
-        c.strokeStyle = '#6a8aa0'; c.lineWidth = 1; c.stroke();
-        sHead(c, u, hy, '#f0d8c0', 6.4);
-        c.fillStyle = '#a8c8e0'; c.beginPath(); c.ellipse(-3 * u, hy - 3 * u, 4 * u, 3.5 * u, -.4, 0, Math.PI * 2); c.fill();
-        // Unibrow, Auge mit Ringen, Mund offen mit Sabber
-        c.strokeStyle = '#7a9ab0'; c.lineWidth = 2 * u; c.beginPath(); c.moveTo(1 * u, hy - 3 * u); c.lineTo(6.5 * u, hy - 2.2 * u); c.stroke();
-        c.fillStyle = '#fff'; c.beginPath(); c.arc(4.2 * u, hy - .5 * u, 1.6 * u, 0, Math.PI * 2); c.fill();
-        c.fillStyle = '#111'; c.beginPath(); c.arc(4.8 * u, hy - .4 * u, .7 * u, 0, Math.PI * 2); c.fill();
-        c.strokeStyle = 'rgba(120,80,60,.6)'; c.lineWidth = .8; c.beginPath(); c.arc(4.2 * u, hy + .8 * u, 1.8 * u, .2, 2.4); c.stroke();
-        c.fillStyle = '#5a2a2a'; c.beginPath(); c.ellipse(4.6 * u, hy + 3.6 * u, 1.8 * u, 1 * u, 0, 0, Math.PI * 2); c.fill();
-        c.fillStyle = 'rgba(180,230,255,.8)'; c.fillRect(4 * u, hy + 4.2 * u, .7 * u, (2 + Math.sin(now / 300) * .8) * u);
-        // Arm vorn mit Portal-Gun, zielt
-        sArm(c, u, 2 * u, -38 * u, o.aim, '#eef2f5', '#e8cdb0', 11, L => {
-            c.fillStyle = '#e9ecef'; sRR(c, L - 2 * u, -4 * u, 9 * u, 5 * u, 2 * u); c.fill();
-            c.fillStyle = '#9cff7a'; sRR(c, L - 1 * u, -6.5 * u, 6 * u, 3 * u, 1.5 * u); c.fill();
-            sGlow(c, L + 9 * u, -1.5 * u, 7 * u, 'rgba(110,255,80,A)', .9);
-            c.fillStyle = '#e8ffd8'; c.beginPath(); c.arc(L + 8 * u, -1.5 * u, 1.8 * u, 0, Math.PI * 2); c.fill();
-        });
-    },
-    meeseeks(c, u, now, o) {
-        const w = o.walk, wob = Math.sin(now / 90 + o.h * 9);
-        sLeg(c, u, -1.5 * u, -w, '#3a8ae0', '#3a8ae0', 18);
-        sLeg(c, u, 1.5 * u, w, '#5ab0ff', '#5ab0ff', 18);
-        sArm(c, u, -1 * u, -38 * u, -2.3 + wob * .4, '#4aa0f0', '#5ab0ff', 12);
-        sTorso(c, u, -44, -16, 5, '#6ac0ff', '#2a7ad8');
-        const hy = -52 * u;
-        c.fillStyle = '#6ac0ff'; c.beginPath(); c.ellipse(0, hy, 6.5 * u, 8 * u, 0, 0, Math.PI * 2); c.fill();
-        c.strokeStyle = 'rgba(0,0,60,.4)'; c.lineWidth = 1; c.stroke();
-        c.fillStyle = '#fff'; c.beginPath(); c.ellipse(3.5 * u, hy - 1.5 * u, 2.4 * u, 2.8 * u, 0, 0, Math.PI * 2); c.fill();
-        c.fillStyle = '#111'; c.beginPath(); c.arc(4.2 * u, hy - 1.2 * u, 1 * u, 0, Math.PI * 2); c.fill();
-        c.fillStyle = '#1d3a7a'; c.beginPath(); c.ellipse(4 * u, hy + 4 * u, 2.2 * u, 1.6 * u, 0, 0, Math.PI * 2); c.fill();
-        sArm(c, u, 1.5 * u, -38 * u, -2.6 - wob * .4, '#6ac0ff', '#6ac0ff', 12);
-        // Sprechblase „CAN DO!"
-        if ((now / 1500 + o.h) % 3 < 1) {
-            c.save(); c.scale(o.face, 1);
-            c.fillStyle = '#fff'; sRR(c, 5 * u, -74 * u, 26 * u, 10 * u, 3 * u); c.fill();
-            c.fillStyle = '#1d3a7a'; c.font = `bold ${Math.round(6 * u)}px system-ui`; c.textAlign = 'center'; c.fillText('CAN DO!', 18 * u, -67 * u);
-            c.restore();
-        }
-    },
-    // Satoru Gojo: schwarze Uniform mit hohem Kragen, weisses Haar, Augenbinde, Infinity-Blau
-    gojo(c, u, now, o) {
-        const w = o.walk;
-        // Infinity: kreisende Ringe um die Figur
-        c.save(); c.translate(0, -30 * u);
-        for (let k = 0; k < 3; k++) {
-            c.strokeStyle = `rgba(140,200,255,${.35 - k * .08})`; c.lineWidth = 2;
-            c.beginPath(); c.ellipse(0, 0, (22 + k * 5) * u, (30 + k * 5) * u, 0, now / 500 + k * 2, now / 500 + k * 2 + 4); c.stroke();
-        }
-        c.restore();
-        sLeg(c, u, -2 * u, -w, '#15161e', '#07080c', 17);
-        sArm(c, u, -1 * u, -39 * u, 1.3 + w * .25, '#15161e', '#f0d8c0', 11);
-        sLeg(c, u, 2 * u, w, '#1c1f2a', '#0a0a10', 17);
-        sTorso(c, u, -44, -15, 6.5, '#262a38', '#0c0d12');
-        // hoher Kragen, goldener Knopf
-        c.fillStyle = '#0c0d12'; sRR(c, -4 * u, -47 * u, 9 * u, 5 * u, 1.5 * u); c.fill();
-        c.fillStyle = '#e0b030'; c.beginPath(); c.arc(4 * u, -38 * u, 1 * u, 0, Math.PI * 2); c.fill(); c.beginPath(); c.arc(4 * u, -30 * u, 1 * u, 0, Math.PI * 2); c.fill();
-        const hy = -53 * u;
-        sHead(c, u, hy, '#f2dcc6', 6);
-        // weisses Stachelhaar nach oben
-        c.fillStyle = '#f6faff';
-        c.beginPath(); c.moveTo(-6.5 * u, hy + 2 * u);
-        for (const [x, y] of [[-9, -2], [-7, -6], [-9, -10], [-4, -9], [-4, -15], [0, -10], [2, -16], [4, -9], [8, -12], [7, -5], [6.5, -3]]) c.lineTo(x * u, hy + y * u);
-        c.lineTo(5.5 * u, hy - 2 * u); c.lineTo(-3 * u, hy - 3 * u); c.closePath(); c.fill();
-        c.strokeStyle = '#b8c8e0'; c.lineWidth = 1; c.stroke();
-        // Augenbinde
-        c.fillStyle = '#0a0a10'; sRR(c, -6.4 * u, hy - 3 * u, 13.4 * u, 3.6 * u, 1 * u); c.fill();
-        c.fillStyle = '#9a6a4a'; c.fillRect(4.5 * u, hy + 3 * u, 2.5 * u, .8 * u);
-        // Hand vorn: Hollow Purple
-        sArm(c, u, 2 * u, -39 * u, o.aim, '#262a38', '#f2dcc6', 10, L => {
-            const p = (Math.sin(now / 250) + 1) / 2;
-            sGlow(c, L + 5 * u, 0, (8 + p * 3) * u, 'rgba(190,120,255,A)', .95);
-            c.fillStyle = '#fff'; c.beginPath(); c.arc(L + 5 * u, 0, 2.2 * u, 0, Math.PI * 2); c.fill();
-            c.strokeStyle = 'rgba(255,90,90,.9)'; c.lineWidth = 1.5; c.beginPath(); c.arc(L + 5 * u, 0, 4.5 * u, now / 150, now / 150 + 2); c.stroke();
-            c.strokeStyle = 'rgba(90,160,255,.9)'; c.beginPath(); c.arc(L + 5 * u, 0, 4.5 * u, now / 150 + Math.PI, now / 150 + Math.PI + 2); c.stroke();
-        });
-    },
-    // Tanya Degurechaff: klein, blond, Uniform mit Muetze, Gewehr mit Bajonett, fliegt, Elinium
-    tanya(c, u, now, o) {
-        // Mana-Fluegel / Schweif
-        for (let k = 0; k < 4; k++) {
-            c.fillStyle = `rgba(255,230,140,${.28 - k * .06})`;
-            c.beginPath(); c.moveTo(-3 * u, -24 * u); c.quadraticCurveTo(-(18 + k * 6) * u, -(36 + k * 4) * u, -(24 + k * 6) * u, -(12 - k * 2) * u); c.quadraticCurveTo(-14 * u, -20 * u, -3 * u, -18 * u); c.fill();
-        }
-        c.fillStyle = 'rgba(255,240,180,.5)';
-        for (let k = 0; k < 5; k++) { const p = (now / 700 + k / 5) % 1; c.beginPath(); c.arc(-p * 20 * u, 2 * u + p * 4 * u, (1.6 - p) * u, 0, Math.PI * 2); c.fill(); }
-        sLeg(c, u, -1.5 * u, .5, '#4a4a2a', '#1a1208', 13);
-        sLeg(c, u, 1.5 * u, .2, '#5a5a34', '#2a1c10', 13);
-        sArm(c, u, -1 * u, -30 * u, 1.2, '#6a6a40', '#f4dcc4', 9);
-        sTorso(c, u, -34, -12, 5.5, '#7a7a4a', '#44442a');
-        c.fillStyle = '#3a2a18'; c.fillRect(-5 * u, -20 * u, 10.5 * u, 2 * u);
-        // Elinium-Kristall
-        const e = .6 + .4 * Math.sin(now / 150);
-        sGlow(c, 3 * u, -28 * u, 5 * u, 'rgba(120,220,255,A)', e);
-        c.fillStyle = '#9fe8ff'; c.beginPath(); c.moveTo(3 * u, -31 * u); c.lineTo(4.5 * u, -28 * u); c.lineTo(3 * u, -25 * u); c.lineTo(1.5 * u, -28 * u); c.closePath(); c.fill();
-        const hy = -40 * u;
-        // blondes Haar hinten
-        c.fillStyle = '#f2d068'; c.beginPath(); c.ellipse(-2 * u, hy + 2 * u, 6 * u, 7 * u, 0, 0, Math.PI * 2); c.fill();
-        sHead(c, u, hy, '#f6e0cc', 5.4);
-        c.fillStyle = '#f2d068'; c.beginPath(); c.moveTo(-5 * u, hy - 2 * u); c.quadraticCurveTo(2 * u, hy - 7 * u, 5.5 * u, hy - 1 * u); c.lineTo(3 * u, hy - 2.5 * u); c.lineTo(1 * u, hy); c.lineTo(-1 * u, hy - 2 * u); c.closePath(); c.fill();
-        // Muetze
-        c.fillStyle = '#5a5a3a'; sRR(c, -5.5 * u, hy - 8 * u, 11 * u, 4.5 * u, 1.5 * u); c.fill();
-        c.fillStyle = '#2a2a1a'; c.fillRect(1 * u, hy - 4 * u, 7 * u, 1.3 * u);
-        c.fillStyle = '#e0b030'; c.beginPath(); c.arc(2.5 * u, hy - 5.8 * u, 1 * u, 0, Math.PI * 2); c.fill();
-        // blaues Auge, boeses Grinsen
-        c.fillStyle = '#2a7ae0'; c.beginPath(); c.arc(3.4 * u, hy - .2 * u, 1 * u, 0, Math.PI * 2); c.fill();
-        c.strokeStyle = '#6a2a1a'; c.lineWidth = .9; c.beginPath(); c.moveTo(2.4 * u, hy + 2.6 * u); c.quadraticCurveTo(3.8 * u, hy + 3.6 * u, 5 * u, hy + 2 * u); c.stroke();
-        // Gewehr
-        sArm(c, u, 2 * u, -30 * u, o.aim, '#7a7a4a', '#f4dcc4', 9, L => {
-            c.fillStyle = '#4a3020'; sRR(c, L - 8 * u, -1.5 * u, 12 * u, 3.5 * u, 1 * u); c.fill();
-            c.fillStyle = '#2a2a2e'; c.fillRect(L, -1 * u, 14 * u, 2 * u);
-            c.fillStyle = '#c8d0d8'; c.beginPath(); c.moveTo(L + 14 * u, -1 * u); c.lineTo(L + 21 * u, 0); c.lineTo(L + 14 * u, 1 * u); c.closePath(); c.fill();
-            sGlow(c, L + 14 * u, 0, 4 * u, 'rgba(255,220,120,A)', .6 * e);
-        });
-    },
-    // Roy Mustang: blaue Uniform mit Goldlitzen, schwarzes Haar, weisse Handschuhe, Schnipp-Flamme
-    mustang(c, u, now, o) {
-        const w = o.walk;
-        sLeg(c, u, -2 * u, -w, '#1a2a70', '#0a0a14');
-        sArm(c, u, -1 * u, -39 * u, 1.4 + w * .25, '#223a9a', '#f8f8f8', 11);
-        sLeg(c, u, 2 * u, w, '#223a8a', '#101018');
-        // langer Mantel
-        sTorso(c, u, -43, -10, 7.5, '#2e4ab8', '#162466');
-        c.fillStyle = '#233a9a'; c.beginPath(); c.moveTo(-7 * u, -14 * u); c.lineTo(-9.5 * u, -5 * u + w * u); c.lineTo(-1 * u, -8 * u); c.closePath(); c.fill();
-        c.fillStyle = '#e0b030'; for (const y of [-40, -34, -28, -22]) { c.beginPath(); c.arc(3.5 * u, y * u, .9 * u, 0, Math.PI * 2); c.fill(); }
-        c.fillStyle = '#e0b030'; sRR(c, -5 * u, -44 * u, 8 * u, 2.2 * u, 1 * u); c.fill(); // Schulterstueck
-        c.fillStyle = '#101a44'; c.fillRect(-7 * u, -24 * u, 14.5 * u, 2 * u); // Guertel
-        const hy = -50 * u;
-        sHead(c, u, hy, '#f2dcc6', 6);
-        // schwarzes Haar mit Strähnen ins Gesicht
-        c.fillStyle = '#15151a';
-        c.beginPath(); c.moveTo(-6.5 * u, hy + 3 * u); c.quadraticCurveTo(-8 * u, hy - 8 * u, 1 * u, hy - 7.5 * u); c.quadraticCurveTo(7 * u, hy - 7 * u, 7 * u, hy - 1 * u);
-        c.lineTo(5 * u, hy - 3 * u); c.lineTo(4.5 * u, hy + 1 * u); c.lineTo(3 * u, hy - 3 * u); c.lineTo(1 * u, hy - 1 * u); c.lineTo(-2 * u, hy - 3 * u); c.lineTo(-4 * u, hy + 3 * u); c.closePath(); c.fill();
-        c.fillStyle = '#111'; c.fillRect(3.2 * u, hy - .2 * u, 2.2 * u, .9 * u);
-        c.strokeStyle = '#8a5a4a'; c.lineWidth = .9; c.beginPath(); c.moveTo(3 * u, hy + 3 * u); c.lineTo(5.2 * u, hy + 2.6 * u); c.stroke();
-        // Schnipp-Hand mit Funken und Flamme
-        sArm(c, u, 2 * u, -39 * u, o.aim, '#2e4ab8', '#fafafa', 11, L => {
-            c.strokeStyle = '#d23c3c'; c.lineWidth = .8; c.beginPath(); c.arc(L, 0, 1.4 * u, 0, Math.PI * 2); c.stroke();
-            const t = (now / 600) % 1;
-            if (t < .45) {
-                const k = t / .45;
-                sGlow(c, L + 6 * u + k * 10 * u, 0, (6 + k * 8) * u, 'rgba(255,140,30,A)', .9 * (1 - k));
-                for (let i = 0; i < 6; i++) { const aa = i / 6 * Math.PI * 2 + now / 40, d = (2 + k * 9) * u; c.fillStyle = `rgba(255,${180 + i * 12},60,${1 - k})`; c.beginPath(); c.arc(L + 3 * u + Math.cos(aa) * d, Math.sin(aa) * d, 1.2 * u, 0, Math.PI * 2); c.fill(); }
-            }
-        });
-    }
-};
