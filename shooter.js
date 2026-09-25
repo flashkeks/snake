@@ -4538,7 +4538,7 @@ module.exports = function createArena(h, opts = {}) {
             m.diff = opts.mission.diff;
             m.hp = m.maxHp = Math.round(m.maxHp * MISSION_DIFF[m.diff].bossHp);
             missionBoss = m.id;
-            for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `🎯 Mission (${MISSION_DIFF[m.diff].name}): defeat ${m.def.icon} ${m.def.name} – somewhere deep inside`, kind: 'boss' });
+            for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `🎯 Mission (${MISSION_DIFF[m.diff].name}): find and defeat the boss – somewhere deep inside`, kind: 'boss' });
         }
         if (!specialAt) specialAt = now + randIn(SPECIAL_AFTER) / SPEED;
         if (!specialDone && now >= specialAt) {

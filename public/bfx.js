@@ -624,7 +624,7 @@ const PX = {
         legs: [['...OO..OO.......', '...OO..OO.......', '...kk..kk.......', '................'],
                ['...OO...OO......', '..OO....OO......', '..kk.....kk.....', '................']],
         glow: { x: 5.5, y: 11.5, col: '140,230,255' },
-        fly: true
+        fly: true, trail: true
     },
     mustang: {
         pal: { K: '#15151c', k: '#07070a', s: '#f2d8c4', S: '#d4ae94', B: '#2a46b0', b: '#3a5ad0', D: '#18286e', y: '#f0c030', W: '#ffffff', R: '#d23c3c', N: '#16204a', e: '#111' },
@@ -683,7 +683,7 @@ const PX_CACHE = {};
 function pxSprite(kind, frame) {
     const key = kind + frame;
     if (PX_CACHE[key]) return PX_CACHE[key];
-    const d = PX[kind], rows = d.body.concat(d.legs[frame]), H = rows.length, W = 16;
+    const d = PX[kind], rows = d.body.concat(d.legs[frame]), H = rows.length, W = Math.max(...rows.map(r => r.length));
     const cv = document.createElement('canvas');
     cv.width = W + 2; cv.height = H + 2;
     const g = cv.getContext('2d');
@@ -700,14 +700,32 @@ function pxSprite(kind, frame) {
     return (PX_CACHE[key] = cv);
 }
 
+// Groesse der Figur in Welt-Einheiten (fuer Namens-/Levelschilder ueber dem Kopf)
+function pxScale(kind, r, special) {
+    const d = PX[kind], wu = typeof PIX_WU !== 'undefined' && PIX_WU > 1 ? PIX_WU : 1;
+    const raw = (special ? r / 4.2 : r / 6) * (d.k || 1);
+    return wu > 1 ? Math.max(1, Math.round(raw / wu)) * wu : Math.max(1.5, raw);
+}
+function pxTop(kind, r, special) {
+    const d = PX[kind];
+    if (!d) return null;
+    const ps = pxScale(kind, r, special), rows = d.body.length + 4 + 2;
+    return r * .9 - rows * ps + (d.fly ? -(10 * ps / 3) : 0);
+}
+const PX_MOVE = new Map();
 function bDrawSide(c, mb, def, now) {
     const d = PX[mb.kind];
     const r = def.r || 20, h = rHash(String(mb.id || mb.kind));
     const a = mb.a || 0, face = Math.cos(a) < 0 ? -1 : 1;
-    const moving = mb._px !== undefined && Math.hypot(mb.x - mb._px, mb.y - mb._py) > .3;
-    mb._px = mb.x; mb._py = mb.y;
+    // Bewegung ueber Frames merken (Mob-Objekte werden jedes Bild neu gebaut)
+    const mk = String(mb.id !== undefined ? mb.id : mb.kind), pm = PX_MOVE.get(mk);
+    const moving = !!pm && Math.hypot(mb.x - pm.x, mb.y - pm.y) > .3 || (pm && now - pm.mt < 180);
+    PX_MOVE.set(mk, { x: mb.x, y: mb.y, mt: pm && Math.hypot(mb.x - pm.x, mb.y - pm.y) > .3 ? now : (pm ? pm.mt : 0) });
+    if (PX_MOVE.size > 400) PX_MOVE.clear();
     const frame = moving && Math.floor(now / 160 + h * 10) % 2 ? 1 : 0;
-    const ps = Math.max(2, Math.round(r / 4.2));          // Pixelgroesse
+    // Pixelgroesse auf das Raster der Pixel-Welt einrasten (PIX_WU = Welt-Einheiten je Pixel)
+    const wu = typeof PIX_WU !== 'undefined' && PIX_WU > 1 ? PIX_WU : 1;
+    const ps = pxScale(mb.kind, r, def.special || def.boss);
     const cv = pxSprite(mb.kind, d.fly ? 0 : frame), w = cv.width * ps, hh = cv.height * ps;
     const hover = d.fly ? -(10 + Math.sin(now / 300 + h) * 4) * ps / 3 : (moving ? -Math.abs(Math.sin(now / 160)) * ps * .6 : 0);
     const footY = mb.y + r * .9;
@@ -719,21 +737,25 @@ function bDrawSide(c, mb, def, now) {
     g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
     c.fillStyle = g; c.beginPath(); c.arc(mb.x, footY - hh * .5, hh * .9, 0, Math.PI * 2); c.fill();
     c.save();
-    c.translate(Math.round(mb.x), Math.round(footY + hover));
+    c.translate(Math.round(mb.x / wu) * wu, Math.round((footY + hover) / wu) * wu);
     // Gojo: Infinity-Ringe (hinter der Figur)
     if (d.ring) for (let k = 0; k < 3; k++) {
         c.strokeStyle = `rgba(${d.ring},${.45 - k * .12})`; c.lineWidth = ps * .6;
         c.beginPath(); c.ellipse(0, -hh * .5, w * (.62 + k * .1), hh * (.58 + k * .06), 0, now / 450 + k * 2, now / 450 + k * 2 + 4); c.stroke();
     }
     // Tanya: Mana-Schweif
-    if (d.fly) for (let k = 0; k < 6; k++) {
+    if (d.trail) for (let k = 0; k < 6; k++) {
         const p = (now / 600 + k / 6) % 1;
         c.fillStyle = `rgba(255,230,140,${.6 * (1 - p)})`;
         c.fillRect(Math.round((-face * (4 + p * 26)) * ps / 2) , Math.round(-ps * (4 + p * 3)), ps * 2, ps * 2);
     }
     c.scale(face, 1);
     c.imageSmoothingEnabled = false;
+    if (d.ghost) c.globalAlpha = .55 + .3 * Math.sin(now / 90 + h * 20) * Math.sin(now / 37);
+    if (mb.hitAt && now - mb.hitAt < 90) c.filter = 'brightness(3)';
     c.drawImage(cv, -Math.round(w / 2), -hh, w, hh);
+    c.filter = 'none';
+    c.globalAlpha = 1;
     // Leuchten an Waffe/Hand (Pixel-Koordinaten im Raster, +1 wegen Umriss)
     if (d.glow) {
         const gx = -w / 2 + (d.glow.x + 1) * ps, gy = -hh + (d.glow.y + 1) * ps, pulse = .7 + .3 * Math.sin(now / 180 + h);

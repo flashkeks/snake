@@ -44,6 +44,7 @@ module.exports = function createDungeons(h) {
     function startMission(cs, kind, diff, back) {
         const now = Date.now();
         const map = buildDungeon(kind, (now ^ (++seq * 7919)) >>> 0);
+        for (const st of map.stations) if (st.exit) st.dest = 'Guild House';
         const d = { id: seq, kind, hatch: 'mission' + seq, created: now, members: new Map(), map, arena: null, mission: diff };
         d.arena = h.createArena({ mode: 'dungeon', world: h.makeWorld(map), kind, mission: { diff }, leaveDungeon: c2 => leave(c2) });
         insts.set(d.id, d);

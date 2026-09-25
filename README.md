@@ -2778,3 +2778,23 @@ Pro Konto im Admin-Panel schaltbar (Arena-Bereich, „Creative mode", `adminAren
   Spezial-Charaktere: Auftritt (`KIND-spawn`), Tod unter 25 % HP (`KIND-death`),
   gelegentlich `KIND-line`, Rick-Portal (`rick-attack`).
 - Neuer Slot: Eintrag in `sfx.json`, dann `fetch-sfx.sh` auf edge.
+
+## 👾 Pixel-Look fuer alles (25.09.2026, Max: „ich LIEBE den Pixel-Style … alle Grafiken")
+- **Pixel-Pass** (`shFrame`, index.html): die Welt wird in 1/P Aufloesung gezeichnet
+  (`SH_PIX` = 4 CSS-px je Welt-Pixel, mal devicePixelRatio) und ohne Glaettung
+  hochskaliert – Boden, Waende, Guild House, Deko, Effekte, Schuesse, alles pixelig. Texte
+  (Namen, Level, Schilder, Schadenszahlen) werden auf der kleinen Flaeche nur *gemerkt*
+  (`fillText`/`strokeText` umgebogen) und danach scharf auf die grosse Flaeche gezeichnet.
+  `PIX_WU` = Welt-Einheiten je Pixel, damit Sprites auf dem Raster einrasten.
+  Abschalten (Test): `localStorage.setItem('kek-pixel', '0')`.
+- **Sprites fuer alle Gegner** (`public/pfx.js`): Menschen und Zombies aus einem Baukasten
+  (Kopf cap/helmet/hood/bald/zombie/gasmask/scream, Koerper normal/fat, Waffe
+  rifle/longrifle/pistol/shotgun/minigun/launcher/fist/claws, Schild, Palette je Mob);
+  eigene Raster fuer Drohne, Hund, Frosch, Geister, Egel, Wolf, Echse, Blob, Spinne und
+  die Raid-Bosse (Raccoon King, Iron Golem, Hive Queen, Titan Mk-IV, Reaper). Seitenansicht,
+  Blickrichtung, zwei Lauf-Frames, Umriss. Zombie-Bosse bleiben die gezeichneten Figuren aus
+  `zfx.js` (durch den Pixel-Pass ebenfalls pixelig).
+- **Spieler** als Pixel-Figur in Spielerfarbe (`pxPlayerKind`), Waffe dreht frei zum Ziel,
+  Farbe nach Seltenheit, eigener Spieler mit weissem Bodenring.
+- Schilder ueber Mobs/Spielern sitzen ueber dem Sprite (`pxTop`).
+- Missionen: Banner verraet den Boss nicht mehr, Ausgang heisst „Guild House".

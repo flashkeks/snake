@@ -12619,6 +12619,12 @@ function stationLook(s) {
 
 // Bosse (4.6): jede Art eine eigene Form statt Kreis
 function drawBoss(c, bs, BR, now) {
+    // 25.09.2026: Raid-Bosse als Pixel-Sprite (public/pfx.js), Aura aus zfx.js
+    if (PX[bs.kind]) {
+        zBossAura(c, bs, BR, now);
+        bDrawSide(c, { kind: bs.kind, x: bs.x, y: bs.y, a: bs.a, id: 'boss-' + bs.kind }, { r: BR, boss: true }, now);
+        return;
+    }
     // 6.5: Zombie-Bosse und ihre Faehigkeiten (public/zfx.js)
     if (zDrawBoss(c, bs, BR, now)) return;
     // 25.09.2026: richtige Figuren fuer King, Golem, Queen (public/bfx.js)
@@ -12838,6 +12844,41 @@ function shNearLoot(s) {
     return best;
 }
 
+// ---------- Pixel-Look (25.09.2026) ----------
+const SH_PIX = 4;                     // Bildschirm-Pixel je Welt-Pixel (CSS-px)
+let PIX_WU = 1;
+let shPixCv = null, shPixC = null;
+function shPixelOn() {
+    try { return localStorage.getItem('kek-pixel') !== '0'; } catch (e) { return true; }
+}
+function shPixCtx(w, h) {
+    if (!shPixCv) {
+        shPixCv = document.createElement('canvas');
+        shPixC = shPixCv.getContext('2d');
+        // Texte nicht in die grobe Flaeche malen, sondern merken (mit Transform und Stil)
+        const grab = kind => function (t, x, y, mw) {
+            this._texts.push([kind, t, x, y, mw, this.getTransform(), this.font, kind === 'f' ? this.fillStyle : this.strokeStyle, this.textAlign, this.textBaseline, this.globalAlpha, this.lineWidth, this.shadowColor, this.shadowBlur]);
+        };
+        shPixC.fillText = grab('f');
+        shPixC.strokeText = grab('s');
+    }
+    if (shPixCv.width !== w || shPixCv.height !== h) { shPixCv.width = w; shPixCv.height = h; }
+    shPixC._texts = [];
+    shPixC.imageSmoothingEnabled = false;
+    shPixC.globalAlpha = 1;
+    return shPixC;
+}
+function shPixTexts(main, pc, P) {
+    for (const [k, t, x, y, mw, T, font, style, al, bl, ga, lw, shc, shb] of pc._texts) {
+        main.setTransform(T.a * P, T.b * P, T.c * P, T.d * P, T.e * P, T.f * P);
+        main.font = font; main.textAlign = al; main.textBaseline = bl; main.globalAlpha = ga;
+        main.shadowColor = shc; main.shadowBlur = shb * P;
+        if (k === 'f') { main.fillStyle = style; mw ? main.fillText(t, x, y, mw) : main.fillText(t, x, y); }
+        else { main.strokeStyle = style; main.lineWidth = lw; mw ? main.strokeText(t, x, y, mw) : main.strokeText(t, x, y); }
+    }
+    main.globalAlpha = 1; main.shadowBlur = 0; main.shadowColor = 'transparent';
+}
+
 function shFrame() {
     if (!sh) return;
     if (shTraderOpen && shPred && !(sh.map.stations || []).some(s => s.kind === 'trader' && Math.hypot(s.x - shPred.x, s.y - shPred.y) < 150)) onShTrader({ close: true });
@@ -12860,7 +12901,11 @@ function shFrame() {
         cv.width = cw;
         cv.height = ch;
     }
-    const c = cv.getContext('2d');
+    const main = cv.getContext('2d');
+    // Pixel-Look (25.09.2026, Max: „alle Grafiken im Pixel-Style"): Welt in 1/P Aufloesung,
+    // danach scharf hochskaliert; Texte werden gesammelt und scharf drueber gezeichnet.
+    const P = shPixelOn() ? Math.max(1, Math.round(SH_PIX * dpr)) : 1;
+    let c = P > 1 ? shPixCtx(Math.ceil(cw / P), Math.ceil(ch / P)) : main;
     const m = sh.map;
     const latest = shSnaps[shSnaps.length - 1];
     const others = shOthers();
@@ -12882,12 +12927,14 @@ function shFrame() {
     camX += (Math.random() - .5) * shake;
     camY += (Math.random() - .5) * shake;
     shCam = { x: camX - viewW / 2, y: camY - viewH / 2, s };
+    const ws = s / P;                 // Welt -> Zeichenflaeche (bei Pixel-Look kleiner)
+    PIX_WU = P / s;                   // Welt-Einheiten je Pixel (fuer Sprites, bfx.js)
     const vis = (x, y, pad) => x > shCam.x - pad && x < shCam.x + viewW + pad && y > shCam.y - pad && y < shCam.y + viewH + pad;
 
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.fillStyle = '#070a0f';
-    c.fillRect(0, 0, cw, ch);
-    c.setTransform(s, 0, 0, s, -shCam.x * s, -shCam.y * s);
+    c.fillRect(0, 0, c.canvas.width, c.canvas.height);
+    c.setTransform(ws, 0, 0, ws, -shCam.x * ws, -shCam.y * ws);
 
     // Boden mit Gitter (nur sichtbarer Teil); Zombie-Map hat eigenen Boden (zfx.js);
     // Dungeons (25.09.2026) backen Boden und Waende in dfx.js
@@ -13285,6 +13332,9 @@ function shFrame() {
     for (const mb of mobsNow) {
         const def = m.mobs[mb.kind];
         if (!def || !vis(mb.x, mb.y, 80)) continue;
+        // Kopf-Oberkante: Pixel-Sprites sind hoeher als der Trefferkreis
+        const pxT = PX[mb.kind] ? pxTop(mb.kind, def.r || 20, def.special) : null;
+        const topY = pxT !== null ? mb.y + pxT : mb.y - (def.r || 20);
         if (mb.aim) {
             const k = Math.max(0, Math.min(1, 1 - mb.aim / 800));
             c.strokeStyle = `rgba(255,40,40,${.35 + .5 * k})`;
@@ -13305,7 +13355,7 @@ function shFrame() {
         }
         // Spezial-Charaktere (25.09.2026): Name und lange Lebensleiste
         if (def.special) {
-            const bw = 110, by = mb.y - (def.r || 20) - 56;
+            const bw = 110, by = topY - 40;
             c.fillStyle = 'rgba(0,0,0,.7)';
             c.fillRect(mb.x - bw / 2 - 2, by - 2, bw + 4, 12);
             c.fillStyle = '#ff4d6d';
@@ -13320,14 +13370,17 @@ function shFrame() {
             c.font = 'bold 11px system-ui';
             c.textAlign = 'center';
             c.fillStyle = 'rgba(0,0,0,.6)';
-            c.fillRect(mb.x - 17, mb.y - (def.r || 20) - 33, 34, 14);
+            c.fillRect(mb.x - 17, topY - 17 - (def.elite ? 16 : 0), 34, 14);
             c.fillStyle = mb.lv >= 40 ? '#c78bff' : mb.lv >= 20 ? '#ffb14d' : '#d7dde8';
-            c.fillText(`Lv ${mb.lv}`, mb.x, mb.y - (def.r || 20) - 22);
+            c.fillText(`Lv ${mb.lv}`, mb.x, topY - 6 - (def.elite ? 16 : 0));
         }
+        // 25.09.2026: Pixel-Sprites fuer alle Gegner (public/pfx.js, bfx.js)
+        // (danach trotzdem Lebensleiste und Elite-Name)
+        const drawn = PX[mb.kind] ? bDrawSide(c, mb, def, now) : false;
         // 6.5: Zombies mit eigener Figur (public/zfx.js)
-        if (zDrawMob(c, mb, def, now)) continue;
+        if (!drawn && zDrawMob(c, mb, def, now)) continue;
         // 6.12: eigene Figuren fuer Raid-Gegner (public/rfx.js), sonst Kreis mit Emoji
-        if (!bDrawMob(c, mb, def, now) && !rDrawMob(c, mb, def, now)) {
+        if (!drawn && !bDrawMob(c, mb, def, now) && !rDrawMob(c, mb, def, now)) {
             c.fillStyle = 'rgba(0,0,0,.35)';
             c.beginPath();
             c.ellipse(mb.x, mb.y + def.r * .8, def.r, def.r * .45, 0, 0, Math.PI * 2);
@@ -13350,15 +13403,15 @@ function shFrame() {
         if (mb.hp < mb.mh) {
             const bw = def.r * 2.4;
             c.fillStyle = 'rgba(0,0,0,.7)';
-            c.fillRect(mb.x - bw / 2, mb.y - def.r - 14, bw, 6);
+            c.fillRect(mb.x - bw / 2, topY - 2, bw, 6);
             c.fillStyle = def.elite ? '#ff5b5b' : '#ffb347';
-            c.fillRect(mb.x - bw / 2 + 1, mb.y - def.r - 13, (bw - 2) * mb.hp / mb.mh, 4);
+            c.fillRect(mb.x - bw / 2 + 1, topY - 1, (bw - 2) * mb.hp / mb.mh, 4);
         }
         if (def.elite) {
             c.fillStyle = '#ff9b9b';
             c.font = 'bold 12px system-ui';
             c.textAlign = 'center';
-            c.fillText(def.name, mb.x, mb.y - def.r - 18);
+            c.fillText(def.name, mb.x, topY - 6);
         }
     }
 
@@ -13837,8 +13890,8 @@ function shFrame() {
     // Dungeons (25.09.2026): Licht und Sichtfeld ueber die Welt, dann weiter in Weltkoordinaten
     if (dun) {
         const eye = shPred || shMeServer() || { x: shCam.x + viewW / 2, y: shCam.y + viewH / 2 };
-        dOverlay(c, m, shCam, s, cw, ch, eye.x, eye.y, now);
-        c.setTransform(s, 0, 0, s, -shCam.x * s, -shCam.y * s);
+        dOverlay(c, m, shCam, ws, c.canvas.width, c.canvas.height, eye.x, eye.y, now);
+        c.setTransform(ws, 0, 0, ws, -shCam.x * ws, -shCam.y * ws);
     }
     // Fadenkreuz
     if (shMouse && !shTouch.aim) {
@@ -13854,6 +13907,14 @@ function shFrame() {
         c.stroke();
     }
 
+    // Pixel-Welt hochskalieren, gesammelte Texte scharf drueber
+    if (P > 1) {
+        main.setTransform(1, 0, 0, 1, 0, 0);
+        main.imageSmoothingEnabled = false;
+        main.drawImage(c.canvas, 0, 0, c.canvas.width * P, c.canvas.height * P);
+        shPixTexts(main, c, P);
+        c = main;
+    }
     // ---- Bildschirm-Ebene ----
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
     const W = r.width, H = r.height;
@@ -14092,45 +14153,29 @@ function shDrawPlayer(c, p, x, y, a, mine, now, my) {
         c.stroke();
     }
     const m = sh.map;
+    // 25.09.2026: Pixel-Figur in Spielerfarbe (public/pfx.js), Waffe dreht frei zum Ziel
+    const pk = pxPlayerKind(p.c), pTop = pxTop(pk, m.r, true), pps = pxScale(pk, m.r, true);
     c.save();
-    c.translate(x, y);
     c.globalAlpha = p.pr ? .5 + .3 * Math.sin(now / 80) : mine && my.hid ? .55 : 1;
-    c.fillStyle = 'rgba(0,0,0,.35)';
-    c.beginPath();
-    c.arc(4, 5, m.r, 0, Math.PI * 2);
-    c.fill();
-    c.rotate(a);
-    const len = { sniper: 38, rifle: 32, shotgun: 28, smg: 24, deagle: 26, minigun: 34, launcher: 36 }[p.w] || 24;
-    c.fillStyle = TIER_COLOR[p.wt] && p.wt !== 'common' ? TIER_COLOR[p.wt] : '#ccd3e0';
-    c.fillRect(8, -5, len, p.w === 'launcher' || p.w === 'minigun' ? 12 : 10);
-    if (mine && now - shFlashAt < 60) {
-        c.fillStyle = '#fff3b0';
-        c.beginPath();
-        c.arc(8 + len + 6, 0, 8, 0, Math.PI * 2);
-        c.fill();
+    if (mine) {
+        c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = 2;
+        c.beginPath(); c.ellipse(x, y + m.r * .9, m.r * 1.1, m.r * .4, 0, 0, Math.PI * 2); c.stroke();
     }
-    c.rotate(-a);
-    c.beginPath();
-    c.arc(0, 0, m.r, 0, Math.PI * 2);
-    c.fillStyle = p.c;
-    c.fill();
-    c.lineWidth = mine ? 4 : 2;
-    c.strokeStyle = mine ? '#fff' : 'rgba(0,0,0,.6)';
-    c.stroke();
-    if (p.fb) zDrawSuit(c, p.fb, m.r, now);
-    if (p.ar) {
-        c.strokeStyle = arenaCat.sets[p.ar].color;
-        c.lineWidth = 3;
-        c.beginPath();
-        c.arc(0, 0, m.r + 5, 0, Math.PI * 2);
-        c.stroke();
+    bDrawSide(c, { kind: pk, x, y, a, id: 'pl-' + (p.id || p.n) }, { r: m.r, special: true }, now);
+    // Waffe: von der Schulter aus, Farbe nach Seltenheit, Muendungsfeuer
+    {
+        const sx = x + Math.cos(a) * pps * 1.5, sy = y + pTop + pps * 13.5;
+        const len = ({ sniper: 38, rifle: 32, shotgun: 28, smg: 24, deagle: 26, minigun: 34, launcher: 36 }[p.w] || 24) * .9;
+        const thick = p.w === 'launcher' || p.w === 'minigun' ? pps * 2.2 : pps * 1.5;
+        c.save(); c.translate(sx, sy); c.rotate(a);
+        c.fillStyle = '#0b0b10'; c.fillRect(-pps * .5, -thick / 2 - pps * .5, len + pps, thick + pps);
+        c.fillStyle = TIER_COLOR[p.wt] && p.wt !== 'common' ? TIER_COLOR[p.wt] : '#9aa3ad';
+        c.fillRect(0, -thick / 2, len, thick);
+        c.fillStyle = '#f0cfb0'; c.fillRect(0, -pps * .75, pps * 1.5, pps * 1.5);
+        if (mine && now - shFlashAt < 60) { c.fillStyle = '#fff3b0'; c.fillRect(len, -pps * 1.5, pps * 3, pps * 3); }
+        c.restore();
     }
-    if (p.hm) {
-        c.fillStyle = arenaCat.sets[p.hm].color;
-        c.beginPath();
-        c.arc(0, 0, 6, 0, Math.PI * 2);
-        c.fill();
-    }
+    c.translate(x, y);
     if (p.ar === 'titan' || p.ar === 'phantom') {
         const titan = p.ar === 'titan';
         const pulse = .5 + .5 * Math.sin(now / (titan ? 220 : 140));
@@ -14153,14 +14198,14 @@ function shDrawPlayer(c, p, x, y, a, mine, now, my) {
     c.globalAlpha = 1;
     if (!mine) {
         c.fillStyle = 'rgba(0,0,0,.6)';
-        c.fillRect(-24, -m.r - 14, 48, 6);
+        c.fillRect(-24, pTop - 10, 48, 6);
         c.fillStyle = p.hp > p.mh / 2 ? '#00d67a' : p.hp > p.mh / 4 ? '#ffd23f' : '#f43f5e';
-        c.fillRect(-24, -m.r - 14, 48 * p.hp / p.mh, 6);
+        c.fillRect(-24, pTop - 10, 48 * p.hp / p.mh, 6);
     }
     c.fillStyle = '#fff';
     c.font = 'bold 14px system-ui';
     c.textAlign = 'center';
-    c.fillText(p.lv ? `${p.n} · Lv ${p.lv}` : p.n, 0, -m.r - 24);
+    c.fillText(p.lv ? `${p.n} · Lv ${p.lv}` : p.n, 0, pTop - 16);
     if (!mine && p.wt && p.wt !== 'common') {
         c.fillStyle = TIER_COLOR[p.wt];
         c.font = 'bold 11px system-ui';
@@ -16558,6 +16603,7 @@ function slotResult(d) {
 <script src="/rfx.js"></script>
 <script src="/gfx.js"></script>
 <script src="/bfx.js"></script>
+<script src="/pfx.js"></script>
 <script src="/dfx.js"></script>
 </body>
 </html>
