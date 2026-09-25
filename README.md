@@ -2739,19 +2739,19 @@ PvP und Extraction werden zu einem."
 - **Luken weg:** Dungeons nur noch ueber das Quest Board.
 
 ### Item-Icons
-`public/item-icons.js` haelt je Item-Basis einen SVG-Pfad aus **game-icons.net**
-(Lorc, Delapouite u. a., **CC BY 3.0** – Namensnennung steht im Shop-Tab unten). Erzeugt
-aus dem npm-Paket `@iconify-json/game-icons`; `ITEM_SVG_SRC` sagt, welches Icon welches
-Item bekommt. `itemIcon(it)` liefert das SVG, eingefaerbt nach Seltenheit (`svg.gt-TIER`,
-Ultra mit Verlauf); fuer Canvas-Text bleibt `itemIconTxt` (Emoji). Neues Item ohne
-Eintrag -> faellt auf das Emoji zurueck. Neu erzeugen: Paket holen, Zuordnung
-Basis -> Icon-Name(n) ergaenzen, `ITEM_SVG` aus `icons.json` (`body`, ohne
-`fill="currentColor"`) schreiben.
-- **Uniques im Original-Look** (`public/unique-icons.js`): 51 handgezeichnete Farb-SVGs
-  (viewBox 64) fuer alle Unique-Waffen/-Ruestungen/-Verbrauchsgueter plus Chidori, Senzu,
-  Spirit Bomb, Infinite Void – Mjoelnir, Straw Hat, Portal Gun, Kaneki-Maske, Death Note,
-  Scouter „9000" usw. `itemIcon` nimmt sie vor den einfarbigen game-icons. Bilder aus dem
-  Netz gehen aus dem Container nicht (Bild-Hosts gesperrt), deshalb selbst gezeichnet.
+Normale Items bleiben Emojis (Max: die game-icons-Variante „sieht arsch aus", zurueckgenommen).
+Nur Uniques haben eigene Grafiken:
+- **Uniques** (`public/unique-icons.js`): 51 SVGs (viewBox 64) mit echten Filtern – Bloom
+  (`ug-glow`, `ug-halo`), Turbulenz fuer Feuer/Portale (`ug-fire`, `ug-fire2`), Metall- und
+  Stoffverlaeufe. Helfer `orb()` (Energiekugel mit Wirbeln, Referenz Max: Rasengan-Bild),
+  `bolt()` (Blitz), `blade()` (Katana), `flame()`. Filter/Verlaeufe haengen einmal im
+  Dokument (`UNIQUE_DEFS`). Bilder aus dem Netz gehen aus dem Container nicht (Bild-Hosts
+  gesperrt), deshalb gezeichnet.
+- **Spezial-Charaktere in Seitenansicht** (`bDrawSide` in `public/bfx.js`, wie die
+  Zombie-Bosse): Rick (Kittel, Stachelhaar, Portal-Gun), Gojo (Uniform, weisses Haar,
+  Augenbinde, Infinity-Ringe, Hollow Purple in der Hand), Tanya (fliegt, Mana-Schweif,
+  Gewehr mit Bajonett, Elinium), Mustang (Mantel, Handschuhe, Schnipp-Flamme), Meeseeks.
+  Schauen je nach Richtung links/rechts, Beine laufen, Waffenarm zielt.
 
 ## 🛠️ Creative Mode (25.09.2026, Max)
 Pro Konto im Admin-Panel schaltbar (Arena-Bereich, „Creative mode", `adminArena` Op
