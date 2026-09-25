@@ -3211,3 +3211,25 @@ Geprüft wird gegen eine **senkrechte Kapsel** mit Radius r vom Mittelpunkt bis 
 Test: waagerechter Schuss auf Kopf-/Brusthöhe – vorher bei Scav (1,5 und 2,3 r), Zombie,
 Titan, Gojo und Omega vorbei, jetzt Treffer; 0,5 r über dem Kopf weiterhin vorbei. Nebenwirkung
 im DPS-Test: Streuwaffen treffen deutlich öfter (Shotgun 42 → 84 DPS auf 300 px).
+
+## 🧍 Charakter-Skins im Cosmetic Shop (25.09.2026, Max: „jetzt wo man ein Mensch ist")
+
+Neue Shop-Kategorie **Characters** (`shop.js`, `cat: 'char'`): 19 Figuren für die Arena (Raid,
+Missionen, PvP, Zombies), rein optisch. Aufgebaut aus dem Pixel-Baukasten (`public/pfx.js`
+`human()`), dafür neue Köpfe (Ninja-Maske, Piratentuch mit Augenklappe, Cowboyhut, Ritterhelm
+mit Federbusch, Astronautenhelm, Zauberhut mit Bart, Samurai-Helm, Wikingerhelm, Krone,
+Kochmütze, lange Haare, Zylinder, Cyborg-Gesicht) und ein Umhang-Oberkörper.
+
+| Seltenheit | Figuren |
+|---|---|
+| Common | Recruit, Farmer, Hoodie (in Spielerfarbe), Chef |
+| Rare | Doctor, Cowboy, Pirate, Gentleman, Ninja (Stirnband in Spielerfarbe), Knight, Astronaut |
+| Epic | Viking, Samurai, Wizard, Vampire (leuchtende Augen), Cyborg (leuchtendes Auge) |
+| Legendary | Neon Hacker, Shadow Reaper, Golden Emperor (alle mit Leuchten) |
+
+- **Rotation:** täglich eine Figur (ohne Legendary), wöchentlich fest eine Epic/Legendary-Figur
+  (sonst kamen die Legendaries in 60 Tagen kaum vor). Test über 120 Tage: alle Figuren tauchen auf.
+- **Arena:** Der Server merkt sich beim Betreten die angelegte Figur (`charOf`, `ch` im
+  Spieler-Zustand), der Browser baut sie mit `pxCharKind` (Palette mit `self` = Spielerfarbe).
+  Umziehen gilt ab dem nächsten Betreten. Hitbox gleich hoch wie die Standardfigur.
+- **Shop-Vorschau:** Die Figur läuft auf der Stelle (Pixel, nicht geglättet).

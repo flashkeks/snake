@@ -4668,6 +4668,7 @@ span.tier-common, span.tier-uncommon, span.tier-rare, span.tier-epic, span.tier-
     line-height: 1.1;
 }
 
+.shop-prev.shop-char { width: 90px; height: 120px; max-width: 90px; image-rendering: pixelated; margin: 0 auto; display: block; background: radial-gradient(circle at 50% 80%, rgba(255,255,255,.08), transparent 70%); }
 .shop-prev {
     width: 100%;
     max-width: 220px;
@@ -14342,7 +14343,8 @@ function shDrawPlayer(c, p, x, y, a, mine, now, my) {
     }
     const m = sh.map;
     // 25.09.2026: Pixel-Figur in Spielerfarbe (public/pfx.js), Waffe dreht frei zum Ziel
-    const pk = pxPlayerKind(p.c), pTop = pxTop(pk, m.r, true), pps = pxScale(pk, m.r, true);
+    // Charakter-Skin aus dem Cosmetic Shop (25.09.2026), sonst die Standardfigur in Spielerfarbe
+    const pk = p.ch && COS[p.ch] && COS[p.ch].look ? pxCharKind(p.ch, COS[p.ch].look, p.c) : pxPlayerKind(p.c), pTop = pxTop(pk, m.r, true), pps = pxScale(pk, m.r, true);
     c.save();
     c.globalAlpha = p.pr ? .5 + .3 * Math.sin(now / 80) : mine && my.hid ? .55 : 1;
     if (mine) {
@@ -14924,6 +14926,7 @@ function shopCard(it) {
         : rot ? `<button type="button" class="gold" data-shopbuy="${it.id}" ${me.coins < it.price ? 'disabled' : ''}>🪙 ${it.price.toLocaleString('en-US')}</button>`
         : `<button type="button" disabled>🔒 Not in the shop · 🪙 ${it.price.toLocaleString('en-US')}</button>`;
     const prev = it.cat === 'skin' ? `<canvas class="shop-prev" data-prev="${it.id}" width="220" height="40"></canvas>`
+        : it.cat === 'char' ? `<canvas class="shop-prev shop-char" data-prevchar="${it.id}" width="90" height="120"></canvas>`
         : it.cat === 'name' ? `<div class="shop-name nc-${it.id}">${esc((me && me.name) || 'Your name')}</div>`
         : `<div class="shop-icon">${it.icon}</div>`;
     return `<div class="shop-item rar-${it.rarity} ${on ? 'on' : ''}">${prev}` +
@@ -14973,6 +14976,18 @@ $('shop').addEventListener('click', e => {
 
 // Vorschau der Skins (bewegt sich, ohne die Knoepfe neu zu bauen)
 function drawPreviews() {
+    // Charaktere (25.09.2026): Pixel-Figur laeuft auf der Stelle
+    $('shop-grid').querySelectorAll('[data-prevchar]').forEach(cv => {
+        const it = COS[cv.dataset.prevchar];
+        if (!it || typeof pxCharKind !== 'function') return;
+        const kind = pxCharKind(it.id, it.look, (me && me.color) || '#ff5bd6');
+        const spr = pxSprite(kind, Math.floor(Date.now() / 220) % 2);
+        const c = cv.getContext('2d');
+        c.clearRect(0, 0, cv.width, cv.height);
+        c.imageSmoothingEnabled = false;
+        const k = Math.floor(Math.min(cv.width / spr.width, cv.height / spr.height));
+        c.drawImage(spr, Math.round((cv.width - spr.width * k) / 2), cv.height - spr.height * k, spr.width * k, spr.height * k);
+    });
     $('shop-grid').querySelectorAll('[data-prev]').forEach(cv => {
         const c = cv.getContext('2d');
         const p = { color: (me && me.color) || '#00ff88', sk: { skin: cv.dataset.prev } };

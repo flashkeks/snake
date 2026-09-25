@@ -12,11 +12,27 @@
         bald: ['................', '....sssss.......', '...sssssss......', '...ssssssss.....', '...sssesess.....', '...ssssssss.....', '....smmmss......', '.....ssss.......'],
         zombie: ['....H.H.H.......', '...HHHHHHH......', '...HsssssHH.....', '...ssssssss.....', '...sssessss.....', '...ssssssss.....', '....smmms.......', '.....sss........'],
         gasmask: ['....HHHHH.......', '...HHHHHHH......', '..HHHHHHHHH.....', '..HHVVssVV......', '...HVVssVV......', '...Hssggss......', '....sggggg......', '.....ggg........'],
-        scream: ['...H.H.H........', '...HHHHHHH......', '...HsssssH......', '...ssssssss.....', '...sssessss.....', '...ssssmmm......', '....ssmmm.......', '.....sss........']
+        scream: ['...H.H.H........', '...HHHHHHH......', '...HsssssH......', '...ssssssss.....', '...sssessss.....', '...ssssmmm......', '....ssmmm.......', '.....sss........'],
+        // Charakter-Skins (25.09.2026, Cosmetic Shop)
+        ninja: ['....HHHHH.......', '...HHHHHHH......', 'RRRRRRRRRR......', 'R..HHHHHHHH.....', '...HsseseHH.....', '...HHHHHHH......', '....HHHHH.......', '.....HHH........'],
+        pirate: ['................', '....RRRRR.......', '...RRRRRRRR.....', 'RRRRssssssR.....', '..RsseskkkR.....', '...ssssssss.....', '....BBmBB.......', '.....BBB........'],
+        cowboy: ['.....HHHH.......', '....HHHHHH......', '..HHHHHHHHHH....', '...ssssssss.....', '...sssessss.....', '...ssssssss.....', '....ssmss.......', '.....sss........'],
+        knight: ['.....RR.........', '....GGGGG.......', '...GGGGGGG......', '...GGGGGGGG.....', '...GkkkkkkG.....', '...GGGGGGG......', '...GGgGgGG......', '....GGGGG.......'],
+        astro: ['....WWWWWW......', '...WVVVVVVW.....', '..WVVssssVVW....', '..WVssessVVW....', '..WVssssssVW....', '..WVVssmsVVW....', '...WVVVVVVW.....', '....WWWWWW......'],
+        wizard: ['.......H........', '......HH........', '.....HHYH.......', '....HHHHHH......', '..HHHHHHHHHH....', '...ssssssss.....', '...sssessBB.....', '....sBBBBB......'],
+        samurai: ['..Y.......Y.....', '...Y.HHH.Y......', '....HHHHHH......', '...HHHHHHHH.....', '...HssessHH.....', '...ssssssss.....', '....ssmss.......', '.....sss........'],
+        viking: ['.W.........W....', '.W..GGGGG..W....', '..WGGGGGGGGW....', '...GGGGGGGG.....', '...ssssesss.....', '...BsssssBB.....', '....BBmBBB......', '.....BBBB.......'],
+        crown: ['....Y.Y.Y.......', '....YYYYY.......', '...YYJYJYY......', '...ssssssss.....', '...sssessss.....', '...ssssssss.....', '....ssmss.......', '.....sss........'],
+        chef: ['....WWWWW.......', '...WWWWWWW......', '...WWWWWWW......', '....WWWWW.......', '...sssessss.....', '...ssssssss.....', '....smmss.......', '.....sss........'],
+        hair: ['....HHHHH.......', '...HHHHHHH......', '..HHHHHHHHH.....', '..HHssssssH.....', '..Hsssessss.....', '..Hssssssss.....', '..H.ssmss.......', '.....sss........'],
+        tophat: ['....HHHHH.......', '....HHHHH.......', '....RRRRR.......', '..HHHHHHHHH.....', '...ssssssss.....', '...sssessss.....', '....ssmss.......', '.....sss........'],
+        cyborg: ['....HHHHH.......', '...HHHHHHH......', '...GGGsssss.....', '...GGGsssss.....', '...GRGsesss.....', '...GGGsssss.....', '....GGmss.......', '.....sss........']
     };
     const TORSO = {
         normal: ['...CCCCCCC......', '..CCCCCCCWWWWWWW', '..CcCCCCCcwwwwww', '..CcCCCCCc......', '..CcBBBBBc......', '..CcCCCCCc......', '...PPPPPP.......', '...PP..PP.......'],
-        fat: ['..CCCCCCCCC.....', '.CCCCCCCCCCWWWWW', '.CcCCCCCCCcwwwww', '.CcCCCCCCCCc....', '.CcCCCCCCCCc....', '..CcCCCCCCc.....', '...PPPPPPP......', '...PP...PP......']
+        fat: ['..CCCCCCCCC.....', '.CCCCCCCCCCWWWWW', '.CcCCCCCCCcwwwww', '.CcCCCCCCCCc....', '.CcCCCCCCCCc....', '..CcCCCCCCc.....', '...PPPPPPP......', '...PP...PP......'],
+        // Umhang hinter dem Ruecken (Charakter-Skins)
+        cape: ['.ZZCCCCCCC......', '.ZCCCCCCCCWWWWWWW', '.ZCcCCCCCcwwwwww', 'ZZCcCCCCCc......', 'ZZCcBBBBBc......', 'ZZCcCCCCCc......', 'ZZZPPPPPP.......', 'Z.ZPP..PP.......'].map(r => r.slice(0, 16))
     };
     // Waffen-Zeilen (ersetzen W/w im Oberkoerper): [Zeile 1, Zeile 2]
     const WEAPON = {
@@ -465,6 +481,17 @@
     Object.assign(PX, S);
     // Spieler (25.09.2026): Figur in Spielerfarbe, Waffe zeichnet index.html frei drehend dazu
     const shade = (hex, k) => { const n = parseInt(hex.slice(1), 16), f = v => Math.max(0, Math.min(255, Math.round(v * k))); return '#' + [n >> 16, (n >> 8) & 255, n & 255].map(v => f(v).toString(16).padStart(2, '0')).join(''); };
+    // Charakter-Skins aus dem Cosmetic Shop (25.09.2026): look = { h: Kopf, t: Oberkoerper, pal, glow }.
+    // 'self' / 'self-d' in der Palette = Spielerfarbe bzw. dunkler
+    window.pxCharKind = function (id, look, col) {
+        col = /^#[0-9a-f]{6}$/i.test(col || '') ? col.toLowerCase() : '#ff5bd6';
+        const key = 'ch-' + id + '-' + col;
+        if (PX[key]) return key;
+        const pal = {};
+        for (const [k, v] of Object.entries(look.pal || {})) pal[k] = v === 'self' ? col : v === 'self-d' ? shade(col, .65) : v;
+        PX[key] = human({ head: HEAD[look.h] ? look.h : 'cap', torso: TORSO[look.t] ? look.t : 'normal', weapon: 'none', pal: Object.assign({ s: '#f0cfb0', e: '#111', m: '#9a4a3a', P: '#2e3444', p: '#222836', B: '#2a2a32' }, pal), glow: look.glow });
+        return key;
+    };
     window.pxPlayerKind = function (col) {
         col = /^#[0-9a-f]{6}$/i.test(col || '') ? col.toLowerCase() : '#ff5bd6';
         const key = 'pl-' + col;

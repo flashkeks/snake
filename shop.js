@@ -25,7 +25,8 @@ const CATS = {
     trail: 'Trails',
     death: 'Death effects',
     name: 'Name colors',
-    music: 'Music'
+    music: 'Music',
+    char: 'Characters'
 };
 
 // Seltenheit nach Preis
@@ -205,7 +206,30 @@ const ITEMS = [
                 698, 659, 587, 523, 0, 0, 523, 0]
         }
     },
-    { id: 'music_boss', cat: 'music', name: 'Boss fight', icon: '👹', price: 60000, desc: 'Final level energy (only you hear it)', look: { mode: 'arp', bpm: 170, type: 'square', vol: .025, steps: 16, chords: [[330, 392, 494], [262, 330, 392], [294, 370, 440], [247, 311, 370]], bass: [82, 65, 73, 62] } }
+    { id: 'music_boss', cat: 'music', name: 'Boss fight', icon: '👹', price: 60000, desc: 'Final level energy (only you hear it)', look: { mode: 'arp', bpm: 170, type: 'square', vol: .025, steps: 16, chords: [[330, 392, 494], [262, 330, 392], [294, 370, 440], [247, 311, 370]], bass: [82, 65, 73, 62] } },
+
+    // ---------- Charaktere (25.09.2026, Max): Figur in der Arena (Raid, PvP, Zombies) ----------
+    // look: h = Kopf, t = Oberkoerper (normal | fat | cape), pal = Farben (public/pfx.js human()),
+    // 'self' = Spielerfarbe, 'self-d' = dunkler; glow = Leuchtpunkt im Raster
+    { id: 'char_recruit', cat: 'char', name: 'Recruit', icon: '🪖', price: 12000, desc: 'Camo and a steel helmet', look: { h: 'helmet', pal: { H: '#4e6b36', V: '#1a1a1a', C: '#56733a', c: '#3e5a28', A: '#56733a', B: '#2a2a1a', P: '#3e4a2e', p: '#2e3a20', K: '#18181c' } } },
+    { id: 'char_farmer', cat: 'char', name: 'Farmer', icon: '🧑‍🌾', price: 12000, desc: 'Straw hat and overalls', look: { h: 'cowboy', pal: { H: '#e0c060', C: '#c0392b', c: '#8a2618', A: '#c0392b', B: '#3a5a9a', P: '#3a5a9a', p: '#2a4478', K: '#4a3018' } } },
+    { id: 'char_hoodie', cat: 'char', name: 'Hoodie', icon: '🧥', price: 14000, desc: 'Hood up, in your color', look: { h: 'hood', pal: { H: 'self', X: '#141418', e: '#ffffff', C: 'self', c: 'self-d', A: 'self', B: '#222228' } } },
+    { id: 'char_chef', cat: 'char', name: 'Chef', icon: '👨‍🍳', price: 16000, desc: 'Something is cooking', look: { h: 'chef', pal: { W: '#ffffff', C: '#f4f4f4', c: '#cfcfcf', A: '#f4f4f4', B: '#d33b3b', P: '#2a2a2a', p: '#1a1a1a' } } },
+    { id: 'char_doctor', cat: 'char', name: 'Doctor', icon: '🧑‍⚕️', price: 22000, desc: 'White coat, steady hands', look: { h: 'hair', pal: { H: '#3a2a1a', C: '#ffffff', c: '#d8e0e8', A: '#ffffff', B: '#3aa0ff', P: '#5aa0c8', p: '#4080a8' } } },
+    { id: 'char_cowboy', cat: 'char', name: 'Cowboy', icon: '🤠', price: 24000, desc: 'This arena is not big enough', look: { h: 'cowboy', pal: { H: '#6b4226', C: '#a0522d', c: '#6b3218', A: '#a0522d', B: '#d4a017', P: '#3a4a6a', p: '#2a3654', K: '#4a2c16' } } },
+    { id: 'char_pirate', cat: 'char', name: 'Pirate', icon: '🏴‍☠️', price: 28000, desc: 'Bandana, eyepatch, beard', look: { h: 'pirate', pal: { R: '#c0392b', k: '#111111', B: '#3a2a1a', C: '#f0e6d0', c: '#c8bca4', A: '#f0e6d0', P: '#2a2a3a', p: '#1c1c28', K: '#3a2410' } } },
+    { id: 'char_gentleman', cat: 'char', name: 'Gentleman', icon: '🎩', price: 30000, desc: 'Top hat and a proper suit', look: { h: 'tophat', pal: { H: '#111111', R: '#a01020', C: '#2a2a3a', c: '#1a1a26', A: '#2a2a3a', B: '#f4f4f4', P: '#2a2a3a', p: '#1a1a26' } } },
+    { id: 'char_ninja', cat: 'char', name: 'Ninja', icon: '🥷', price: 32000, desc: 'Headband in your color', look: { h: 'ninja', pal: { H: '#111111', R: 'self', C: '#1a1a22', c: '#0e0e14', A: '#1a1a22', B: 'self', P: '#1a1a22', p: '#0e0e14', K: '#0a0a0e' } } },
+    { id: 'char_knight', cat: 'char', name: 'Knight', icon: '🛡️', price: 45000, desc: 'Full plate with a red plume', look: { h: 'knight', pal: { R: '#d33b3b', G: '#b8c0ca', g: '#8a929e', k: '#111111', C: '#9aa4b0', c: '#6a727e', A: '#9aa4b0', B: 'self', P: '#6a727e', p: '#4a525e', K: '#3a3a44' } } },
+    { id: 'char_astro', cat: 'char', name: 'Astronaut', icon: '👨‍🚀', price: 48000, desc: 'One small step for a raider', look: { h: 'astro', pal: { W: '#f4f4f4', V: '#3aa0ff', C: '#f4f4f4', c: '#cfd8e3', A: '#f4f4f4', B: 'self', P: '#e8e8e8', p: '#bfc8d3', K: '#8a929e' } } },
+    { id: 'char_viking', cat: 'char', name: 'Viking', icon: '🪓', price: 65000, desc: 'Horns, fur and a big red beard', look: { h: 'viking', t: 'fat', pal: { G: '#8a929e', W: '#f4ecd8', B: '#c0602a', C: '#6b4a2a', c: '#4a3018', A: '#e8c39e', P: '#4a4a3a', p: '#3a3a2c', K: '#2a1a0a' } } },
+    { id: 'char_samurai', cat: 'char', name: 'Samurai', icon: '⛩️', price: 70000, desc: 'Red armor, golden horns', look: { h: 'samurai', pal: { H: '#8a1a1a', Y: '#d4a017', C: '#8a1a1a', c: '#5a0a0a', A: '#2a2a2a', B: '#d4a017', P: '#2a2a2a', p: '#1a1a1a', K: '#111111' } } },
+    { id: 'char_wizard', cat: 'char', name: 'Wizard', icon: '🧙', price: 80000, desc: 'Pointy hat, long beard, flowing cape', look: { h: 'wizard', t: 'cape', pal: { H: '#3a2a8a', Y: '#ffd23f', B: '#e8e8e8', Z: '#2a1a6a', C: '#3a2a8a', c: '#2a1a6a', A: '#3a2a8a', P: '#3a2a8a', p: '#2a1a6a', K: '#1a1030' } } },
+    { id: 'char_vampire', cat: 'char', name: 'Vampire', icon: '🧛', price: 90000, desc: 'Pale, red eyes, blood-red cape', look: { h: 'hair', t: 'cape', pal: { H: '#111111', s: '#e8e0f0', e: '#ff2020', m: '#a01020', Z: '#a01020', C: '#111111', c: '#222222', A: '#111111', B: '#a01020', P: '#111111', p: '#0a0a0a' }, glow: { x: 7, y: 6.5, col: '255,40,40' } } },
+    { id: 'char_cyborg', cat: 'char', name: 'Cyborg', icon: '🤖', price: 100000, desc: 'Half metal, one glowing eye', look: { h: 'cyborg', pal: { H: '#2a2a2a', G: '#8a929e', R: '#ff2020', C: '#3a4048', c: '#22262c', A: '#8a929e', B: '#00e5ff', P: '#3a4048', p: '#22262c', K: '#18181c' }, glow: { x: 4.5, y: 6.5, col: '255,40,40' } } },
+    { id: 'char_hacker', cat: 'char', name: 'Neon Hacker', icon: '💻', price: 130000, desc: 'Dark hood, green glowing eyes', look: { h: 'hood', pal: { H: '#0a0a14', X: '#000000', e: '#00ff9c', C: '#0a0a14', c: '#141428', A: '#0a0a14', B: '#00ff9c', P: '#0a0a14', p: '#060610', K: '#00ff9c' }, glow: { x: 6.5, y: 6.5, col: '0,255,156' } } },
+    { id: 'char_reaper', cat: 'char', name: 'Shadow Reaper', icon: '💀', price: 140000, desc: 'Shadow cloak, violet soul eyes', look: { h: 'hood', t: 'cape', pal: { H: '#1a1a22', X: '#000000', e: '#b06bff', Z: '#1a1a22', C: '#22222c', c: '#14141a', A: '#22222c', B: '#b06bff', P: '#14141a', p: '#0a0a0e', K: '#000000' }, glow: { x: 6.5, y: 6.5, col: '176,107,255' } } },
+    { id: 'char_emperor', cat: 'char', name: 'Golden Emperor', icon: '👑', price: 160000, desc: 'Crown, gold armor, royal cape', look: { h: 'crown', t: 'cape', pal: { Y: '#ffd23f', J: '#ff2080', Z: '#a01020', C: '#ffd23f', c: '#c9a200', A: '#ffd23f', B: '#a01020', P: '#f4f0e6', p: '#d8d0c0', K: '#c9a200' }, glow: { x: 5.5, y: 4, col: '255,210,63' } } }
 ];
 
 for (const it of ITEMS) {
@@ -284,21 +308,23 @@ function rotation(now = Date.now()) {
     if (cache.key !== b.day) {
         const week = weekId(b.day);
         const taken = new Set();
-        // Weekly: ein Legendary-Skin + drei weitere Epic/Legendary
+        // Weekly: ein Legendary-Skin, eine Epic/Legendary-Figur + drei weitere Epic/Legendary
         const wr = seeded('W' + week);
         const premium = ITEMS.filter(it => !it.free && (it.rarity === 'epic' || it.rarity === 'legendary'));
         const weekIds = [
             ...pick(wr, premium.filter(it => it.cat === 'skin' && it.rarity === 'legendary'), 1, taken),
+            // 25.09.2026: jede Woche eine Epic/Legendary-Figur
+            ...pick(wr, premium.filter(it => it.cat === 'char'), 1, taken),
             ...pick(wr, premium, 3, taken)
         ];
-        // Daily: 2 Skins, 2 Koepfe, Trail, Tod, Name, dazu ein beliebiges (ohne Legendary)
+        // Daily: 2 Skins, 2 Koepfe, Trail, Tod, Name, Charakter (25.09.2026), dazu ein beliebiges (ohne Legendary)
         const dr = seeded('D' + b.day);
         const daily = ITEMS.filter(it => !it.free && it.rarity !== 'legendary');
         const of = cat => daily.filter(it => it.cat === cat);
         const dayIds = [
             ...pick(dr, of('skin'), 2, taken), ...pick(dr, of('head'), 2, taken),
             ...pick(dr, of('trail'), 1, taken), ...pick(dr, of('death'), 1, taken),
-            ...pick(dr, of('name'), 1, taken), ...pick(dr, daily, 1, taken)
+            ...pick(dr, of('name'), 1, taken), ...pick(dr, of('char'), 1, taken), ...pick(dr, daily, 1, taken)
         ];
         cache.key = b.day;
         cache.value = { dayId: b.day, weekId: week, dayIds, weekIds };

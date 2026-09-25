@@ -576,6 +576,7 @@ const GEAR = ['primary', 'secondary', ...I.SLOTS, 'backpack'];
 const L = require('./arena-level');
 const M = require('./arena-mobs');
 const HB = require('./hitbox');
+const SHOP = require('./shop');
 // wie weit die hoechste Pixel-Figur ueber ihren Mittelpunkt ragt (Umkreissuche, hitbox.js)
 const MOB_REACH = Math.ceil(Math.max(0, ...Object.entries(M.MOBS).map(([k, d]) => d.r * (HB.mobTop(k) - 1))));
 const RL = require('./raid-log');
@@ -1169,7 +1170,7 @@ module.exports = function createArena(h, opts = {}) {
     function newPlayer(c, name, color, a, gear, util, spot) {
         const now = Date.now();
         return {
-            id: c.id, c, name, account: c.account, color: color || '#ff5bd6',
+            id: c.id, c, name, account: c.account, color: color || '#ff5bd6', char: charOf(c.account),
             x: spot.x, y: spot.y, a: 0, mx: 0, my: 0, fire: false, lastShot: 0, seq: 0, lastMove: now,
             gear, slot: 'primary', util, lastUse: 0,
             pack: [], kills: 0, zone: null, smoke: null,
@@ -1474,6 +1475,13 @@ module.exports = function createArena(h, opts = {}) {
 
     // Creative Mode (25.09.2026, Max): Schalter im Admin-Panel (accounts adminArena 'creative').
     // Im Raid: kein Schaden, Taste C oeffnet ein Menue mit jedem Item.
+    // Charakter-Skin aus dem Cosmetic Shop (25.09.2026): gilt ab dem naechsten Betreten
+    function charOf(account) {
+        const u = account && h.accounts.get && h.accounts.get(account);
+        const id = u && u.equipped && u.equipped.char;
+        return id && SHOP.BY_ID[id] && SHOP.BY_ID[id].cat === 'char' ? id : null;
+    }
+
     function creativeOf(p) {
         if (!p || !p.account) return false;
         const a = h.accounts.arena(p.account);
@@ -5554,7 +5562,7 @@ module.exports = function createArena(h, opts = {}) {
                     ...clones.filter(k => inView(k.x, k.y) && players.has(k.owner)).map(k => ({ ...players.get(k.owner), id: k.id, x: k.x, y: k.y, a: k.a, clone: true, orbitOn: false, titanUntil: 0 }))].map(q => {
                     const qw = q.gear[q.slot] || q.gear.primary;
                     return {
-                        id: q.id, n: q.name, c: q.color, lv: q.level, tm: q.team, dead: q.dead || undefined,
+                        id: q.id, n: q.name, c: q.color, ch: q.char || undefined, lv: q.level, tm: q.team, dead: q.dead || undefined,
                         x: Math.round(q.x * 10) / 10, y: Math.round(q.y * 10) / 10, a: Math.round(q.a * 100) / 100,
                         hp: Math.max(0, Math.round(q.hp)), mh: q.maxHp, w: qw.base, wt: qw.tier, wn: qw.name,
                         ar: q.gear.vest ? I.ARMORS[q.gear.vest.base].set : null, hm: q.gear.helmet ? I.ARMORS[q.gear.helmet.base].set : null,
