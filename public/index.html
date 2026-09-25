@@ -11761,7 +11761,7 @@ function shInvDrawRaw() {
             `<span>${def ? def.icon : '<span class="dim">➕</span>'}</span>${u ? `<i>${u.n}</i>` : ''}<small>${UTIL_KEYS[i]}</small></div>`;
     };
     // Aktionen zur Auswahl
-    let actions = '<span class="hint">Hover an item for details · click to select · drag it out of this window to drop it</span>';
+    let actions = '<span class="hint">Hover an item for details · click to select · shift-click to equip / take off · drag it out of this window to drop it</span>';
     const s = shInvSel;
     if (s && s.where === 'pack') {
         const it = d.pack.find(x => x.uid === s.key);
@@ -11880,9 +11880,42 @@ $('sh-inv').addEventListener('click', e => {
     }
     const c = e.target.closest('[data-ri]');
     if (!c) return;
+    // Shift-Klick (25.09.2026, Max): direkt anlegen bzw. ablegen, ohne Auswahl
+    if (e.shiftKey && shInvState) {
+        shInvSel = null;
+        const q = shInvQuick(c.dataset.ri, c.dataset.key);
+        if (q) wsSend(q);
+        return shInvDraw();
+    }
     shInvSel = shInvSel && shInvSel.key === c.dataset.key ? null : { where: c.dataset.ri, key: c.dataset.key };
     shInvDraw();
 });
+
+// Wohin ein Shift-Klick geht. Rucksack: Waffe in den freien Slot (Starter-Pistole
+// zaehlt als frei), sonst ersetzt sie die gerade gehaltene; Ruestung/Rucksack
+// anziehen; Verbrauchsgut auf Q/G mit derselben Sorte, sonst frei, sonst Q.
+// Angelegtes: zurueck in den Rucksack.
+function shInvQuick(where, key) {
+    const d = shInvState;
+    if (where !== 'pack') {
+        if (where === 'gear' && (!d.gear[key] || d.gear[key].s)) return null;
+        if (where === 'util' && !d.util[Number(key.slice(4))]) return null;
+        return { type: 'shInv', op: 'unequip', slot: key };
+    }
+    const it = d.pack.find(x => x.uid === key);
+    if (!it) return null;
+    if (it.k === 'weapon') {
+        const free = s => !d.gear[s] || d.gear[s].s;
+        const cur = shSnaps.length ? shSnaps[shSnaps.length - 1].me.slot : 'primary';
+        return { type: 'shInv', op: 'equip', uid: it.uid, slot: free('primary') ? 'primary' : free('secondary') ? 'secondary' : cur };
+    }
+    if (it.k === 'util') {
+        const i = d.util.findIndex(u => u && u.base === it.b);
+        const slot = i >= 0 ? i : d.util.findIndex(u => !u) >= 0 ? d.util.findIndex(u => !u) : 0;
+        return { type: 'shInv', op: 'equip', uid: it.uid, slot: String(slot) };
+    }
+    return { type: 'shInv', op: 'equip', uid: it.uid };
+}
 
 function onShLeft(d) {
     onShTrader({ close: true });

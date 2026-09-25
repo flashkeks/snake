@@ -56,6 +56,11 @@ const BOSS_LIFE = 8 * 60e3;
 // 6.9 (Max: Boss fast tot und dann weg): gegangen wird erst, wenn er seit
 // BOSS_CALM keinen Treffer bekommen hat und kein Spieler in BOSS_NEAR ist
 const BOSS_CALM = 60e3, BOSS_NEAR = 1100;
+// 25.09.2026 (Max: Boss von ganz weit weg abschiessen, er macht nix): wer einen
+// Raid-Boss von ausserhalb seiner Reichweite trifft, provoziert ihn fuer
+// BOSS_PROVOKE ms – er sprintet (x BOSS_SPRINT) auf den Schuetzen zu und legt
+// alle BOSS_RETAL ms eine Salve Einschlaege auf ihn (mit Vorwarnung, ausweichbar)
+const BOSS_PROVOKE = 8000, BOSS_SPRINT = 2.2, BOSS_RETAL = 2600;
 // Leerer Raid mit lebendem Boss: so lange bleibt alles stehen (6.10, Max)
 const EMPTY_KEEP = 30e3;
 // 6.12 (Max: bei Disconnect Items droppen): kommt so lange nichts mehr vom
@@ -851,6 +856,10 @@ module.exports = function createArena(h, opts = {}) {
             if (err) return h.send(c, { type: 'arError', error: err });
             const { item, log } = I.fuse(main, others);
             Object.assign(main, item);
+            // Achievements (25.09.2026): gefuste Items, Effekt auf Maximum gebracht
+            const mdefs = main.kind === 'armor' ? I.ARMOR_MODS : I.WEAPON_MODS;
+            const maxed = log.some(l => !l.fail && mdefs[l.id] && l.to >= mdefs[l.id].max);
+            h.accounts.stat(c.account, s => { s.fuses = (s.fuses || 0) + others.length; if (maxed) s.fuseMaxed = (s.fuseMaxed || 0) + 1; });
             const gone = new Set(uids);
             a.inv = a.inv.filter(it => !gone.has(it.uid));
             fixLoadout(a);
@@ -2561,6 +2570,10 @@ module.exports = function createArena(h, opts = {}) {
         if (attacker && players.has(attacker.id)) {
             m.tgt = attacker.id;
             m.seen = now;
+            if (m.def.boss && !m.def.zombie && Math.hypot(attacker.x - m.x, attacker.y - m.y) > (m.def.range || m.def.aggro)) {
+                if (!(now < (m.provoked || 0))) h.send(attacker.c, { type: 'shEvent', text: `${m.def.icon} ${m.def.name} is coming for you!`, kind: 'boss' });
+                m.provoked = now + BOSS_PROVOKE / SPEED;
+            }
             // 6.10 (Max: Amaterasu-Brand zu laut): Brand-Ticks kamen je Server-Tick
             // als Treffer an und piepten im Dauerfeuer – wie bei Spielern nur noch der Kill
             if (!(w && w.dot) || m.hp <= 0) h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: Math.round(dmg), kill: m.hp <= 0, crit: !!crit });
@@ -3018,6 +3031,19 @@ module.exports = function createArena(h, opts = {}) {
                 }
             }
         }
+        // Provozierter Raid-Boss: Einschlaege auf Fernschuetzen ausserhalb der Reichweite
+        const provoked = def.boss && !def.zombie && now < (m.provoked || 0);
+        if (provoked && tgt && !tgt.dead && now >= (m.nextRetal || 0)
+            && Math.hypot(tgt.x - m.x, tgt.y - m.y) > (def.range || def.aggro)) {
+            m.nextRetal = now + cd(BOSS_RETAL);
+            // Vorhalten: der erste Einschlag dahin, wo der Schuetze gleich ist
+            const lead = 0.6 * 280;
+            for (let k = 0; k < 3; k++) {
+                const a = Math.random() * 6.28, rr = k ? 60 + Math.random() * 120 : 0;
+                const bx = tgt.x + (k ? 0 : tgt.mx * lead), by = tgt.y + (k ? 0 : tgt.my * lead);
+                strikes.push({ id: ++seqId, x: bx + Math.cos(a) * rr, y: by + Math.sin(a) * rr, r: 110, dmg: 55 * (m.dm || 1), at: now + (1100 + k * 150) / SPEED, total: 1100 + k * 150, by: def.icon + ' ' + def.name, how: 'boss', look: 1, fire: false, acid: false });
+            }
+        }
         // Beruehrung: Nahkaempfer und Bosse
         if (def.boom && players.size && near(m.x, m.y, def.r + R + 12).length) {
             m.hp = 0;
@@ -3111,7 +3137,7 @@ module.exports = function createArena(h, opts = {}) {
                 mobMove(m, goal.x, goal.y, def.chase, dt);
             } else {
                 const keep = def.keep || 200, range = def.range || def.aggro;
-                if (d > range * 0.9 || goal !== tgt) mobMove(m, goal.x, goal.y, def.speed * 1.1, dt);
+                if (d > range * 0.9 || goal !== tgt) mobMove(m, goal.x, goal.y, def.speed * 1.1 * (provoked ? BOSS_SPRINT : 1), dt);
                 else if (d < keep) mobMove(m, m.x - (tgt.x - m.x), m.y - (tgt.y - m.y), def.speed, dt);
                 else {
                     // seitlich ausweichen
