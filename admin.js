@@ -417,6 +417,27 @@ module.exports = function startAdmin(h) {
                 return json(res, 200, detail(key));
             }
 
+            // Raid-Log (25.09.2026): Raids eines Kontos, verlorene Items zurueckgeben
+            mm = p.match(/^\/api\/users\/([^/]+)\/raids(?:\/([0-9a-f]{12})\/restore)?$/);
+            if (mm && h.raidLog) {
+                const key = decodeURIComponent(mm[1]);
+                const u = h.accounts.get(key);
+                if (!u) return json(res, 404, { error: 'no such user' });
+                if (m === 'GET' && !mm[2]) return json(res, 200, { raids: h.raidLog.raidsOf(key, 50) });
+                if (m !== 'POST' || !mm[2]) return json(res, 404, { error: 'not found' });
+                const r = h.raidLog.raidsOf(key, 1e9).find(x => x.rid === mm[2]);
+                if (!r) return json(res, 404, { error: 'no such raid' });
+                if (r.live) return json(res, 400, { error: 'raid is still running' });
+                if (r.restored) return json(res, 400, { error: 'already restored' });
+                if (!r.restorable.length) return json(res, 400, { error: 'nothing to restore' });
+                const out = h.accounts.adminRestore(key, r.restorable);
+                if (out.error) return json(res, 400, out);
+                h.raidLog.write({ ev: 'restore', rid: r.rid, user: key, by: email, n: out.added + out.queued });
+                log(email, 'arena-restore', u.name, { rid: r.rid, end: r.end, ...out });
+                h.pushAccount(key);
+                return json(res, 200, { ...out, raids: h.raidLog.raidsOf(key, 50) });
+            }
+
             if (m === 'GET' && p === '/api/tickets') return json(res, 200, { tickets: h.tickets.adminList() });
 
             mm = p.match(/^\/api\/tickets\/(\d+)$/);

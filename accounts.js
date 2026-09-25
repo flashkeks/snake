@@ -669,6 +669,28 @@ module.exports = function createAccounts(dataDir) {
             return null;
         },
 
+        // Raid-Log (25.09.2026): Items eines Raids zurueck ins Lager. Was schon da ist
+        // (gleiche uid), bleibt aus; ist das Lager voll, geht der Rest in die Warteschlange.
+        adminRestore(key, items) {
+            const u = db.users[key];
+            if (!u) return { error: 'no such user' };
+            if (!u.arena) u.arena = { inv: [], loadout: { primary: null, secondary: null, armor: null, meds: 0 }, scrap: 0 };
+            const a = u.arena;
+            a.overflow = a.overflow || [];
+            const have = new Set(a.inv.concat(a.overflow).map(it => it.uid));
+            let added = 0, queued = 0, skipped = 0;
+            for (const src of items) {
+                if (!src || src.starter) continue;
+                if (src.uid && have.has(src.uid)) { skipped++; continue; }
+                const it = JSON.parse(JSON.stringify(src));
+                delete it.insured;
+                if (a.inv.length < arenaItems.invMaxOf(a)) { a.inv.push(it); added++; } else { a.overflow.push(it); queued++; }
+                if (it.uid) have.add(it.uid);
+            }
+            touch();
+            return { added, queued, skipped };
+        },
+
         // Alles zuruecksetzen wie ein frisches Konto: Coins, Statistik,
         // Achievements, Titel, Cosmetics, Arena, Daily, Luck. Name, Passwort,
         // Farbe, Erstellungsdatum und Sessions bleiben.

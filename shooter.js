@@ -561,6 +561,7 @@ function starterPistol() {
 const GEAR = ['primary', 'secondary', ...I.SLOTS, 'backpack'];
 const L = require('./arena-level');
 const M = require('./arena-mobs');
+const RL = require('./raid-log');
 
 // opts: { mode: 'extract' (Standard) | 'pvp', world, ... } – siehe PvP unten
 module.exports = function createArena(h, opts = {}) {
@@ -1175,13 +1176,19 @@ module.exports = function createArena(h, opts = {}) {
         if (zb) return joinZombies(c, name);
         if (players.size >= MAX_PLAYERS) return 'The raid is full';
         const a = st(c);
+        // Raid-Log: alles, was das Lager verlaesst, fuer eine spaetere Wiederherstellung
+        const taken = [];
         const take = uid => {
             const i = uid ? a.inv.findIndex(x => x.uid === uid) : -1;
-            return i >= 0 ? a.inv.splice(i, 1)[0] : null;
+            const it = i >= 0 ? a.inv.splice(i, 1)[0] : null;
+            if (it) taken.push(it);
+            return it;
         };
         const takeUtil = base => {
             const i = a.inv.findIndex(x => x.kind === 'util' && x.base === base);
-            return i >= 0 ? a.inv.splice(i, 1)[0] : null;
+            const it = i >= 0 ? a.inv.splice(i, 1)[0] : null;
+            if (it) taken.push(it);
+            return it;
         };
         // Loadout verlaesst das Lager
         const gear = { primary: take(a.loadout.primary) || starterPistol(), secondary: take(a.loadout.secondary) };
@@ -1195,6 +1202,8 @@ module.exports = function createArena(h, opts = {}) {
         a.loadout = EMPTY_LOADOUT();
         h.accounts.touch();
         const p = newPlayer(c, name, color, a, gear, util, at && !blocked(at.x, at.y, R) ? at : freeSpot(true));
+        p.rid = RL.newRid();
+        RL.write({ ev: 'join', rid: p.rid, user: c.account, name: p.name, mode, map: MAP.name || opts.kind || null, items: taken });
         gearStats(p);
         players.set(c.id, p);
         h.accounts.stat(c.account, st2 => { st2.raids = (st2.raids || 0) + 1; });
@@ -1293,6 +1302,10 @@ module.exports = function createArena(h, opts = {}) {
             if (saved.length) h.accounts.touch();
         }
         const loot = lootOf(p);
+        if (p.rid) RL.write({
+            ev: how === 'left' ? 'left' : 'died', rid: p.rid, user: p.account, name: p.name, items: loot, saved,
+            killer: killer ? killer.name : by || null, map: MAP.name || opts.kind || null, secs: Math.round((Date.now() - p.joinedAt) / 1000)
+        });
         let rest = loot;
         award(p, L.XP.minute * Math.floor((Date.now() - p.joinedAt) / 60000), 'time in raid');
         if (killer && players.has(killer.id)) {
@@ -1333,7 +1346,9 @@ module.exports = function createArena(h, opts = {}) {
     function extract(p, silent) {
         if (!players.has(p.id)) return;
         players.delete(p.id);
-        const r = addItems(p.c, lootOf(p));
+        const home = lootOf(p);
+        if (p.rid) RL.write({ ev: 'extract', rid: p.rid, user: p.account, name: p.name, items: home, shutdown: !!silent, secs: Math.round((Date.now() - p.joinedAt) / 1000) });
+        const r = addItems(p.c, home);
         // Mitgebrachtes wieder ins Loadout, soweit noch da
         const a = st(p.c);
         a.loadout = EMPTY_LOADOUT();

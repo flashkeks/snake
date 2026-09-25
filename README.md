@@ -2798,3 +2798,53 @@ Pro Konto im Admin-Panel schaltbar (Arena-Bereich, „Creative mode", `adminAren
   Farbe nach Seltenheit, eigener Spieler mit weissem Bodenring.
 - Schilder ueber Mobs/Spielern sitzen ueber dem Sprite (`pxTop`).
 - Missionen: Banner verraet den Boss nicht mehr, Ausgang heisst „Guild House".
+
+## 📜 Raid-Log: verlorene Items wiederherstellen (25.09.2026, Max)
+
+Max: „logge, was Spieler für Items tatsächlich hatten … dass jemand durch einen Lag
+stirbt und ich kann die Items nicht wiederherstellen." Bisher war ein Tod endgültig:
+die Items lagen im Beutel, der Beutel lief ab, nirgends stand, was drin war.
+
+**Was geloggt wird** (`raid-log.js`, Datei `DATA_DIR/raid-log.jsonl`, Modus 600):
+
+| Ereignis | Wann | `items` |
+|---|---|---|
+| `join` | Raid betreten (Extraction, auch Dungeon/Mission) | was das Lager verlassen hat |
+| `died` | Tod im Raid | was verloren ging (Ausrüstung, Verbrauchsgut, Rucksack, samt Waffen-XP) |
+| `left` | Raid verlassen oder **Verbindung weg** (Lag, Tab zu) | wie `died` |
+| `extract` | heil raus; `shutdown: true` beim Server-Neustart | was mit nach Hause kam |
+| `restore` | Admin hat zurückgegeben | – (`by` = Admin-Mail, `n` = Anzahl) |
+
+Jede Zeile trägt volle Item-Objekte (uid, Stufe, Effekte, Level), keine Kurzform –
+wiederhergestellt wird also genau das Item, nicht ein Nachbau. `rid` verbindet Einstieg
+und Ende; Dungeon-Wechsel und Missionen behalten die `rid`, weil der Spieler dabei nur
+umgehängt wird (`detach`/`attach`). PvP und Zombies loggen nichts: dort wird die
+Ausrüstung nur kopiert, verloren geht nichts. Versicherte Teile einer Mission stehen
+unter `saved` und zählen nicht als verloren.
+
+Geschrieben wird **synchron** (`appendFileSync`): die Zeile steht auf der Platte, bevor
+der Raid weiterläuft – auch ein Absturz direkt danach verliert sie nicht. Über 20 MB
+wird die Datei nach `raid-log.jsonl.1` verschoben (eine Generation, beide werden gelesen).
+
+**Absturz-Fall:** Ein `join` ohne Ende, dessen Raid im laufenden Prozess nicht mehr
+existiert, heißt: der Server ist mitten im Raid gestorben. Die Items sind dann weder im
+Lager noch in einem Beutel. Das Admin-Panel zeigt so einen Raid als „server crashed
+mid-raid" und bietet alles Mitgenommene zum Zurückgeben an.
+
+**Admin-Panel:** Konto → 🔫 Arena → „📜 Raid log" (die letzten 50 Raids). Knopf
+„Restore N" gibt die verlorenen Items ins Lager zurück, ist das Lager voll in die
+Warteschlange (`overflow`). Pro Raid nur einmal; Items, deren uid schon im Lager liegt
+(z. B. weil der Spieler den eigenen Beutel wieder eingesammelt hat), werden übersprungen.
+Ein Raid, der gerade läuft, lässt sich nicht zurückgeben. Jede Rückgabe steht zusätzlich
+im Admin-Log (`arena-restore`).
+
+API: `GET /api/users/KEY/raids`, `POST /api/users/KEY/raids/RID/restore` (mit `X-Admin: 1`).
+
+**Grenze:** Hat ein Gegner den Beutel eingesammelt und extrahiert, existiert das Item
+nach einer Rückgabe zweimal (gleiche uid in zwei Konten). Bei einem Lag-Tod gegen NPCs
+ist das egal; bei PvP-Kills vorher schauen, wer der `killer` war.
+
+Test (13/13): Einstieg nimmt Items aus dem Lager, `left` loggt sie voll, Rückgabe über
+die Admin-API, zweite Rückgabe abgelehnt, Extraction nicht rückgebbar, laufender Raid
+abgelehnt, Absturz nach Neustart erkannt, Dateimodus 600. Dazu Playwright-Screenshot des
+Admin-Panels.

@@ -556,7 +556,41 @@ function drawArena() {
         (gear ? `<div class="row">Effects: ${modRow(0)} ${modRow(1)} ${modRow(2)}</div>` : '') +
         `<div class="row"><button type="button" class="primary" id="a-give">Give</button><span class="muted">Tier is set by you; 1 in X and score follow from tier and effects.</span></div></div>` +
         `<div class="row"><b>Stash</b><button type="button" class="danger" id="a-del-picked">Delete selected</button><button type="button" class="danger" id="a-clear">Clear stash</button></div>` +
-        `<table class="stash"><tbody>${rows || '<tr><td class="muted">empty</td></tr>'}</tbody></table>`;
+        `<table class="stash"><tbody>${rows || '<tr><td class="muted">empty</td></tr>'}</tbody></table>` +
+        `<div class="row"><b>📜 Raid log</b><button type="button" id="a-raids-load">Reload</button>` +
+        `<span class="muted">What the player took into each raid and lost there. Restore gives exactly those items back (once per raid).</span></div>` +
+        `<div id="a-raids">${raidsHtml()}</div>`;
+    if (raidsFor !== cur.key) loadRaids();
+}
+
+// Raid-Log (25.09.2026): verlorene Items eines Raids zurueckgeben
+let raids = [], raidsFor = null;
+async function loadRaids() {
+    raidsFor = cur.key;
+    try { raids = (await api(`/api/users/${encodeURIComponent(cur.key)}/raids`)).raids; }
+    catch (e) { raids = []; msg('d-msg', e.message, 'err'); }
+    if ($('a-raids')) $('a-raids').innerHTML = raidsHtml();
+}
+function raidItems(list) {
+    const A = cat.arena;
+    return (list || []).map(it => {
+        const icon = ((it.kind === 'util' ? A.utils : it.kind === 'armor' ? A.armors : it.kind === 'pack' ? A.packs : A.weapons)[it.base] || {}).icon;
+        return `<span class="t-${esc(it.tier)}" title="${esc(it.tier)}">${icon || '❔'} ${esc(it.name)}</span>`;
+    }).join(', ') || '<span class="muted">nothing</span>';
+}
+function raidsHtml() {
+    if (raidsFor !== (cur && cur.key)) return '<span class="muted">loading…</span>';
+    if (!raids.length) return '<span class="muted">no raids logged yet</span>';
+    const END = { died: '💀 died', left: '🚪 left / disconnected', extract: '🚁 extracted', crash: '⚠️ server crashed mid-raid' };
+    const rows = raids.map(r => {
+        const end = r.live ? '🟢 in raid now' : (END[r.end] || r.end) + (r.killer ? ` · by ${esc(r.killer)}` : '') + (r.shutdown ? ' · restart' : '');
+        const when = new Date(r.at || r.endAt).toLocaleString('de-DE');
+        const btn = r.restored ? `<span class="muted">restored ${new Date(r.restored.at).toLocaleString('de-DE')} (${r.restored.n})</span>`
+            : r.restorable.length ? `<button type="button" class="primary" data-rrid="${esc(r.rid)}" data-rn="${r.restorable.length}">Restore ${r.restorable.length}</button>` : '';
+        return `<tr><td class="muted">${esc(when)}<br>${esc(r.map || r.mode || '')}${r.secs ? ` · ${Math.round(r.secs / 60)} min` : ''}</td><td>${end}</td>` +
+            `<td><b>took:</b> ${raidItems(r.took)}${r.end && r.end !== 'crash' ? `<br><b>${r.end === 'extract' ? 'brought home' : 'lost'}:</b> ${raidItems(r.lost)}` : ''}</td><td>${btn}</td></tr>`;
+    }).join('');
+    return `<table class="stash"><tbody>${rows}</tbody></table>`;
 }
 $('dp-arena').onchange = e => { if (e.target.id === 'a-kind') { aKind = e.target.value; drawArena(); } };
 $('dp-arena').onclick = e => {
@@ -574,6 +608,19 @@ $('dp-arena').onclick = e => {
     if (b.id === 'a-del-picked') {
         const uids = [...$('dp-arena').querySelectorAll('[data-auid]:checked')].map(x => x.dataset.auid);
         if (uids.length && confirm(`Delete ${uids.length} items?`)) post('arena', { op: 'delete', uids }, 'Deleted');
+        return;
+    }
+    if (b.id === 'a-raids-load') return loadRaids();
+    if (b.dataset.rrid) {
+        if (!confirm(`Give ${b.dataset.rn} items from this raid back to ${cur.name}?`)) return;
+        (async () => {
+            try {
+                const r = await api(`/api/users/${encodeURIComponent(cur.key)}/raids/${b.dataset.rrid}/restore`, { method: 'POST', body: {} });
+                raids = r.raids;
+                msg('d-msg', `Restored: ${r.added} to stash${r.queued ? `, ${r.queued} to overflow (stash full)` : ''}${r.skipped ? `, ${r.skipped} already there` : ''}`, 'ok');
+                loadDetail();
+            } catch (e) { msg('d-msg', e.message, 'err'); }
+        })();
         return;
     }
     if (b.id === 'a-clear' && confirm(`Clear the whole arena stash of ${cur.name}?`)) post('arena', { op: 'clear' }, 'Stash cleared');

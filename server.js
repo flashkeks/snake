@@ -51,6 +51,9 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const PUBLIC = path.join(__dirname, 'public');
 
 const accounts = createAccounts(DATA_DIR);
+// Raid-Log (25.09.2026): mitgenommene und verlorene Items je Raid, fuers Admin-Panel
+const raidLog = require('./raid-log');
+raidLog.init(DATA_DIR);
 const wheels = createWheels({ accounts });
 const tickets = createTickets(DATA_DIR);
 
@@ -2368,6 +2371,7 @@ startAdmin({
     arenaItems,
     luck,
     tickets,
+    raidLog,
     dataDir: DATA_DIR,
     publicDir: PUBLIC,
     online: () => ({
