@@ -574,6 +574,9 @@ function starterPistol() {
 const GEAR = ['primary', 'secondary', ...I.SLOTS, 'backpack'];
 const L = require('./arena-level');
 const M = require('./arena-mobs');
+const HB = require('./hitbox');
+// wie weit die hoechste Pixel-Figur ueber ihren Mittelpunkt ragt (Umkreissuche, hitbox.js)
+const MOB_REACH = Math.ceil(Math.max(0, ...Object.entries(M.MOBS).map(([k, d]) => d.r * (HB.mobTop(k) - 1))));
 const RL = require('./raid-log');
 
 // opts: { mode: 'extract' (Standard) | 'pvp', world, ... } – siehe PvP unten
@@ -1941,7 +1944,7 @@ module.exports = function createArena(h, opts = {}) {
         const kw = p.gear[p.slot];
         const chain = depth < 3 && kw && kw.base === 'killerqueen' && I.isAwake(kw);
         for (const m of mobsNear(x, y, r + 60)) {
-            if (Math.hypot(m.x - x, m.y - y) >= r + m.def.r) continue;
+            if (mobGap(m, x, y) >= r) continue;
             hurtMob(m, p, dmg, now, m.x, m.y);
             // Bites the Dust (Lv 20): wer daran stirbt, explodiert selbst
             if (chain && !(m.hp > 0)) kqBlast(p, m.x, m.y, now, depth + 1);
@@ -1963,7 +1966,7 @@ module.exports = function createArena(h, opts = {}) {
     const foe = (p, q) => q !== p && !q.dead && !(p.team && p.team === q.team);
     function hurtFoes(p, x, y, r, dmg, now, dot) {
         for (const q of near(x, y, r + R)) if (foe(p, q)) damage(q, p, dmg, now, q.x, q.y, { how: 'explosion', noDodge: true, dot });
-        for (const m of mobsNear(x, y, r + 60)) if (Math.hypot(m.x - x, m.y - y) < r + m.def.r) hurtMob(m, p, dmg, now, m.x, m.y, false, dot ? { dot: true } : undefined);
+        for (const m of mobsNear(x, y, r + 60)) if (mobGap(m, x, y) < r) hurtMob(m, p, dmg, now, m.x, m.y, false, dot ? { dot: true } : undefined);
     }
     // Saitama (10. Treffer x5), Byakugan (nah +15 %), Venuzdonoa (entbloesst +50 %)
     function awakeHitMul(attacker, target, now, isPlayer) {
@@ -2204,7 +2207,7 @@ module.exports = function createArena(h, opts = {}) {
             if (q === p || (p.team && p.team === q.team)) continue;
             damage(q, p, dps * dt, now, q.x, q.y, { how: 'shot', dot: true, noDodge: true });
         }
-        for (const m of mobsNear(p.x, p.y, rr + 60)) if (Math.hypot(m.x - p.x, m.y - p.y) < rr + m.def.r) hurtMob(m, p, dps * dt, now, m.x, m.y, false, { dot: true });
+        for (const m of mobsNear(p.x, p.y, rr + 60)) if (mobGap(m, p.x, p.y) < rr) hurtMob(m, p, dps * dt, now, m.x, m.y, false, { dot: true });
         for (let i = bullets.length - 1; i >= 0; i--) {
             const b = bullets[i];
             if (b.owner === p.id || Math.hypot(b.x - p.x, b.y - p.y) > rr - 10) continue;
@@ -2222,7 +2225,7 @@ module.exports = function createArena(h, opts = {}) {
         const x = p.x + Math.cos(p.a) * 70, y = p.y + Math.sin(p.a) * 70, r = 170, dmg = 200 * p.dmgMul;
         fxAt(x, y, { type: 'shBoom', x: Math.round(x), y: Math.round(y), r, nuke: false });
         for (const q of near(x, y, r + R)) if (q !== p && !(p.team && p.team === q.team)) damage(q, p, dmg, now, q.x, q.y, { how: 'explosion', noDodge: true });
-        for (const m of mobsNear(x, y, r + 60)) if (Math.hypot(m.x - x, m.y - y) < r + m.def.r) hurtMob(m, p, dmg, now, m.x, m.y);
+        for (const m of mobsNear(x, y, r + 60)) if (mobGap(m, x, y) < r) hurtMob(m, p, dmg, now, m.x, m.y);
     }
 
     // Kage Bunshin: Klone laufen im Dreieck um den Spieler und schiessen mit
@@ -2504,8 +2507,8 @@ module.exports = function createArena(h, opts = {}) {
         }
         if (!isMob(g.owner)) {
             for (const m of mobsNear(x, y, r + 60)) {
-                const d = Math.hypot(m.x - x, m.y - y);
-                if (d < r + m.def.r && (!walls || clear(x, y, m.x, m.y))) hurtMob(m, owner, dmg * (1 - d / (r + m.def.r) * 0.6), now, m.x, m.y);
+                const d = Math.max(0, mobGap(m, x, y));
+                if (d < r && (!walls || clear(x, y, m.x, m.y))) hurtMob(m, owner, dmg * (1 - d / r * 0.6), now, m.x, m.y);
             }
         }
     }
@@ -2728,7 +2731,7 @@ module.exports = function createArena(h, opts = {}) {
             // und wurde nie getroffen. Solche Gegner trifft der Schuss sofort.
             if (!w.portals) {
                 const dx = Math.cos(a), dy = Math.sin(a);
-                const close = mobs.find(m => m.hp > 0 && Math.hypot(m.x - p.x, m.y - p.y) < R + m.def.r + 8 && (m.x - p.x) * dx + (m.y - p.y) * dy > -m.def.r);
+                const close = mobs.find(m => m.hp > 0 && mobGap(m, p.x, p.y) < R + 8 && (m.x - p.x) * dx + (m.y - p.y) * dy > -m.def.r);
                 if (close) {
                     b.hits.add(close.id);
                     const crit = w.crit && Math.random() < w.crit;
@@ -2764,16 +2767,12 @@ module.exports = function createArena(h, opts = {}) {
         const bw = w.beamW || 10;
         for (const q of [...players.values()]) {
             if (q === p || q.dead || (p.team && p.team === q.team)) continue;
-            const t = (q.x - p.x) * dx + (q.y - p.y) * dy;
-            if (t < 0 || t > len) continue;
-            const perp = Math.abs((q.x - p.x) * dy - (q.y - p.y) * dx);
-            if (perp > R + bw) continue;
+            if (!beamHits(q, p.x, p.y, dx, dy, len, bw, R, HB.playerTop())) continue;
             hitPlayer({ owner: p.id, w, x: q.x, y: q.y, hits: new Set() }, q, now);
         }
         let rifts = 0;
         for (const m of [...mobs]) {
-            const t = (m.x - p.x) * dx + (m.y - p.y) * dy;
-            if (t >= 0 && t <= len && Math.abs((m.x - p.x) * dy - (m.y - p.y) * dx) < m.def.r + bw) {
+            if (beamHits(m, p.x, p.y, dx, dy, len, bw, m.def.r, HB.mobTop(m.kind))) {
                 // Venuzdonoa: Risse ins Nichts an bis zu drei Getroffenen
                 if (w.rift && w.awake) m.exposeUntil = now + 5000 / SPEED;
                 if (w.rift && rifts < 3 && m.hp > 0 && !quiet) {
@@ -2974,7 +2973,7 @@ module.exports = function createArena(h, opts = {}) {
             if (q.id === b.owner || q.id === skipId) continue;
             damage(q, shooter, w.dmg * w.explode * (shooter ? shooter.b.expl : 1), now, q.x, q.y, { how: 'explosion' });
         }
-        if (!isMob(b.owner)) for (const m of mobsNear(b.x, b.y, r + 60)) if (Math.hypot(m.x - b.x, m.y - b.y) < r + m.def.r) hurtMob(m, shooter, w.dmg * w.explode * (shooter ? shooter.b.expl : 1), now, m.x, m.y);
+        if (!isMob(b.owner)) for (const m of mobsNear(b.x, b.y, r + 60)) if (mobGap(m, b.x, b.y) < r) hurtMob(m, shooter, w.dmg * w.explode * (shooter ? shooter.b.expl : 1), now, m.x, m.y);
     }
 
     // ---------- PvP (4.3): Teams, Runden, keine Verluste ----------
@@ -3533,6 +3532,7 @@ module.exports = function createArena(h, opts = {}) {
         }
     }
     function mobsNear(x, y, r) {
+        r += MOB_REACH; // Pixel-Figuren ragen nach oben (hitbox.js)
         const out = [];
         for (let gx = Math.floor((x - r) / CELL); gx <= Math.floor((x + r) / CELL); gx++) {
             for (let gy = Math.floor((y - r) / CELL); gy <= Math.floor((y + r) / CELL); gy++) {
@@ -3650,6 +3650,17 @@ module.exports = function createArena(h, opts = {}) {
     // Punkte-Faktor im Zombie-Modus: Baum, Vulture-Perk, Double Points
     function zPtsMul(p, now) {
         return p.b.zPts * (p.perks && p.perks.includes('vulture') ? 1.25 : 1) * (zfx('double', now) ? 2 : 1);
+    }
+
+    // Hitbox (25.09.2026): senkrechte Kapsel vom Mittelpunkt bis zum Kopf der Pixel-Figur.
+    // Abstand eines Punkts zur Koerperoberflaeche (negativ = drin).
+    const mobGap = (m, x, y) => HB.gap(m.x, m.y, m.def.r, HB.mobTop(m.kind), x, y);
+    // Trifft ein Strahl (von p in Richtung dx/dy, Laenge len, halbe Breite bw) den Koerper?
+    function beamHits(m, px, py, dx, dy, len, bw, r, top) {
+        return HB.axis(m.x, m.y, r, top).some(([ax, ay]) => {
+            const t = (ax - px) * dx + (ay - py) * dy;
+            return t >= 0 && t <= len && Math.abs((ax - px) * dy - (ay - py) * dx) < r + bw;
+        });
     }
 
     function hurtMob(m, attacker, dmg, now, x, y, crit, w) {
@@ -5435,7 +5446,7 @@ module.exports = function createArena(h, opts = {}) {
                 }
                 for (const q of players.values()) {
                     if (q.id === b.owner || b.hits.has(q.id) || q.dead || (bowner && bowner.team && bowner.team === q.team)) continue;
-                    if (Math.hypot(q.x - b.x, q.y - b.y) < R + Math.max(b.w.big ? 14 : 4, b.w.hitR || 0)) {
+                    if ((isMob(b.owner) ? Math.hypot(q.x - b.x, q.y - b.y) - R : HB.gap(q.x, q.y, R, HB.playerTop(), b.x, b.y)) < Math.max(b.w.big ? 14 : 4, b.w.hitR || 0)) {
                         b.hits.add(q.id);
                         b.hitAny = true;
                         if (b.w.mobBoom) mobBoom(b, now);
@@ -5451,7 +5462,7 @@ module.exports = function createArena(h, opts = {}) {
                 if (!gone && !isMob(b.owner)) {
                     const hitR = b.w.hitR || 4;
                     for (const m of mobsNear(b.x, b.y, 60 + hitR)) {
-                        if (b.hits.has(m.id) || Math.hypot(m.x - b.x, m.y - b.y) >= m.def.r + hitR) continue;
+                        if (b.hits.has(m.id) || mobGap(m, b.x, b.y) >= hitR) continue;
                         b.hits.add(m.id);
                         b.hitAny = true;
                         const shooter = players.get(b.owner) || null;

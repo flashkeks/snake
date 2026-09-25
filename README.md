@@ -3191,3 +3191,23 @@ Taste **C** im Raid (Creative an). Aufbau:
 - **Einstellungen:** Seltenheit, **Level 1–30** (Schieberegler; ab 20 „awakened" für Uniques) und bis
   zu **3 Effekte** mit Stufe. Server `crGive` setzt `wxp` passend zum Level.
 - Knöpfe je Karte: Klick = in den Rucksack, „1"/„2" = als Primär/Sekundär anlegen, „⚡" = Rüstung anlegen.
+
+## 🎯 Hitboxen passend zu den Pixel-Figuren (25.09.2026, Max: „man kann durch Oberkörper oder Köpfe schießen")
+
+Der Server prüfte Treffer als Kreis (Radius `r`) um den Mittelpunkt – die Pixel-Figuren ragen
+aber bis zu ~2–5 r nach oben (Kopf eines Scav bei 2,8 r, Gojo 4,8 r). Kopf und Oberkörper waren
+Luft.
+
+`hitbox.js` lädt beim Start `public/bfx.js` + `pfx.js` (dieselben Sprite-Daten wie der Browser)
+in eine Sandbox und rechnet für jede Figur aus, wie hoch sie ist (ohne leere Rasterzeilen).
+Geprüft wird gegen eine **senkrechte Kapsel** mit Radius r vom Mittelpunkt bis zum Kopf:
+
+- Kugeln gegen Gegner (`mobGap`), Strahlen (Railgun, Kamehameha … – Fuß, Mitte, Kopf), der
+  Nahschuss-Sonderfall, Explosionen, Flächen- und Dauerschaden.
+- **PvP:** Spieler-Schüsse und -Strahlen auf Spieler ebenso gegen die Spielerfigur.
+  Gegner-Kugeln auf Spieler bleiben beim alten Kreis (sonst würde es plötzlich schwerer).
+- `mobsNear` sucht um `MOB_REACH` (höchste Figur) weiter, damit hohe Figuren gefunden werden.
+
+Test: waagerechter Schuss auf Kopf-/Brusthöhe – vorher bei Scav (1,5 und 2,3 r), Zombie,
+Titan, Gojo und Omega vorbei, jetzt Treffer; 0,5 r über dem Kopf weiterhin vorbei. Nebenwirkung
+im DPS-Test: Streuwaffen treffen deutlich öfter (Shotgun 42 → 84 DPS auf 300 px).
