@@ -3321,7 +3321,7 @@ body.world-arena h1 {
 .sh-guild .gd-row { display: flex; gap: 8px; align-items: center; margin: 10px 0 4px; }
 
 /* Creative Mode */
-.sh-creative { border-color: #5bffb0; box-shadow: 0 0 40px rgba(91,255,176,.3); width: min(900px, 94%); max-height: 78%; }
+.sh-creative { border-color: #5bffb0; box-shadow: 0 0 40px rgba(91,255,176,.3); width: min(1000px, 96%); max-height: 84%; top: 60px; }
 .sh-creative .st-head button { padding: 4px 10px; }
 .sh-creative .cr-diffs { flex-wrap: wrap; }
 .sh-creative .cr-tile { display: flex; gap: 3px; }
@@ -3329,9 +3329,30 @@ body.world-arena h1 {
 .sh-creative .cr-tile > button:first-child span { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .sh-creative .cr-tile > button:not(:first-child) { width: 30px; padding: 0; background: rgba(91,255,176,.15); border: 1px solid rgba(91,255,176,.5); color: #5bffb0; }
 .sh-creative .cr-tile small { color: #ffd23f; font-size: 10px; }
-.sh-creative .st-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.sh-creative .st-grid { grid-template-columns: repeat(auto-fill, minmax(225px, 1fr)); }
 .sh-creative .cr-diffs button.on span { color: #111; }
 .sh-creative .cr-tile svg.gi { width: 2em; height: 2em; }
+.sh-creative .cr-tabs, .sh-creative .cr-subs { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; align-items: center; }
+.sh-creative .cr-tabs button { font-size: 15px; padding: 7px 14px; }
+.sh-creative .cr-tabs button.on, .sh-creative .cr-subs button.on { background: #5bffb0; color: #111; border-color: #5bffb0; }
+.sh-creative .cr-tabs small, .sh-creative .cr-subs small { opacity: .7; font-size: 11px; }
+.sh-creative .cr-subs button { padding: 4px 10px; font-size: 13px; }
+.sh-creative .cr-count { margin-left: auto; color: #9aa7b8; font-size: 12px; }
+.sh-creative .cr-set { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; padding: 6px 8px; border-radius: 9px; background: rgba(255,255,255,.04); }
+.sh-creative .cr-set > b { width: 70px; color: #5bffb0; font-size: 13px; }
+.sh-creative .cr-set .cr-diffs { display: flex; flex-wrap: wrap; gap: 4px; }
+.sh-creative .cr-set .cr-diffs button { padding: 3px 8px; font-size: 12px; }
+.sh-creative #cr-lv { flex: 1; min-width: 160px; accent-color: #5bffb0; }
+.sh-creative #cr-lvn { min-width: 170px; font-weight: 700; color: #ffd23f; }
+.sh-creative .cr-mod { display: inline-flex; gap: 3px; }
+.sh-creative .cr-mod select { max-width: 170px; }
+.sh-creative #cr-q { width: 100%; margin: 4px 0 8px; }
+.sh-creative #cr-list h5 { margin: 12px 0 6px; color: #5bffb0; border-bottom: 1px solid rgba(91,255,176,.25); padding-bottom: 3px; }
+.sh-creative #cr-list h5 small { color: #9aa7b8; font-weight: 400; }
+.sh-creative .cr-tile > button:first-child { display: flex; align-items: center; gap: 8px; text-align: left; }
+.sh-creative .cr-tile > button:first-child > span { display: flex; flex-direction: column; min-width: 0; }
+.sh-creative .cr-tile > button:first-child > span b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sh-creative .cr-tile > button:first-child > span small { color: #9aa7b8; font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Guild-Panels im Holz-Look, Quest Board (25.09.2026, Max: „bissl schicker") */
 .sh-guild.gd-wood {
@@ -11355,7 +11376,12 @@ function onGuildRaw(d) {
 }
 
 // ---------- Creative Mode (25.09.2026, Max): Taste C im Raid, nur wenn im Admin-Panel an ----------
-let crOpen = false, crKind = 'weapon', crTier = 4, crQ = '';
+// 25.09.2026 (Max: „nicht alle Items, muss dringend uebersichtlicher, Items Level geben"):
+// Tabs mit Zaehlern, Unterfilter, Gruppen (Ruestung nach Set), Kurzwerte je Karte, Stufe,
+// Item-Level 1–30 und bis zu 3 Effekte. Alles aus arenaCat, also immer jedes Item.
+let crOpen = false, crKind = 'weapon', crSub = 'all', crTier = 4, crLv = 1, crQ = '', crMods = [null, null, null];
+const CR_SLOT = { helmet: '🪖 Helmet', vest: '🦺 Vest', pants: '👖 Pants', boots: '🥾 Boots' };
+function crDefs(kind) { return kind === 'weapon' ? arenaCat.weapons : kind === 'armor' ? arenaCat.armors : kind === 'util' ? arenaCat.utils : arenaCat.packs; }
 function crDraw(open) {
     let el = $('sh-creative');
     if (!open || !sh) {
@@ -11373,32 +11399,83 @@ function crDraw(open) {
             if (!b) return;
             const ds = b.dataset;
             if (ds.close) return crDraw(false);
-            if (ds.crkind) { crKind = ds.crkind; return crDraw(true); }
+            if (ds.crkind) { crKind = ds.crkind; crSub = 'all'; crMods = [null, null, null]; return crDraw(true); }
+            if (ds.crsub) { crSub = ds.crsub; return crList(); }
             if (ds.crtier) { crTier = Number(ds.crtier); return crDraw(true); }
             if (ds.crheal) return wsSend({ type: 'crHeal' });
             if (ds.crclear) return wsSend({ type: 'crClear' });
-            if (ds.crgive) wsSend({ type: 'crGive', kind: crKind, base: ds.crgive, tier: crTier, equip: !!ds.equip, slot: ds.slot, n: crKind === 'util' ? 99 : 1 });
+            if (ds.crmodsclear) { crMods = [null, null, null]; return crDraw(true); }
+            if (ds.crgive) {
+                const mods = crMods.filter(Boolean);
+                wsSend({ type: 'crGive', kind: crKind, base: ds.crgive, tier: crTier, level: crLv, mods, equip: !!ds.equip, slot: ds.slot, n: crKind === 'util' ? 99 : 1 });
+            }
         });
-        el.addEventListener('input', e => { if (e.target.id === 'cr-q') { crQ = e.target.value.toLowerCase(); crList(); } });
+        el.addEventListener('input', e => {
+            const t = e.target;
+            if (t.id === 'cr-q') { crQ = t.value.toLowerCase(); crList(); }
+            if (t.id === 'cr-lv') { crLv = Number(t.value) || 1; const l = $('cr-lvn'); if (l) l.textContent = crLvTxt(); crList(); }
+        });
+        el.addEventListener('change', e => {
+            const t = e.target;
+            if (t.dataset.crmod !== undefined) { const i = Number(t.dataset.crmod); crMods[i] = t.value ? { id: t.value, lvl: (crMods[i] && crMods[i].lvl) || 1 } : null; crDraw(true); }
+            if (t.dataset.crmodl !== undefined) { const i = Number(t.dataset.crmodl); if (crMods[i]) crMods[i].lvl = Number(t.value) || 1; }
+        });
     }
     crOpen = true;
     el.hidden = false;
-    const kinds = [['weapon', 'Weapons'], ['armor', 'Armor'], ['util', 'Consumables'], ['pack', 'Backpacks']];
-    el.innerHTML = `<div class="st-head"><b>🛠️ Creative mode</b><span>You can't take damage. Items go straight into your raid.</span><button type="button" data-crheal="1">❤️ Heal</button><button type="button" class="ghost" data-crclear="1">🗑️ Empty backpack</button><button type="button" class="ghost" data-close="1">✕</button></div>` +
-        `<div class="cr-diffs">${kinds.map(([k, n]) => `<button type="button" data-crkind="${k}" class="${crKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>` +
-        (crKind === 'weapon' || crKind === 'armor' ? `<div class="cr-diffs">${arenaCat.tiers.map((t, i) => `<button type="button" data-crtier="${i}" class="tier-${t.id} ${crTier === i ? 'on' : ''}"><span class="tier-${t.id}">${t.name}</span></button>`).join('')}</div>` : '') +
-        `<input id="cr-q" placeholder="Search…" value="${esc(crQ)}" style="width:100%;margin:6px 0"><div class="st-grid" id="cr-list"></div>`;
+    const gear = crKind === 'weapon' || crKind === 'armor';
+    const kinds = [['weapon', '🔫 Weapons'], ['armor', '🛡️ Armor'], ['util', '💣 Consumables'], ['pack', '🎒 Backpacks']];
+    const modDefs = crKind === 'armor' ? arenaCat.armorMods : arenaCat.weaponMods;
+    const modRow = i => `<span class="cr-mod"><select data-crmod="${i}"><option value="">– effect –</option>${Object.entries(modDefs).map(([k, m]) => `<option value="${k}" ${crMods[i] && crMods[i].id === k ? 'selected' : ''}>${m.icon} ${esc(m.name)}</option>`).join('')}</select>` +
+        (crMods[i] ? `<select data-crmodl="${i}">${Array.from({ length: modDefs[crMods[i].id].max }, (_, l) => `<option value="${l + 1}" ${crMods[i].lvl === l + 1 ? 'selected' : ''}>${l + 1}</option>`).join('')}</select>` : '') + '</span>';
+    el.innerHTML = `<div class="st-head"><b>🛠️ Creative mode</b><span>No damage. Items go straight into your raid (over the backpack limit).</span><button type="button" data-crheal="1">❤️ Heal</button><button type="button" class="ghost" data-crclear="1">🗑️ Empty backpack</button><button type="button" class="ghost" data-close="1">✕</button></div>` +
+        `<div class="cr-tabs">${kinds.map(([k, n]) => `<button type="button" data-crkind="${k}" class="${crKind === k ? 'on' : ''}">${n} <small>${Object.keys(crDefs(k)).length}</small></button>`).join('')}</div>` +
+        (gear ? `<div class="cr-set"><b>Rarity</b><div class="cr-diffs">${arenaCat.tiers.map((t, i) => `<button type="button" data-crtier="${i}" class="tier-${t.id} ${crTier === i ? 'on' : ''}"><span class="tier-${t.id}">${t.name}</span></button>`).join('')}</div></div>` +
+            `<div class="cr-set"><b>Level</b><input type="range" id="cr-lv" min="1" max="${arenaCat.wlv.max}" value="${crLv}"><span id="cr-lvn">${crLvTxt()}</span></div>` +
+            `<div class="cr-set"><b>Effects</b>${modRow(0)}${modRow(1)}${modRow(2)}${crMods.some(Boolean) ? '<button type="button" class="ghost" data-crmodsclear="1">✕</button>' : ''}</div>` : '') +
+        `<div class="cr-subs" id="cr-subs"></div><input id="cr-q" placeholder="🔎 Search by name…" value="${esc(crQ)}"><div id="cr-list"></div>`;
     crList();
 }
+function crLvTxt() { return `Lv ${crLv}${crLv >= arenaCat.wlv.awake ? ' · ✦ awakened (uniques)' : ''}`; }
 function crList() {
     const box = $('cr-list');
     if (!box) return;
-    const defs = crKind === 'weapon' ? arenaCat.weapons : crKind === 'armor' ? arenaCat.armors : crKind === 'util' ? arenaCat.utils : arenaCat.packs;
-    const tierOf = (b, d) => crKind === 'weapon' || crKind === 'armor' ? arenaCat.tiers[crTier].id : (arenaCat.tiers[d.tier || 0] || {}).id;
-    box.innerHTML = Object.entries(defs).filter(([b, d]) => !crQ || d.name.toLowerCase().includes(crQ) || b.includes(crQ))
-        .sort((a, b) => (b[1].unique ? 1 : 0) - (a[1].unique ? 1 : 0) || (a[1].tier || 0) - (b[1].tier || 0))
-        .map(([b, d]) => `<div class="cr-tile tier-${tierOf(b, d)}"><button type="button" class="ghost" data-crgive="${b}" title="Into your backpack">${itemIcon({ kind: crKind, base: b, tier: tierOf(b, d) })}<span>${esc(d.name)}</span>${d.unique ? '<small>✦ unique</small>' : ''}</button>` +
-            (crKind === 'util' ? '' : crKind === 'weapon' ? `<button type="button" data-crgive="${b}" data-equip="1" data-slot="primary" title="Equip as primary">1</button><button type="button" data-crgive="${b}" data-equip="1" data-slot="secondary" title="Equip as secondary">2</button>` : `<button type="button" data-crgive="${b}" data-equip="1" title="Equip">⚡</button>`) + '</div>').join('');
+    const defs = crDefs(crKind), A = arenaCat;
+    const all = Object.entries(defs);
+    // Unterfilter je Art
+    const subs = crKind === 'weapon' ? [['all', 'All'], ['basic', 'Basics'], ['special', 'Specials'], ['unique', '✦ Uniques']]
+        : crKind === 'armor' ? [['all', 'All'], ...Object.entries(CR_SLOT), ['unique', '✦ Uniques']]
+        : crKind === 'util' ? [['all', 'All'], ['normal', 'Normal'], ['unique', '✦ Uniques']] : [['all', 'All']];
+    const subOk = (b, d) => crSub === 'all' || (crSub === 'unique' ? !!d.unique : crSub === 'basic' ? !d.unique && (d.tier || 0) < 3 : crSub === 'special' ? !d.unique && (d.tier || 0) >= 3
+        : crSub === 'normal' ? !d.unique : d.slot === crSub);
+    const qOk = (b, d) => !crQ || d.name.toLowerCase().includes(crQ) || b.includes(crQ) || (d.set && A.sets[d.set] && A.sets[d.set].name.toLowerCase().includes(crQ));
+    const list = all.filter(([b, d]) => subOk(b, d) && qOk(b, d));
+    $('cr-subs').innerHTML = subs.map(([k, n]) => `<button type="button" data-crsub="${k}" class="${crSub === k ? 'on' : ''}">${n} <small>${all.filter(([b, d]) => { const o = crSub; crSub = k; const r = subOk(b, d); crSub = o; return r; }).length}</small></button>`).join('') +
+        `<span class="cr-count">showing ${list.length} of ${all.length}</span>`;
+    // Gruppen
+    const groupOf = (b, d) => {
+        if (d.unique) return '✦ Uniques';
+        if (crKind === 'weapon') return (d.tier || 0) >= 3 ? 'Specials (Epic and up)' : 'Basics';
+        if (crKind === 'armor') return d.set && A.sets[d.set] ? `${A.sets[d.set].name} set` : 'Single pieces';
+        if (crKind === 'util') return ({ heal: '❤️ Healing', throw: '💣 Throwables', self: '✨ Buffs & abilities' })[d.use] || 'Other';
+        return 'Backpacks';
+    };
+    const SLOT_ORDER = { helmet: 0, vest: 1, pants: 2, boots: 3 };
+    const groups = new Map();
+    for (const [b, d] of list.sort((x, y) => (SLOT_ORDER[x[1].slot] || 0) - (SLOT_ORDER[y[1].slot] || 0) || (x[1].tier || 0) - (y[1].tier || 0) || x[1].name.localeCompare(y[1].name))) {
+        const g = groupOf(b, d);
+        if (!groups.has(g)) groups.set(g, []);
+        groups.get(g).push([b, d]);
+    }
+    const order = [...groups.keys()].sort((x, y) => (x.startsWith('✦') ? -1 : 0) - (y.startsWith('✦') ? -1 : 0));
+    const tierOf = d => crKind === 'weapon' || crKind === 'armor' ? A.tiers[crTier].id : (A.tiers[d.tier || 0] || {}).id;
+    const info = (b, d) => crKind === 'weapon' ? `${Math.round(d.dmg * (d.pellets || 1))} dmg · ${(1000 / d.ms).toFixed(1)}/s${d.tier ? ` · from ${A.tiers[d.tier].name}` : ''}`
+        : crKind === 'armor' ? `${CR_SLOT[d.slot] || d.slot} · +${d.hp || 0} HP${d.tier ? ` · from ${A.tiers[d.tier].name}` : ''}`
+        : crKind === 'util' ? esc(d.desc || '') : `${d.cap} slots`;
+    const card = (b, d) => `<div class="cr-tile tier-${tierOf(d)}"><button type="button" class="ghost" data-crgive="${b}" title="${esc(d.desc || d.name)} – into your backpack">${itemIcon({ kind: crKind, base: b, tier: tierOf(d) })}<span><b>${esc(d.name)}</b><small>${info(b, d)}</small></span></button>` +
+        (crKind === 'util' ? '' : crKind === 'weapon' ? `<button type="button" data-crgive="${b}" data-equip="1" data-slot="primary" title="Equip as primary">1</button><button type="button" data-crgive="${b}" data-equip="1" data-slot="secondary" title="Equip as secondary">2</button>` : `<button type="button" data-crgive="${b}" data-equip="1" title="Equip">⚡</button>`) + '</div>';
+    box.innerHTML = order.map(g => `<h5>${esc(g)} <small>${groups.get(g).length}</small></h5><div class="st-grid">${groups.get(g).map(([b, d]) => card(b, d)).join('')}</div>`).join('') ||
+        '<div class="hint">Nothing matches – clear the search or pick another filter.</div>';
 }
 
 // XP im Raid: kleine Einblendung, Level-Up gross

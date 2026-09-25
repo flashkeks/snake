@@ -1489,6 +1489,9 @@ module.exports = function createArena(h, opts = {}) {
         const n = kind === 'util' ? Math.max(1, Math.min(defs[base].stack || 1, Math.floor(Number(d.n)) || 1)) : 1;
         const made = [];
         for (let i = 0; i < n; i++) made.push(I.craft(kind, base, tier, mods));
+        // Item-Level (25.09.2026, Max): Waffen und Ruestung direkt auf Level 1–30 (XP wie gesammelt)
+        const lv = Math.max(1, Math.min(I.WLV.max, Math.floor(Number(d.level)) || 1));
+        if ((kind === 'weapon' || kind === 'armor') && lv > 1) for (const x of made) x.wxp = Math.round(I.WLV.base * Math.pow(lv - 1, I.WLV.exp));
         const it = made[0];
         if (d.equip && kind !== 'util') {
             const slot = kind === 'weapon' ? (d.slot === 'secondary' ? 'secondary' : 'primary') : kind === 'pack' ? 'backpack' : it.slot;
@@ -1498,7 +1501,7 @@ module.exports = function createArena(h, opts = {}) {
             gearStats(p);
         } else p.pack.push(...made); // Creative darf ueber das Rucksack-Limit
         sendInv(p);
-        h.send(p.c, { type: 'shEvent', text: `🛠️ ${n > 1 ? n + '× ' : ''}${it.name}${d.equip && kind !== 'util' ? ' equipped' : ' in your backpack'}`, kind: 'drop' });
+        h.send(p.c, { type: 'shEvent', text: `🛠️ ${n > 1 ? n + '× ' : ''}${it.name}${lv > 1 && kind !== 'util' && kind !== 'pack' ? ` (Lv ${lv})` : ''}${d.equip && kind !== 'util' ? ' equipped' : ' in your backpack'}`, kind: 'drop' });
     }
 
     // Raid-Inventar: ausruesten, ablegen, fallen lassen, Verbrauchsgut in Slots

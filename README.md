@@ -3176,3 +3176,18 @@ jeder mit eigener Palette und Leucht-Punkt:
 Strahl, Wirbel, Wut und Phasen-Optik kommen weiter aus `zfx.js` (`zBossAura`, Phasen), nur die
 Figur ist jetzt ein Sprite. Damit hat jeder Gegner im Spiel ein Pixel-Sprite (geprüft über alle
 Einträge in `arena-mobs.js`).
+
+## 🛠️ Creative-Menü neu (25.09.2026, Max: „nicht alle Items, muss dringend übersichtlicher, Items Level geben")
+
+Taste **C** im Raid (Creative an). Aufbau:
+- **Tabs mit Zählern:** Waffen 50 · Rüstung 52 · Verbrauchsgut 33 · Rucksäcke 6 – immer alles aus
+  dem Katalog, „showing X of Y" zeigt, wenn ein Filter etwas ausblendet.
+- **Unterfilter:** Waffen Basics / Specials / ✦ Uniques; Rüstung Helm / Weste / Hose / Schuhe / ✦ Uniques;
+  Verbrauchsgut Normal / ✦ Uniques. Suche auch nach Set-Namen.
+- **Gruppen:** Uniques immer oben; Rüstung nach Set (Scout, Soldier, Medic, … plus Einzelteile),
+  innerhalb nach Slot; Verbrauchsgut nach Heilung / Wurf / Buffs & Fähigkeiten.
+- **Karten mit Kurzwerten:** Waffen Schaden und Schuss/s, Rüstung Slot und HP, Verbrauchsgut die
+  Beschreibung; ab welcher Seltenheit es die Basis normal gibt.
+- **Einstellungen:** Seltenheit, **Level 1–30** (Schieberegler; ab 20 „awakened" für Uniques) und bis
+  zu **3 Effekte** mit Stufe. Server `crGive` setzt `wxp` passend zum Level.
+- Knöpfe je Karte: Klick = in den Rucksack, „1"/„2" = als Primär/Sekundär anlegen, „⚡" = Rüstung anlegen.
