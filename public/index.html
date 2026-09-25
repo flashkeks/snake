@@ -4100,6 +4100,8 @@ svg.gt-epic { --gc: #c39bff; --gg: rgba(184,132,255,.55); }
 svg.gt-legendary { --gc: #ffd23f; --gg: rgba(255,210,63,.6); }
 svg.gt-mythic { --gc: #ff6b6b; --gg: rgba(255,91,91,.7); }
 svg.gt-ultra { fill: url(#gi-ultra); --gg: rgba(255,91,214,.7); }
+svg.gi.gu { fill: #000; width: 1.6em; height: 1.6em; vertical-align: -.4em; }
+svg.gi.gu.gt-ultra { fill: #000; }
 .it-ico svg.gi, .ri-big svg.gi, .co-item svg.gi, .shr-it svg.gi { width: 1em; height: 1em; vertical-align: -.12em; }
 .tier-uncommon { --tc: #7dffb0; }
 .tier-rare { --tc: #3da5ff; }
@@ -10561,8 +10563,10 @@ function itemDef(it) {
 function itemIcon(it) {
     if (!arenaCat || !it) return '❔';
     const b = itBase(it), body = typeof ITEM_SVG !== 'undefined' && ITEM_SVG[b];
-    if (!body) return itemDef(it).icon || '❔';
     const t = itTier(it) || (arenaCat.tiers[itemDef(it).tier || 0] || {}).id || 'common';
+    // Uniques im Original-Look (public/unique-icons.js), farbig
+    if (typeof UNIQUE_SVG !== 'undefined' && UNIQUE_SVG[b]) return `<svg class="gi gu gt-${t}" viewBox="0 0 64 64" aria-hidden="true">${UNIQUE_SVG[b]}</svg>`;
+    if (!body) return itemDef(it).icon || '❔';
     return `<svg class="gi gt-${t}" viewBox="0 0 512 512" aria-hidden="true">${body}</svg>`;
 }
 function itemIconTxt(it) {
@@ -16486,6 +16490,7 @@ function slotResult(d) {
 <script src="/zfx.js"></script>
 <svg width="0" height="0" style="position:absolute"><defs><linearGradient id="gi-ultra" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5bd6"/><stop offset=".5" stop-color="#3da5ff"/><stop offset="1" stop-color="#ffd23f"/></linearGradient></defs></svg>
 <script src="/item-icons.js"></script>
+<script src="/unique-icons.js"></script>
 <script src="/rfx.js"></script>
 <script src="/gfx.js"></script>
 <script src="/bfx.js"></script>

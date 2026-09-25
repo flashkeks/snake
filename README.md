@@ -2747,3 +2747,8 @@ Ultra mit Verlauf); fuer Canvas-Text bleibt `itemIconTxt` (Emoji). Neues Item oh
 Eintrag -> faellt auf das Emoji zurueck. Neu erzeugen: Paket holen, Zuordnung
 Basis -> Icon-Name(n) ergaenzen, `ITEM_SVG` aus `icons.json` (`body`, ohne
 `fill="currentColor"`) schreiben.
+- **Uniques im Original-Look** (`public/unique-icons.js`): 51 handgezeichnete Farb-SVGs
+  (viewBox 64) fuer alle Unique-Waffen/-Ruestungen/-Verbrauchsgueter plus Chidori, Senzu,
+  Spirit Bomb, Infinite Void – Mjoelnir, Straw Hat, Portal Gun, Kaneki-Maske, Death Note,
+  Scouter „9000" usw. `itemIcon` nimmt sie vor den einfarbigen game-icons. Bilder aus dem
+  Netz gehen aus dem Container nicht (Bild-Hosts gesperrt), deshalb selbst gezeichnet.
