@@ -315,8 +315,16 @@ function makeWorld(map, w, hh) {
     const outside = (x, y, r = 0) => map.regions
         ? !map.regions.some(g => x >= g.x + r && y >= g.y + r && x <= g.x + g.w - r && y <= g.y + g.h - r)
         : x < r || y < r || x > w - r || y > hh - r;
+    // Dungeons (25.09.2026, Max: Tanya/Rick buggen aus der Map): Wandstuecke gibt es nur, wo
+    // Fels an Boden grenzt – das Innere des Felsens war frei begehbar. Jetzt zaehlt jede
+    // Fels-Kachel ('0') als blockiert, fuer Gegner, Teleports, Spieler und Spawns.
+    const solidAt = map.tiles ? (x, y) => {
+        const gx = Math.floor(x / map.ts), gy = Math.floor(y / map.ts);
+        return gx < 0 || gy < 0 || gx >= map.gw || gy >= map.gh || map.tiles[gy * map.gw + gx] === '0';
+    } : null;
     function blocked(x, y, r) {
         if (outside(x, y, r)) return true;
+        if (solidAt && solidAt(x, y)) return true;
         for (let gx = Math.floor((x - r) / CELL); gx <= Math.floor((x + r) / CELL); gx++) {
             for (let gy = Math.floor((y - r) / CELL); gy <= Math.floor((y + r) / CELL); gy++) {
                 const list = grid.get(gx + ',' + gy);

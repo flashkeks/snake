@@ -3084,3 +3084,17 @@ kein Brennen, Schüsse von drinnen ohne Wirkung, Boss nicht provoziert.
   Jetzt blocken Wände auch sie, und sie läuft per Wegfeld (`zNav`) wie die Bosse; `fly` ist
   nur noch Optik. Test: 60 s Jagd auf der Oberfläche und in je drei Bunker- und Labor-Dungeons –
   vorher 215 bis 1.406 Ticks in der Wand, jetzt 0.
+
+### Nachtrag: Niemand bugt mehr in den Fels (Max: „Rick bugged auch raus – check das für alle")
+
+Ursache in allen Dungeons: Wandstücke entstehen nur, wo Fels an Boden grenzt. Das Innere des
+Felsens (Kachel `'0'`) war für die Kollision **freier Raum** – wer dort landete, war aus der
+Map. Rick springt per Portal an einen „freien" Punkt nahe dem Ziel, Gojo, Meeseeks & Co. genauso,
+Tanya flog dazu durch Wände. Fix an der Wurzel (`makeWorld`): in Karten mit Kachelraster zählt
+jede Fels-Kachel als blockiert – gilt für Gegner, Teleports, Spieler-Fähigkeiten und Spawns.
+
+Test für **jeden** Nicht-Zombie-Gegner (Specials auf „hard", damit alle Fähigkeiten laufen)
+auf der Oberfläche und in je zwei Bunker- und Labor-Dungeons, 50 s Jagd, gezählt: Ticks in
+Wand oder Fels, auch für gespawnte Adds. Alter Code: Rick, Gojo, Meeseeks, Queen, Golem u. a.
+hunderte Ticks im Fels. Neuer Code: sauber – bis auf den Golem im Labor, der ist mit 52 px
+Radius zu breit für einen 80-px-Gang; Raid-Bosse kommen aber nur auf der Oberfläche vor.
