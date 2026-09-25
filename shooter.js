@@ -1570,6 +1570,16 @@ module.exports = function createArena(h, opts = {}) {
         fxAt(p.x, p.y, { type: 'shFx', kind: 'gomu', x: Math.round(tx), y: Math.round(ty), from: [Math.round(p.x), Math.round(p.y)] });
     }
 
+    // Tesla (Mod, Innate) und Mjoelnir: Blitz vom getroffenen Gegner auf die zwei
+    // naechsten in 260 px, halber Schaden. 25.09.2026 (Max): vorher sprang Tesla
+    // nur zwischen Spielern (hitPlayer), gegen Raid-Gegner und Zombies passierte nichts.
+    function teslaArc(m, shooter, w, now) {
+        const others = mobs.filter(o => o !== m && o.hp > 0 && Math.hypot(o.x - m.x, o.y - m.y) < 260).sort((x, y) => Math.hypot(x.x - m.x, x.y - m.y) - Math.hypot(y.x - m.x, y.y - m.y)).slice(0, 2);
+        if (!others.length) return;
+        fxAt(m.x, m.y, { type: 'shZap', pts: [[Math.round(m.x), Math.round(m.y)], ...others.map(o => [Math.round(o.x), Math.round(o.y)])] });
+        for (const o of others) hurtMob(o, shooter, w.dmg * 0.5, now, o.x, o.y, false, { dot: true });
+    }
+
     // Kugel eines Spielers von beliebiger Stelle (Hoi-Poi-Turm)
     const TURRET_W = { dmg: 30, ms: 330, speed: 1400, life: 0.5, spread: 0.04, pellets: 1, pierce: 0, bounce: 0, crit: 0, burn: 0, frost: 0, vamp: 0, explode: 0, homing: 0, tesla: 0, execute: 0, look: 0, hitR: 0 };
     function turretTick(now) {
@@ -2264,6 +2274,7 @@ module.exports = function createArena(h, opts = {}) {
                     b.hits.add(close.id);
                     const crit = w.crit && Math.random() < w.crit;
                     hurtMob(close, p, w.dmg * (crit ? p.b.critMul : 1), now, close.x, close.y, crit, w);
+                    if (w.tesla || w.chain) teslaArc(close, p, w, now);
                     if (w.explode) explode({ ...b, x: close.x, y: close.y }, now, null);
                     if (w.grapple) startGrapple(p, close.x, close.y, now);
                     if (w.stick) plantBomb(b, close, close.x, close.y, now);
@@ -2304,6 +2315,7 @@ module.exports = function createArena(h, opts = {}) {
                     bulletHole({ x: m.x, y: m.y, owner: p.id, w: { dmg: w.dmg * 0.3 } }, now);
                 }
                 hurtMob(m, p, w.dmg, now, m.x, m.y);
+                if (w.tesla) teslaArc(m, p, w, now);
             }
         }
     }
@@ -4292,12 +4304,7 @@ module.exports = function createArena(h, opts = {}) {
                         if (b.w.explode) explode(b, now, null);
                         if (b.w.grapple) startGrapple(shooter, m.x, m.y, now);
                         if (b.w.stick) plantBomb(b, m, m.x, m.y, now);
-                        // Mjoelnir: Blitz springt auf zwei Gegner in der Naehe
-                        if (b.w.chain) {
-                            const others = mobs.filter(o => o !== m && o.hp > 0 && Math.hypot(o.x - m.x, o.y - m.y) < 260).sort((x, y) => Math.hypot(x.x - m.x, x.y - m.y) - Math.hypot(y.x - m.x, y.y - m.y)).slice(0, 2);
-                            if (others.length) fxAt(m.x, m.y, { type: 'shZap', pts: [[Math.round(m.x), Math.round(m.y)], ...others.map(o => [Math.round(o.x), Math.round(o.y)])] });
-                            for (const o of others) hurtMob(o, shooter, b.w.dmg * 0.5, now, o.x, o.y);
-                        }
+                        if (b.w.tesla || b.w.chain) teslaArc(m, shooter, b.w, now);
                         // Getsuga / Hollow Purple: schneiden durch alles, ohne Grenze
                         if (sweep) continue;
                         if (b.pierce > 0) b.pierce--;
