@@ -10527,6 +10527,20 @@ const INNATE_TEXT = { homing: l => `bullets curve towards enemies${l > 1 ? ' (st
     multishot: l => `+${l} extra bullets` };
 
 // Alles zu einem Item (Tooltip, Detail)
+// Lager-Upgrade (25.09.2026): +25 Plaetze je Stufe, Coins UND Scrap
+function invMaxNow() {
+    return (hub && hub.invMax) || arenaCat.invMax;
+}
+function invUpButton() {
+    const U = arenaCat.invUp;
+    if (!U || !hub) return '';
+    const n = (hub.invUp || 0) + 1, cost = U.costs[n - 1];
+    if (!cost) return '<span class="hint">📦 stash fully upgraded</span>';
+    const short = x => x >= 1e6 ? (x / 1e6).toFixed(x >= 1e7 ? 0 : 1) + 'M' : x >= 1e3 ? Math.round(x / 1e3) + 'k' : String(x);
+    const can = (hub.coins || 0) >= cost.coins && (hub.scrap || 0) >= cost.scrap;
+    return ` <button type="button" class="${can ? '' : 'ghost'}" data-invup="1" title="Stash upgrade ${n}/${U.max}: +${U.step} slots">📦 +${U.step} slots · ${short(cost.coins)} 🪙 + ${short(cost.scrap)} ⚙️</button>`;
+}
+
 // Waffen-Level (25.09.2026) – gleiche Kurve wie arena-items.js weaponLevel
 function wLevel(it) {
     const W = arenaCat.wlv, xp = it.wxp || 0, need = lv => Math.round(W.base * Math.pow(lv - 1, W.exp));
@@ -11153,7 +11167,7 @@ function hubDrawRaw() {
     $('hub-scrap').textContent = hub ? hub.scrap.toLocaleString('en-US') : '–';
     // 6.10 (Max): volles Lager sichtbar machen – Tab-Knopf zaehlt mit, ab 90 % gelb, voll rot
     if (hub && hub.inv) {
-        const used = hub.inv.length, max = arenaCat.invMax, tab = document.querySelector('#hub-tabs [data-hubtab="inv"]');
+        const used = hub.inv.length, max = hub.invMax || arenaCat.invMax, tab = document.querySelector('#hub-tabs [data-hubtab="inv"]');
         const full = used >= max || (hub.overflow || []).length > 0;
         if (tab) tab.innerHTML = `🎒 Inventory${full ? ' <b class="inv-full">FULL</b>' : used >= max * 0.9 ? ` <b class="inv-near">${used}/${max}</b>` : ''}`;
     }
@@ -11186,8 +11200,8 @@ function hubDrawRaw() {
         html = (waiting.length ? `<div class="inv-wait"><b>📥 ${waiting.length} item${waiting.length > 1 ? 's' : ''} waiting – your stash is full.</b> ` +
             `<span class="hint">Salvage something and they move in automatically. Nothing gets scrapped on its own.</span>` +
             `<div class="inv-grid">${waiting.map(it => itemCard(it, {})).join('')}</div></div>` : '') +
-            (inv.length >= arenaCat.invMax && !waiting.length ? `<div class="inv-wait"><b>📦 Your stash is full (${inv.length}/${arenaCat.invMax}).</b> <span class="hint">New loot waits until you salvage something.</span></div>` : '') +
-            `<div class="inv-bar">${filters}<span class="hint ${inv.length >= arenaCat.invMax ? 'inv-full' : inv.length >= arenaCat.invMax * 0.9 ? 'inv-near' : ''}">${inv.length} / ${arenaCat.invMax}</span></div>` +
+            (inv.length >= invMaxNow() && !waiting.length ? `<div class="inv-wait"><b>📦 Your stash is full (${inv.length}/${invMaxNow()}).</b> <span class="hint">New loot waits until you salvage something – or upgrade your stash.</span></div>` : '') +
+            `<div class="inv-bar">${filters}<span class="hint ${inv.length >= invMaxNow() ? 'inv-full' : inv.length >= invMaxNow() * 0.9 ? 'inv-near' : ''}">${inv.length} / ${invMaxNow()}</span>${invUpButton()}</div>` +
             `<div class="inv-main"><div class="inv-list">${hubStacks(list).map(({ it, uids }) => itemRow(it, { sel: uids.includes(hubSel), eq: hubEquippedAs(it.uid), n: uids.length })).join('') || '<div class="hint">Nothing here.</div>'}</div>` +
             `<div class="inv-detail">${sel ? itemDetail(sel) + (waiting.includes(sel) ? `<div class="hint">Waiting for space in your stash.</div><div class="it-actions"><button type="button" class="danger" data-salvage="${sel.uid}">♻️ Salvage (+${sel.sv || 0} ⚙️)</button></div>` : hubActions(sel)) : '<div class="hint">Click an item to equip or salvage it.</div>'}</div></div>`;
     } else if (hubTab === 'salvage') {
@@ -11613,6 +11627,7 @@ $('hub-body').addEventListener('click', e => {
     if (ds.equip) return wsSend({ type: 'arEquip', mode: hubMode, slot: ds.equip, uid: ds.uid });
     if (ds.unequip) return wsSend({ type: 'arEquip', mode: hubMode, slot: ds.unequip, uid: null });
     if (ds.fav) return wsSend({ type: 'arFav', uid: ds.fav, on: ds.on === '1' });
+    if (ds.invup) return wsSend({ type: 'arInvUp' });
     if (ds.salvage) {
         const it = hub.inv.find(x => x.uid === ds.salvage) || (hub.overflow || []).find(x => x.uid === ds.salvage);
         const uid = ds.salvage, go = () => { hubSel = null; wsSend({ type: 'arSalvage', uids: [uid] }); };

@@ -113,7 +113,8 @@ module.exports = function createAssets(h) {
     function room(key, assets, leaving = 0) {
         const n = assets.filter(x => x.k === 'item').length;
         if (!n) return true;
-        return accounts.arena(key).inv.length - leaving + n <= I.INV_MAX;
+        const a = accounts.arena(key);
+        return a.inv.length - leaving + n <= I.invMaxOf(a);
     }
 
     // Einbuchen. Cosmetic, das man schon hat: zaehlt nicht doppelt – dann
@@ -200,7 +201,7 @@ module.exports = function createAssets(h) {
             cos: cosOwned(u),
             packs: Object.entries(u.packs || {}).filter(([, n]) => n > 0).map(([id, n]) => ({ id, n, ...meta('pack', id) })),
             cases: Object.entries(a.cases || {}).filter(([, n]) => n > 0).map(([id, n]) => ({ id, n, ...meta('case', id) })),
-            coins: u.coins, scrap: a.scrap, invMax: I.INV_MAX, invUsed: a.inv.length
+            coins: u.coins, scrap: a.scrap, invMax: I.invMaxOf(a), invUsed: a.inv.length
         };
     }
 

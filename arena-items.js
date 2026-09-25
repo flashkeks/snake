@@ -388,6 +388,16 @@ const SHOP = [
 
 // 6.10 (Max): Lager 100 -> 200
 const INV_MAX = 200;
+// 25.09.2026 (Max: Lager upgradebar, HART skalierend mit Coins und Scrap):
+// je Stufe +25 Plaetze, hoechstens 12 Stufen (200 -> 500). Kosten der n-ten Stufe:
+// Coins 25k x 1,9^(n-1) (25k … 29,1M), Scrap 150 x 1,75^(n-1) (150 … 70k)
+const INV_UP = { step: 25, max: 12, coins: 25000, coinGrow: 1.9, scrap: 150, scrapGrow: 1.75 };
+const invMaxOf = a => INV_MAX + INV_UP.step * Math.min(INV_UP.max, (a && a.invUp) || 0);
+function invUpCost(n) {
+    if (n > INV_UP.max) return null;
+    const r = x => { const p = Math.pow(10, Math.max(0, Math.floor(Math.log10(x)) - 1)); return Math.round(x / p) * p; };
+    return { coins: r(INV_UP.coins * Math.pow(INV_UP.coinGrow, n - 1)), scrap: r(INV_UP.scrap * Math.pow(INV_UP.scrapGrow, n - 1)) };
+}
 
 function pickWeighted(entries) {
     const total = entries.reduce((s, [, w]) => s + w, 0);
@@ -744,14 +754,14 @@ function catalog() {
     return {
         weapons: WEAPONS, armors: ARMORS, sets: SETS, slots: SLOTS, slotNames: SLOT_NAMES, utils: UTILS, packs: PACKS, basePack: BASE_PACK, tierBonus: TIER_BONUS,
         weaponMods: mods(WEAPON_MODS), armorMods: mods(ARMOR_MODS),
-        cases, shop: SHOP, tiers: TIERS, invMax: INV_MAX, wlv: WLV, fuse: { cost: FUSE_COST, add: FUSE_ADD, maxMods: FUSE_MAX_MODS },
+        cases, shop: SHOP, tiers: TIERS, invMax: INV_MAX, invUp: { ...INV_UP, costs: Array.from({ length: INV_UP.max }, (_, i) => invUpCost(i + 1)) }, wlv: WLV, fuse: { cost: FUSE_COST, add: FUSE_ADD, maxMods: FUSE_MAX_MODS },
         maxTier: { weapon: Object.fromEntries(Object.entries(WEAPONS).map(([k, b]) => [k, maxTierOf(b)])), armor: Object.fromEntries(Object.entries(ARMORS).map(([k, b]) => [k, maxTierOf(b)])) }
     };
 }
 
 module.exports = {
     TIERS, TIER_IDX, TIER_ODDS, TIER_BONUS, WEAPONS, ARMORS, SETS, SLOTS, UTILS, PACKS, BASE_PACK, THROW_RANGE, WEAPON_MODS, ARMOR_MODS,
-    SOURCES, CASES, SHOP, INV_MAX, baseWeight, poolAt, WLV, weaponLevel, fuse, fuseUseless, FUSE_COST, FUSE_ADD, FUSE_MAX_MODS, EFFECT_N, maxTierOf, generate, plain, craft, salvageValue, weaponStats, armorStats, catalog, migrate, effectFactor
+    SOURCES, CASES, SHOP, INV_MAX, INV_UP, invMaxOf, invUpCost, baseWeight, poolAt, WLV, weaponLevel, fuse, fuseUseless, FUSE_COST, FUSE_ADD, FUSE_MAX_MODS, EFFECT_N, maxTierOf, generate, plain, craft, salvageValue, weaponStats, armorStats, catalog, migrate, effectFactor
 };
 
 // Nachrechnen: node arena-items.js [N] – Verteilung je Quelle

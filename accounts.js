@@ -625,7 +625,7 @@ module.exports = function createAccounts(dataDir) {
                 const defs = kind === 'weapon' ? I.WEAPONS : kind === 'armor' ? I.ARMORS : kind === 'util' ? I.UTILS : kind === 'pack' ? I.PACKS : null;
                 if (!defs || !defs[base]) return 'unknown base';
                 const count = Math.max(1, Math.min(50, Math.floor(Number(d.count)) || 1));
-                if (a.inv.length + count > I.INV_MAX) return `stash full (${a.inv.length}/${I.INV_MAX})`;
+                if (a.inv.length + count > I.invMaxOf(a)) return `stash full (${a.inv.length}/${I.invMaxOf(a)})`;
                 const mdefs = kind === 'weapon' ? I.WEAPON_MODS : I.ARMOR_MODS;
                 const mods = kind === 'weapon' || kind === 'armor' ? (Array.isArray(d.mods) ? d.mods : [])
                     .filter(m => mdefs[m.id]).slice(0, 6)

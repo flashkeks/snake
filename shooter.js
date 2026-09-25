@@ -669,6 +669,7 @@ module.exports = function createArena(h, opts = {}) {
         h.send(c, {
             type: 'arHub', inv: a.inv.map(it => ({ ...it, sv: I.salvageValue(it) })), loadout: a.loadout,
             overflow: (a.overflow || []).map(it => ({ ...it, sv: I.salvageValue(it) })),
+            invMax: I.invMaxOf(a), invUp: a.invUp || 0,
             loadouts: { extract: a.loadout, pvp: loadoutOf(a, 'pvp'), zombies: loadoutOf(a, 'zombies') },
             presets: Object.fromEntries(L.MODES.map(m => [m, presetsOf(a, m).map(x => ({ name: x.name, l: x.l }))])),
             scrap: a.scrap, coins: u.coins, inRaid: players.has(c.id), prog: progView(c, a), pvp: a.pvp || null, zombies: a.zombies || null,
@@ -691,7 +692,7 @@ module.exports = function createArena(h, opts = {}) {
     const OVERFLOW_MAX = 200;
     function addItems(c, items) {
         const a = st(c);
-        const room = I.INV_MAX - a.inv.length;
+        const room = I.invMaxOf(a) - a.inv.length;
         const kept = items.slice(0, Math.max(0, room));
         const over = items.slice(kept.length);
         a.inv.push(...kept);
@@ -711,7 +712,7 @@ module.exports = function createArena(h, opts = {}) {
 
     function flushOverflow(a) {
         if (!a.overflow || !a.overflow.length) return;
-        const room = I.INV_MAX - a.inv.length;
+        const room = I.invMaxOf(a) - a.inv.length;
         if (room > 0) a.inv.push(...a.overflow.splice(0, room));
         h.accounts.touch();
     }
@@ -773,7 +774,7 @@ module.exports = function createArena(h, opts = {}) {
             const offer = I.SHOP.find(x => x.id === d.id);
             if (!offer) return;
             const n = Math.max(1, Math.min(10, Math.floor(Number(d.n)) || 1));
-            if (a.inv.length + n > I.INV_MAX) return h.send(c, { type: 'arError', error: 'Your stash is full – salvage something first' });
+            if (a.inv.length + n > I.invMaxOf(a)) return h.send(c, { type: 'arError', error: 'Your stash is full – salvage something first' });
             const err = pay(c, offer.price * n, offer.currency);
             if (err) return h.send(c, { type: 'arError', error: err });
             const items = Array.from({ length: n }, () => offer.kind === 'gen' ? I.generate(offer.source) : I.plain(offer.kind, offer.base));
@@ -809,7 +810,7 @@ module.exports = function createArena(h, opts = {}) {
             const cs = Object.prototype.hasOwnProperty.call(I.CASES, d.id) ? I.CASES[d.id] : null;
             a.cases = a.cases || {};
             if (!cs || !(a.cases[d.id] > 0)) return h.send(c, { type: 'arError', error: 'You have no such case' });
-            if (a.inv.length >= I.INV_MAX) return h.send(c, { type: 'arError', error: 'Your stash is full – salvage something first' });
+            if (a.inv.length >= I.invMaxOf(a)) return h.send(c, { type: 'arError', error: 'Your stash is full – salvage something first' });
             a.cases[d.id]--;
             if (!a.cases[d.id]) delete a.cases[d.id];
             const item = I.generate(cs.source);
@@ -867,6 +868,18 @@ module.exports = function createArena(h, opts = {}) {
                 return sendHub(c, { progReset: true });
             }
             return;
+        }
+        // Lager-Upgrade (25.09.2026): naechste Stufe gegen Coins UND Scrap
+        if (d.type === 'arInvUp') {
+            const n = (a.invUp || 0) + 1, cost = I.invUpCost(n);
+            if (!cost) return h.send(c, { type: 'arError', error: 'Your stash is fully upgraded' });
+            const u = h.accounts.get(c.account);
+            if (u.coins < cost.coins || a.scrap < cost.scrap) return h.send(c, { type: 'arError', error: `Upgrade ${n} costs ${cost.coins.toLocaleString('en-US')} coins and ${cost.scrap.toLocaleString('en-US')} scrap` });
+            pay(c, cost.coins, 'coins');
+            pay(c, cost.scrap, 'scrap');
+            a.invUp = n;
+            h.accounts.touch();
+            return sendHub(c, { invUpped: { n, max: I.invMaxOf(a) } });
         }
         // Schutz (6.9, Max): geschuetzte Items (it.fav) lassen sich nicht verschrotten
         if (d.type === 'arFav') {
