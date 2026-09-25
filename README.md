@@ -3233,3 +3233,17 @@ Kochmütze, lange Haare, Zylinder, Cyborg-Gesicht) und ein Umhang-Oberkörper.
   Spieler-Zustand), der Browser baut sie mit `pxCharKind` (Palette mit `self` = Spielerfarbe).
   Umziehen gilt ab dem nächsten Betreten. Hitbox gleich hoch wie die Standardfigur.
 - **Shop-Vorschau:** Die Figur läuft auf der Stelle (Pixel, nicht geglättet).
+
+## 📦 Guild Stash neu (25.09.2026, Max: „sehr unübersichtlich, man erkennt da drin echt nix")
+
+Vorher: eine lange Liste aus „Icon + Name"-Knöpfen, bis zu 200 Stück untereinander.
+Jetzt (`gdRedraw`, `public/index.html`):
+- **Zwei Spalten:** 🎒 Rucksack | 📦 Lager, je mit Füllstand-Balken; schmal untereinander.
+- **Filter mit Zählern:** Waffen, Helme, Westen, Hosen, Schuhe, Verbrauchsgut, Rucksäcke
+  (leere Kategorien ausgeblendet), **Suche** und **Sortierung** nach Seltenheit, Score, Level, A–Z.
+- **Kacheln:** Rahmen und Text in Seltenheitsfarbe, großes Icon, Level-Abzeichen, Effekt-Icons,
+  Kurzinfo (Schaden, Slot, Beschreibung).
+- **Verbrauchsgut gestapelt** (×N); Klick bewegt eines, „all" den ganzen Stapel.
+- **„Store all →"** lagert den ganzen Rucksack ein.
+- Server: `gDeposit`/`gWithdraw` nehmen jetzt auch `uids` (bis 60), hören auf, sobald das
+  Ziel voll ist. Test: 5 auf einmal eingelagert, Rucksack-Limit stoppt, altes Einzelformat geht weiter.

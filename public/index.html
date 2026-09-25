@@ -3319,6 +3319,38 @@ body.world-arena h1 {
 .sh-guild .gd-party { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .sh-guild .gd-party span:not(.hint) { padding: 3px 9px; border-radius: 9px; background: rgba(255,255,255,.08); }
 .sh-guild .gd-row { display: flex; gap: 8px; align-items: center; margin: 10px 0 4px; }
+.sh-guild.gd-gStash { width: min(1100px, 96%); max-height: 84%; top: 60px; }
+.gd-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 14px; }
+@media (max-width: 760px) { .gd-cols { grid-template-columns: 1fr; } }
+.gd-cols section { background: rgba(0,0,0,.25); border-radius: 12px; padding: 10px; min-width: 0; }
+.gd-colh { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; font-size: 13px; color: #d8c8a8; }
+.gd-colh b { font-size: 15px; color: #f3d38a; }
+.gd-colh button { margin-left: auto; padding: 4px 10px; font-size: 12px; }
+.gd-bar { display: inline-block; width: 70px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.12); overflow: hidden; }
+.gd-bar i { display: block; height: 100%; background: linear-gradient(90deg, #7dffb0, #ffd23f, #ff5b5b); }
+.gd-filters, .gd-tools { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 7px; align-items: center; }
+.gd-filters button, .gd-tools button { padding: 3px 9px; font-size: 12px; border-radius: 8px; }
+.gd-filters button.on, .gd-tools button.on { background: #f3d38a; color: #2a1a08; border-color: #f3d38a; }
+.gd-filters small { opacity: .7; }
+.gd-tools input { flex: 1; min-width: 120px; padding: 4px 8px; }
+.gd-tools span { color: #b8a888; font-size: 12px; margin-left: 4px; }
+.gd-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; max-height: 52vh; overflow-y: auto; padding-right: 4px; }
+.gd-it { position: relative; display: flex; align-items: center; gap: 8px; text-align: left; padding: 6px 8px; border-radius: 9px; background: rgba(255,255,255,.05); border: 2px solid rgba(255,255,255,.12); min-width: 0; }
+.gd-it:hover:not(:disabled) { background: rgba(255,255,255,.12); transform: translateY(-1px); }
+.gd-it { border-color: var(--tc, rgba(255,255,255,.12)); }
+.gd-it.tier-common { border-color: rgba(255,255,255,.14); }
+.gd-it.tier-legendary { border-color: #ffb13d; box-shadow: 0 0 8px rgba(255,177,61,.35); } .gd-it.tier-mythic { border-color: #ff4d6d; box-shadow: 0 0 10px rgba(255,77,109,.4); }
+.gd-it.tier-ultra { border-color: #fff; box-shadow: 0 0 12px rgba(255,255,255,.5); }
+.gd-ic { position: relative; font-size: 26px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; flex: none; }
+.gd-ic svg.gi { width: 34px; height: 34px; }
+.gd-lv, .gd-n { position: absolute; font-style: normal; font-size: 10px; font-weight: 800; padding: 0 4px; border-radius: 6px; line-height: 14px; }
+.gd-lv { left: -4px; top: -4px; background: #ffd23f; color: #2a1a08; }
+.gd-n { right: -6px; bottom: -4px; background: #222; color: #fff; border: 1px solid #555; }
+.gd-tx { display: flex; flex-direction: column; min-width: 0; }
+.gd-tier { color: var(--tc, #cfd8e3) !important; font-weight: 700; }
+.gd-tx b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
+.gd-tx small { font-size: 10.5px; color: #b8a888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gd-all { margin-left: auto; font-size: 10px; padding: 2px 6px; border-radius: 6px; background: rgba(243,211,138,.2); color: #f3d38a; cursor: pointer; }
 
 /* Creative Mode */
 .sh-creative { border-color: #5bffb0; box-shadow: 0 0 40px rgba(91,255,176,.3); width: min(1000px, 96%); max-height: 84%; top: 60px; }
@@ -11288,6 +11320,63 @@ function guildNear() {
     if (k === 'missions' && (sh.map.guilds || []).some(g => shPred.x > g[0] && shPred.x < g[0] + g[2] && shPred.y > g[1] && shPred.y < g[1] + g[3])) return true;
     return (sh.map.stations || []).some(s => s.kind === k && Math.hypot(s.x - shPred.x, s.y - shPred.y) < 150);
 }
+// ---------- Guild Stash (25.09.2026, Max: „sehr unuebersichtlich, man erkennt nix") ----------
+// Zwei Spalten (Rucksack | Lager), Filter mit Zaehlern, Suche, Sortierung, Kacheln mit
+// Seltenheit, Level, Effekten und Score, Verbrauchsgut gestapelt, Sammel-Aktionen.
+let gdLast = null, gdFilter = 'all', gdSort = 'rarity', gdQ = '';
+const GD_FILTERS = [['all', 'All'], ['weapon', '🔫 Weapons'], ['helmet', '🪖 Helmets'], ['vest', '🦺 Vests'], ['pants', '👖 Pants'], ['boots', '🥾 Boots'], ['util', '💣 Consumables'], ['pack', '🎒 Backpacks']];
+const gdOk = (it, f) => f === 'all' || itKind(it) === f || (itKind(it) === 'armor' && (it.sl || it.slot || itemDef(it).slot) === f);
+function gdStacks(list) {
+    const out = [], by = {};
+    for (const it of list) {
+        if (itKind(it) === 'util') {
+            if (!by[itBase(it)]) out.push(by[itBase(it)] = { it, uids: [] });
+            by[itBase(it)].uids.push(it.uid);
+        } else out.push({ it, uids: [it.uid] });
+    }
+    return out;
+}
+function gdTile(st, dir, blocked) {
+    const it = st.it, def = itemDef(it), k = itKind(it), t = itTier(it);
+    const lv = k === 'weapon' || k === 'armor' ? wLevel(it).lv : 0;
+    const mods = itMods(it).map(m => (modDefs(it)[m.id] || {}).icon || '').join('');
+    const n = st.uids.length;
+    const tierName = (arenaCat.tiers[tierIdx(t)] || {}).name || '';
+    const sub = k === 'armor' ? (arenaCat.slotNames[it.sl || def.slot] || '') : k === 'util' ? (def.desc || '') : k === 'pack' ? `${def.cap} slots` : `${Math.round((def.dmg || 0) * (def.pellets || 1))} dmg`;
+    const attr = dir === 'in' ? 'data-dep' : 'data-wd';
+    return `<button type="button" class="gd-it tier-${t}" ${attr}="${esc(st.uids[0])}" ${blocked ? 'disabled' : ''} title="${esc(it.n || it.name)} · ${esc(tierName)}${mods ? ' · ' + mods : ''} – click to ${dir === 'in' ? 'store' : 'take'}${n > 1 ? ' one' : ''}">` +
+        `<span class="gd-ic">${itemIcon(it)}${lv > 1 ? `<i class="gd-lv">${lv}</i>` : ''}${n > 1 ? `<i class="gd-n">×${n}</i>` : ''}</span>` +
+        `<span class="gd-tx"><b>${esc(it.n || it.name)}</b><small class="gd-tier">${esc(tierName)}${mods ? ' · ' + mods : ''}</small><small>${esc(sub)}</small></span>` +
+        (n > 1 ? `<span class="gd-all" ${attr}="${esc(st.uids.join(','))}" title="Move the whole stack">all</span>` : '') + '</button>';
+}
+function gdRedraw() {
+    const box = $('gd-stash'), d = gdLast;
+    if (!box || !d) return;
+    const pack = d.pack.filter(it => !it.s);
+    const q = gdQ.toLowerCase();
+    const inv = d.inv.filter(it => gdOk(it, gdFilter) && (!q || String(it.n || it.name).toLowerCase().includes(q)));
+    const sorters = {
+        rarity: (a, b) => tierIdx(itTier(b.it)) - tierIdx(itTier(a.it)) || (b.it.sc || 0) - (a.it.sc || 0),
+        score: (a, b) => (b.it.sc || 0) - (a.it.sc || 0),
+        level: (a, b) => (b.it.wxp || 0) - (a.it.wxp || 0) || tierIdx(itTier(b.it)) - tierIdx(itTier(a.it)),
+        name: (a, b) => String(a.it.n).localeCompare(String(b.it.n))
+    };
+    const invSt = gdStacks(inv).sort(sorters[gdSort] || sorters.rarity), packSt = gdStacks(pack).sort(sorters.rarity);
+    const stashFull = d.inv.length >= d.invMax, packFull = d.pack.length >= d.packMax;
+    const bar = (n, m) => `<span class="gd-bar"><i style="width:${Math.min(100, n / m * 100)}%"></i></span>`;
+    box.innerHTML = `<div class="gd-cols">` +
+        `<section><div class="gd-colh"><b>🎒 Backpack</b> ${pack.length}/${d.packMax}${bar(d.pack.length, d.packMax)}` +
+        (pack.length ? `<button type="button" class="ghost" data-dep="${esc(pack.map(it => it.uid).join(','))}" ${stashFull ? 'disabled' : ''}>Store all →</button>` : '') + `</div>` +
+        `<div class="gd-list">${packSt.map(st => gdTile(st, 'in', stashFull)).join('') || '<span class="hint">Backpack is empty</span>'}</div></section>` +
+        `<section><div class="gd-colh"><b>📦 Stash</b> ${d.inv.length}/${d.invMax}${bar(d.inv.length, d.invMax)}</div>` +
+        `<div class="gd-filters">${GD_FILTERS.map(([k, n]) => { const c = d.inv.filter(it => gdOk(it, k)).length; return c || k === 'all' ? `<button type="button" data-gdf="${k}" class="${gdFilter === k ? 'on' : ''}">${n} <small>${c}</small></button>` : ''; }).join('')}</div>` +
+        `<div class="gd-tools"><input id="gd-q" placeholder="🔎 Search…" value="${esc(gdQ)}"><span>Sort</span>${[['rarity', 'Rarity'], ['score', 'Score'], ['level', 'Level'], ['name', 'A–Z']].map(([k, n]) => `<button type="button" data-gds="${k}" class="${gdSort === k ? 'on' : ''}">${n}</button>`).join('')}</div>` +
+        `<div class="gd-list">${invSt.map(st => gdTile(st, 'out', packFull)).join('') || '<span class="hint">Nothing here – try another filter</span>'}</div></section></div>` +
+        `<div class="hint">Click an item to move it. Consumables are stacked – “all” moves the whole stack.</div>`;
+    const qi = $('gd-q');
+    if (qi) qi.oninput = () => { gdQ = qi.value; const pos = qi.selectionStart; gdRedraw(); const n = $('gd-q'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } };
+}
+
 function onGuild(d) {
     return keepScroll('guild', d.type || 'x', $('sh-guild'), () => onGuildRaw(d));
 }
@@ -11316,8 +11405,11 @@ function onGuildRaw(d) {
                 if (ds.id) o.id = Number(ds.id);
                 wsSend(o);
             }
-            if (ds.dep) wsSend({ type: 'gDeposit', uid: ds.dep });
-            if (ds.wd) wsSend({ type: 'gWithdraw', uid: ds.wd });
+            if (ds.dep) wsSend({ type: 'gDeposit', uids: ds.dep.split(',') });
+            if (ds.wd) wsSend({ type: 'gWithdraw', uids: ds.wd.split(',') });
+            // Stash-Ansicht (25.09.2026): Filter, Sortierung
+            if (ds.gdf) { gdFilter = ds.gdf; return gdRedraw(); }
+            if (ds.gds) { gdSort = ds.gds; return gdRedraw(); }
             if (ds.ins) wsSend({ type: 'gInsure', slot: ds.ins });
         });
     }
@@ -11365,10 +11457,9 @@ function onGuildRaw(d) {
         html += `<h5>Parties looking for members</h5>` + (others.length ? `<div class="gd-open">${others.map(m => `<button type="button" class="gd-note-card" data-ms="msJoin" data-id="${m.id}" ${m.members.length >= d.max || open[m.diff] === false ? 'disabled' : ''}><i class="gd-pin"></i><b>👑 ${esc(m.hostName)}</b><small>${place(m.kind)} ${esc(d.kinds[m.kind])}</small><small>${skulls(m.diff)} ${esc(d.diffs[m.diff].name)} · ${m.members.length}/${d.max}</small><span>${open[m.diff] === false ? '🔒 Locked' : m.members.length >= d.max ? 'Full' : 'Join →'}</span></button>`).join('')}</div>` : '<div class="gd-note">No open parties – pin your own contract above.</div>');
         el.innerHTML = html;
     } else if (d.type === 'gStash') {
-        const pack = d.pack.filter(it => !it.s).map(it => `<button type="button" class="ghost tier-${it.t}" data-dep="${esc(it.uid)}" ${d.inv.length >= d.invMax ? 'disabled' : ''}>${card(it)}<b>→ 📦</b></button>`).join('') || '<span class="hint">Your backpack is empty</span>';
-        const inv = d.inv.slice().sort((a, b) => tierIdx(b.t) - tierIdx(a.t)).map(it => `<button type="button" class="ghost tier-${it.t}" data-wd="${esc(it.uid)}" ${d.pack.length >= d.packMax ? 'disabled' : ''}>${card(it)}<b>→ 🎒</b></button>`).join('') || '<span class="hint">Your stash is empty</span>';
-        el.innerHTML = head('📦 Guild stash', `${tk} · ⚙️ ${(d.scrap || 0).toLocaleString('en-US')}`) +
-            `<h5>Backpack ${d.pack.length}/${d.packMax} – click to store</h5><div class="st-grid">${pack}</div><h5>Stash ${d.inv.length}/${d.invMax} – click to take</h5><div class="st-grid">${inv}</div>`;
+        gdLast = d;
+        el.innerHTML = head('📦 Guild stash', `${tk} · ⚙️ ${(d.scrap || 0).toLocaleString('en-US')}`) + '<div id="gd-stash"></div>';
+        gdRedraw();
     } else if (d.type === 'gInsure') {
         const rows = d.gear.map(g => `<button type="button" class="ghost tier-${g.t}" data-ins="${esc(g.slot)}" ${g.insured || d.scrap < g.scrap || d.tokens < g.tokens ? 'disabled' : ''}>${card(g)}<b>${g.insured ? '🛡️ insured' : `⚙️ ${g.scrap} · 🎟️ ${g.tokens}`}</b></button>`).join('') || '<span class="hint">Nothing equipped worth insuring</span>';
         el.innerHTML = head('🛡️ Insurance', `${tk} · ⚙️ ${(d.scrap || 0).toLocaleString('en-US')}`) +

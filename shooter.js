@@ -1839,18 +1839,27 @@ module.exports = function createArena(h, opts = {}) {
             return sendInsure(p);
         }
         if (!nearStationKind(p, 'stash')) return;
-        if (d.type === 'gDeposit') {
-            const i = p.pack.findIndex(x => x.uid === String(d.uid));
-            if (i < 0) return;
-            if (a.inv.length >= I.invMaxOf(a)) return h.send(p.c, { type: 'shEvent', text: '📦 Your stash is full', kind: 'self' });
-            a.inv.push(p.pack.splice(i, 1)[0]);
-        } else {
-            const i = a.inv.findIndex(x => x.uid === String(d.uid));
-            if (i < 0) return;
-            if (p.pack.length >= p.packMax) return h.send(p.c, { type: 'shEvent', text: '🎒 Your backpack is full', kind: 'self' });
-            p.pack.push(a.inv.splice(i, 1)[0]);
-            fixLoadout(a);
+        // 25.09.2026 (Max: Stash unuebersichtlich): auch mehrere auf einmal (uids), z. B. ganzer Stapel
+        // oder „alles einlagern"; stoppt, sobald das Ziel voll ist
+        const uids = (Array.isArray(d.uids) ? d.uids : [d.uid]).slice(0, 60).map(String);
+        let moved = 0, full = false;
+        for (const uid of uids) {
+            if (d.type === 'gDeposit') {
+                const i = p.pack.findIndex(x => x.uid === uid);
+                if (i < 0) continue;
+                if (a.inv.length >= I.invMaxOf(a)) { full = true; break; }
+                a.inv.push(p.pack.splice(i, 1)[0]);
+            } else {
+                const i = a.inv.findIndex(x => x.uid === uid);
+                if (i < 0) continue;
+                if (p.pack.length >= p.packMax) { full = true; break; }
+                p.pack.push(a.inv.splice(i, 1)[0]);
+            }
+            moved++;
         }
+        if (d.type !== 'gDeposit' && moved) fixLoadout(a);
+        if (full) h.send(p.c, { type: 'shEvent', text: d.type === 'gDeposit' ? '📦 Your stash is full' : '🎒 Your backpack is full', kind: 'self' });
+        if (!moved) return;
         h.accounts.touch();
         sendInv(p);
         sendGuildStash(p);
