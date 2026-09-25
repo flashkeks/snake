@@ -495,6 +495,15 @@ const zDmg = w => 1 + 0.06 * (w - 1);
 const Z_PTS_MUL = 0.4;
 // Schaden an Zombie-Bossen nach Entfernung des Schuetzen (6.12.3)
 const Z_BOSS_NEAR = 500, Z_BOSS_FAR = 1400, Z_BOSS_MIN = 0.3;
+// Boss-Phasen (25.09.2026, Max: „Bosse mehr phasenbasiert – krasse Animationen, dabei
+// unverwundbar, danach staerker"): gilt fuer alle Bosse (Raid, Zombie, Dungeon-Specials).
+// Bei 75/50/25 % HP bleibt der Boss auf der Schwelle stehen (kein Ueberspringen per
+// Burst), ist PHASE_SHIELD ms unverwundbar, laedt einen Phasen-Angriff (Kugel-Novas,
+// Einschlaege auf jeden Spieler) und kommt je Phase staerker zurueck (PHASE_UP).
+const BOSS_PHASES = [0.75, 0.5, 0.25];
+const PHASE_SHIELD = 3500;
+// je erreichter Phase (1..3): Schaden ×, Tempo ×, Abklingzeiten ×
+const PHASE_UP = [null, { dmg: 1.12, spd: 1.06, cd: 0.88 }, { dmg: 1.15, spd: 1.08, cd: 0.8 }, { dmg: 1.2, spd: 1.1, cd: 0.7 }];
 const zBossWaveHp = wave => 1 + 0.1 * Math.max(0, wave - 5);
 const zBossFalloff = d => d <= Z_BOSS_NEAR ? 1 : Math.max(Z_BOSS_MIN, 1 - (1 - Z_BOSS_MIN) * (d - Z_BOSS_NEAR) / (Z_BOSS_FAR - Z_BOSS_NEAR));
 const Z_PTS_PER_DMG = 0.35 * Z_PTS_MUL, Z_PTS_KILL = 30 * Z_PTS_MUL;
@@ -3583,7 +3592,9 @@ module.exports = function createArena(h, opts = {}) {
             b.enraged ? 1 : 0, now < (b.spiralUntil || 0) ? 1 : 0, now < (b.vortexUntil || 0) ? 1 : 0,
             b.beamAt ? Math.max(0, Math.round(b.beamAt - now)) : 0, b.beamAt || now < (b.beamUntil || 0) ? Math.round(b.beamA * 100) / 100 : null,
             b.introUntil && now < b.introUntil ? Math.round(b.introUntil - now) : 0,
-            b.jumpAt ? Math.max(0, Math.round(b.jumpAt - now)) : 0] : null;
+            b.jumpAt ? Math.max(0, Math.round(b.jumpAt - now)) : 0,
+            // Boss-Phasen (25.09.2026): erreichte Phase, Schild ms uebrig
+            b.phase || 0, now < (b.shieldUntil || 0) ? Math.round(b.shieldUntil - now) : 0] : null;
     }
 
     // Spieler trifft Gegner
@@ -3594,6 +3605,14 @@ module.exports = function createArena(h, opts = {}) {
 
     function hurtMob(m, attacker, dmg, now, x, y, crit, w) {
         if (!(m.hp > 0) || dmg <= 0) return;
+        // Boss-Phase: unverwundbar, Treffer zeigen „IMMUNE" (hoechstens alle 250 ms je Schuetze)
+        if (now < (m.shieldUntil || 0)) {
+            if (attacker && players.has(attacker.id) && !(w && w.dot) && now >= (attacker.immuneAt || 0)) {
+                attacker.immuneAt = now + 250 / SPEED;
+                h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: 0, dodge: true, immune: true });
+            }
+            return;
+        }
         if (attacker) m.hitAt = now;
         // Insta-Kill (Power-up): normale Zombies fallen mit einem Treffer
         if (zb && attacker && !m.def.boss && zfx('insta', now)) dmg = Math.max(dmg, m.hp / (m.def.taken || 1) + 1);
@@ -3633,8 +3652,13 @@ module.exports = function createArena(h, opts = {}) {
             dmg *= zBossFalloff(d);
         }
         if (now < (m.stunUntil || 0)) dmg *= 1.5;
+        // Boss-Phasen: auf der naechsten Schwelle stehen bleiben, dann Phasenwechsel
+        const phTh = isPhaseBoss(m) ? BOSS_PHASES[m.phase || 0] : undefined;
+        const phHit = phTh !== undefined && m.hp - dmg <= m.maxHp * phTh;
+        if (phHit) dmg = Math.max(0, m.hp - m.maxHp * phTh);
         const real = Math.min(dmg, m.hp);
         m.hp -= dmg;
+        if (phHit) bossPhase(m, now);
         if (attacker && attacker.account) m.dmgBy.set(attacker.id, (m.dmgBy.get(attacker.id) || 0) + real);
         // Wer schiesst, wird zum Ziel (auch von weit weg)
         if (attacker && players.has(attacker.id)) {
@@ -3657,6 +3681,61 @@ module.exports = function createArena(h, opts = {}) {
         // liess sich Geld farmen, mit allem anderen nicht). Nur echter Schaden zaehlt.
         if (zb && attacker && players.has(attacker.id)) attacker.pts += real / (zHp(zb.wave) * zd.hp) * Z_PTS_PER_DMG * zPtsMul(attacker, now);
         if (m.hp <= 0) mobDies(m, attacker && players.has(attacker.id) ? attacker : null, now);
+    }
+
+    const isPhaseBoss = m => !!(m.def.boss || m.def.special);
+
+    // Phasenwechsel: Schild, Ansage, Animation, Angriffsfolge, danach staerker
+    function bossPhase(m, now) {
+        m.phase = (m.phase || 0) + 1;
+        const n = m.phase, def = m.def, up = PHASE_UP[n];
+        m.shieldUntil = now + PHASE_SHIELD / SPEED;
+        m.dm = (m.dm || 1) * up.dmg;
+        m.sp = (m.sp || 1) * up.spd;
+        m.phaseCd = up.cd;
+        m.charging = false; m.chargeAt = 0; m.slamAt = 0;
+        if (m.patNext) m.patNext = Math.max(m.patNext, m.shieldUntil + 500 / SPEED);
+        // Angriffsfolge waehrend des Schilds (ms nach Beginn); spaetere Phasen dichter
+        const T = t => now + t / SPEED;
+        m.phaseSeq = [
+            { at: T(700), nova: 14 + 6 * n, off: 0 },
+            { at: T(1500), rain: 2 + n },
+            { at: T(2300), nova: 14 + 6 * n, off: Math.PI / (14 + 6 * n) },
+            ...(n >= 2 ? [{ at: T(2900), nova: 20 + 6 * n, off: 0.2, fast: true }] : []),
+            ...(n >= 3 ? [{ at: T(3300), rain: 3 }] : [])
+        ];
+        fxAt(m.x, m.y, { type: 'shFx', kind: 'bphase', x: Math.round(m.x), y: Math.round(m.y), boss: m.kind, n, r: def.r, ms: PHASE_SHIELD });
+        const name = def.icon + ' ' + def.name;
+        const text = n === BOSS_PHASES.length ? `${name} – FINAL PHASE!` : `${name} – Phase ${n + 1}!`;
+        for (const q of players.values()) if (!def.special || Math.hypot(q.x - m.x, q.y - m.y) < 1400) h.send(q.c, { type: 'shEvent', text, kind: 'boss' });
+    }
+
+    function phaseTick(m, now) {
+        const seq = m.phaseSeq || [];
+        while (seq.length && now >= seq[0].at) {
+            const s = seq.shift(), dm = m.dm || 1, by = m.def.icon + ' ' + m.def.name;
+            if (s.nova) {
+                const sp = s.fast ? 560 : 420;
+                for (let k = 0; k < s.nova; k++) {
+                    const a = s.off + k / s.nova * Math.PI * 2;
+                    bullets.push({
+                        id: ++seqId, owner: m.id, x: m.x + Math.cos(a) * (m.def.r + 6), y: m.y + Math.sin(a) * (m.def.r + 6),
+                        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, dies: now + 2600 / SPEED, pierce: 0, bounce: 0, hits: new Set(),
+                        w: { dmg: 14 * dm, how: 'boss', by, homing: 0, mobBoom: 0, big: false, mob: true, frost: 0, burn: 0 },
+                        fx: 1024, tier: BOSS_LOOK[m.kind] || 5
+                    });
+                }
+            }
+            if (s.rain) {
+                for (const q of players.values()) {
+                    if (q.dead || Math.hypot(q.x - m.x, q.y - m.y) > 1600) continue;
+                    for (let k = 0; k < s.rain; k++) {
+                        const a = Math.random() * 6.28, rr = k ? 70 + Math.random() * 140 : 0;
+                        strikes.push({ id: ++seqId, x: q.x + Math.cos(a) * rr, y: q.y + Math.sin(a) * rr, r: 105, dmg: 40 * dm, at: now + (1100 + k * 140) / SPEED, total: 1100 + k * 140, by, how: 'boss', look: 1, fire: false, acid: false });
+                    }
+                }
+            }
+        }
     }
 
     function mobDies(m, killer, now) {
@@ -3957,7 +4036,7 @@ module.exports = function createArena(h, opts = {}) {
             say: text => { for (const q of players.values()) h.send(q.c, { type: 'shEvent', text, kind: 'boss' }); }
         };
         const dur = P[name](api);
-        m.patNext = now + (dur + (def.gap || 700) * (m.enraged ? 0.6 : 1)) / SPEED;
+        m.patNext = now + (dur + (def.gap || 700) * (m.enraged ? 0.6 : 1) * (m.phaseCd || 1)) / SPEED;
     }
 
     function bossSkills(m, now, dt, cd) {
@@ -4251,6 +4330,8 @@ module.exports = function createArena(h, opts = {}) {
                 if (!(m.hp > 0)) return;
             }
         }
+        // Boss-Phase: steht still, unverwundbar, feuert die Phasen-Angriffe
+        if (now < (m.shieldUntil || 0)) { phaseTick(m, now); return; }
         // Infinite Void (6.6): wer drin ist, steht still
         if (now < (m.stunUntil || 0)) return;
         // Za Warudo: alles steht
@@ -4267,7 +4348,7 @@ module.exports = function createArena(h, opts = {}) {
             fxAt(m.x, m.y, { type: 'shFx', kind: 'enrage', x: Math.round(m.x), y: Math.round(m.y), boss: m.kind });
             for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `${def.icon} ${def.name} is ENRAGED!`, kind: 'boss' });
         }
-        const cd = ms => ms / SPEED * (m.enraged ? 0.65 : 1);
+        const cd = ms => ms / SPEED * (m.enraged ? 0.65 : 1) * (m.phaseCd || 1);
         if (bossSkills(m, now, dt, cd)) return;
         if (def.boss && !def.zombie && now - m.born > BOSS_LIFE / SPEED && now - (m.hitAt || 0) > BOSS_CALM / SPEED
             && ![...players.values()].some(p => !p.dead && Math.hypot(p.x - m.x, p.y - m.y) < BOSS_NEAR)) {
@@ -5238,7 +5319,8 @@ module.exports = function createArena(h, opts = {}) {
                 hz: hz.list.length ? hz.view(now) : undefined,
                 strikes: strikes.filter(s => inView(s.x, s.y)).map(s => [s.id, Math.round(s.x), Math.round(s.y), s.r, Math.max(0, Math.round(s.at - now)), s.total, s.look || 0]),
                 mobs: mobs.filter(m => !m.def.boss && inView(m.x, m.y)).map(m => [m.id, m.kind, Math.round(m.x), Math.round(m.y), Math.max(0, Math.round(m.hp)), m.maxHp, Math.round(m.a * 100) / 100, m.aimAt ? Math.max(0, Math.round(m.aimAt - now)) : 0,
-                    m.chargeAt ? Math.max(0, Math.round(m.chargeAt - now)) : 0, m.charging ? 1 : 0, Math.round(m.cx || 0), Math.round(m.cy || 0), m.charm ? 1 : 0, m.lv || 0]),
+                    m.chargeAt ? Math.max(0, Math.round(m.chargeAt - now)) : 0, m.charging ? 1 : 0, Math.round(m.cx || 0), Math.round(m.cy || 0), m.charm ? 1 : 0, m.lv || 0,
+                    m.phase || 0, now < (m.shieldUntil || 0) ? Math.round(m.shieldUntil - now) : 0]),
                 portals: portals.size ? [...portals.values()].flatMap(prs => prs.pairs.flatMap(pr => [pr.a ? [Math.round(pr.a.x), Math.round(pr.a.y), 0, pr.b ? 1 : 0] : null, pr.b ? [Math.round(pr.b.x), Math.round(pr.b.y), 1, pr.a ? 1 : 0] : null])).filter(x => x && inView(x[0], x[1])) : undefined,
                 zones: zones.length ? zones.filter(z => inView(z.x, z.y)).map(z => [Math.round(z.x), Math.round(z.y), z.r]) : undefined,
                 turrets: turrets.length ? turrets.filter(t => inView(t.x, t.y)).map(t => [t.id, Math.round(t.x), Math.round(t.y), Math.round(t.a * 100) / 100, Math.max(0, Math.round(t.until - now))]) : undefined,

@@ -12348,6 +12348,7 @@ function onShKill(k) {
 function onShHit(d) {
     shMarks.push({ ...d, t: performance.now() });
     if (shMarks.length > 30) shMarks.shift();
+    if (d.immune) return sTone(3200, { dur: .04, type: 'triangle', vol: .025, rev: .1 });
     if (d.dodge) return;
     sTone(d.kill ? 1500 : d.crit ? 2600 : 2200, { dur: d.kill ? .18 : .05, type: 'square', vol: d.kill ? .07 : .04, rev: 0 });
 }
@@ -12797,10 +12798,10 @@ function shMobsInterp() {
     }
     const k = b.recv > a.recv ? Math.max(0, Math.min(1, (t - a.recv) / (b.recv - a.recv))) : 1;
     const prev = new Map((a.mobs || []).map(x => [x[0], x]));
-    return (b.mobs || []).map(([id, kind, x, y, hp, mh, ang, aim, warn, charging, cx, cy, charm, lv]) => {
+    return (b.mobs || []).map(([id, kind, x, y, hp, mh, ang, aim, warn, charging, cx, cy, charm, lv, phase, shield]) => {
         const q = prev.get(id);
-        if (!q || Math.hypot(x - q[2], y - q[3]) > 120) return { id, kind, x, y, hp, mh, a: ang, aim, warn, charging, cx, cy, charm, lv };
-        return { id, kind, x: q[2] + (x - q[2]) * k, y: q[3] + (y - q[3]) * k, hp, mh, a: ang, aim, warn, charging, cx, cy, charm, lv };
+        if (!q || Math.hypot(x - q[2], y - q[3]) > 120) return { id, kind, x, y, hp, mh, a: ang, aim, warn, charging, cx, cy, charm, lv, phase, shield };
+        return { id, kind, x: q[2] + (x - q[2]) * k, y: q[3] + (y - q[3]) * k, hp, mh, a: ang, aim, warn, charging, cx, cy, charm, lv, phase, shield };
     });
 }
 
@@ -12817,9 +12818,9 @@ function shBossPos() {
         }
     }
     if (!b.boss) return null;
-    const [x, y, hp, mh, ang, slam, kind, warn, cx, cy, charging, enraged, spiral, vortex, beamWarn, beamA, intro] = b.boss;
+    const [x, y, hp, mh, ang, slam, kind, warn, cx, cy, charging, enraged, spiral, vortex, beamWarn, beamA, intro, , phase, shield] = b.boss;
     const def = (sh && sh.map.mobs && sh.map.mobs[kind]) || { name: 'Raccoon King', icon: '🦝', r: 44, crown: true, color: '#ff3b3b', slamR: 250 };
-    const extra = { hp, mh, a: ang, slam, def, kind, warn, cx, cy, charging, enraged, spiral, vortex, beamWarn, beamA, intro };
+    const extra = { hp, mh, a: ang, slam, def, kind, warn, cx, cy, charging, enraged, spiral, vortex, beamWarn, beamA, intro, phase: phase || 0, shield: shield || 0 };
     if (!a || !a.boss) return { x, y, ...extra };
     const k = b.recv > a.recv ? Math.max(0, Math.min(1, (t - a.recv) / (b.recv - a.recv))) : 1;
     return { x: a.boss[0] + (x - a.boss[0]) * k, y: a.boss[1] + (y - a.boss[1]) * k, ...extra };
@@ -13358,8 +13359,9 @@ function shFrame() {
             const bw = 110, by = topY - 40;
             c.fillStyle = 'rgba(0,0,0,.7)';
             c.fillRect(mb.x - bw / 2 - 2, by - 2, bw + 4, 12);
-            c.fillStyle = '#ff4d6d';
+            c.fillStyle = mb.shield > 0 ? '#ffd23f' : '#ff4d6d';
             c.fillRect(mb.x - bw / 2, by, bw * Math.max(0, mb.hp / mb.mh), 8);
+            zPhaseTicks(c, mb.x - bw / 2, by, bw, 8, mb.phase);
             c.font = 'bold 13px system-ui';
             c.textAlign = 'center';
             c.fillStyle = '#ffd23f';
@@ -13376,7 +13378,9 @@ function shFrame() {
         }
         // 25.09.2026: Pixel-Sprites fuer alle Gegner (public/pfx.js, bfx.js)
         // (danach trotzdem Lebensleiste und Elite-Name)
+        if (def.special) zPhaseAura(c, mb.x, mb.y, def.r || 20, mb.phase, now);
         const drawn = PX[mb.kind] ? bDrawSide(c, mb, def, now) : false;
+        if (def.special) zPhaseShield(c, mb.x, mb.y, def.r || 20, (mb.shield || 0) - (now - latest.recv), mb.phase, now);
         // 6.5: Zombies mit eigener Figur (public/zfx.js)
         if (!drawn && zDrawMob(c, mb, def, now)) continue;
         // 6.12: eigene Figuren fuer Raid-Gegner (public/rfx.js), sonst Kreis mit Emoji
@@ -13557,12 +13561,16 @@ function shFrame() {
             c.fillRect(0, -BR, len * k, BR * 2);
             c.restore();
         }
+        // Boss-Phasen (25.09.2026): Aura je Phase unter, Schild ueber der Figur
+        zPhaseAura(c, bs.x, bs.y, BR, bs.phase, now);
         drawBoss(c, bs, BR, now);
+        zPhaseShield(c, bs.x, bs.y, BR, bs.shield - (now - latest.recv), bs.phase, now);
         const bw = 120;
         c.fillStyle = 'rgba(0,0,0,.7)';
         c.fillRect(bs.x - bw / 2, bs.y - BR - 34, bw, 9);
-        c.fillStyle = '#ff3b3b';
+        c.fillStyle = bs.shield > 0 ? '#ffd23f' : '#ff3b3b';
         c.fillRect(bs.x - bw / 2 + 1, bs.y - BR - 33, (bw - 2) * bs.hp / bs.mh, 7);
+        zPhaseTicks(c, bs.x - bw / 2 + 1, bs.y - BR - 33, bw - 2, 7, bs.phase);
     }
     // Rauch
     for (const [, x, y, r, left] of latest.smokes || []) {
@@ -13866,7 +13874,11 @@ function shFrame() {
             c.globalAlpha = 1;
             continue;
         }
-        if (mk.dodge) {
+        if (mk.immune) {
+            c.fillStyle = '#ffd23f';
+            c.font = '900 17px system-ui';
+            c.fillText('IMMUNE', mk.x, mk.y - 20 - k * 30);
+        } else if (mk.dodge) {
             c.fillStyle = '#8fe9ff';
             c.font = 'bold 16px system-ui';
             c.fillText('dodge', mk.x, mk.y - 20 - k * 30);

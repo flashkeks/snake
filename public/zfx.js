@@ -1415,7 +1415,7 @@ function zDrawAcid(c, x, y, r, now) {
 }
 
 // ---------- Effekte ----------
-const ZFX_MS = { bossin: 1600, bossdie: 2400, enrage: 1200, raise: 1000, vortex: 900, zblink: 650, acidboom: 750 };
+const ZFX_MS = { bphase: 3500, bossin: 1600, bossdie: 2400, enrage: 1200, raise: 1000, vortex: 900, zblink: 650, acidboom: 750 };
 function zFxMs(f) {
     return f.type === 'shFx' && ZFX_MS[f.kind] || 0;
 }
@@ -1424,6 +1424,7 @@ function zDrawFx(c, f, k, now) {
     if (!zFxMs(f)) return false;
     const rgb = ZB_COL[f.boss] || '255,255,255';
     const x = f.x, y = f.y;
+    if (f.kind === 'bphase') return zDrawPhaseFx(c, f, k, now);
     if (f.kind === 'bossin') {
         // Portal: Ring waechst, Risse im Boden, dunkler Wirbel
         zGlow(c, x, y, 260 * Math.min(1, k * 2), '0,0,0', .7 * (1 - k));
@@ -1551,6 +1552,18 @@ function zDrawFx(c, f, k, now) {
 
 function zFxSound(d) {
     if (d.type !== 'shFx') return;
+    if (d.kind === 'bphase') {
+        // Aufladen (steigt), dann der Knall, bei der letzten Phase tiefer und laenger
+        const fin = d.n >= 3;
+        sTone(70, { dur: .75, type: 'sawtooth', vol: .12, slide: 520, rev: .4, lp: 1800 });
+        sNoise({ dur: .75, vol: .12, type: 'bandpass', f: 300, f2: 3000, rev: .3, a: .6 });
+        sNoise({ t: .72, dur: fin ? 2.2 : 1.5, vol: .42, type: 'lowpass', f: 1200, f2: 40, rev: .6, a: .002 });
+        sTone(fin ? 38 : 55, { t: .72, dur: fin ? 2.6 : 1.8, type: 'sine', vol: .34, slide: fin ? 22 : 30, rev: .6 });
+        [0, 4, 7, 12].forEach((st, i) => sTone(220 * Math.pow(2, (st + (d.n - 1) * 2) / 12), { t: .8 + i * .09, dur: .9, type: 'triangle', vol: .06, rev: .6 }));
+        shShake(10, 700);
+        setTimeout(() => shShake(fin ? 40 : 28, fin ? 1500 : 1000), 720);
+        return;
+    }
     if (d.kind === 'bossin') {
         sTone(48, { dur: 2.2, type: 'sawtooth', vol: .16, slide: 30, rev: .5, lp: 600 });
         sNoise({ dur: 1.4, vol: .22, type: 'lowpass', f: 400, f2: 60, rev: .4, a: .2 });
@@ -2495,4 +2508,181 @@ function zWorldEnd(d) {
     shShake(60, 3000);
     const t0 = performance.now();
     for (let i = 0; i < 6; i++) shFx.push({ type: 'shBoom', x: d.x, y: d.y, r: 900 + i * 700, nuke: true, t: t0 - i * 120 });
+}
+
+
+// ---------- Boss-Phasen (25.09.2026, Max) ----------
+// Farbe je erreichter Phase: 1 gold, 2 orange, 3 (final) blutrot
+const PHASE_RGB = ['255,255,255', '255,210,63', '255,130,40', '255,40,80'];
+
+// Phasenwechsel: Sog nach innen, Lichtsaeule, Knall mit Druckwellen und Blitzen,
+// Runenkreis am Boden, grosse Schrift. k = 0..1 ueber 3,5 s
+function zDrawPhaseFx(c, f, k, now) {
+    const x = f.x, y = f.y, n = f.n || 1, r = f.r || 50, rgb = PHASE_RGB[Math.min(3, n)];
+    const T = k * 3.5;                    // Sekunden seit Beginn
+    const boom = .72;                     // Knall (s)
+    // Abdunkeln rund um den Boss
+    zGlow(c, x, y, 900, '0,0,0', .55 * Math.min(1, T / .4) * (1 - Math.max(0, (k - .8) / .2)));
+    // Runenkreis: zwei gegenlaeufige Ringe mit Zeichen
+    const rk = Math.min(1, T / .5) * (1 - Math.max(0, (k - .85) / .15));
+    c.save();
+    c.globalAlpha = rk;
+    c.translate(x, y);
+    for (const [rr, dir, marks] of [[r * 3.2, 1, 12], [r * 2.4, -1, 8]]) {
+        c.save();
+        c.rotate(dir * now / 900);
+        c.strokeStyle = `rgba(${rgb},.85)`;
+        c.lineWidth = 4;
+        c.beginPath();
+        c.arc(0, 0, rr, 0, Math.PI * 2);
+        c.stroke();
+        c.lineWidth = 2;
+        c.beginPath();
+        c.arc(0, 0, rr - 14, 0, Math.PI * 2);
+        c.stroke();
+        c.fillStyle = `rgba(${rgb},.9)`;
+        for (let i = 0; i < marks; i++) {
+            c.save();
+            c.rotate(i / marks * Math.PI * 2);
+            c.fillRect(rr - 11, -3, 8, 6);
+            c.beginPath();
+            c.moveTo(rr - 7, -10); c.lineTo(rr - 1, 0); c.lineTo(rr - 7, 10);
+            c.fill();
+            c.restore();
+        }
+        c.restore();
+    }
+    // Stern im Kreis (Phase = Anzahl Zacken + 3)
+    const pts = 3 + n;
+    c.strokeStyle = `rgba(${rgb},.6)`;
+    c.lineWidth = 3;
+    c.beginPath();
+    for (let i = 0; i <= pts * 2; i++) {
+        const a = i * Math.PI / pts - now / 1400, rr = i % 2 ? r * 1.2 : r * 2.3;
+        const px = Math.cos(a) * rr, py = Math.sin(a) * rr;
+        i ? c.lineTo(px, py) : c.moveTo(px, py);
+    }
+    c.stroke();
+    c.restore();
+    // Sog: Funken fliegen von aussen in den Boss (bis zum Knall)
+    if (T < boom) {
+        const kk = T / boom;
+        for (let i = 0; i < 40; i++) {
+            const a = i * 2.39996 + i, d = (1 - ((kk + i / 40) % 1)) * 520 + r;
+            c.fillStyle = `rgba(${rgb},${.4 + .6 * kk})`;
+            c.beginPath();
+            c.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, 3 + 3 * kk, 0, Math.PI * 2);
+            c.fill();
+        }
+        zGlow(c, x, y, r * (1.5 + kk * 1.5), rgb, .5 + .5 * kk);
+    } else {
+        const t = T - boom;
+        // Blitz (weiss), dann Druckwellen und Strahlen
+        if (t < .15) zGlow(c, x, y, 1100, '255,255,255', .8 * (1 - t / .15));
+        for (let i = 0; i < 4; i++) {
+            const kk = Math.min(1, (t - i * .12) / 1.1);
+            if (kk <= 0 || kk >= 1) continue;
+            c.strokeStyle = `rgba(${i % 2 ? '255,255,255' : rgb},${1 - kk})`;
+            c.lineWidth = 18 * (1 - kk) + 2;
+            c.beginPath();
+            c.arc(x, y, r + kk * 700, 0, Math.PI * 2);
+            c.stroke();
+        }
+        if (t < .6) {
+            c.strokeStyle = `rgba(255,255,255,${1 - t / .6})`;
+            c.lineWidth = 4;
+            for (let i = 0; i < 14; i++) {
+                const a = i / 14 * Math.PI * 2 + n;
+                c.beginPath();
+                zBolt(c, x, y, x + Math.cos(a) * (260 + 200 * t), y + Math.sin(a) * (260 + 200 * t), 36, 6);
+                c.stroke();
+            }
+        }
+        // Lichtsaeule nach oben, solange der Schild steht
+        const pa = Math.min(1, t / .2) * (1 - Math.max(0, (k - .85) / .15));
+        const g = c.createLinearGradient(x, y - 900, x, y);
+        g.addColorStop(0, `rgba(${rgb},0)`);
+        g.addColorStop(1, `rgba(${rgb},${.45 * pa})`);
+        c.fillStyle = g;
+        const pw = r * (1.6 + .2 * Math.sin(now / 80));
+        c.fillRect(x - pw / 2, y - 900, pw, 900);
+    }
+    // Schrift: faellt rein, bleibt, verblasst
+    const tk = Math.min(1, T / .35), fade = 1 - Math.max(0, (k - .75) / .25);
+    c.save();
+    c.globalAlpha = fade;
+    c.textAlign = 'center';
+    c.font = `900 ${Math.round(56 + (1 - tk) * 60)}px system-ui`;
+    c.lineWidth = 8;
+    c.strokeStyle = 'rgba(0,0,0,.85)';
+    const label = n >= 3 ? 'FINAL PHASE' : `PHASE ${n + 1}`;
+    const ty = y - r - 150 - (1 - tk) * 40;
+    c.strokeText(label, x, ty);
+    c.fillStyle = `rgb(${rgb})`;
+    c.fillText(label, x, ty);
+    c.font = '800 20px system-ui';
+    c.lineWidth = 5;
+    c.strokeText('IMMUNE · POWERING UP', x, ty + 32);
+    c.fillStyle = '#fff';
+    c.fillText('IMMUNE · POWERING UP', x, ty + 32);
+    c.restore();
+    return true;
+}
+
+// Schild waehrend der Phase: sechseckige Blase, pulsiert, laeuft zum Ende aus
+function zPhaseShield(c, x, y, r, ms, n, now) {
+    if (!(ms > 0)) return;
+    const rgb = PHASE_RGB[Math.min(3, n || 1)];
+    const R2 = r * 1.55 + 6 * Math.sin(now / 110);
+    const a0 = Math.min(1, ms / 400);
+    c.save();
+    c.translate(x, y);
+    zGlow(c, 0, 0, R2 * 1.3, rgb, .35 * a0);
+    c.rotate(now / 1200);
+    c.strokeStyle = `rgba(${rgb},${.9 * a0})`;
+    c.fillStyle = `rgba(${rgb},${.12 * a0})`;
+    c.lineWidth = 4;
+    c.beginPath();
+    for (let i = 0; i <= 6; i++) {
+        const a = i / 6 * Math.PI * 2;
+        i ? c.lineTo(Math.cos(a) * R2, Math.sin(a) * R2) : c.moveTo(Math.cos(a) * R2, Math.sin(a) * R2);
+    }
+    c.fill();
+    c.stroke();
+    c.lineWidth = 1.5;
+    c.strokeStyle = `rgba(255,255,255,${.5 * a0})`;
+    for (let i = 0; i < 6; i++) {
+        const a = i / 6 * Math.PI * 2;
+        c.beginPath();
+        c.moveTo(0, 0);
+        c.lineTo(Math.cos(a) * R2, Math.sin(a) * R2);
+        c.stroke();
+    }
+    c.restore();
+}
+
+// Dauer-Aura nach Phasenwechsel: je Phase mehr Flammenzungen um den Boss
+function zPhaseAura(c, x, y, r, n, now) {
+    if (!(n > 0)) return;
+    const rgb = PHASE_RGB[Math.min(3, n)];
+    zGlow(c, x, y, r * (1.8 + .15 * n), rgb, .18 + .08 * n);
+    const tongues = 6 + 4 * n;
+    for (let i = 0; i < tongues; i++) {
+        const a = i / tongues * Math.PI * 2 + now / (900 - 150 * n);
+        const len = r * (.35 + .25 * Math.abs(Math.sin(now / 160 + i * 1.7))) * (1 + .2 * n);
+        c.strokeStyle = `rgba(${rgb},${.35 + .1 * n})`;
+        c.lineWidth = 3 + n;
+        c.beginPath();
+        c.moveTo(x + Math.cos(a) * r * 1.05, y + Math.sin(a) * r * 1.05);
+        c.lineTo(x + Math.cos(a) * (r * 1.05 + len), y + Math.sin(a) * (r * 1.05 + len));
+        c.stroke();
+    }
+}
+
+// Striche auf der Lebensleiste bei 75/50/25 %, erreichte Phasen hohl
+function zPhaseTicks(c, x0, y0, w, h, n) {
+    [0.75, 0.5, 0.25].forEach((t, i) => {
+        c.fillStyle = i < (n || 0) ? 'rgba(255,255,255,.35)' : '#fff';
+        c.fillRect(x0 + w * t - 1, y0 - 2, 2, h + 4);
+    });
 }

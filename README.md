@@ -2967,3 +2967,45 @@ zum Kill mit den DPS-Werten aus dem Test oben:
 | 50 | Abomination (Runde 2) | 8.140 | 44.770 | 5,0 s | 1,5 s | 11,4 s |
 
 Ohne Spieler-Skills gerechnet; Boss hunter, Headshots usw. machen es schneller.
+
+## 🎭 Boss-Phasen für alle Bosse (25.09.2026, Max)
+
+Max: „Mach die Bosse mehr phasenbasiert – mehr Phasen, wo sie krasse Animationen
+machen und Sachen machen, wo sie invulnerable sind, und ggf. danach power uppen."
+
+Gilt für **alle** Bosse: Raid-Bosse (King, Golem, Queen, Titan, Reaper), alle neun
+Zombie-Bosse und die Dungeon-Specials (Rick, Gojo, Tanya, Mustang, auch als Missionsboss).
+
+**Ablauf** (`shooter.js`, `BOSS_PHASES`, `bossPhase`, `phaseTick`):
+
+- Schwellen bei **75 / 50 / 25 % HP**. Der Treffer, der drüber hinausgehen würde, wird
+  auf die Schwelle gekappt – Burst-Waffen (Venuzdonoa, PaP) können keine Phase überspringen.
+- Dann **3,5 s unverwundbar** (`shieldUntil`): Treffer zeigen „IMMUNE", Brennen tickt
+  nicht, der Boss bleibt stehen und bricht Ansturm/Stampfer ab.
+- Währenddessen feuert er einen **Phasen-Angriff**: Kugel-Nova (14 + 6 × Phase Kugeln),
+  Einschlag-Regen auf jeden Spieler in 1.600 px, zweite versetzte Nova; ab Phase 2 eine
+  schnelle dritte Nova, in der letzten Phase noch ein Regen.
+- Danach **stärker** (`PHASE_UP`, multipliziert sich auf): Phase 2 ×1,12 Schaden,
+  ×1,06 Tempo, Abklingzeiten ×0,88 · Phase 3 ×1,15 / ×1,08 / ×0,8 · Finale ×1,2 / ×1,1 / ×0,7.
+  In der letzten Phase also ~×1,55 Schaden. Die bisherige Wut ab 50 % (`enrage`) bleibt
+  zusätzlich. Bullet-Hell-Muster starten erst nach dem Schild wieder und kommen mit
+  kürzerer Pause.
+
+**Optik und Ton** (`public/zfx.js`): Beim Wechsel Sog (Funken fliegen in den Boss),
+Runenkreis am Boden mit zwei gegenläufigen Ringen und Stern, dann Blitz, vier Druckwellen,
+14 Blitze, Lichtsäule nach oben, große Schrift „PHASE 2 / PHASE 3 / FINAL PHASE" mit
+„IMMUNE · POWERING UP". Farbe je Phase gold → orange → blutrot. Aufladegeräusch, Knall mit
+Nachhall, aufsteigender Akkord, Bildschirmwackeln (im Finale stärker). Solange der Schild
+steht: pulsierende Sechseck-Blase, Lebensleiste gold. Danach eine Dauer-Aura mit mehr
+Flammenzungen je Phase. Die Lebensleiste hat Striche bei 75/50/25 %, erreichte Phasen hohl.
+
+**Protokoll:** Boss-Array (`boss`) Index 18 = Phase, 19 = Schild-ms; Gegner-Array (`mobs`,
+für Specials) Index 14/15 dasselbe; `shHit` mit `immune: true`; `shFx` `bphase` mit `n`, `r`.
+
+**Balance-Folge:** Jeder Boss-Kill dauert mindestens 3 × 3,5 s länger, egal wie stark die
+Waffe ist – das bremst genau die „Boss in 2 s weg"-Fälle aus dem DPS-Test.
+
+Test (88/88): elf Boss-Arten plus drei Specials unter Dauerfeuer mit Venuzdonoa (Ultra,
+Lv 30, PaP 5) – alle drei Phasen erreicht, je ≥3,3 s auf der Schwelle gehalten, kein
+Schaden durch den Schild, Schaden hochgestuft, drei `bphase`-Effekte, „IMMUNE"-Treffer.
+Dazu Screenshot der Animation (vier Zeitpunkte, Phase 2 bis Final).
