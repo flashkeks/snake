@@ -281,17 +281,12 @@ function buildMap() {
 
 const MAP = buildMap();
 // 6.12 (Max): Keller (Militaerstuetzpunkt) und Labor darunter, siehe arena-under.js
-// 25.09.2026 (Max: Map-Umbau): Keller und Labor sind jetzt eigene Dungeon-Instanzen je
-// Party (dungeons.js, dungeon-rooms.js). Von arena-under.js bleiben nur die Luken-Plaetze:
-// zwei fuehren in die Militaerbasis, eine ins Labor.
+// 25.09.2026 (Max: Map-Umbau): Keller und Labor sind eigene Dungeon-Instanzen je Party
+// (dungeons.js, dungeon-rooms.js). Seit Phase 2 kommt man nur noch ueber das Quest Board
+// im Guild House hinein (Max: „why wird fuer die Missionen solche Dinger noch generiert?
+// Bitte nicht") – keine Luken mehr auf der Oberflaeche. enterDungeon bleibt fuer Tests.
 {
-    const UNDER = require('./arena-under').buildUnder({ w: W, h: H, walls: MAP.walls });
     MAP.regions = [{ id: 'surface', name: 'Surface', level: 0, x: 0, y: 0, w: W, h: H }];
-    const hatches = UNDER.stations.filter(st => st.level === 0);
-    hatches.forEach((st, i) => {
-        const dungeon = i === hatches.length - 1 ? 'lab' : 'bunker';
-        MAP.stations.push({ kind: 'portal', dir: 'down', level: 0, x: st.x, y: st.y, dungeon, dest: dungeon === 'lab' ? 'Abandoned lab' : 'Abandoned military base' });
-    });
     MAP.deco = [];
 }
 

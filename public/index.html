@@ -12541,6 +12541,8 @@ function stationLook(s) {
 function drawBoss(c, bs, BR, now) {
     // 6.5: Zombie-Bosse und ihre Faehigkeiten (public/zfx.js)
     if (zDrawBoss(c, bs, BR, now)) return;
+    // 25.09.2026: richtige Figuren fuer King, Golem, Queen (public/bfx.js)
+    if (bDrawBoss(c, bs, BR, now)) return;
     const x = bs.x, y = bs.y, a = bs.a;
     const glowCol = { king: '255,60,60', golem: '255,140,40', queen: '255,210,63', abomination: '184,79,255' }[bs.kind] || '255,60,60';
     const glow = c.createRadialGradient(x, y, BR * .6, x, y, BR * 2.1);
@@ -13229,7 +13231,7 @@ function shFrame() {
             c.font = 'bold 13px system-ui';
             c.textAlign = 'center';
             c.fillStyle = '#ffd23f';
-            c.fillText(`${def.icon} ${def.name}`, mb.x, by - 6);
+            c.fillText(def.name, mb.x, by - 6);
         }
         // Gegner-Level (25.09.2026): Farbe nach Ebene (1–10 grau, 20–30 orange, 40–50 violett)
         if (mb.lv) {
@@ -13243,7 +13245,7 @@ function shFrame() {
         // 6.5: Zombies mit eigener Figur (public/zfx.js)
         if (zDrawMob(c, mb, def, now)) continue;
         // 6.12: eigene Figuren fuer Raid-Gegner (public/rfx.js), sonst Kreis mit Emoji
-        if (!rDrawMob(c, mb, def, now)) {
+        if (!bDrawMob(c, mb, def, now) && !rDrawMob(c, mb, def, now)) {
             c.fillStyle = 'rgba(0,0,0,.35)';
             c.beginPath();
             c.ellipse(mb.x, mb.y + def.r * .8, def.r, def.r * .45, 0, 0, Math.PI * 2);
@@ -16462,6 +16464,7 @@ function slotResult(d) {
 <script src="/zfx.js"></script>
 <script src="/rfx.js"></script>
 <script src="/gfx.js"></script>
+<script src="/bfx.js"></script>
 <script src="/dfx.js"></script>
 </body>
 </html>
