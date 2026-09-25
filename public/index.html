@@ -4091,6 +4091,16 @@ body.world-arena h1 {
 }
 
 .tier-common { --tc: #cfd8e3; }
+/* Item-Icons (game-icons.net, CC BY 3.0) */
+svg.gi { width: 1.35em; height: 1.35em; vertical-align: -.3em; fill: var(--gc, #cfd8e3); filter: drop-shadow(0 1px 0 rgba(0,0,0,.9)) drop-shadow(0 0 3px var(--gg, transparent)); }
+svg.gt-common { --gc: #d6dde6; }
+svg.gt-uncommon { --gc: #7dffb0; --gg: rgba(125,255,176,.35); }
+svg.gt-rare { --gc: #5bb8ff; --gg: rgba(61,165,255,.45); }
+svg.gt-epic { --gc: #c39bff; --gg: rgba(184,132,255,.55); }
+svg.gt-legendary { --gc: #ffd23f; --gg: rgba(255,210,63,.6); }
+svg.gt-mythic { --gc: #ff6b6b; --gg: rgba(255,91,91,.7); }
+svg.gt-ultra { fill: url(#gi-ultra); --gg: rgba(255,91,214,.7); }
+.it-ico svg.gi, .ri-big svg.gi, .co-item svg.gi, .shr-it svg.gi { width: 1em; height: 1em; vertical-align: -.12em; }
 .tier-uncommon { --tc: #7dffb0; }
 .tier-rare { --tc: #3da5ff; }
 .tier-epic { --tc: #b884ff; }
@@ -10546,10 +10556,21 @@ function itemDef(it) {
     return (k === 'weapon' ? arenaCat.weapons : k === 'armor' ? arenaCat.armors : k === 'pack' ? arenaCat.packs : arenaCat.utils)[b] || {};
 }
 
+// 25.09.2026 (Max: „Custom Texturen, nicht nur Emojis"): SVG aus public/item-icons.js
+// (game-icons.net, CC BY 3.0), eingefaerbt nach Seltenheit. Fuer Canvas/Text: itemIconTxt.
 function itemIcon(it) {
+    if (!arenaCat || !it) return '❔';
+    const b = itBase(it), body = typeof ITEM_SVG !== 'undefined' && ITEM_SVG[b];
+    if (!body) return itemDef(it).icon || '❔';
+    const t = itTier(it) || (arenaCat.tiers[itemDef(it).tier || 0] || {}).id || 'common';
+    return `<svg class="gi gt-${t}" viewBox="0 0 512 512" aria-hidden="true">${body}</svg>`;
+}
+function itemIconTxt(it) {
     if (!arenaCat || !it) return '❔';
     return itemDef(it).icon || '❔';
 }
+// Katalog-Eintrag (Shop, Haendler, Slots) ohne echtes Item
+const defIcon = (kind, base) => itemIcon({ kind, base, tier: (arenaCat.tiers[((kind === 'util' ? arenaCat.utils : kind === 'pack' ? arenaCat.packs : arenaCat.weapons)[base] || {}).tier || 0] || {}).id });
 
 function modDefs(it) {
     return itKind(it) === 'armor' ? arenaCat.armorMods : arenaCat.weaponMods;
@@ -10869,7 +10890,7 @@ function hubLoadout() {
         const other = (l.util || [])[1 - i];
         const free = u ? (have[u.base] || 0) - (other && other.base === u.base ? other.n : 0) : 0;
         return `<div class="lo-slot util ${hubPick === 'util' + i ? 'open' : ''}" data-slot="util${i}"><small>${UTIL_KEYS[i]} · Consumable</small>` +
-            (u ? `<div class="it tier-${arenaCat.tiers[def.tier].id}"><span class="it-ico">${def.icon}</span><b>${esc(def.name)}</b>` +
+            (u ? `<div class="it tier-${arenaCat.tiers[def.tier].id}"><span class="it-ico">${defIcon('util', u.base)}</span><b>${esc(def.name)}</b>` +
                 `<div class="cons"><button type="button" class="ghost" data-util="${i}" data-d="-1">−</button><b>${u.n}</b>` +
                 `<button type="button" class="ghost" data-util="${i}" data-d="1" ${u.n >= Math.min(def.stack, free) ? 'disabled' : ''}>+</button></div></div>`
                 : '<div class="it empty"><span class="it-ico">➕</span><small>empty</small></div>') + '</div>';
@@ -11218,7 +11239,7 @@ function onShTraderRaw(d) {
     el.hidden = false;
     const buy = Object.entries(sh.map.trader.buy).map(([base, price]) => {
         const def = arenaCat.utils[base];
-        return `<button type="button" data-buy="${base}" ${d.scrap < price ? 'disabled' : ''} title="${esc(def.desc)}">${def.icon} ${esc(def.name)}<b>⚙️ ${price}</b></button>`;
+        return `<button type="button" data-buy="${base}" ${d.scrap < price ? 'disabled' : ''} title="${esc(def.desc)}">${defIcon('util', base)} ${esc(def.name)}<b>⚙️ ${price}</b></button>`;
     }).join('');
     const sell = d.sell.map(it => `<button type="button" class="ghost tier-${it.t}" data-sell="${esc(it.uid)}" ${it.fav ? 'disabled title="⭐ Protected"' : ''}>${itemIcon(it)} ${it.fav ? '⭐ ' : ''}${esc(it.n)}<b>+⚙️ ${it.price}</b></button>`).join('') || '<span class="hint">Your backpack is empty</span>';
     el.innerHTML = `<div class="st-head"><b>🏪 Trader</b><span>⚙️ ${d.scrap.toLocaleString('en-US')} scrap in your stash</span><button type="button" class="ghost" data-close="1">✕</button></div>` +
@@ -11438,7 +11459,7 @@ function hubDrawRaw() {
         const item = o => {
             const def = o.kind === 'gen' ? { name: 'Weapon with a random effect', icon: '🎲' } : o.kind === 'util' ? arenaCat.utils[o.base] : o.kind === 'pack' ? arenaCat.packs[o.base] : arenaCat.weapons[o.base];
             const desc = def.desc || (o.kind === 'pack' ? `${def.cap} slots instead of ${arenaCat.basePack}` : '');
-            return row(def.icon, def.name, desc, btn(o) + (o.kind === 'util' ? btn(o, 5) : ''));
+            return row(o.kind === 'gen' ? def.icon : defIcon(o.kind, o.base), def.name, desc, btn(o) + (o.kind === 'util' ? btn(o, 5) : ''));
         };
         const tiny = t => arenaCat.tiers.map((x, i) => t[i] > 0 ? `<span class="tier-${x.id} it-tier" title="${x.name}">${t[i] >= 0.1 ? Math.round(t[i] * 100) + '%' : '1/' + Math.round(1 / t[i]).toLocaleString('en-US')}</span>` : '').join('');
         const cases = Object.entries(arenaCat.cases).filter(([, c]) => !c.wheel).map(([k, c]) =>
@@ -11448,7 +11469,8 @@ function hubDrawRaw() {
             `<h3 class="shop-h">🔫 Weapons</h3><div class="shop-list">${coins.filter(o => o.kind === 'weapon').map(item).join('')}</div>` +
             `<h3 class="shop-h">🎒 Gear</h3><div class="shop-list">${coins.filter(o => o.kind === 'util' || o.kind === 'pack').map(item).join('')}</div>` +
             `<h3 class="shop-h">⚙️ For scrap</h3><div class="shop-list">${arenaCat.shop.filter(o => o.currency === 'scrap').map(item).join('')}</div>` +
-            `<div class="hint">Armor, bigger backpacks, rarer weapons and special consumables only come from cases and crates.</div>`;
+            `<div class="hint">Armor, bigger backpacks, rarer weapons and special consumables only come from cases and crates.</div>` +
+            `<div class="hint" style="margin-top:8px;opacity:.6">Item icons: <a href="https://game-icons.net" target="_blank" rel="noopener">game-icons.net</a> (Lorc, Delapouite & contributors), CC BY 3.0</div>`;
     }
     if (invGroup) {
         hubInvLast = hubTab === 'fuse' ? 'inv' : hubTab;
@@ -11999,7 +12021,7 @@ function shInvDrawRaw() {
     const utilSlot = i => {
         const u = d.util[i], def = u && arenaCat.utils[u.base];
         return `<div class="ri-slot util ${def ? 'tier-' + arenaCat.tiers[def.tier].id : ''} ${isSel('util', 'util' + i) ? 'sel' : ''}" data-ri="util" data-key="util${i}" title="${def ? esc(def.name + ' – ' + def.desc) : 'empty'}">` +
-            `<span>${def ? def.icon : '<span class="dim">➕</span>'}</span>${u ? `<i>${u.n}</i>` : ''}<small>${UTIL_KEYS[i]}</small></div>`;
+            `<span>${def ? defIcon('util', u.base) : '<span class="dim">➕</span>'}</span>${u ? `<i>${u.n}</i>` : ''}<small>${UTIL_KEYS[i]}</small></div>`;
     };
     // Aktionen zur Auswahl
     let actions = '<span class="hint">Hover an item for details · click to select · shift-click to equip / take off · drag it out of this window to drop it</span>';
@@ -12017,7 +12039,7 @@ function shInvDrawRaw() {
     } else if (s && (s.where === 'gear' || s.where === 'util')) {
         const it = s.where === 'gear' ? d.gear[s.key] : null;
         const u = s.where === 'util' ? d.util[Number(s.key.slice(4))] : null;
-        if ((it && !it.s) || u) actions = `<b>${it ? itemIcon(it) + ' ' + esc(it.n) : arenaCat.utils[u.base].icon + ' ' + esc(arenaCat.utils[u.base].name)}</b><button type="button" data-inv-unequip="${s.key}">Take off (into backpack)</button>`;
+        if ((it && !it.s) || u) actions = `<b>${it ? itemIcon(it) + ' ' + esc(it.n) : defIcon('util', u.base) + ' ' + esc(arenaCat.utils[u.base].name)}</b><button type="button" data-inv-unequip="${s.key}">Take off (into backpack)</button>`;
     }
     const bonus = setBonusText(['helmet', 'vest', 'pants', 'boots'].map(x => d.gear[x]));
     $('sh-inv').innerHTML =
@@ -12285,7 +12307,7 @@ function onShLoot(d) {
     // 6.10.1 (Max): jedes Item in der Farbe seiner Seltenheit statt alles gelb
     const Y = '#ffd23f';
     const segs = !d.items.length ? [[d.full ? 'Backpack full!' : 'Empty', Y]]
-        : [[d.from ? `Looted ${d.from}: ` : '+ ', Y], ...d.items.flatMap((it, i) => [...(i ? [[', ', Y]] : []), [`${itemIcon(it)} ${it.n}`, it.t || 'common']]), ...(d.full ? [[' · backpack full!', Y]] : [])];
+        : [[d.from ? `Looted ${d.from}: ` : '+ ', Y], ...d.items.flatMap((it, i) => [...(i ? [[', ', Y]] : []), [`${itemIconTxt(it)} ${it.n}`, it.t || 'common']]), ...(d.full ? [[' · backpack full!', Y]] : [])];
     shToast = { text: segs.map(s => s[0]).join(''), segs, t: performance.now() };
     beep(900, 0.08, 0.05);
 }
@@ -13823,7 +13845,7 @@ function shFrame() {
         const it = my.gear[k];
         if (!it) continue;
         const on = my.slot === k;
-        const label = `${key} ${itemIcon(it)} ${it.n}`;
+        const label = `${key} ${itemIconTxt(it)} ${it.n}`;
         c.font = `bold ${on ? 14 : 12}px system-ui`;
         const w = c.measureText(label).width + 16;
         c.fillStyle = on ? 'rgba(255,255,255,.18)' : 'rgba(0,0,0,.55)';
@@ -16462,6 +16484,8 @@ function slotResult(d) {
 <script src="/kekemon.js"></script>
 <script src="/market.js"></script>
 <script src="/zfx.js"></script>
+<svg width="0" height="0" style="position:absolute"><defs><linearGradient id="gi-ultra" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5bd6"/><stop offset=".5" stop-color="#3da5ff"/><stop offset="1" stop-color="#ffd23f"/></linearGradient></defs></svg>
+<script src="/item-icons.js"></script>
 <script src="/rfx.js"></script>
 <script src="/gfx.js"></script>
 <script src="/bfx.js"></script>

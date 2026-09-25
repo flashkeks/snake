@@ -2721,3 +2721,29 @@ PvP und Extraction werden zu einem."
   Migration in `ensureTrees`: hatte ein Konto getrennte Baeume, bleibt der mit mehr
   vergebenen Punkten, die Punkte des anderen sind wieder frei (Level bestimmt die
   Summe, verloren geht nichts ausser der Verteilung). Resets = Maximum beider.
+
+## 🎨 Grafik-Paket (25.09.2026, Max: „wirklich komplett das Design huebscher machen")
+- **Guild House** (`public/gfx.js`): Dielen mit Steinrand, Laeufer und Rundteppich,
+  Kamin mit Feuer und Funken, Tische mit Baenken, Faesser, Kisten, Waffenstaender,
+  Pflanzen, Banner, Fackeln mit Lichtschein, Fachwerk-Steinmauern, offene Holztore,
+  Holzschild „GUILD HOUSE" ueber dem Tor. Hooks in `index.html`: `gGuildFloor` vor den
+  Waenden, `gWall`/`gDoor` statt Standard, `gGuildTop` danach.
+- **Stationen als Objekte** statt Kreis mit Emoji (`gStation`): Quest Board, Truhen vor
+  Schrankwand (Lager), Tresen mit Schreiber (Versicherung), Marktstand (Haendler),
+  Sanitaetszelt (Medic). Holzschild darunter, Leuchten, wenn man davorsteht.
+- **Figuren** (`public/bfx.js`): Raccoon King, Iron Golem, Hive Queen; Dungeon-Gegner
+  (Heavy, Grenadier, Riot Trooper, Attack Dog, Acid Spitter, Phase Shade, Leech, Cryo);
+  Spezial-Charaktere (Rick, Meeseeks, Gojo, Tanya, Mustang).
+- **Quest-Board-Menue** im Holz/Pergament-Look, Bosse geheim. **Missions-Tod** zeigt eine
+  Uebersicht und schickt zurueck ins Guild House (`msRespawn`).
+- **Luken weg:** Dungeons nur noch ueber das Quest Board.
+
+### Item-Icons
+`public/item-icons.js` haelt je Item-Basis einen SVG-Pfad aus **game-icons.net**
+(Lorc, Delapouite u. a., **CC BY 3.0** – Namensnennung steht im Shop-Tab unten). Erzeugt
+aus dem npm-Paket `@iconify-json/game-icons`; `ITEM_SVG_SRC` sagt, welches Icon welches
+Item bekommt. `itemIcon(it)` liefert das SVG, eingefaerbt nach Seltenheit (`svg.gt-TIER`,
+Ultra mit Verlauf); fuer Canvas-Text bleibt `itemIconTxt` (Emoji). Neues Item ohne
+Eintrag -> faellt auf das Emoji zurueck. Neu erzeugen: Paket holen, Zuordnung
+Basis -> Icon-Name(n) ergaenzen, `ITEM_SVG` aus `icons.json` (`body`, ohne
+`fill="currentColor"`) schreiben.
