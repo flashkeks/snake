@@ -12385,7 +12385,7 @@ function onShFx(d) {
     if (shFx.length > 30) shFx.shift();
     zFxSound(d);
     // echte Sounds (public/voice.js) fuer Faehigkeiten und Spezial-Charaktere
-    if (d.type === 'shFx') vox(({ zawarudo: 'zawarudo', shinra: 'shinra', genki: 'genkidama', chidori: 'chidori', titan: 'titan', gomu: 'gomu', void: 'gojo-void', door: 'doordoor' })[d.kind] || '');
+    if (d.type === 'shFx') vox(({ zawarudo: 'zawarudo', shinra: 'shinra', genki: 'genkidama', chidori: 'chidori', titan: 'titan', void: 'gojo-void', door: 'doordoor' })[d.kind] || '');
     if (d.type === 'shFx' && d.kind === 'portal' && [...VOX_SEEN.values()].some(v => v.kind === 'rick')) vox('rick-attack');
     if (d.type === 'shBoom') sNoise({ dur: d.nuke ? 1.6 : .4, vol: d.nuke ? .4 : .22, type: 'lowpass', f: d.nuke ? 600 : 900, f2: 60, rev: .3, a: .002 });
     if (d.nuke) {
@@ -14531,7 +14531,8 @@ function shLocalFire(now) {
     shLastLocalShot = now;
     shFlashAt = now;
     const b = (s.me.gear[s.me.slot] || s.me.gear.primary || {}).b;
-    vox(b); // Unique: Voiceline/Effekt (public/voice.js), Abstand regelt sfx.json
+    // 25.09.2026 (Max: nervt ueber an): keine Voicelines mehr beim Schiessen. Die Slots in
+    // sfx.json bleiben, die Clips liegen auf edge (vielleicht spaeter fuer einen Goku-Boss)
     // dumpf: Tiefpass statt Hochpass, schnelle Waffen leiser (Max: SMG tat in den Ohren weh)
     const fast = s.me.ms < 120;
     const heavy = ['sniper', 'launcher', 'railgun', 'nukelauncher', 'singularity', 'crossbow'].includes(b);
@@ -14608,7 +14609,7 @@ document.addEventListener('keydown', e => {
     if (k === 'r') {
         wsSend({ type: 'shAbility' });
         const s = shSnaps[shSnaps.length - 1];
-        if (s && s.me) for (const sl of ['vest', 'helmet', 'pants', 'boots', 'primary', 'secondary']) { const it = s.me.gear[sl]; if (it && vox(it.b)) break; }
+        if (s && s.me) for (const sl of ['vest', 'helmet', 'pants', 'boots']) { const it = s.me.gear[sl]; if (it && vox(it.b)) break; }
     }
     if (k === 'c') { if (crOpen) crDraw(false); else wsSend({ type: 'crOpen' }); }
     if (e.key === 'Tab' || k === 'i') {
