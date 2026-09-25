@@ -52,6 +52,7 @@ module.exports = function createDungeons(h) {
             const p = h.surface.detach(c);
             if (!p) continue;
             d.members.set(c.id, { back });
+            c.missionBack = back; // Tod in der Mission: Respawn im naechsten Guild House
             d.arena.attach(c, p, map.spawn);
         }
         cleanup(d);

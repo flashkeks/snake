@@ -1167,7 +1167,7 @@ module.exports = function createArena(h, opts = {}) {
         };
     }
 
-    function join(c, name, color, team) {
+    function join(c, name, color, team, at) {
         if (!c.account) return 'Log in to raid';
         // 25.09.2026 (Max): Extraction waehrend des Umbaus nur fuer Kek. Zum Oeffnen
         // EXTRACT_ONLY leeren (oder SNAKE_EXTRACT_ONLY='' in snake.service setzen).
@@ -1199,7 +1199,7 @@ module.exports = function createArena(h, opts = {}) {
         });
         a.loadout = EMPTY_LOADOUT();
         h.accounts.touch();
-        const p = newPlayer(c, name, color, a, gear, util, freeSpot(true));
+        const p = newPlayer(c, name, color, a, gear, util, at && !blocked(at.x, at.y, R) ? at : freeSpot(true));
         gearStats(p);
         players.set(c.id, p);
         h.accounts.stat(c.account, st2 => { st2.raids = (st2.raids || 0) + 1; });
@@ -1288,13 +1288,14 @@ module.exports = function createArena(h, opts = {}) {
         if (!players.has(p.id)) return;
         players.delete(p.id);
         // Mission (25.09.2026): versicherte Ausruestung geht zurueck ins Lager
+        const saved = [];
         if (opts.mission && p.account) {
-            const a = st(p.c), saved = [];
+            const a = st(p.c);
             for (const sl of GEAR) {
                 const it = p.gear[sl];
-                if (it && it.insured && !it.starter) { delete it.insured; a.inv.push(it); saved.push(it.name); p.gear[sl] = sl === 'primary' ? starterPistol() : null; }
+                if (it && it.insured && !it.starter) { delete it.insured; a.inv.push(it); saved.push(brief(it)); p.gear[sl] = sl === 'primary' ? starterPistol() : null; }
             }
-            if (saved.length) { h.accounts.touch(); h.send(p.c, { type: 'shEvent', text: `🛡️ Insurance returned ${saved.join(', ')} to your stash`, kind: 'self' }); }
+            if (saved.length) h.accounts.touch();
         }
         const loot = lootOf(p);
         let rest = loot;
@@ -1327,7 +1328,9 @@ module.exports = function createArena(h, opts = {}) {
         for (const q of players.values()) h.send(q.c, { type: 'shKill', ...line });
         h.send(p.c, {
             type: 'shLeft', result: how === 'left' ? 'left' : 'died', by: killer ? killer.name : by || null, lost: loot.map(brief),
-            kills: p.kills, secs: Math.round((Date.now() - p.joinedAt) / 1000), weapon: line.weapon, wtier: line.tier
+            kills: p.kills, secs: Math.round((Date.now() - p.joinedAt) / 1000), weapon: line.weapon, wtier: line.tier,
+            // Mission: Uebersicht mit Stufe, Boss-Stand, zurueckgegebener Versicherung; danach Guild House
+            mission: opts.mission && how !== 'left' ? { diff: opts.mission.diff, name: MISSION_DIFF[opts.mission.diff].name, kind: opts.kind, place: MISSION_KINDS[opts.kind] || '', boss: missionDone, saved } : undefined
         });
         h.changed();
     }
@@ -1675,7 +1678,7 @@ module.exports = function createArena(h, opts = {}) {
         return {
             type: 'msMenu', tokens: tokensOf(p.c), mine: (missionOf(p) || {}).id || null, me: p.id,
             diffs: Object.fromEntries(Object.entries(MISSION_DIFF).map(([k, d]) => [k, { name: d.name, lv: d.lv, tokens: d.tokens, bossHp: d.bossHp, mobs: d.mobs }])),
-            kinds: MISSION_KINDS, bosses: SPECIALS, max: PARTY_MAX,
+            kinds: MISSION_KINDS, max: PARTY_MAX, // Bosse bleiben geheim (Max)
             list: [...missions.values()].map(m => ({ id: m.id, host: m.host, hostName: (players.get(m.host) || {}).name || '?', kind: m.kind, diff: m.diff, members: [...m.members].map(id => (players.get(id) || {}).name || '?') }))
         };
     }
@@ -3484,6 +3487,17 @@ module.exports = function createArena(h, opts = {}) {
     }
     const inZone = (x, y, z, m) => !!z && x > z[0] - m && x < z[0] + z[2] + m && y > z[1] - m && y < z[1] + z[3] + m;
     // Stadt und Aussenposten sind Schutzzonen: Gegner kommen nicht hinein (schiessen aber hinein)
+    // Tod in der Mission (25.09.2026): zurueck in ein Guild House, freie Stelle drinnen
+    function guildSpot(near) {
+        const gs = MAP.guilds || [];
+        if (!gs.length) return null;
+        const g = near ? gs.slice().sort((a, b) => Math.hypot(a[0] + a[2] / 2 - near.x, a[1] + a[3] / 2 - near.y) - Math.hypot(b[0] + b[2] / 2 - near.x, b[1] + b[3] / 2 - near.y))[0] : gs[0];
+        for (let i = 0; i < 40; i++) {
+            const x = g[0] + g[2] * (0.3 + Math.random() * 0.4), y = g[1] + g[3] * (0.45 + Math.random() * 0.35);
+            if (!blocked(x, y, R + 6)) return { x, y };
+        }
+        return { x: g[0] + g[2] / 2, y: g[1] + g[3] * 0.7 };
+    }
     const inGuild = (x, y, m = 0) => (MAP.guilds || []).some(g => inZone(x, y, g, m));
     const mobBlocked = (x, y, r) => blocked(x, y, r) || inZone(x, y, MAP.town, r) || inZone(x, y, MAP.outpost, r) || inGuild(x, y, r + 120);
 
@@ -5184,7 +5198,7 @@ module.exports = function createArena(h, opts = {}) {
 
     return {
         join, leave, input, action, tick, refundAll, hubAction, joinedMsg, detach, attach,
-        missionDone: () => missionDone, missionReward: () => opts.mission ? MISSION_DIFF[opts.mission.diff].tokens : 0,
+        guildSpot, missionDone: () => missionDone, missionReward: () => opts.mission ? MISSION_DIFF[opts.mission.diff].tokens : 0,
         size: () => players.size, map: MAP,
         startPvp: () => pvpRound(Date.now()), pvpState: () => pvp,
         startZombies: () => zStart(), zState: () => zb,

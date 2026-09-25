@@ -3320,6 +3320,75 @@ body.world-arena h1 {
 .sh-guild .gd-party span:not(.hint) { padding: 3px 9px; border-radius: 9px; background: rgba(255,255,255,.08); }
 .sh-guild .gd-row { display: flex; gap: 8px; align-items: center; margin: 10px 0 4px; }
 
+/* Guild-Panels im Holz-Look, Quest Board (25.09.2026, Max: „bissl schicker") */
+.sh-guild.gd-wood {
+    background:
+        repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 2px, transparent 2px 46px),
+        linear-gradient(90deg, rgba(0,0,0,.08), rgba(255,255,255,.03) 50%, rgba(0,0,0,.08)),
+        linear-gradient(#5a3b22, #4a2f1a);
+    border: 6px solid #2e1c0e;
+    outline: 2px solid #b8893e;
+    outline-offset: -10px;
+    box-shadow: 0 18px 60px rgba(0,0,0,.7), inset 0 0 60px rgba(0,0,0,.45);
+    color: #f3e7c6;
+    padding: 18px 20px;
+    width: min(860px, 94%);
+}
+.sh-guild.gd-wood .st-head b { font-family: Georgia, 'Times New Roman', serif; font-size: 22px; color: #f3d38a; text-shadow: 0 2px 0 #1f1208; letter-spacing: .5px; }
+.sh-guild.gd-wood .st-head span { color: #e6d3a6; }
+.sh-guild.gd-wood h5 { font-family: Georgia, serif; font-size: 15px; color: #f3d38a; margin: 16px 0 8px; border-bottom: 1px solid rgba(216,168,74,.35); padding-bottom: 4px; }
+.sh-guild.gd-wood .ghost { background: rgba(0,0,0,.25); border-color: rgba(216,168,74,.5); color: #f3d38a; }
+.sh-guild .gd-chip { display: inline-block; padding: 2px 10px; margin-right: 8px; border-radius: 999px; background: #2e1c0e; border: 1px solid #b8893e; color: #f3d38a; font-weight: 700; }
+.sh-guild .gd-quests { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 12px; }
+.sh-guild .gd-quest, .sh-guild .gd-note-card {
+    position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 16px 10px 12px; color: #3b2412; font-family: Georgia, serif;
+    background: radial-gradient(ellipse at 30% 20%, #fbf1d6, #ead6a4 70%, #d9bf85);
+    border: none; border-radius: 3px;
+    box-shadow: 0 6px 14px rgba(0,0,0,.45), inset 0 0 18px rgba(120,80,30,.25);
+    transform: rotate(-1deg); transition: transform .12s, box-shadow .12s;
+}
+.sh-guild .gd-quest:nth-child(3n+2) { transform: rotate(1.2deg); }
+.sh-guild .gd-quest:nth-child(3n) { transform: rotate(-.4deg); }
+.sh-guild .gd-quest:hover, .sh-guild .gd-note-card:hover { transform: rotate(0) translateY(-3px) scale(1.03); box-shadow: 0 12px 22px rgba(0,0,0,.55); }
+.sh-guild .gd-quest.on { outline: 3px solid #f3d38a; box-shadow: 0 0 0 6px rgba(243,211,138,.25), 0 10px 20px rgba(0,0,0,.5); }
+.sh-guild .gd-quest b, .sh-guild .gd-note-card b { font-size: 14px; color: #3b2412; }
+.sh-guild .gd-quest small, .sh-guild .gd-note-card small { color: #6b4a2a; font-size: 11.5px; font-family: system-ui; }
+.sh-guild .gd-qplace { font-size: 26px; line-height: 1; margin-top: 8px; }
+.sh-guild .gd-skulls { font-size: 15px; letter-spacing: 1px; }
+.sh-guild .gd-qdiff { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; }
+.sh-guild .gd-easy .gd-qdiff { color: #2f7a3e; }
+.sh-guild .gd-normal .gd-qdiff { color: #9a6a12; }
+.sh-guild .gd-hard .gd-qdiff { color: #a3262f; }
+.sh-guild .gd-hard { background: radial-gradient(ellipse at 30% 20%, #fbe9d6, #e7c6a0 70%, #cf9f78); }
+.sh-guild .gd-reward { margin-top: 6px; padding: 2px 10px; border-radius: 999px; background: #3b2412; color: #f3d38a; font: 700 12px system-ui; }
+.sh-guild .gd-pin { position: absolute; top: 4px; left: 50%; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ff8a8a, #a3262f 70%); box-shadow: 0 2px 3px rgba(0,0,0,.5); }
+.sh-guild .gd-contract { margin-top: 10px; padding: 14px; border-radius: 6px; background: rgba(0,0,0,.25); border: 1px solid rgba(216,168,74,.4); }
+.sh-guild .gd-chead { display: flex; gap: 12px; align-items: center; }
+.sh-guild .gd-chead > span { font-size: 34px; }
+.sh-guild .gd-chead b { font-family: Georgia, serif; font-size: 18px; color: #f3d38a; display: block; }
+.sh-guild .gd-chead small { color: #e6d3a6; }
+.sh-guild .gd-party { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.sh-guild .gd-seal { display: flex; align-items: center; gap: 6px; padding: 4px 12px 4px 4px; border-radius: 999px; background: rgba(0,0,0,.3); color: #f3e7c6; font-weight: 600; }
+.sh-guild .gd-seal i { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-style: normal; font-weight: 800; color: #fbe2c0; background: radial-gradient(circle at 35% 35%, #d2454f, #7d1720); box-shadow: inset 0 -2px 0 rgba(0,0,0,.35); }
+.sh-guild .gd-seal.host i { background: radial-gradient(circle at 35% 35%, #f3d38a, #9a6a12); color: #3b2412; }
+.sh-guild .gd-seal.empty { opacity: .45; }
+.sh-guild .gd-seal.empty i { background: rgba(255,255,255,.12); }
+.sh-guild .gd-row { display: flex; gap: 10px; align-items: center; margin: 14px 0 6px; }
+.sh-guild .gd-start { font: 800 16px Georgia, serif; padding: 10px 26px; color: #fbe2c0; border: 2px solid #3b0d10; border-radius: 8px; background: linear-gradient(#c43a44, #7d1720); box-shadow: 0 4px 0 #3b0d10, 0 8px 18px rgba(0,0,0,.45); text-shadow: 0 1px 0 #3b0d10; }
+.sh-guild .gd-start:hover { filter: brightness(1.12); }
+.sh-guild .gd-start:active { transform: translateY(3px); box-shadow: 0 1px 0 #3b0d10; }
+.sh-guild .gd-note { color: #d9c49a; font-size: 13px; }
+.sh-guild .gd-open { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.sh-guild .gd-note-card span { margin-top: 4px; font: 700 12px system-ui; color: #a3262f; }
+.sh-guild.gd-wood .st-grid button { background: rgba(0,0,0,.28); border-color: rgba(216,168,74,.45); border-radius: 6px; }
+.sh-guild.gd-wood .st-grid button:hover { background: rgba(216,168,74,.18); }
+.sh-guild.gd-wood .hint { color: #d9c49a; }
+@media (max-width: 640px) { .sh-guild .gd-quests { grid-template-columns: repeat(2, 1fr); } }
+/* Missions-Tod: Uebersicht */
+.sh-result .shr-mission { margin: 6px 0 2px; font-family: Georgia, serif; color: #f3d38a; font-size: 15px; }
+.sh-result .shr-saved h5 { color: #8cffaa; }
+
 /* Vorschlags-Knopf unter den Patch Notes */
 .suggest-btn {
     width: 100%;
@@ -11200,28 +11269,37 @@ function onGuildRaw(d) {
     if (d.type === 'msMenu' && guildOpen && guildOpen !== 'msMenu' && !el.hidden) return; // offenes Lager nicht ueberschreiben
     guildOpen = d.type;
     el.hidden = false;
+    el.className = 'sh-trader sh-guild gd-wood gd-' + d.type;
     const tk = `🎟️ ${(d.tokens || 0).toLocaleString('en-US')}`;
     const head = (t, extra) => `<div class="st-head"><b>${t}</b><span>${extra}</span><button type="button" class="ghost" data-close="1">✕</button></div>`;
     const card = it => `${itemIcon(it)} ${esc(it.n)}`;
     if (d.type === 'msMenu') {
+        // 25.09.2026 (Max): Quest Board statt Liste, Bosse bleiben geheim
         const mine = d.list.find(m => m.id === d.mine);
         const host = mine && mine.host === d.me;
         const kinds = Object.entries(d.kinds), diffs = Object.entries(d.diffs);
-        const bossName = k => (d.bosses[k] || []).map(b => (sh.map.mobs && sh.map.mobs[b] || {}).name || b).join(' / ');
-        const diffInfo = x => `Mobs Lv ${x.lv >= 0 ? '+' : ''}${x.lv} · boss HP ×${x.bossHp} · +${x.tokens} 🎟️`;
-        let html = head('📜 Missions', `${tk} Mission Tokens · goal: defeat the boss, then get out`);
+        const skulls = k => ({ easy: '💀', normal: '💀💀', hard: '💀💀💀' })[k] || '💀';
+        const place = k => k === 'lab' ? '🧬' : '🎖️';
+        const lvTxt = x => x.lv ? `Enemies ${x.lv > 0 ? '+' : ''}${x.lv} Lv` : 'Enemies normal';
+        const quest = (k, n, dk, x, attrs, on) => `<button type="button" class="gd-quest gd-${dk}${on ? ' on' : ''}" ${attrs}>` +
+            `<i class="gd-pin"></i><span class="gd-qplace">${place(k)}</span><b>${esc(n)}</b>` +
+            `<span class="gd-skulls" title="${esc(x.name)}">${skulls(dk)}</span><span class="gd-qdiff">${esc(x.name)}</span>` +
+            `<small>${lvTxt(x)}</small><small>Boss: <b>???</b></small><span class="gd-reward">+${x.tokens} 🎟️</span></button>`;
+        let html = `<div class="st-head gd-top"><b>📜 Quest Board</b><span><span class="gd-chip">🎟️ ${(d.tokens || 0).toLocaleString('en-US')} tokens</span> Defeat the boss, then reach the exit.</span><button type="button" class="ghost" data-close="1">✕</button></div>`;
         if (mine) {
-            html += `<h5>Your party · ${esc(d.kinds[mine.kind])} · ${esc(d.diffs[mine.diff].name)}</h5><div class="gd-party">${mine.members.map(n => `<span>${esc(n)}${n === mine.hostName ? ' 👑' : ''}</span>`).join('')}<span class="hint">${mine.members.length}/${d.max}</span></div>`;
+            html += `<div class="gd-contract"><div class="gd-chead"><span>${place(mine.kind)}</span><div><b>${esc(d.kinds[mine.kind])}</b><small>${skulls(mine.diff)} ${esc(d.diffs[mine.diff].name)} · +${d.diffs[mine.diff].tokens} 🎟️ · Boss unknown</small></div></div>` +
+                `<div class="gd-party">${Array.from({ length: d.max }, (_, i) => mine.members[i] ? `<span class="gd-seal${mine.members[i] === mine.hostName ? ' host' : ''}"><i>${esc(mine.members[i][0].toUpperCase())}</i>${esc(mine.members[i])}${mine.members[i] === mine.hostName ? ' 👑' : ''}</span>` : '<span class="gd-seal empty"><i>+</i>free</span>').join('')}</div>`;
             if (host) {
-                html += `<h5>Dungeon</h5><div class="st-grid">${kinds.map(([k, n]) => `<button type="button" data-ms="msSet" data-kind="${k}" class="${mine.kind === k ? 'on' : ''}">${k === 'lab' ? '🧬' : '🎖️'} ${esc(n)}<small>Boss: ${esc(bossName(k))}</small></button>`).join('')}</div>`;
-                html += `<h5>Difficulty</h5><div class="st-grid">${diffs.map(([k, x]) => `<button type="button" data-ms="msSet" data-diff="${k}" class="gd-${k} ${mine.diff === k ? 'on' : ''}">${esc(x.name)}<small>${diffInfo(x)}</small></button>`).join('')}</div>`;
-                html += `<div class="gd-row"><button type="button" class="gold" data-ms="msStart">🚪 Start mission</button><button type="button" class="ghost" data-ms="msLeave">Leave party</button></div><div class="hint">Everyone in the party who is inside the Guild House comes along. Death works like a raid – only insured gear comes back.</div>`;
-            } else html += `<div class="gd-row"><span class="hint">Waiting for ${esc(mine.hostName)} to start…</span><button type="button" class="ghost" data-ms="msLeave">Leave party</button></div>`;
+                html += `<h5>Choose the contract</h5><div class="gd-quests">${kinds.map(([k, n]) => diffs.map(([dk, x]) => quest(k, n, dk, x, `data-ms="msSet" data-kind="${k}" data-diff="${dk}"`, mine.kind === k && mine.diff === dk)).join('')).join('')}</div>` +
+                    `<div class="gd-row"><button type="button" class="gd-start" data-ms="msStart">⚔️ Start mission</button><button type="button" class="ghost" data-ms="msLeave">Leave party</button></div>` +
+                    `<div class="gd-note">Everyone in your party who stands inside the Guild House comes along. If you fall, only 🛡️ insured gear comes back – you wake up here again.</div>`;
+            } else html += `<div class="gd-row"><span class="gd-note">Waiting for <b>${esc(mine.hostName)}</b> to start…</span><button type="button" class="ghost" data-ms="msLeave">Leave party</button></div>`;
+            html += '</div>';
         } else {
-            html += `<h5>New mission</h5><div class="st-grid">${kinds.map(([k, n]) => diffs.map(([dk, x]) => `<button type="button" data-ms="msCreate" data-kind="${k}" data-diff="${dk}" class="gd-${dk}">${k === 'lab' ? '🧬' : '🎖️'} ${esc(n)} · ${esc(x.name)}<small>${diffInfo(x)}</small></button>`).join('')).join('')}</div>`;
+            html += `<h5>Pick a contract</h5><div class="gd-quests">${kinds.map(([k, n]) => diffs.map(([dk, x]) => quest(k, n, dk, x, `data-ms="msCreate" data-kind="${k}" data-diff="${dk}"`)).join('')).join('')}</div>`;
         }
         const others = d.list.filter(m => m.id !== d.mine);
-        html += `<h5>Open parties</h5>` + (others.length ? `<div class="st-grid">${others.map(m => `<button type="button" data-ms="msJoin" data-id="${m.id}" ${m.members.length >= d.max ? 'disabled' : ''}>👑 ${esc(m.hostName)}<small>${esc(d.kinds[m.kind])} · ${esc(d.diffs[m.diff].name)} · ${m.members.length}/${d.max}</small></button>`).join('')}</div>` : '<span class="hint">No open parties – start one</span>');
+        html += `<h5>Parties looking for members</h5>` + (others.length ? `<div class="gd-open">${others.map(m => `<button type="button" class="gd-note-card" data-ms="msJoin" data-id="${m.id}" ${m.members.length >= d.max ? 'disabled' : ''}><i class="gd-pin"></i><b>👑 ${esc(m.hostName)}</b><small>${place(m.kind)} ${esc(d.kinds[m.kind])}</small><small>${skulls(m.diff)} ${esc(d.diffs[m.diff].name)} · ${m.members.length}/${d.max}</small><span>${m.members.length >= d.max ? 'Full' : 'Join →'}</span></button>`).join('')}</div>` : '<div class="gd-note">No open parties – pin your own contract above.</div>');
         el.innerHTML = html;
     } else if (d.type === 'gStash') {
         const pack = d.pack.filter(it => !it.s).map(it => `<button type="button" class="ghost tier-${it.t}" data-dep="${esc(it.uid)}" ${d.inv.length >= d.invMax ? 'disabled' : ''}>${card(it)}<b>→ 📦</b></button>`).join('') || '<span class="hint">Your backpack is empty</span>';
@@ -12113,6 +12191,19 @@ function onShLeft(d) {
         return shResult({ kind: 'win', big: '🚁 EXTRACTED', sub: `You made it out${wait}`,
             stats: [[t, 'time'], [d.kills || 0, 'kills'], ['+' + xp.toLocaleString('en-US'), 'XP']], items: d.items, itemsTitle: 'Loot secured', again: 'extract' });
     }
+    // Mission (25.09.2026, Max): Uebersicht, danach zurueck ins Guild House
+    if (d.mission) {
+        const ms = d.mission;
+        hubLast = { result: 'dead', html: `💀 <b>Mission failed</b> – ${esc(ms.place)} (${esc(ms.name)}). Lost: ${list(d.lost)}${ms.saved.length ? ` · insured back in your stash: ${list(ms.saved)}` : ''}` };
+        return shResult({
+            kind: 'dead', big: '💀 MISSION FAILED',
+            sub: `<div class="shr-mission">${ms.kind === 'lab' ? '🧬' : '🎖️'} ${esc(ms.place)} · ${({ easy: '💀', normal: '💀💀', hard: '💀💀💀' })[ms.diff] || ''} ${esc(ms.name)}</div>` +
+                (d.by ? `Killed by <b>${esc(d.by)}</b>${d.weapon ? ` with <span class="tier-${d.wtier}">${esc(d.weapon)}</span>` : ''}` : '') +
+                `<br>${ms.boss ? '✅ The boss was already down – but nobody made it out with you.' : '👑 The boss is still standing.'} You wake up in the Guild House.`,
+            stats: [[t, 'time'], [d.kills || 0, 'kills'], ['+' + xp.toLocaleString('en-US'), 'XP'], [ms.saved.length, 'insured saved']],
+            items: d.lost, itemsTitle: 'Lost', saved: ms.saved, again: 'guild'
+        });
+    }
     hubLast = { result: 'dead', html: `💀 <b>${d.result === 'left' ? 'You left the raid' : 'You died'}${d.by ? ` – killed by ${esc(d.by)}` : ''}.</b> Lost: ${list(d.lost)}` };
     shResult({
         kind: 'dead', big: d.result === 'left' ? '🏃 YOU LEFT' : '💀 YOU DIED',
@@ -12134,7 +12225,9 @@ function shResult(r) {
             if (!b) return;
             el.hidden = true;
             $('sh-canvas').classList.remove('sh-dim');
-            if (b.dataset.again === 'extract') {
+            if (b.dataset.again === 'guild') {
+                wsSend({ type: 'msRespawn' });
+            } else if (b.dataset.again === 'extract') {
                 hubMode = 'extract';
                 hubOpen('play');
                 wsSend({ type: 'shJoin' });
@@ -12147,11 +12240,12 @@ function shResult(r) {
     const items = r.items && r.items.length
         ? `<div class="shr-items"><h5>${r.itemsTitle} (${r.items.length})</h5><div>${r.items.map(it => `<span class="shr-it tier-${it.t}" title="${esc(it.n)}">${itemIcon(it)}<small>${esc(it.n)}</small></span>`).join('')}</div></div>`
         : r.itemsTitle ? `<div class="shr-items"><h5>${r.itemsTitle}</h5><div class="hint">nothing</div></div>` : '';
+    const saved = r.saved && r.saved.length ? `<div class="shr-items shr-saved"><h5>🛡️ Insurance – back in your stash (${r.saved.length})</h5><div>${r.saved.map(it => `<span class="shr-it tier-${it.t}" title="${esc(it.n)}">${itemIcon(it)}<small>${esc(it.n)}</small></span>`).join('')}</div></div>` : '';
     el.className = 'sh-result ' + r.kind;
     el.hidden = false;
     el.innerHTML = `<div class="shr-box"><div class="shr-big">${r.big}</div>${r.sub ? `<div class="shr-sub">${r.sub}</div>` : ''}` +
-        `<div class="shr-stats">${r.stats.map(([v, l]) => `<div><b>${v}</b><small>${l}</small></div>`).join('')}</div>${items}` +
-        `<div class="shr-btns">${r.again === 'extract' ? '<button type="button" class="gold" data-again="extract">🪂 Deploy again</button>' : `<button type="button" class="gold" data-again="${r.again}">↻ Play again</button>`}` +
+        `<div class="shr-stats">${r.stats.map(([v, l]) => `<div><b>${v}</b><small>${l}</small></div>`).join('')}</div>${items}${saved}` +
+        `<div class="shr-btns">${r.again === 'guild' ? '<button type="button" class="gold" data-again="guild">🏰 Back to the Guild House</button>' : r.again === 'extract' ? '<button type="button" class="gold" data-again="extract">🪂 Deploy again</button>' : `<button type="button" class="gold" data-again="${r.again}">↻ Play again</button>`}` +
         `<button type="button" class="ghost" data-back="1">Back to the hub</button></div></div>`;
     $('sh-canvas').classList.add('sh-dim');
     showScreen('shooter');
@@ -12407,7 +12501,7 @@ function stationLook(s) {
     if (s.kind === 'medic') return { icon: '⛑️', rgb: '0,214,122', label: `Medic · ${m.medic.cost} ⚙️`, hint: `F · heal to full (${m.medic.cost} scrap)` };
     if (s.kind === 'trader') return { icon: '🏪', rgb: '255,210,63', label: 'Trader', hint: 'F · trade (buy with scrap, sell your loot)' };
     // 25.09.2026: Guild House
-    if (s.kind === 'missions') return { icon: '📜', rgb: '255,170,80', label: 'Mission board', hint: 'F · missions: pick a dungeon, difficulty and party' };
+    if (s.kind === 'missions') return { icon: '📜', rgb: '255,170,80', label: 'Quest Board', hint: 'F · quest board: pick a contract and a party' };
     if (s.kind === 'stash') return { icon: '📦', rgb: '120,190,255', label: 'Guild stash', hint: 'F · stash: store or take items' };
     if (s.kind === 'insure') return { icon: '🛡️', rgb: '140,255,170', label: 'Insurance', hint: 'F · insure gear for your next mission (scrap + 🎟️ tokens)' };
     if (s.kind === 'wall') {
@@ -12737,31 +12831,7 @@ function shFrame() {
     }
     // 25.09.2026: Guild Houses (Holzboden, Teppich, Banner) und feindliche Stuetzpunkte
     for (const g of m.guilds || []) {
-        if (!vis(g[0] + g[2] / 2, g[1] + g[3] / 2, Math.max(g[2], g[3]))) continue;
-        c.fillStyle = '#3a2a1c';
-        c.fillRect(g[0], g[1], g[2], g[3]);
-        c.strokeStyle = 'rgba(0,0,0,.28)';
-        c.lineWidth = 2;
-        for (let yy = g[1] + 40, r = 0; yy < g[1] + g[3]; yy += 40, r++) {
-            c.beginPath(); c.moveTo(g[0], yy); c.lineTo(g[0] + g[2], yy); c.stroke();
-            for (let xx = g[0] + (r % 2 ? 60 : 130); xx < g[0] + g[2]; xx += 180) { c.beginPath(); c.moveTo(xx, yy - 40); c.lineTo(xx, yy); c.stroke(); }
-        }
-        const cx = g[0] + g[2] / 2, cy = g[1] + g[3] / 2;
-        c.fillStyle = 'rgba(140,30,40,.75)';
-        c.fillRect(cx - 110, g[1] + 60, 220, g[3] - 60);
-        c.strokeStyle = 'rgba(255,200,90,.7)';
-        c.lineWidth = 4;
-        c.strokeRect(cx - 100, g[1] + 70, 200, g[3] - 80);
-        const warm = c.createRadialGradient(cx, cy, 40, cx, cy, g[2] * .6);
-        warm.addColorStop(0, 'rgba(255,190,90,.18)');
-        warm.addColorStop(1, 'rgba(255,190,90,0)');
-        c.fillStyle = warm;
-        c.fillRect(g[0], g[1], g[2], g[3]);
-        drawEmojiC(c, '🔥', cx, cy + 40, 34 + Math.sin(now / 200) * 2);
-        c.fillStyle = 'rgba(255,210,120,.8)';
-        c.font = 'bold 28px system-ui';
-        c.textAlign = 'center';
-        c.fillText('🏰 GUILD HOUSE', cx, g[1] - 16);
+        if (vis(g[0] + g[2] / 2, g[1] + g[3] / 2, Math.max(g[2], g[3]))) gGuildFloor(c, g, now);
     }
     for (const z of m.posts || []) {
         if (!vis(z[0] + z[2] / 2, z[1] + z[3] / 2, Math.max(z[2], z[3]))) continue;
@@ -12777,6 +12847,7 @@ function shFrame() {
     if (!dun) for (const [x, y, w, h] of m.walls) {
         if (!vis(x, y, Math.max(w, h))) continue;
         if (zMallWall(c, m, x, y, w, h)) continue;
+        if (gWall(c, m, x, y, w, h)) continue;
         if (rWall(c, reg, x, y, w, h)) continue;
         c.fillStyle = 'rgba(0,0,0,.35)';
         c.fillRect(x + 6, y + 6, w, h);
@@ -12786,6 +12857,7 @@ function shFrame() {
         c.fillRect(x, y, w, 5);
     }
     rDeco(c, m, shCam, viewW, viewH, now, latest.tanks ? new Map(latest.tanks) : null);
+    for (const g of m.guilds || []) if (vis(g[0] + g[2] / 2, g[1] + g[3] / 2, Math.max(g[2], g[3]))) gGuildTop(c, g, now);
     if (!dun) {
         c.strokeStyle = reg.id === 'lab' ? '#29c6a0' : reg.id === 'bunker' ? '#d8a820' : '#ff5bd6';
         c.lineWidth = 8;
@@ -12827,6 +12899,7 @@ function shFrame() {
         if (s.kind === 'portal') { rPortal(c, s, now); continue; }
         const L = stationLook(s);
         if (zDrawStation(c, m, s, L, now)) continue;
+        if (gStation(c, s, L, now, !!shPred && Math.hypot(shPred.x - s.x, shPred.y - s.y) < 130)) continue;
         const pulse = .5 + .5 * Math.sin(now / 400 + s.x);
         // 4.6: kleiner (Max: im Zombie-Modus im Weg)
         c.fillStyle = `rgba(${L.rgb},${.12 + .08 * pulse})`;
@@ -13288,6 +13361,7 @@ function shFrame() {
     // Tueren: helle Schwelle mit Pfeil, damit man den Eingang sieht
     for (const [x, y, w, dh] of m.doors) {
         if (!vis(x, y, 100)) continue;
+        if (gDoor(c, m, x, y, w, dh, now)) continue;
         c.fillStyle = 'rgba(255,210,63,.55)';
         c.fillRect(x, y, w, dh);
         c.strokeStyle = '#ffd23f';
@@ -16387,6 +16461,7 @@ function slotResult(d) {
 <script src="/market.js"></script>
 <script src="/zfx.js"></script>
 <script src="/rfx.js"></script>
+<script src="/gfx.js"></script>
 <script src="/dfx.js"></script>
 </body>
 </html>

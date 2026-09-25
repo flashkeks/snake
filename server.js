@@ -1508,6 +1508,17 @@ async function handle(c, data) {
 
         // --- Arena: Raid (Extraction) ---
 
+        // Tod in der Mission (25.09.2026): nach der Uebersicht zurueck ins Guild House
+        case 'msRespawn': {
+            if (!c.account || c.joined || rooms.inLobby(c) || dungeons.has(c) || rooms.arenaOf(c) || shooter.has(c)) return;
+            const u = accounts.get(c.account);
+            if (!u) return;
+            tables.leave(c);
+            const err = shooter.join(c, u.name, u.color || null, undefined, shooter.guildSpot(c.missionBack));
+            if (err) send(c, { type: 'shError', error: err });
+            return;
+        }
+
         case 'shJoin': {
             if (!c.account) return send(c, { type: 'shError', error: 'Log in to raid' });
             if (c.joined) return send(c, { type: 'shError', error: 'Leave the snake field first' });
