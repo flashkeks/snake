@@ -2494,3 +2494,87 @@ Nachtrag 6.12.1 (Max: „Stalker zu op, man kann ihn nicht hitten, wenn er an ei
     zurueck), sieht er jemanden, kaempft er. Nach 6 min loest er sich auf (normale Gegner).
   - Test: Breach mit Zeitsprung – Warnung, Snapshot `[[71,1]]`, danach 3 Monster aus
     dem Tank; Patrouille startet, laeuft ueber Tueren durch 6 Wegpunkte und wendet am Ende.
+
+## 🔫 25.09.2026: Fuse-Odds, Achievements, Boss-Aggro, 30 Uniques mit Mechanik
+
+### Fuse und Analyser
+- `fuse()` merkt sich beim ersten Fuse die Effekte des Originals in `item.drop`
+  (bleibt danach fest) und zaehlt gefressene Items in `item.fused`.
+- `odds` eines gefusten Items = Drop-Chance des Originals. `score` = Original +
+  halbe Differenz zum nativen Wert des Ergebnisses (Max: 26,6k -> 33k statt 40k
+  bei Sharp 1 -> 2).
+- Analyser: Drop-Chance aus `item.drop`, Abschnitt „Fused on top" (gefuste
+  Items, neue Effekte, Stufen alt -> neu). Items, die vor diesem Stand gefust
+  wurden, haben kein `drop` – dort rechnet alles wie vorher.
+
+### Achievements (6.12.3)
+30 -> 86. Neu u. a. fuer Zombies (`u.arena.zombies`), PvP (`u.arena.pvp`),
+Arena-Level (`levelOf(prog.xp)`), Kekemon (verschiedene Karten, Shiny/Masterball,
+Gyms ueber `km-gyms.GYM_IDS`), Markt, Handel, Bosse, Faelle, Fuse. Neue
+Statistik `s.fuses`, `s.fuseMaxed`. Zustandsbasierte Achievements werden beim
+naechsten `stat()` bzw. beim Serverstart (still) vergeben.
+
+### Boss-Aggro gegen Fernschuetzen (6.12.3)
+Treffer von ausserhalb der Reichweite (`def.range || def.aggro`) provoziert
+einen Raid-Boss `BOSS_PROVOKE` = 8 s: Sprint x`BOSS_SPRINT` 2,2 zum Schuetzen,
+alle `BOSS_RETAL` 2,6 s drei Einschlaege mit Vorwarnung (55, r 110, der erste
+vorgehalten). Zombie-Modus unveraendert (dort `zBossFalloff`).
+
+### Raid-Inventar
+Shift-Klick: Rucksack-Item anlegen (Waffe in freien Slot, Starter-Pistole
+zaehlt als frei, sonst die gehaltene; Q/G nach gleicher Sorte, frei, sonst Q),
+Angelegtes zurueck in den Rucksack. Nur Client (`shInvQuick`).
+
+### 30 neue Uniques (6.13–6.13.2)
+Wunsch Max: je Typ 10, stark durch Mechanik statt Werte. Je Typ 4 Legendary,
+4 Mythic, 2 Ultra.
+
+**Droprate:** gleich viele Unique-Drops wie vorher. Alle Uniques einer (Art,
+Stufe) teilen sich das Gewicht der 17 Uniques vom Stand 6.12
+(`LEGACY_UNIQUES`, `uniqueScale`, `baseWeight`). Verbrauchsgut hatte keine
+Uniques, dort `UNIQUE_W` je Item. Der Analyser rechnet mit `baseWeight`.
+
+**Taste R** (`shAbility` -> `ability()`): macht alles zugleich, was die
+Ausruestung kann – Titan Shift, Rock Lees Gewichte, Killer-Queen-Zuender,
+Flash Step. HUD zeigt die verfuegbaren Faehigkeiten.
+
+| Item | Art, Stufe | Mechanik (Flag) |
+|---|---|---|
+| 🌊 Nichirin Blade | Waffe L | `combo`: Treffer in 1,5 s +10 % (max 10), bei 10 Wasserdrache (Welle x2,5) |
+| 🔫 Revy's Cutlasses | Waffe L | `smart`: Ricochet 3, je Abpraller +50 % und springt zum naechsten Ziel |
+| 🤜 Gum-Gum Pistol | Waffe L | `grapple`: Treffer an Wand/Gegner zieht den Schuetzen hin (`p.grap`) |
+| 🪚 Chainsaw | Waffe L | `rev`: Dauerfeuer dreht in 3 s auf x3, 25 % Lifesteal |
+| 🩸 Kagune | Waffe M | `berserk`: bis x2,5 Schaden und 28 % Lifesteal bei wenig HP |
+| 🔱 Spear of Longinus | Waffe M | `pure` (ignoriert taken/Dodge/Mob-Reduktion), `pin` (2 s betaeubt, Bosse/Spieler langsam) |
+| 🔨 Mjölnir | Waffe M | `boomerang` (zurueck durch Waende, trifft auf beiden Wegen), `chain` (Blitz auf 2 Mobs) |
+| 💣 Killer Queen | Waffe M | `stick`: Treffer pflanzen Bomben (max 8, 20 s), R sprengt (`kqBombs`) |
+| 🌀 Portal Gun | Waffe U | `portal`: Fehlschuss setzt Blau/Orange; Spieler, Mobs (ohne Bosse), Kugeln gehen durch (`portals`) |
+| 🌸 Senbonzakura | Waffe U | `orbit`: Klingenkreis 110 px, 130 dps, frisst Kugeln; Schuss = Schwarm als Bumerang |
+| 👁️ Byakugan | Helm L | `see`: `canSee` immer wahr (auch Kyoka), immun gegen Flash |
+| 🎭 Kaneki's Mask | Helm L | `killHeal`: Kill heilt 25 %, +25 % Tempo 3 s (`onKill`) |
+| 🏋️ Rock Lee's Weights | Hose L | `weights`: -15 % Tempo, R: +40 % Tempo, +25 % Rate bis Raid-Ende |
+| 🌙 Geppo | Stiefel L | `geppo`: Feuer/Saeure und Verlangsamung wirken nicht |
+| 💪 All Might's Suit | Weste M | `plusUltra`: unter 25 % (auch toedlich) Schockwelle + 3 s Schutz, 60 s CD |
+| ⚡ Killua's Godspeed | Hose M | `counter`: 12 % Dodge, jeder Dodge schlaegt mit 120 zurueck |
+| 🔴 Geass | Helm M | `geass`: 1 s Blick auf Nicht-Boss -> 8 s verzaubert (`m.charm`, `charmTick`) |
+| 💨 Flash Step | Stiefel M | `flashstep`: R, 260 px, 300 ms Schutz, 3 s CD |
+| 🪞 Kyoka Suigetsu | Weste U | `mirror`: bei Treffer 2 s unsichtbar + Trugbild 3 s (`decoys`), 12 s CD |
+| 🦖 Titan Shift | Ganzkoerper U | `titan`: R einmal je Raid, 15 s +1500 HP, Stampfer statt Schuss |
+| 🗡️ Hiraishin Kunai | Util L | Kunai werfen, zweiter Einsatz teleportiert (gratis), 30 s |
+| ⛓️ Chain Jail | Util L | Gegner am Cursor 3 s ohne Laufen/Schiessen (`jailUntil`), Bosse langsam |
+| 👹 Hollow Mask | Util L | 10 s +60 % Schaden, +30 % Rate, 15 % Lifesteal, -5 HP/s |
+| 🚪 Door-Door Fruit | Util L | 3 s durch Waende (`phaseUntil`), danach zur naechsten freien Stelle |
+| 📓 Death Note | Util M | Ziel stirbt nach 40 s, ausser der Schreiber ist weg; Bosse -30 % |
+| 💎 Philosopher's Stone | Util M | 60 s: toedlicher Treffer -> 50 % HP |
+| 🌐 Shinra Tensei | Util M | r 380 wegstossen, +120 bei Wandaufprall, loescht Gegner-Kugeln |
+| 💊 Hoi-Poi Capsule | Util M | Turm 20 s, 30 Schaden alle 330 ms (`turrets`) |
+| ⏱️ Za Warudo | Util U | 4 s Zeitstopp (`zw`): Mobs, andere Spieler, fremde Kugeln, Granaten, Einschlaege stehen |
+| 👥 Kage Bunshin | Util U | 3 Klone 15 s, schiessen mit 35 %, fangen je eine Kugel (`clones`) |
+
+Snapshot-Felder dazu: `me.kunai/combo/doom/abil/buff/kq/phase/gaze/inv/zw/zwMe/titan`,
+Spieler `ob/ti/cl`, `turrets`, `portals`, Mob-Feld 12 = verzaubert.
+
+**Tests** (Skripte gegen die Raid-Engine mit virtueller Zeit, nicht im Repo):
+je Welle ein Skript mit mindestens einer Pruefung je Item (23 + 15 + 18), dazu
+36 s Zombie-Modus, 90 s PvP und 3 min Extraction-Chaos mit drei Spielern und
+zufaelligen neuen Uniques ohne Absturz.
