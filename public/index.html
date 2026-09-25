@@ -11703,11 +11703,13 @@ function onShRooms(rooms) {
 // ---------- Raid ----------
 
 function onShJoined(d) {
+    // Dungeon-Wechsel (25.09.2026): shJoined kommt mitten im Raid erneut – die Zeichenschleife laeuft schon
+    const running = !!sh;
     sh = { id: d.id, map: d.map, packMax: d.packMax, mode: d.mode || 'extract', team: d.team, mapName: d.mapName };
     shRunXp = 0;
     if ($('sh-result')) $('sh-result').hidden = true;
     $('sh-canvas').classList.remove('sh-dim');
-    $('sh-title').textContent = sh.mode === 'pvp' ? `⚔️ PvP · ${d.mapName || ''} · ${d.team === 'b' ? '🔴 Red' : '🔵 Blue'}` : sh.mode === 'zombies' ? `🧟 Zombies · ${d.mapName || ''}` : '🔫 Raid';
+    $('sh-title').textContent = sh.mode === 'pvp' ? `⚔️ PvP · ${d.mapName || ''} · ${d.team === 'b' ? '🔴 Red' : '🔵 Blue'}` : sh.mode === 'zombies' ? `🧟 Zombies · ${d.mapName || ''}` : sh.mode === 'dungeon' ? `🏚️ ${d.mapName || 'Dungeon'}` : '🔫 Raid';
     shBlindUntil = 0;
     shInvOpen = false;
     $('sh-inv').hidden = true;
@@ -11722,7 +11724,7 @@ function onShJoined(d) {
     clearInterval(shPingTimer);
     shPingTimer = setInterval(() => wsSend({ type: 'shPing', t: performance.now() }), 1000);
     shLastFrame = performance.now();
-    requestAnimationFrame(shFrame);
+    if (!running) requestAnimationFrame(shFrame);
 }
 
 // Raid-Inventar: Ausruestung und Rucksack, ausruesten/ablegen/fallen lassen
@@ -14226,7 +14228,7 @@ $('hub-back').onclick = () => { if (!hubCaseBusy) setWorld('snake'); };
 $('sh-leave').onclick = () => {
     const q = sh && sh.mode === 'pvp' ? 'Leave the match? It counts as a loss (−20 rating). You keep all your items.'
         : sh && sh.mode === 'zombies' ? 'Leave the zombies game? Your waves so far count, you keep all your items.' : 'Leave the raid? You lose everything you carry – like dying.';
-    uiConfirm(q, { title: sh && sh.mode === 'extract' ? 'Give up the raid?' : 'Leave?', ok: 'Leave', danger: true }).then(ok => ok && wsSend({ type: 'shLeave' }));
+    uiConfirm(q, { title: sh && (sh.mode === 'extract' || sh.mode === 'dungeon') ? 'Give up the raid?' : 'Leave?', ok: 'Leave', danger: true }).then(ok => ok && wsSend({ type: 'shLeave' }));
 };
 $('sh-med').onclick = () => shUse(0);
 $('sh-use').onclick = () => wsSend({ type: 'shInteract' });

@@ -20,6 +20,7 @@ const plinko = require('./plinko');
 const createTickets = require('./tickets');
 const startAdmin = require('./admin');
 const createShooter = require('./shooter');
+const createDungeons = require('./dungeon-rooms');
 const createRooms = require('./arena-rooms');
 const createTrade = require('./trade');
 const createAssets = require('./assets');
@@ -534,7 +535,7 @@ function watchStart(c, token) {
     const u = accounts.get(t.key);
     send(c, { type: 'watchStart', name: u.name, id: target.id, user: accounts.publicUser(u), ui: target.ui || null, joined: !!target.joined, guest: !!target.guest });
     // Laufender Raid/Match: Einstiegsdaten nur an den Zuschauer
-    const ar = rooms.arenaOf(target) || (shooter.has(target) ? shooter : null);
+    const ar = rooms.arenaOf(target) || dungeons.arenaOf(target) || (shooter.has(target) ? shooter : null);
     if (ar && ar.joinedMsg) send(c, ar.joinedMsg(target));
     // Frische Staende (Konto, Kekemon, Markt, Arena) – gehen an den Spieler und werden gespiegelt
     if (target.account) mkRefresh(target);
@@ -621,6 +622,7 @@ function whereOf(c) {
     const k = rooms.kindOf(c);
     if (k) return k === 'zombies' ? '🧟 Zombies' : '⚔️ PvP';
     if (shooter.has(c)) return '🪂 Raid';
+    if (dungeons.has(c)) return '🏚️ Dungeon';
     const t = tables.tableOf(c);
     if (t) return TABLE_WHERE[t.kind] || '🎰 Casino';
     return WHERE[c.where] || null;
@@ -1294,6 +1296,7 @@ async function handle(c, data) {
             if (c.cross) return send(c, { type: 'authError', error: 'Finish your Crossy Road run first' });
             tables.leave(c);
             shooter.leave(c);
+            dungeons.drop(c);
             rooms.leave(c);
             trade.gone(c);
             lobby.leave(c);
@@ -1319,6 +1322,7 @@ async function handle(c, data) {
             if (r.error) return send(c, { type: 'authError', error: r.error });
             tables.leave(c);
             shooter.leave(c);
+            dungeons.drop(c);
             rooms.leave(c);
             c.account = null;
             send(c, { type: 'auth', token: null, user: null, note: 'Account deleted' });
@@ -1332,6 +1336,7 @@ async function handle(c, data) {
             if (c.joined) return;
             tables.leave(c);
             shooter.leave(c);
+            dungeons.drop(c);
             rooms.leave(c);
             let name;
             if (c.account) {
@@ -1488,6 +1493,7 @@ async function handle(c, data) {
         case 'tableJoin':
             if (c.joined) return send(c, { type: 'tableError', error: 'Leave the snake field first' });
             shooter.leave(c);
+            dungeons.drop(c);
             rooms.leave(c);
             tables.join(c, String(data.kind));
             return;
@@ -1495,6 +1501,7 @@ async function handle(c, data) {
         case 'pokerCreate':
             if (c.joined) return send(c, { type: 'tableError', error: 'Leave the snake field first' });
             shooter.leave(c);
+            dungeons.drop(c);
             rooms.leave(c);
             tables.create(c, data);
             return;
@@ -1506,6 +1513,7 @@ async function handle(c, data) {
             if (c.joined) return send(c, { type: 'shError', error: 'Leave the snake field first' });
             if (c.cross) return send(c, { type: 'shError', error: 'Finish your Crossy Road run first' });
             if (rooms.inLobby(c)) return send(c, { type: 'shError', error: 'Leave your PvP lobby first' });
+            if (dungeons.has(c)) return send(c, { type: 'shError', error: 'You are in a dungeon' });
             const u = accounts.get(c.account);
             if (!u) return;
             tables.leave(c);
@@ -1621,7 +1629,7 @@ async function handle(c, data) {
             return;
 
         case 'shInput':
-            (rooms.arenaOf(c) || shooter).input(c, data);
+            (rooms.arenaOf(c) || dungeons.arenaOf(c) || shooter).input(c, data);
             return;
 
         // Arena-Hub (Extraction): Lager, Kaufen, Cases, Salvage, Loadout
@@ -1647,7 +1655,7 @@ async function handle(c, data) {
         case 'shAbility':
         case 'shInv':
         case 'shTrade':
-            (rooms.arenaOf(c) || shooter).action(c, data);
+            (rooms.arenaOf(c) || dungeons.arenaOf(c) || shooter).action(c, data);
             return;
 
         // Laufzeit messen, damit der Browser seine Vorhersage abgleichen kann
@@ -1656,7 +1664,8 @@ async function handle(c, data) {
             return;
 
         case 'shLeave':
-            if (rooms.arenaOf(c)) rooms.leave(c);
+            if (dungeons.has(c)) dungeons.drop(c);
+            else if (rooms.arenaOf(c)) rooms.leave(c);
             else shooter.leave(c);
             return;
 
@@ -1724,7 +1733,7 @@ async function handle(c, data) {
 
         // Nur fuer lokale Tests (SNAKE_TEST=1): Raid-Figur versetzen
         case 'shTp': {
-            const p = (rooms.arenaOf(c) || shooter)._players.get(c.id);
+            const p = (rooms.arenaOf(c) || dungeons.arenaOf(c) || shooter)._players.get(c.id);
             if (process.env.SNAKE_TEST === '1' && p) {
                 p.x = Number(data.x) || p.x;
                 p.y = Number(data.y) || p.y;
@@ -2228,17 +2237,25 @@ const tables = createTables({
 
 // ---------- Shooter-Arena (#7) ----------
 
-const shooter = createShooter({
+const shooterH = {
     accounts, send, feed, wheels,
     refresh: c => sendAccount(c),
     // Wer ist in welcher Arena: fuers Menue an alle
     changed: () => broadcast({ type: 'shRooms', rooms: shooter.rooms() })
+};
+const shooter = createShooter(shooterH);
+// Dungeon-Instanzen (25.09.2026): Militaerbasis/Labor je Party, Luke oben -> eigene Instanz
+const dungeons = createDungeons({
+    accounts, send, surface: shooter,
+    createArena: o => createShooter({ accounts, send, feed, refresh: c => sendAccount(c), changed: () => {} }, o),
+    makeWorld: map => createShooter.makeWorld(map, map.w, map.h)
 });
+shooterH.enterDungeon = (c, kind, from) => dungeons.enter(c, kind, from);
 // PvP-Lobbys: jedes Match eine eigene Arena-Instanz auf einer kleinen Map
 const rooms = createRooms({
     accounts, send, broadcast, feed, refresh: c => sendAccount(c), worlds: createShooter.PVP_WORLDS, zombieWorld: createShooter.ZOMBIE_WORLD,
     createArena: o => createShooter({ accounts, send, feed, refresh: c => sendAccount(c), changed: () => {} }, o),
-    busy: c => shooter.has(c) || !!c.joined || !!c.cross
+    busy: c => shooter.has(c) || dungeons.has(c) || !!c.joined || !!c.cross
 });
 
 // Handel: nur Hub-Aktion, kein eigener Takt
@@ -2251,7 +2268,7 @@ function mkRefresh(c) {
     if (c.mkWatch) send(c, market.state(c));
     if (c.account) kmState(c);
     lobby.refresh(c);
-    if (!shooter.has(c)) shooter.hubAction(c, { type: 'arHub' });
+    if (!shooter.has(c) && !dungeons.has(c)) shooter.hubAction(c, { type: 'arHub' });
 }
 
 const trade = createTrade({
@@ -2291,6 +2308,7 @@ setInterval(() => duels.tick(), 1000);
 // Eigener, schnellerer Takt als das Snake-Feld (33 ms)
 setInterval(() => {
     shooter.tick();
+    dungeons.tick();
     rooms.tick();
 }, 16);
 
@@ -2726,6 +2744,7 @@ function shutdown() {
     for (const p of players.values()) recordScore(p);
     tables.shutdown();
     shooter.refundAll();
+    dungeons.refundAll();
     accounts.save(true);
     tickets.save(true);
     market.save();

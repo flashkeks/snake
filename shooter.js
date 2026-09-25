@@ -239,13 +239,18 @@ function buildMap() {
 
 const MAP = buildMap();
 // 6.12 (Max): Keller (Militaerstuetzpunkt) und Labor darunter, siehe arena-under.js
+// 25.09.2026 (Max: Map-Umbau): Keller und Labor sind jetzt eigene Dungeon-Instanzen je
+// Party (dungeons.js, dungeon-rooms.js). Von arena-under.js bleiben nur die Luken-Plaetze:
+// zwei fuehren in die Militaerbasis, eine ins Labor.
 {
     const UNDER = require('./arena-under').buildUnder({ w: W, h: H, walls: MAP.walls });
-    MAP.regions = [{ id: 'surface', name: 'Surface', level: 0, x: 0, y: 0, w: W, h: H }, ...UNDER.regions];
-    MAP.walls.push(...UNDER.walls);
-    MAP.crates.push(...UNDER.crates);
-    MAP.stations.push(...UNDER.stations);
-    MAP.deco = UNDER.deco;
+    MAP.regions = [{ id: 'surface', name: 'Surface', level: 0, x: 0, y: 0, w: W, h: H }];
+    const hatches = UNDER.stations.filter(st => st.level === 0);
+    hatches.forEach((st, i) => {
+        const dungeon = i === hatches.length - 1 ? 'lab' : 'bunker';
+        MAP.stations.push({ kind: 'portal', dir: 'down', level: 0, x: st.x, y: st.y, dungeon, dest: dungeon === 'lab' ? 'Abandoned lab' : 'Abandoned military base' });
+    });
+    MAP.deco = [];
 }
 
 // Raster fuer schnelle Wandtests
@@ -525,6 +530,8 @@ module.exports = function createArena(h, opts = {}) {
     // Die Welt dieser Instanz (ueberdeckt die Modul-Namen fuer die Extraction-Map)
     const world = opts.world || WORLD;
     const mode = opts.mode || 'extract';
+    // Extraction-Oberflaeche und Dungeon-Instanzen (25.09.2026) teilen sich Gegner-Regeln
+    const pve = mode === 'extract' || mode === 'dungeon';
     const MAP = world.map, W = world.w, H = world.h, blocked = world.blocked, slide = world.slide;
     // Ebene eines Punkts (6.12): 'surface' | 'bunker' | 'lab'; Karten ohne Ebenen -> 'surface'
     const regionAt = (x, y) => { const g = (MAP.regions || []).find(q => x >= q.x && y >= q.y && x <= q.x + q.w && y <= q.y + q.h); return g ? g.id : 'surface'; };
@@ -1301,6 +1308,35 @@ module.exports = function createArena(h, opts = {}) {
         return true;
     }
 
+    // Dungeon-Uebergabe (25.09.2026): Spieler samt Ausruestung, Rucksack und HP aus
+    // dieser Instanz nehmen (ohne Tod, ohne Beutel) bzw. in eine andere setzen
+    function detach(c) {
+        const p = players.get(c.id);
+        if (!p || p.dead) return null;
+        players.delete(c.id);
+        for (let i = kqBombs.length - 1; i >= 0; i--) if (kqBombs[i].owner === p.id) kqBombs.splice(i, 1);
+        for (let i = turrets.length - 1; i >= 0; i--) if (turrets[i].owner === p.id) turrets.splice(i, 1);
+        for (let i = clones.length - 1; i >= 0; i--) if (clones[i].owner === p.id) clones.splice(i, 1);
+        portals.delete(p.id);
+        if (zw && zw.by === p.id) zw = null;
+        for (const m of mobs) if (m.tgt === p.id) m.tgt = null;
+        h.changed();
+        return p;
+    }
+    function attach(c, p, spot) {
+        const now = Date.now();
+        const at = spot && !blocked(spot.x, spot.y, R) ? spot : freeNear(spot ? spot.x : W / 2, spot ? spot.y : H / 2, R + 4) || freeSpot(true);
+        Object.assign(p, {
+            c, x: at.x, y: at.y, mx: 0, my: 0, fire: false, zone: null, smoke: null, extractAt: null, grap: null, kunai: null,
+            phaseUntil: 0, phased: false, jailUntil: 0, invisUntil: 0, doom: null, burn: null, inFire: false, gaze: null,
+            protect: now + 2500 / SPEED, portalAt: now + 3000 / SPEED, lastMove: now
+        });
+        players.set(c.id, p);
+        sendJoined(c);
+        sendInv(p);
+        h.changed();
+    }
+
     // Server faehrt herunter: alle gelten als extrahiert
     function refundAll() {
         for (const p of [...players.values()]) extract(p, true);
@@ -1487,6 +1523,16 @@ module.exports = function createArena(h, opts = {}) {
     function station(p, s, now) {
         // 6.12: Treppe/Luke in den Untergrund und zurueck
         if (s.kind === 'portal') {
+            // Dungeon-Instanzen (25.09.2026): Luke oben -> eigene Instanz, Ausgang unten -> zurueck
+            if (s.dungeon && h.enterDungeon) {
+                if (ctf && ctf.carrier === p.id) return h.send(p.c, { type: 'shEvent', text: '🚩 The flag stays on the surface', kind: 'self' });
+                if (now < (p.portalAt || 0)) return;
+                return h.enterDungeon(p.c, s.dungeon, { key: s.x + ',' + s.y, x: s.x, y: s.y });
+            }
+            if (s.exit && (opts.leaveDungeon || h.leaveDungeon)) {
+                if (now < (p.portalAt || 0)) return h.send(p.c, { type: 'shEvent', text: `🪜 Just arrived – wait ${Math.ceil((p.portalAt - now) / 1000)} s`, kind: 'self' });
+                return (opts.leaveDungeon || h.leaveDungeon)(p.c);
+            }
             if (!s.to) return;
             if (ctf && ctf.carrier === p.id) return h.send(p.c, { type: 'shEvent', text: '🚩 The flag stays on the surface', kind: 'self' });
             if (now < (p.portalAt || 0)) return;
@@ -3254,7 +3300,7 @@ module.exports = function createArena(h, opts = {}) {
             nextCharge: now + 4000, chargeAt: 0, charging: false, chargeEnd: 0, cx: 0, cy: 0, nextStrike: now + 5000
         };
         // Level (nur Extraction, keine Bosse): Ebene bestimmt den Bereich
-        if (mode === 'extract' && !def.boss && !def.zombie) {
+        if (pve && !def.boss && !def.zombie) {
             const [lo, hi] = MOB_LEVELS[regionAt(x, y)] || MOB_LEVELS.surface;
             m.lv = lo + Math.floor(Math.random() * (hi - lo + 1));
             const k = m.lv - 1;
@@ -3456,8 +3502,8 @@ module.exports = function createArena(h, opts = {}) {
             if (killer.account) h.accounts.stat(killer.account, s => { s.npcKills = (s.npcKills || 0) + 1; });
             if (killer.b.bloodlust) killer.hp = Math.min(killer.maxHp, killer.hp + killer.b.bloodlust / 2);
         }
-        if (def.drop && !m.parent && Math.random() < def.drop.chance * (mode === 'extract' ? MOB_DROP_MUL : 1)) {
-            const em = mode === 'extract' ? MOB_EPIC_MUL[regionAt(m.x, m.y)] || 1 : 1;
+        if (def.drop && !m.parent && Math.random() < def.drop.chance * (pve ? MOB_DROP_MUL : 1)) {
+            const em = pve ? MOB_EPIC_MUL[regionAt(m.x, m.y)] || 1 : 1;
             // 6.6 (Max): drei Stufen, die oberste (1 in 50) aus dem Boss-Pool
             if (def.drop.src === 'npcdrop') {
                 const r = Math.random();
@@ -4013,7 +4059,7 @@ module.exports = function createArena(h, opts = {}) {
             m.a = Math.atan2(tgt.y - m.y, tgt.x - m.x);
             // Zombies (6.5.1): um Ecken herum ueber das Wegfeld statt geradeaus
             // 25.09.2026 (Max: Pathfinding mau): in der Extraction laufen alle ueber das Wegfeld
-            const goal = (zb && def.zombie) || def.boss || mode === 'extract' ? zNav(m, tgt, d) : tgt;
+            const goal = (zb && def.zombie) || def.boss || pve ? zNav(m, tgt, d) : tgt;
             if (def.melee) {
                 mobMove(m, goal.x, goal.y, def.chase, dt);
             } else {
@@ -4099,12 +4145,16 @@ module.exports = function createArena(h, opts = {}) {
 
     // 6.12: Untergrund-Bestand. Keller: bekannte Gegner, deutlich staerker;
     // Labor: Monster aus den Tanks. Nachschub nie in Sichtweite von Spielern.
+    // Dungeon-Instanz (25.09.2026): Gegner nachschieben (mehr bei groesserer Party)
+    function dungeonTick(now) {
+        populateUnder(now);
+    }
     function populateUnder(now) {
         for (const g of MAP.regions || []) {
             const U = UNDER_MOBS[g.id];
             if (!U) continue;
             const have = mobs.filter(m => m.under === g.id);
-            if (have.length >= U.n) continue;
+            if (have.length >= U.n + (mode === 'dungeon' ? 4 * Math.max(0, players.size - 1) : 0)) continue;
             const total = U.kinds.reduce((a, [, w]) => a + w, 0);
             let r = Math.random() * total, kind = U.kinds[0][0];
             for (const [kk, w] of U.kinds) if ((r -= w) < 0) { kind = kk; break; }
@@ -4394,6 +4444,7 @@ module.exports = function createArena(h, opts = {}) {
             if (s.fire || s.acid) fires.push({ id: ++seqId, x: s.x, y: s.y, r: s.r * 0.8, until: now + 3500 / SPEED, owner: null, dps: s.acid ? 12 : 18, acid: !!s.acid });
         }
         if (mode === 'extract') eventTick(now, dt);
+        else if (mode === 'dungeon') dungeonTick(now);
         if (pvp) pvpTick(now);
         if (zb) zTick(now, dt);
         if (!(zw && now < zw.until)) nadeTick(now, dt);
@@ -4747,7 +4798,8 @@ module.exports = function createArena(h, opts = {}) {
     }
 
     return {
-        join, leave, input, action, tick, refundAll, hubAction, joinedMsg,
+        join, leave, input, action, tick, refundAll, hubAction, joinedMsg, detach, attach,
+        size: () => players.size, map: MAP,
         startPvp: () => pvpRound(Date.now()), pvpState: () => pvp,
         startZombies: () => zStart(), zState: () => zb,
         has: c => players.has(c.id),
@@ -4761,6 +4813,7 @@ module.exports = function createArena(h, opts = {}) {
 };
 
 module.exports.MAP = MAP;
+module.exports.makeWorld = makeWorld;
 module.exports.blocked = blocked;
 module.exports.slide = WORLD.slide;
 module.exports.WORLD = WORLD;
