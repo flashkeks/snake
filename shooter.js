@@ -1737,8 +1737,18 @@ module.exports = function createArena(h, opts = {}) {
     const nearStationKind = (p, kind) => (MAP.stations || []).find(s2 => s2.kind === kind && Math.hypot(s2.x - p.x, s2.y - p.y) < GUILD_R);
     const tokensOf = c => st(c).tokens || 0;
     const missionOf = p => [...missions.values()].find(m => m.members.has(p.id));
+    // Freischaltung (25.09.2026, Max): erst Easy schaffen, dann Normal, dann Hard.
+    // Wer eine hoehere Stufe schon geschafft hat, hat die darunter auch.
+    function missionOpen(p) {
+        const u = p.account && h.accounts.get(p.account);
+        const s = (u && u.stats) || {};
+        const n = k => s['missions_' + k] || 0;
+        return { easy: true, normal: n('easy') + n('normal') + n('hard') > 0, hard: n('normal') + n('hard') > 0 };
+    }
+    const LOCK_TXT = { normal: '🔒 Clear an Easy contract first', hard: '🔒 Clear a Normal contract first' };
     function missionView(p) {
         return {
+            open: missionOpen(p),
             type: 'msMenu', tokens: tokensOf(p.c), mine: (missionOf(p) || {}).id || null, me: p.id,
             diffs: Object.fromEntries(Object.entries(MISSION_DIFF).map(([k, d]) => [k, { name: d.name, lv: d.lv, tokens: d.tokens, bossHp: d.bossHp, mobs: d.mobs }])),
             kinds: MISSION_KINDS, max: PARTY_MAX, // Bosse bleiben geheim (Max)
@@ -1755,23 +1765,28 @@ module.exports = function createArena(h, opts = {}) {
         if (!at) return h.send(p.c, { type: 'shEvent', text: '📜 Go to a Guild House mission board', kind: 'self' });
         if (d.type === 'msCreate') {
             if (cur) cur.members.delete(p.id);
-            const kind = MISSION_KINDS[d.kind] ? d.kind : 'bunker', diff = MISSION_DIFF[d.diff] ? d.diff : 'normal';
+            const kind = MISSION_KINDS[d.kind] ? d.kind : 'bunker', diff = MISSION_DIFF[d.diff] ? d.diff : 'easy';
+            if (!missionOpen(p)[diff]) return h.send(p.c, { type: 'shEvent', text: LOCK_TXT[diff], kind: 'self' });
             const m = { id: ++missionSeq, host: p.id, kind, diff, members: new Set([p.id]), created: now };
             missions.set(m.id, m);
         } else if (d.type === 'msJoin') {
             const m = missions.get(Number(d.id));
             if (!m) return;
             if (m.members.size >= PARTY_MAX) return h.send(p.c, { type: 'shEvent', text: '👥 That party is full', kind: 'self' });
+            if (!missionOpen(p)[m.diff]) return h.send(p.c, { type: 'shEvent', text: LOCK_TXT[m.diff], kind: 'self' });
             if (cur) cur.members.delete(p.id);
             m.members.add(p.id);
         } else if (d.type === 'msLeave') {
             if (cur) cur.members.delete(p.id);
         } else if (d.type === 'msSet' && cur && cur.host === p.id) {
             if (MISSION_KINDS[d.kind]) cur.kind = d.kind;
-            if (MISSION_DIFF[d.diff]) cur.diff = d.diff;
+            if (MISSION_DIFF[d.diff]) {
+                if (!missionOpen(p)[d.diff]) return h.send(p.c, { type: 'shEvent', text: LOCK_TXT[d.diff], kind: 'self' });
+                cur.diff = d.diff;
+            }
         } else if (d.type === 'msStart' && cur && cur.host === p.id) {
             // alle, die noch im Guild House stehen, gehen mit
-            const go = [...cur.members].map(id => players.get(id)).filter(q => q && !q.dead && inGuild(q.x, q.y, 60));
+            const go = [...cur.members].map(id => players.get(id)).filter(q => q && !q.dead && inGuild(q.x, q.y, 60) && missionOpen(q)[cur.diff]);
             for (const id of cur.members) if (!go.some(q => q.id === id)) { const q = players.get(id); if (q) h.send(q.c, { type: 'shEvent', text: '👥 The party left without you – be inside the Guild House when the host starts', kind: 'self' }); }
             missions.delete(cur.id);
             if (!h.startMission) return;

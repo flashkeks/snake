@@ -3365,6 +3365,8 @@ body.world-arena h1 {
 .sh-guild .gd-quest:nth-child(3n) { transform: rotate(-.4deg); }
 .sh-guild .gd-quest:hover, .sh-guild .gd-note-card:hover { transform: rotate(0) translateY(-3px) scale(1.03); box-shadow: 0 12px 22px rgba(0,0,0,.55); }
 .sh-guild .gd-quest.on { outline: 3px solid #f3d38a; box-shadow: 0 0 0 6px rgba(243,211,138,.25), 0 10px 20px rgba(0,0,0,.5); }
+.sh-guild .gd-quest.gd-locked { filter: grayscale(.85) brightness(.7); cursor: not-allowed; transform: none; }
+.sh-guild .gd-quest.gd-locked small { color: #ffb4a0; font-weight: 700; }
 .sh-guild .gd-quest b, .sh-guild .gd-note-card b { font-size: 14px; color: #3b2412; }
 .sh-guild .gd-quest small, .sh-guild .gd-note-card small { color: #6b4a2a; font-size: 11.5px; font-family: system-ui; }
 .sh-guild .gd-qplace { font-size: 26px; line-height: 1; margin-top: 8px; }
@@ -11312,7 +11314,15 @@ function onGuildRaw(d) {
         const skulls = k => ({ easy: '💀', normal: '💀💀', hard: '💀💀💀' })[k] || '💀';
         const place = k => k === 'lab' ? '🧬' : '🎖️';
         const lvTxt = x => x.lv ? `Enemies ${x.lv > 0 ? '+' : ''}${x.lv} Lv` : 'Enemies normal';
-        const quest = (k, n, dk, x, attrs, on) => `<button type="button" class="gd-quest gd-${dk}${on ? ' on' : ''}" ${attrs}>` +
+        // 25.09.2026 (Max): Stufen schalten sich nacheinander frei
+        const open = d.open || { easy: true, normal: true, hard: true };
+        const lockTxt = { normal: 'Clear an Easy contract first', hard: 'Clear a Normal contract first' };
+        const quest = (k, n, dk, x, attrs, on) => open[dk] === false
+            ? `<button type="button" class="gd-quest gd-${dk} gd-locked" disabled title="${lockTxt[dk] || ''}">` +
+              `<i class="gd-pin"></i><span class="gd-qplace">🔒</span><b>${esc(n)}</b>` +
+              `<span class="gd-skulls">${skulls(dk)}</span><span class="gd-qdiff">${esc(x.name)}</span>` +
+              `<small>${lockTxt[dk] || 'Locked'}</small><span class="gd-reward">+${x.tokens} 🎟️</span></button>`
+            : `<button type="button" class="gd-quest gd-${dk}${on ? ' on' : ''}" ${attrs}>` +
             `<i class="gd-pin"></i><span class="gd-qplace">${place(k)}</span><b>${esc(n)}</b>` +
             `<span class="gd-skulls" title="${esc(x.name)}">${skulls(dk)}</span><span class="gd-qdiff">${esc(x.name)}</span>` +
             `<small>${lvTxt(x)}</small><small>Boss: <b>???</b></small><span class="gd-reward">+${x.tokens} 🎟️</span></button>`;
@@ -11330,7 +11340,7 @@ function onGuildRaw(d) {
             html += `<h5>Pick a contract</h5><div class="gd-quests">${kinds.map(([k, n]) => diffs.map(([dk, x]) => quest(k, n, dk, x, `data-ms="msCreate" data-kind="${k}" data-diff="${dk}"`)).join('')).join('')}</div>`;
         }
         const others = d.list.filter(m => m.id !== d.mine);
-        html += `<h5>Parties looking for members</h5>` + (others.length ? `<div class="gd-open">${others.map(m => `<button type="button" class="gd-note-card" data-ms="msJoin" data-id="${m.id}" ${m.members.length >= d.max ? 'disabled' : ''}><i class="gd-pin"></i><b>👑 ${esc(m.hostName)}</b><small>${place(m.kind)} ${esc(d.kinds[m.kind])}</small><small>${skulls(m.diff)} ${esc(d.diffs[m.diff].name)} · ${m.members.length}/${d.max}</small><span>${m.members.length >= d.max ? 'Full' : 'Join →'}</span></button>`).join('')}</div>` : '<div class="gd-note">No open parties – pin your own contract above.</div>');
+        html += `<h5>Parties looking for members</h5>` + (others.length ? `<div class="gd-open">${others.map(m => `<button type="button" class="gd-note-card" data-ms="msJoin" data-id="${m.id}" ${m.members.length >= d.max || open[m.diff] === false ? 'disabled' : ''}><i class="gd-pin"></i><b>👑 ${esc(m.hostName)}</b><small>${place(m.kind)} ${esc(d.kinds[m.kind])}</small><small>${skulls(m.diff)} ${esc(d.diffs[m.diff].name)} · ${m.members.length}/${d.max}</small><span>${open[m.diff] === false ? '🔒 Locked' : m.members.length >= d.max ? 'Full' : 'Join →'}</span></button>`).join('')}</div>` : '<div class="gd-note">No open parties – pin your own contract above.</div>');
         el.innerHTML = html;
     } else if (d.type === 'gStash') {
         const pack = d.pack.filter(it => !it.s).map(it => `<button type="button" class="ghost tier-${it.t}" data-dep="${esc(it.uid)}" ${d.inv.length >= d.invMax ? 'disabled' : ''}>${card(it)}<b>→ 📦</b></button>`).join('') || '<span class="hint">Your backpack is empty</span>';

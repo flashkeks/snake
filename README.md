@@ -3138,3 +3138,18 @@ die Starre. Jetzt: mindestens 2,5 s zwischen zwei Fähigkeiten, Void hard 20 s /
 Starre 1,3 s und die Einschläge landen erst danach (ausweichbar), Red 10 s, Six Eyes nur noch
 ×0,7 statt ×0,5, nach der Domain-Phase 15 s kein normales Void. Test (hard, nach der Phase,
 60 s): 18 Purple / 5 Void / 9 Red / 12,5 s eingefroren → 11 / 3 / 6 / 4 s.
+
+## 🔒 Missionen schalten sich nacheinander frei (25.09.2026, Max)
+
+„Erst die einfachen geschafft haben, bevor man die besseren machen kann": Easy ist immer offen,
+**Normal** nach einer geschafften Easy-Mission, **Hard** nach einer geschafften Normal-Mission –
+egal ob Bunker oder Labor. Gezählt wird über die vorhandene Konto-Statistik `missions_easy/
+normal/hard` (steigt, wenn man nach dem Boss-Kill das Guild House erreicht); wer schon eine
+höhere Stufe geschafft hat, hat die darunter automatisch offen.
+
+Server (`missionOpen`): Anlegen, Umstellen und Beitreten prüfen die Stufe, beim Start gehen nur
+Mitglieder mit, die die Stufe offen haben. Quest Board: gesperrte Karten grau mit 🔒 und
+Hinweis, Gruppen mit gesperrter Stufe zeigen „🔒 Locked". Neue Aufträge starten auf Easy.
+
+Test (8/8): frisches Konto nur Easy, Hard/Normal abgelehnt, nach Easy geht Normal aber nicht
+Hard, Beitritt in eine Normal-Gruppe ohne Easy abgelehnt, Konto mit Hard-Erfolgen hat alles.
