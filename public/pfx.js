@@ -247,6 +247,221 @@
         legs: [['........................', '........................', '........................', '........................'], ['........................', '........................', '........................', '........................']],
         fly: true, k: .7, glow: { x: 9, y: 6.5, col: '157,107,255' }
     };
+    // ---------- Zombie-Bosse (25.09.2026, Max: „Zombie-Modus fertig im Pixel-Design", Issue #16) ----------
+    // 24 breit wie die Raid-Bosse; Faehigkeiten-Optik (Strahl, Wirbel, Wut) kommt weiter aus zfx.js (zBossAura)
+    S.abomination = {
+        pal: { P: '#b04fff', p: '#7a2ab8', k: '#1a0020', R: '#ff3b3b', m: '#3a0a1a', W: '#f4f0e6', s: '#ff9ad0', H: '#9aa0aa' },
+        body: [
+            '........................',
+            '.........PPPPP..........',
+            '.......PPPPPPPPP........',
+            '......PPpPPPPPPPP.......',
+            '.....PPPPPkRkPPPPP......',
+            '.....PPPPPPPPPPkRkP.....',
+            '....PPPPmmmmmPPPPPPP....',
+            '...PPPPPmWmWmPPPPPPPP...',
+            '..PPsPPPPmmmPPPPsPPPPH..',
+            '..PPPsPPPPPPPPPsPPPPPHH.',
+            '.PPPPPsPPPPPPPsPPPPPPPH.',
+            '.PPpPPPPPPPPPPPPPPpPPPH.',
+            'PPPPPPPPPmmmPPPPPPPPPPP.',
+            'PPPpPPPPmWmWmPPPPPPpPPP.',
+            '.PPPPPPPPmmmPPPPPPPPPP..',
+            '..PPPPPPPPPPPPPPPPPPP...',
+            '...PPPPPPPP..PPPPPPP....'],
+        legs: [['.....ppp.......ppp......', '.....ppp.......ppp......', '....pppp.......pppp.....', '....kkkk.......kkkk.....'], ['....ppp.........ppp.....', '....ppp.........ppp.....', '...pppp.........pppp....', '...kkkk.........kkkk....']],
+        k: .5, glow: { x: 16, y: 5, col: '255,60,60' }
+    };
+    S.necro = {
+        pal: { R: '#1f3a2e', r: '#0f2018', H: '#2a4a3a', B: '#e8e4d8', k: '#111', G: '#7cffb2', g: '#2aff80', S: '#6a4a28', m: '#333', A: '#d8d4c8' },
+        body: [
+            '.....G..................',
+            '....GgG.......BBBB......',
+            '.....S.......BBBBBB.....',
+            '.....S......BkkBBkkB....',
+            '.....S......BkGBBkGB....',
+            '.....S.......BBmBBB.....',
+            '.....S......HHBBBBHH....',
+            '.....S.....HHRRRRRRHH...',
+            '....AS....HRRRRRRRRRRH..',
+            '.....SAA.HRRrRRRRRrRRH..',
+            '.....S.AARRRRRRRRRRRRH..',
+            '.....S..HRRRrRRRRRrRRRH.',
+            '.....S..HRRRRRRRRRRRRRH.',
+            '.....S.HRRRrRRRRRRrRRRH.',
+            '.....S.HRRRRRRRRRRRRRRH.',
+            '.......RrRrRrRrRrRrRrRr.',
+            '........r.r.r.r.r.r.r...'],
+        legs: L2(24), fly: true, k: .52, glow: { x: 5, y: 1, col: '124,255,178' }
+    };
+    S.brood = {
+        pal: { R: '#ff7b3a', r: '#8a3010', Y: '#ffd23f', D: '#3a1a0a', e: '#ff2020', F: '#f4f0e6', L: '#2a1208' },
+        body: [
+            '........................',
+            '...........RRRR.........',
+            '.........RRRRRRRR.......',
+            '........RRrRRRRrRR......',
+            '.......RRRRRRRRRRRR.....',
+            '.......RRrRRYYRRrRRR....',
+            '.......RRRRYRRYRRRRR....',
+            '........RRRRYYRRRRRDDD..',
+            '.........RRRRRRRRDDDDDD.',
+            '..L...L....RRRR..DeDeDD.',
+            '...L.L.L..L.....DDDDDDF.',
+            '....L...LL.L...L..DDD.F.',
+            '...L...L..L.L.L.L.......',
+            '..L...L...L..L...L......',
+            '.L...L....L...L...L.....'],
+        legs: [['.L..L.....L....L...L....', 'L...L.....L.....L...L...', '........................', '........................'], ['..L..L....L...L....L....', '.L...L.....L...L....L...', '........................', '........................']],
+        k: .56, glow: { x: 18, y: 9, col: '255,40,40' }
+    };
+    S.inferno = {
+        pal: { F: '#ff9a2a', Y: '#ffe070', R: '#3a1a10', k: '#ff3a00', L: '#4a2418', O: '#ff5a1e', m: '#ff8a2a', l: '#2a120a' },
+        body: [
+            '.........F.F.F..........',
+            '........FFFFFFF.........',
+            '.......FFYYYYYFF........',
+            '.......RRRRRRRRR........',
+            '.......RkYRRkYRR........',
+            '.......RRRRRRRRR........',
+            '........RRmmmRR.........',
+            '....LLLLRRRRRRRLLLL.....',
+            '...LLLLLLLLLLLLLLLLL....',
+            '..LLLOLLLLLOLLLLLOLLL...',
+            '..LLOOLLLLOOOLLLOOLLL...',
+            '..LLLLLLLLLOLLLLLLLLLL..',
+            '.LLL.LLLOLLLLLLOLLL.LLL.',
+            '.LLL.LLLLLLOLLLLLLL.LLL.',
+            '.YYY.LLLLLLLLLLLLLL.YYY.',
+            '.YY...LLLLL..LLLLL...YY.'],
+        legs: [['.......LLL....LLL.......', '.......LOL....LLL.......', '......lLLL....LLLl......', '......llll....llll......'], ['......LLL......LLL......', '......LLL......LOL......', '.....lLLL......LLLl.....', '.....llll......llll.....']],
+        k: .5, glow: { x: 11, y: 10, col: '255,120,30' }
+    };
+    S.storm = {
+        pal: { Z: '#fff27a', H: '#1a3a5a', e: '#5ad8ff', C: '#2a6a9a', c: '#5ad8ff' },
+        body: [
+            '.......Z.......Z........',
+            '........Z.....Z.........',
+            '.........HHHHH..........',
+            '........HHHHHHH.........',
+            '........HeHHHeH.........',
+            '........HHHHHHH.........',
+            '.........HHHHH..........',
+            '.......CCCCCCCCC........',
+            '.....ZCCCcCCCcCCCZ......',
+            '....Z.CCCCCCCCCCC.Z.....',
+            '......CCCcCCCcCCC..Z....',
+            '.....CCCCCCCCCCCCC......',
+            '.....CCcCCCCCCcCCCC.....',
+            '....CCCCCCCCCCCCCCCC....',
+            '....C.C.C.C.C.C.C.C.....',
+            '...Z...Z...Z...Z...Z....'],
+        legs: L2(24), fly: true, k: .55, glow: { x: 11, y: 4, col: '90,216,255' }
+    };
+    S.overlord = {
+        pal: { V: '#6a2a9a', W: '#f4eaff', I: '#c86bff', P: '#1a001a', r: '#ff3b5a', T: '#8a3ab8' },
+        body: [
+            '........................',
+            '.........VVVVVV.........',
+            '.......VVWWWWWWVV.......',
+            '......VWWWWWWWWWWV......',
+            '.....VWWWWIIIIWWWWV.....',
+            '.....VWWWIIPPIIWWWV.....',
+            '....VWWWIIPPPPIIWWWV....',
+            '....VWrWIIPPPPIIWrWV....',
+            '.....VWWWIIPPIIWWWV.....',
+            '.....VWWWWIIIIWWWWV.....',
+            '......VWWrWWWWrWWV......',
+            '.......VVWWWWWWVV.......',
+            '.........VVVVVV.........',
+            '.......T..T..T..T.......',
+            '......T..T...T...T......',
+            '.....T...T...T....T.....',
+            '....T...T.....T....T....'],
+        legs: L2(24), fly: true, k: .48, glow: { x: 11.5, y: 6.5, col: '200,107,255' }
+    };
+    S.judge = {
+        pal: { B: '#e8e4d8', k: '#111', E: '#7fd8ff', m: '#333', R: '#141418', r: '#2a2a34', W: '#f4f0e6', G: '#8a5a2a', S: '#5a3a20', A: '#e8e4d8' },
+        body: [
+            '.........BBBBBB.........',
+            '........BBBBBBBB........',
+            '........BkkBBkkB........',
+            '........BkEBBkkB........',
+            '........BBBBBBBB........',
+            '.........BmmmmB.........',
+            '..........BBBB..........',
+            '.......RRRWWWWRRR.......',
+            '......RRRRRWWRRRRR......',
+            '.....RRRRRRRRRRRRRR.GGG.',
+            '.....RRrRRRRRRRRrRRAGGG.',
+            '.....RRRRRRRRRRRRRRA.S..',
+            '....RRRrRRRRRRRRrRRRR...',
+            '....RRRRRRRRRRRRRRRRR...',
+            '....RRRRRRRRRRRRRRRRR...',
+            '.....RRRRRR...RRRRRR....'],
+        legs: [['.......BB......BB.......', '.......BB......BB.......', '......BBB......BBB......', '......kkk......kkk......'], ['......BB........BB......', '......BB........BB......', '.....BBB........BBB.....', '.....kkk........kkk.....']],
+        k: .56, glow: { x: 10, y: 3, col: '127,216,255' }
+    };
+    S.seraph = {
+        pal: { Y: '#ffe070', O: '#ffcf3a', k: '#6a3a00', m: '#ff8a2a', F: '#fff4c0', W: '#fffae8', w: '#e8d8a0', R: '#ffcf3a' },
+        body: [
+            '..........YYYY..........',
+            '...F....YYYYYYYY....F...',
+            '..FF...YYOOOOOOYY...FF..',
+            '.FFF..YYOkOOOOkOYY..FFF.',
+            'FFFF..YOOOOOOOOOOY..FFFF',
+            'FFFFF.YOOOOmmOOOOY.FFFFF',
+            'FFFFFFYYOOOOOOOOYYFFFFFF',
+            '.FFFFFFYYOOOOOOYYFFFFFF.',
+            '..FFFFFFYYYYYYYYFFFFFF..',
+            '...FFFFF..WWWW..FFFFF...',
+            '....FFF..WWWWWW..FFF....',
+            '.........WWWWWW.........',
+            '........WWWWWWWW........',
+            '........WwWWWWwW........',
+            '.......WWWWWWWWWW.......',
+            '.........R.R.R..........'],
+        legs: L2(24), fly: true, k: .46, glow: { x: 11.5, y: 4, col: '255,207,58' }
+    };
+    S.omega = {
+        pal: { H: '#ffd23f', V: '#1a0a2e', s: '#ffffff', e: '#b06bff', E: '#d8a8ff' },
+        body: [
+            '.......H.H.H.H.H........',
+            '........HHHHHHHH........',
+            '.........VVVVVV.........',
+            '........VVVVVVVV........',
+            '.......VVeVVVVeVV.......',
+            '.......VVVVVVVVVV.......',
+            '........VVEEEEVV........',
+            '...VV....VVVVVV....VV...',
+            '....VVVVVVVVVVVVVVVV....',
+            '.....VVsVVVVVVVVsVVV....',
+            '......VVVVVsVVVVVVV.....',
+            '......VVVVVVVVVVsVV.....',
+            '.....VVVsVVVVVVVVVVV....',
+            '....VVVVVVVVVVsVVVVVV...',
+            '...VVVVVVVsVVVVVVVVVVV..',
+            '..V.V..V.V..V..V.V..V...'],
+        legs: L2(24), fly: true, k: .47, glow: { x: 11.5, y: 6, col: '176,107,255' }
+    };
+    // Phasen-Adds (Kek Eye: Waechter, Titan: Reaktor)
+    S.watcher = {
+        pal: { V: '#6a2a9a', W: '#f4eaff', I: '#c86bff', P: '#1a001a', T: '#8a3ab8' },
+        body: ['................', '.....VVVVVV.....', '...VVWWWWWWVV...', '..VWWWIIIIWWWV..', '..VWWIIPPIIWWV..', '..VWWIIPPIIWWV..',
+            '..VWWWIIIIWWWV..', '...VVWWWWWWVV...', '.....VVVVVV.....', '......T..T......', '.....T...T......', '.....T....T.....'],
+        legs: L2(16), fly: true, k: 1.3, glow: { x: 7.5, y: 4.5, col: '200,107,255' }
+    };
+    S.reactor = {
+        pal: { M: '#8a929e', m: '#5a626e', G: '#3a4a5a', O: '#ff8a3a', o: '#ffe0a0', D: '#2a2e36' },
+        body: ['................', '.....MMMMMM.....', '....MmmmmmmM....', '....MGGGGGGM....', '....MGOOOOGM....', '....MGOooOGM....',
+            '....MGOooOGM....', '....MGOOOOGM....', '....MGGGGGGM....', '....MmmmmmmM....', '...MMMMMMMMMM...', '...DDDDDDDDDD...'],
+        legs: L2(16), k: 1.3, glow: { x: 7.5, y: 5.5, col: '255,138,58' }
+    };
+    if (typeof B_AURA !== 'undefined') Object.assign(B_AURA, {
+        abomination: 'rgba(176,79,255,.35)', necro: 'rgba(124,255,178,.35)', brood: 'rgba(255,123,58,.3)', inferno: 'rgba(255,90,30,.4)',
+        storm: 'rgba(90,216,255,.35)', overlord: 'rgba(200,107,255,.4)', judge: 'rgba(127,216,255,.3)', seraph: 'rgba(255,207,58,.45)',
+        omega: 'rgba(176,107,255,.45)', watcher: 'rgba(200,107,255,.3)', reactor: 'rgba(255,138,58,.35)'
+    });
     Object.assign(PX, S);
     // Spieler (25.09.2026): Figur in Spielerfarbe, Waffe zeichnet index.html frei drehend dazu
     const shade = (hex, k) => { const n = parseInt(hex.slice(1), 16), f = v => Math.max(0, Math.min(255, Math.round(v * k))); return '#' + [n >> 16, (n >> 8) & 255, n & 255].map(v => f(v).toString(16).padStart(2, '0')).join(''); };

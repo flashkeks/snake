@@ -3153,3 +3153,26 @@ Hinweis, Gruppen mit gesperrter Stufe zeigen „🔒 Locked". Neue Aufträge sta
 
 Test (8/8): frisches Konto nur Easy, Hard/Normal abgelehnt, nach Easy geht Normal aber nicht
 Hard, Beitritt in eine Normal-Gruppe ohne Easy abgelehnt, Konto mit Hard-Erfolgen hat alles.
+
+## 🧟 Zombie-Modus im Pixel-Look (25.09.2026, Max, Issue #16)
+
+Die neun Zombie-Bosse, der Watcher (Kek-Eye-Phase) und der Reaktor (Titan-Phase) waren die
+letzten Gegner ohne Pixel-Sprite. Jetzt in `public/pfx.js`, 24 Pixel breit wie die Raid-Bosse,
+jeder mit eigener Palette und Leucht-Punkt:
+
+| Boss | Figur |
+|---|---|
+| Abomination | violetter Fleischberg mit Nähten, drei Mäulern und Hakenarm, stapft |
+| Lord Morvath | Lich in grüner Kutte mit Knochenstab und Seelenflamme, schwebt |
+| Arachna | orange Riesenspinne mit Musterung, Beine laufen |
+| Ignis | Lava-Riese mit Flammenkrone und glühenden Rissen, stapft |
+| Voltra | Sturmgeist in blauer Robe mit Blitzen, schwebt |
+| The Kek Eye | Riesenauge mit Adern und Tentakeln, schwebt |
+| Judge Bones | Skelett-Richter in schwarzer Robe mit blauem Auge und Hammer |
+| Solaris | Sonnengesicht mit Flügeln und weißer Robe, schwebt |
+| Omega | Nachtschwarze Gestalt voller Sterne mit goldener Krone, schwebt |
+| Watcher / Reactor | kleines Wächterauge / Stahlbehälter mit glühendem Kern |
+
+Strahl, Wirbel, Wut und Phasen-Optik kommen weiter aus `zfx.js` (`zBossAura`, Phasen), nur die
+Figur ist jetzt ein Sprite. Damit hat jeder Gegner im Spiel ein Pixel-Sprite (geprüft über alle
+Einträge in `arena-mobs.js`).
