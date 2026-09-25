@@ -3073,3 +3073,14 @@ und im Tor (40 px Rand, `GUILD_SAFE`, `safeIn`):
 
 Test (5/5, Oberflächen-Karte mit Titan): Ziel verloren nach Betreten, 8 s kein Schaden,
 kein Brennen, Schüsse von drinnen ohne Wirkung, Boss nicht provoziert.
+
+## 🔇 Custom-Sounds aus, Tanya bleibt in der Map (25.09.2026, Max)
+
+- **Custom-Sounds komplett aus** (Max nach Tanya: „zu krank laut"): `VOX_ON = false` in
+  `public/voice.js` – kein Clip spielt mehr, nichts wird geladen, es bleiben die
+  eingebauten Synth-Sounds. Slots und mp3 auf edge bleiben liegen; wieder an mit `VOX_ON = true`.
+- **Tanya flog aus der Map:** Sie hatte als einziger Gegner `fly` und lief damit durch
+  Wände (nur der Kartenrand zählte) – in Dungeons landete sie im Fels außerhalb der Räume.
+  Jetzt blocken Wände auch sie, und sie läuft per Wegfeld (`zNav`) wie die Bosse; `fly` ist
+  nur noch Optik. Test: 60 s Jagd auf der Oberfläche und in je drei Bunker- und Labor-Dungeons –
+  vorher 215 bis 1.406 Ticks in der Wand, jetzt 0.

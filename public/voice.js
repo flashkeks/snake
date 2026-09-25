@@ -5,7 +5,9 @@
 const VOX = { cfg: null, buf: {}, miss: {}, last: {}, lastAny: 0 };
 fetch('/sfx.json').then(r => r.json()).then(j => { VOX.cfg = j; }).catch(() => {});
 
-function voxHas(slot) { return !!(VOX.cfg && VOX.cfg[slot] && !VOX.miss[slot]); }
+// 25.09.2026 (Max: zu krank laut): alle Custom-Sounds aus. Wieder an: VOX_ON = true.
+const VOX_ON = false;
+function voxHas(slot) { return VOX_ON && !!(VOX.cfg && VOX.cfg[slot] && !VOX.miss[slot]); }
 
 function voxLoad(slot) {
     if (VOX.buf[slot] || VOX.miss[slot] || !VOX.cfg || !VOX.cfg[slot]) return null;
@@ -45,7 +47,7 @@ function voxPlay(buf, c, gain) {
     src.stop(t + max + .05);
 }
 // Vorladen, was man gerade in der Hand hat (kein Ruckler beim ersten Schuss)
-function voxWarm(slots) { for (const s of slots) if (s && VOX.cfg && VOX.cfg[s]) voxLoad(s); }
+function voxWarm(slots) { if (!VOX_ON) return; for (const s of slots) if (s && VOX.cfg && VOX.cfg[s]) voxLoad(s); }
 
 // Spezial-Charaktere: Auftritt, Tod, gelegentlich ein Spruch
 const VOX_SEEN = new Map();

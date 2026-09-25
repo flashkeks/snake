@@ -4055,7 +4055,9 @@ module.exports = function createArena(h, opts = {}) {
         const d = Math.hypot(gx - m.x, gy - m.y);
         if (d < 1) return;
         const step = Math.min(d, speed * (m.sp || 1) * (m.enraged ? 1.25 : 1) * dt * (m.slowUntil > Date.now() ? 0.5 : 1));
-        const [nx, ny] = slide(m.x, m.y, (gx - m.x) / d * step, (gy - m.y) / d * step, m.def.r, m.def.fly ? (x, y, r) => world.outside(x, y, r) : mobBlocked);
+        // 25.09.2026 (Max: Tanya buggt aus der Map): fly geht nicht mehr durch Waende, in Dungeons
+        // landete sie so im Fels ausserhalb der Raeume. fly ist nur noch Optik.
+        const [nx, ny] = slide(m.x, m.y, (gx - m.x) / d * step, (gy - m.y) / d * step, m.def.r, mobBlocked);
         const moved = Math.hypot(nx - m.x, ny - m.y);
         m.x = nx;
         m.y = ny;
@@ -4698,7 +4700,7 @@ module.exports = function createArena(h, opts = {}) {
             m.a = Math.atan2(tgt.y - m.y, tgt.x - m.x);
             // Zombies (6.5.1): um Ecken herum ueber das Wegfeld statt geradeaus
             // 25.09.2026 (Max: Pathfinding mau): in der Extraction laufen alle ueber das Wegfeld
-            const goal = def.fly ? tgt : (zb && def.zombie) || def.boss || pve ? zNav(m, tgt, d) : tgt;
+            const goal = (zb && def.zombie) || def.boss || def.fly || pve ? zNav(m, tgt, d) : tgt;
             if (def.melee) {
                 mobMove(m, goal.x, goal.y, def.chase, dt);
             } else {
