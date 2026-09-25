@@ -2933,7 +2933,7 @@ Was auffällt:
 - **Railgun** liegt beim reinen DPS nur auf Platz 16 (248 → 484). Op war sie nicht über
   den Schaden, sondern über Wände + unbegrenzten Durchschlag + 3.000 px sofort. Mit dem
   Nerf bleibt Durchschlag und Reichweite.
-- **Rasengan** (ab Legendary) steht auf Platz 2, über allen Mythics außer keinem Ultra –
+- **Rasengan** (ab Legendary) steht auf Platz 2, über allen Mythics, nur Venuzdonoa (Ultra) liegt drüber –
   die Explosion (2,4) trifft den Dummy zusätzlich zum Direkttreffer. Legendary mit
   Mythic-/Ultra-Schaden.
 - **Spirit Gun, Chainsaw, Nichirin** (alle ab Legendary) liegen ebenfalls über den
