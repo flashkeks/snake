@@ -119,7 +119,9 @@ const MOBS = {
     },
     mustang: {
         special: true, name: 'Roy Mustang', title: 'The Flame Alchemist', icon: '🔥', color: '#3a5bd9', r: 20, hp: 2800,
-        speed: 125, aggro: 900, range: 600, keep: 360, strikes: { n: 1, r: 110, dmg: 90, warn: 700, ms: 3000, spread: 0, fire: true },
+        // 25.09.2026 (Max: Roy stand afk rum): Feuerbolzen, Schnipp-Salven statt Einzelschnipp
+        speed: 125, aggro: 900, range: 600, keep: 360, strikes: { n: 3, r: 105, dmg: 80, warn: 700, ms: 2200, spread: 160, fire: true },
+        gun: { dmg: 18, speed: 720, ms: 1000, burst: 3, spread: 0.18, life: 1.1, burn: 10 },
         xp: 'elite', xpMul: 8, drop: { chance: 1, src: 'boss', n: 3 }
     },
     // ---------- Zombies (4.4): jagen immer den naechsten Spieler, HP wachsen je Welle ----------

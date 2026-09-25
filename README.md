@@ -3116,3 +3116,25 @@ Rest des Spiels (keine Clips):
 Test (7/7, Logik mit nachgebauten Snapshots): Salve einmal, keine Wiederholung derselben
 Kugel, weit weg still, Tod, Knurren, Drossel bei 30 gleichzeitigen Schützen, Spielerkugeln
 ignoriert.
+
+## 🔥 Roy jagt, Gojo spammt nicht mehr (25.09.2026, Max)
+
+**Roy Mustang stand afk rum.** Zwei Ursachen, die Fernkämpfer allgemein betrafen:
+1. Ohne Sichtlinie ließ ein Gegner sein Ziel nach 3,5 s fallen und fand es hinter einer Wand
+   nie wieder. **Specials** (Rick, Gojo, Tanya, Roy) jagen jetzt wie Bosse: Wer in ihrer
+   Reichweite ist, bleibt Ziel bzw. wird gefunden, auch ohne Sichtlinie (Safe Zone ausgenommen).
+2. Fernkämpfer in Reichweite blieben stehen und wichen seitlich aus – auch wenn eine Wand
+   dazwischen war. Jetzt laufen **alle** Fernkämpfer ohne Sichtkontakt (> 0,5 s) übers Wegfeld
+   ran, bis sie wieder freie Schussbahn haben.
+
+Dazu bekommt Roy mehr zu tun: Feuerbolzen (Dreiersalve, setzt in Brand), Schnipp-Salve mit
+drei Einschlägen alle 2,2 s (statt einem alle 3 s), Flammenwand schon ab „normal" (9 s, hard 6 s),
+alle 7 s ein Seitensprung mit Feuerspur. Test (Labor-Dungeon, 30 s, Spieler läuft umher):
+Schaden an den Spieler normal 236 → 410.
+
+**Gojo auf „hard" spammte alles** – besonders nach der Domain-Phase („Six Eyes"): Hollow Purple
+alle ~3 s, Red alle ~6 s, Infinite Void alle ~11 s mit 2,5 s Starre und Einschlägen mitten in
+die Starre. Jetzt: mindestens 2,5 s zwischen zwei Fähigkeiten, Void hard 20 s / normal 26 s,
+Starre 1,3 s und die Einschläge landen erst danach (ausweichbar), Red 10 s, Six Eyes nur noch
+×0,7 statt ×0,5, nach der Domain-Phase 15 s kein normales Void. Test (hard, nach der Phase,
+60 s): 18 Purple / 5 Void / 9 Red / 12,5 s eingefroren → 11 / 3 / 6 / 4 s.

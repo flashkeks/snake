@@ -3766,6 +3766,8 @@ module.exports = function createArena(h, opts = {}) {
         } else if (k === 'void') {
             // Gojo: Domain Expansion – Kuppel, alle drin erstarren, dann Hollow Purple
             m.phaseSeq.push({ at: T(1000), freeze: 560 }, { at: T(2600), purple: true });
+            m.nextVoid = Math.max(m.nextVoid || 0, T(15000));
+            m.gojoBusy = T(5000);
         } else if (k === 'molten') {
             // Ignis: Boden wird Lava ausser auf Inseln, zwei Wellen
             m.phaseSeq.push({ at: T(400), lava: 3 }, { at: T(2700), lava: 2 });
@@ -4433,8 +4435,12 @@ module.exports = function createArena(h, opts = {}) {
             // hard: Red – Rueckstoss-Explosion um ihn herum
             // Six Eyes (nach Domain Expansion, 25.09.2026): Red auf jeder Stufe, Hollow Purple doppelt so oft
             const six = m.phaseKey === 'void';
-            if ((hard || six) && now >= m.nextRed) {
-                m.nextRed = now + cd(7000);
+            // 25.09.2026 (Max: Gojo hard spammt alles): zwischen zwei Faehigkeiten mind. 2,5 s
+            const free = now >= (m.gojoBusy || 0);
+            const used = () => { m.gojoBusy = now + 2500 / SPEED; };
+            if ((hard || six) && free && now >= m.nextRed) {
+                used();
+                m.nextRed = now + cd(10000);
                 fxAt(m.x, m.y, { type: 'shBoom', x: Math.round(m.x), y: Math.round(m.y), r: 320, nuke: false });
                 for (const q of near(m.x, m.y, 320)) {
                     const d = Math.hypot(q.x - m.x, q.y - m.y) || 1;
@@ -4444,22 +4450,25 @@ module.exports = function createArena(h, opts = {}) {
                 tell('🔴 Reversal: Red');
             }
             // Hollow Purple: langsame Riesenkugel
-            if (now >= m.nextPurple) {
-                m.nextPurple = now + cd(10000 * slow * (six ? 0.5 : 1));
+            if (now >= (m.gojoBusy || 0) && now >= m.nextPurple) {
+                used();
+                m.nextPurple = now + cd(10000 * slow * (six ? 0.7 : 1));
                 const a = Math.atan2(tgt.y - m.y, tgt.x - m.x);
                 bullets.push({ id: ++seqId, owner: m.id, x: m.x + Math.cos(a) * (def.r + 30), y: m.y + Math.sin(a) * (def.r + 30), vx: Math.cos(a) * 380, vy: Math.sin(a) * 380, dies: now + 2600 / SPEED, pierce: 99, bounce: 0, hits: new Set(),
                     w: { dmg: 180 * dm, how: 'boss', by, mob: true, big: true, hitR: 50, look: 'purple' }, fx: 1024, tier: 6 });
                 for (const q of near(m.x, m.y, 900)) h.send(q.c, { type: 'shEvent', text: '🟣 Hollow Purple!', kind: 'boss' });
             }
             // Infinite Void: alle in der Naehe erstarren, dann Einschlaege
-            if (!easy && now >= m.nextVoid) {
-                m.nextVoid = now + cd(hard ? 12000 : 18000);
+            if (!easy && now >= (m.gojoBusy || 0) && now >= m.nextVoid) {
+                used();
+                m.nextVoid = now + cd(hard ? 20000 : 26000);
                 fxAt(m.x, m.y, { type: 'shFx', kind: 'void', x: Math.round(m.x), y: Math.round(m.y), r: 650 });
                 for (const q of near(m.x, m.y, 650)) {
-                    if (!(q.aw && q.aw.has('geppo'))) q.jailUntil = now + 2500 / SPEED;
+                    // 1,3 s starr, die Einschlaege landen erst danach – man kann noch raus
+                    if (!(q.aw && q.aw.has('geppo'))) q.jailUntil = now + 1300 / SPEED;
                     h.send(q.c, { type: 'shEvent', text: '♾️ Domain Expansion: Infinite Void', kind: 'boss' });
-                    if (!q.see) h.send(q.c, { type: 'shFlash', ms: 1200 });
-                    for (let k = 0; k < 4; k++) strike(q.x + (Math.random() - 0.5) * 120, q.y + (Math.random() - 0.5) * 120, 90, 70, 1600 + k * 150, 2);
+                    if (!q.see) h.send(q.c, { type: 'shFlash', ms: 900 });
+                    for (let k = 0; k < 4; k++) strike(q.x + (Math.random() - 0.5) * 120, q.y + (Math.random() - 0.5) * 120, 90, 70, 1900 + k * 150, 2);
                 }
             }
         } else if (m.kind === 'tanya') {
@@ -4474,15 +4483,27 @@ module.exports = function createArena(h, opts = {}) {
             }
         } else if (m.kind === 'mustang') {
             if (!m.nextRing) m.nextRing = now + cd(8000);
-            // hard: Flammenwand in Richtung Ziel, dreifacher Schnipp
-            if (hard && now >= (m.nextWall || 0)) {
+            // Flammenwand in Richtung Ziel (25.09.2026: ab normal, hard oefter)
+            if (!easy && now >= (m.nextWall || 0)) {
                 if (m.nextWall) {
                     const a = Math.atan2(tgt.y - m.y, tgt.x - m.x);
                     for (let k = 1; k <= 7; k++) fires.push({ id: ++seqId, x: m.x + Math.cos(a) * k * 90, y: m.y + Math.sin(a) * k * 90, r: 60, until: now + 4000 / SPEED, owner: null, dps: 45 * dm });
                     for (let k = 0; k < 2; k++) strike(tgt.x + (Math.random() - .5) * 200, tgt.y + (Math.random() - .5) * 200, 110, 90, 700 + k * 200, 1, true);
                     tell('🔥 Flame Alchemy!');
                 }
-                m.nextWall = now + cd(6000);
+                m.nextWall = now + cd(hard ? 6000 : 9000);
+            }
+            // Seitensprung (25.09.2026): weicht zur Seite aus, wo er stand brennt es
+            if (now >= (m.nextDash || 0)) {
+                if (m.nextDash) {
+                    const a = Math.atan2(tgt.y - m.y, tgt.x - m.x) + (Math.random() < 0.5 ? 1 : -1) * Math.PI / 2;
+                    const d = 200 + Math.random() * 80, x = m.x + Math.cos(a) * d, y = m.y + Math.sin(a) * d;
+                    if (!mobBlocked(x, y, def.r) && clear(m.x, m.y, x, y)) {
+                        for (let k = 0; k <= 3; k++) fires.push({ id: ++seqId, x: m.x + (x - m.x) * k / 3, y: m.y + (y - m.y) * k / 3, r: 45, until: now + 3000 / SPEED, owner: null, dps: 20 * dm });
+                        m.x = x; m.y = y;
+                    }
+                }
+                m.nextDash = now + cd(easy ? 10000 : 7000);
             }
             if (!easy && now >= m.nextRing) {
                 m.nextRing = now + cd(hard ? 9000 : 15000);
@@ -4564,7 +4585,17 @@ module.exports = function createArena(h, opts = {}) {
             if (tgt && safeIn(tgt)) { tgt = m.tgt = null; m.provoked = 0; }
             if (tgt && mobSees(m, tgt, now, def.aggro * 1.5)) m.seen = now;
             // Bosse (6.6) verfolgen laenger und laufen per Wegfeld um Ecken statt aufzugeben
-            else if (tgt && now - m.seen > (def.boss ? 9000 : 3500)) tgt = m.tgt = null;
+            else if (tgt && now - m.seen > (def.boss ? 9000 : 3500) && !(def.special && Math.hypot(tgt.x - m.x, tgt.y - m.y) < def.aggro * 1.5 && !tgt.dead)) tgt = m.tgt = null;
+            // Specials (25.09.2026, Max: Roy stand afk rum): jagen wie Bosse – wer in Reichweite ist,
+            // wird auch ohne Sichtlinie gefunden (Wegfeld fuehrt um die Waende), Safe Zone ausgenommen
+            if (!tgt && def.special) {
+                let best = null, bd = def.aggro;
+                for (const q of players.values()) {
+                    const d = Math.hypot(q.x - m.x, q.y - m.y);
+                    if (d < bd && !q.dead && now >= q.protect && !safeIn(q)) { best = q; bd = d; }
+                }
+                if (best) { m.tgt = best.id; tgt = best; }
+            }
             if (!tgt) {
                 let best = null, bd = def.aggro;
                 for (const q of players.values()) {
@@ -4713,7 +4744,10 @@ module.exports = function createArena(h, opts = {}) {
                 mobMove(m, goal.x, goal.y, def.chase, dt);
             } else {
                 const keep = def.keep || 200, range = def.range || def.aggro;
-                if (d > range * 0.9 || goal !== tgt) mobMove(m, goal.x, goal.y, def.speed * 1.1 * (provoked ? BOSS_SPRINT : 1), dt);
+                // 25.09.2026 (Max: Roy stand afk rum): ohne Sichtlinie nicht stehen bleiben, sondern
+                // ueber das Wegfeld ran, bis wieder freie Schussbahn ist
+                const blind = now - m.seen > 500;
+                if (d > range * 0.9 || goal !== tgt || blind) mobMove(m, goal.x, goal.y, def.speed * 1.1 * (provoked ? BOSS_SPRINT : 1), dt);
                 else if (d < keep) mobMove(m, m.x - (tgt.x - m.x), m.y - (tgt.y - m.y), def.speed, dt);
                 else {
                     // seitlich ausweichen
