@@ -449,10 +449,12 @@ function rollLevel(m) {
 }
 
 // Ein neues Item aus einer Quelle
-function generate(sourceId) {
+// epicMul (25.09.2026): Gegner-Beute an der Oberflaeche und im Keller wuerfelt
+// Epic und hoeher seltener (Gewichte ab Stufe 3 mal epicMul, der Rest verteilt sich)
+function generate(sourceId, epicMul = 1) {
     const src = SOURCES[sourceId];
     const kind = pickWeighted(Object.entries(src.kinds));
-    const tier = pickWeighted(src.t.map((w, i) => [i, w]).filter(([, w]) => w > 0));
+    const tier = pickWeighted(src.t.map((w, i) => [i, i >= 3 ? w * epicMul : w]).filter(([, w]) => w > 0));
     const base = pickBase(kind, tier, src);
     const mods = [];
     if (kind === 'weapon' || kind === 'armor') {

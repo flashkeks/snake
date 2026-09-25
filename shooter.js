@@ -72,6 +72,15 @@ const SILENT_MS = 90e3;
 const BAG_LIFE_LEFT = Math.max(BAG_LIFE, 2 * 60e3);
 // Gegner (4.1): so viele laufen herum, geweckt nur in der Naehe von Spielern
 const MOB_BASE = 45, MOB_PER_PLAYER = 8, MOB_MAX = 120;
+// 25.09.2026 (Max: Gegner droppen zu viel, mit Railgun zu einfach): Dropchance
+// aller normalen Gegner halbiert, Seltenheiten bleiben. Dazu Gegner-Level je
+// Ebene: HP/Schaden steigen innerhalb der Ebene mit dem Level (zusaetzlich zu den
+// Ebenen-Faktoren in UNDER_MOBS), XP steigen mit dem Level. Oberflaeche und Keller
+// wuerfeln Epic und hoeher bei Gegner-Beute nur halb so oft, das Labor wie bisher.
+const MOB_DROP_MUL = 0.5;
+const MOB_LEVELS = { surface: [1, 10], bunker: [20, 30], lab: [40, 50] };
+const MOB_LV_HP = 0.06, MOB_LV_DMG = 0.04, MOB_LV_XP = 0.05;
+const MOB_EPIC_MUL = { surface: 0.5, bunker: 0.5, lab: 1 };
 const MOB_WAKE = 1700;
 const MIL_RESPAWN = 5 * 60e3;
 // Untergrund (6.12, Max: Gegner dort „gerne deutlich staerker")
@@ -3051,6 +3060,14 @@ module.exports = function createArena(h, opts = {}) {
             nextRing: now + 6000, nextSlam: now + 8000, slamAt: 0, nextSummon: now + 6000,
             nextCharge: now + 4000, chargeAt: 0, charging: false, chargeEnd: 0, cx: 0, cy: 0, nextStrike: now + 5000
         };
+        // Level (nur Extraction, keine Bosse): Ebene bestimmt den Bereich
+        if (mode === 'extract' && !def.boss && !def.zombie) {
+            const [lo, hi] = MOB_LEVELS[regionAt(x, y)] || MOB_LEVELS.surface;
+            m.lv = lo + Math.floor(Math.random() * (hi - lo + 1));
+            const k = m.lv - lo;
+            m.hp = m.maxHp = Math.round(m.maxHp * (1 + MOB_LV_HP * k));
+            m.dm = 1 + MOB_LV_DMG * k;
+        }
         mobs.push(m);
         return m;
     }
@@ -3228,17 +3245,18 @@ module.exports = function createArena(h, opts = {}) {
         }
         if (m.kind === 'enforcer') enforcerAt.push(now + ENFORCER_RESPAWN / SPEED);
         if (killer) {
-            award(killer, L.XP[def.xp] * (def.xpMul || 1), def.name.toLowerCase());
+            award(killer, L.XP[def.xp] * (def.xpMul || 1) * (1 + MOB_LV_XP * ((m.lv || 1) - 1)), m.lv ? `${def.name.toLowerCase()} lv ${m.lv}` : def.name.toLowerCase());
             if (killer.account) h.accounts.stat(killer.account, s => { s.npcKills = (s.npcKills || 0) + 1; });
             if (killer.b.bloodlust) killer.hp = Math.min(killer.maxHp, killer.hp + killer.b.bloodlust / 2);
         }
-        if (def.drop && !m.parent && Math.random() < def.drop.chance) {
+        if (def.drop && !m.parent && Math.random() < def.drop.chance * (mode === 'extract' ? MOB_DROP_MUL : 1)) {
+            const em = mode === 'extract' ? MOB_EPIC_MUL[regionAt(m.x, m.y)] || 1 : 1;
             // 6.6 (Max): drei Stufen, die oberste (1 in 50) aus dem Boss-Pool
             if (def.drop.src === 'npcdrop') {
                 const r = Math.random();
                 const g = r < 1 / 50 ? 3 : r < 1 / 50 + 1 / 8 ? 2 : 1;
-                dropBag(m.x, m.y, Array.from({ length: def.drop.n }, () => I.generate(g === 3 ? 'boss' : g === 2 ? 'npcrare' : 'npcdrop')), 'mob' + g);
-            } else dropBag(m.x, m.y, Array.from({ length: def.drop.n }, () => I.generate(def.drop.src)));
+                dropBag(m.x, m.y, Array.from({ length: def.drop.n }, () => I.generate(g === 3 ? 'boss' : g === 2 ? 'npcrare' : 'npcdrop', em)), 'mob' + g);
+            } else dropBag(m.x, m.y, Array.from({ length: def.drop.n }, () => I.generate(def.drop.src, em)));
         }
         fxAt(m.x, m.y, { type: 'shFx', kind: 'mobdie', x: Math.round(m.x), y: Math.round(m.y), icon: def.icon });
     }
@@ -3812,7 +3830,7 @@ module.exports = function createArena(h, opts = {}) {
                 const m = spawnMob(kind, x, y, now);
                 m.under = g.id;
                 m.hp = m.maxHp = Math.round(m.maxHp * U.hp);
-                m.dm = U.dmg;
+                m.dm = (m.dm || 1) * U.dmg;
                 m.sp = U.spd;
                 break;
             }
@@ -3875,7 +3893,7 @@ module.exports = function createArena(h, opts = {}) {
                         const m = spawnMob(kind, pt.x + (k % 2 ? 28 : -28), pt.y + Math.floor(k / 2) * 30, now);
                         m.under = 'bunker';
                         m.hp = m.maxHp = Math.round(m.maxHp * U.hp);
-                        m.dm = U.dmg;
+                        m.dm = (m.dm || 1) * U.dmg;
                         m.sp = U.spd;
                         m.patrol = { id, i: i0, dir, off: (k - 1.5) * 26, t: now, until: now + PATROL_LIFE / SPEED };
                     });
@@ -4378,7 +4396,7 @@ module.exports = function createArena(h, opts = {}) {
                 hz: hz.list.length ? hz.view(now) : undefined,
                 strikes: strikes.filter(s => inView(s.x, s.y)).map(s => [s.id, Math.round(s.x), Math.round(s.y), s.r, Math.max(0, Math.round(s.at - now)), s.total, s.look || 0]),
                 mobs: mobs.filter(m => !m.def.boss && inView(m.x, m.y)).map(m => [m.id, m.kind, Math.round(m.x), Math.round(m.y), Math.max(0, Math.round(m.hp)), m.maxHp, Math.round(m.a * 100) / 100, m.aimAt ? Math.max(0, Math.round(m.aimAt - now)) : 0,
-                    m.chargeAt ? Math.max(0, Math.round(m.chargeAt - now)) : 0, m.charging ? 1 : 0, Math.round(m.cx || 0), Math.round(m.cy || 0), m.charm ? 1 : 0]),
+                    m.chargeAt ? Math.max(0, Math.round(m.chargeAt - now)) : 0, m.charging ? 1 : 0, Math.round(m.cx || 0), Math.round(m.cy || 0), m.charm ? 1 : 0, m.lv || 0]),
                 portals: portals.size ? [...portals.values()].flatMap(pr => [pr.a ? [Math.round(pr.a.x), Math.round(pr.a.y), 0, pr.b ? 1 : 0] : null, pr.b ? [Math.round(pr.b.x), Math.round(pr.b.y), 1, pr.a ? 1 : 0] : null]).filter(x => x && inView(x[0], x[1])) : undefined,
                 turrets: turrets.length ? turrets.filter(t => inView(t.x, t.y)).map(t => [t.id, Math.round(t.x), Math.round(t.y), Math.round(t.a * 100) / 100, Math.max(0, Math.round(t.until - now))]) : undefined,
                 drop: drop ? [Math.round(drop.x), Math.round(drop.y), Math.max(0, Math.round(drop.at - now)), drop.landed ? 1 : 0] : null,

@@ -1,5 +1,15 @@
 [
   {
+    "version": "6.14",
+    "date": "25.09.2026",
+    "items": [
+      "📉 Enemies drop items half as often",
+      "🎚️ Enemies have levels now: surface 1–10, military base 20–30, lab 40–50 – higher level, tougher enemy, more XP",
+      "💎 Enemy loot on the surface and in the military base rolls Epic and better half as often – the lab stays as it was",
+      "🌩️ Fix: the Tesla effect now also jumps between raid enemies and zombies (it only worked against players)"
+    ]
+  },
+  {
     "version": "6.13.2",
     "date": "25.09.2026",
     "items": [
@@ -8,8 +18,7 @@
       "🌸 Senbonzakura: a ring of blades shreds everyone close and eats bullets – fire to send the swarm out",
       "🦖 Titan Shift: press R once per raid to become a Titan for 15 s",
       "⏱️ Za Warudo: stop time for 4 s · 👥 Kage Bunshin: three shadow clones fight with you",
-      "🔨 Mjölnir and 🤜 Gum-Gum got their own look in flight",
-      "🌩️ Fix: the Tesla effect now also jumps between raid enemies and zombies (it only worked against players)"
+      "🔨 Mjölnir and 🤜 Gum-Gum got their own look in flight"
     ]
   },
   {
