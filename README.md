@@ -2481,3 +2481,16 @@ Nachtrag 6.12.1 (Max: „Stalker zu op, man kann ihn nicht hitten, wenn er an ei
   Pro Item ein Beutel (Quelle `boss`, Legendary+ 0,4 % je Item). Ansage und Kill-Feed
   nennen die echte Zahl; „Sovereign loot" in der Boss-Ansage -> „big loot" (seit 6.10.1
   nicht mehr Sovereign). Test: je Boss 12 Kills, Anzahl immer im Bereich.
+- **Untergrund-Events** (Max: „im Militaer- und Laborbereich sollen Events passieren"):
+  - *Containment Breach* (Labor): alle 2,5–5 min, wenn jemand im Labor ist, wird ein
+    intakter DNA-Tank 250–900 px von einem Spieler gewaehlt. 3,5 s Warnung (Ansage an
+    alle im Labor, Tank blinkt rot mit Rissen – Snapshot `tanks: [[deco-Index, 1|2]]`),
+    dann platzt er: 2–3 Monster (10 % Failed Experiment). Nach 6 min ist der Tank wieder voll.
+  - *Patrouille* (Keller): alle 3–5 min, wenn jemand im Keller ist und keine Patrouille
+    laeuft, startet ein Trupp (Enforcer + 3 Scav/Sniper, Keller-Staerke) auf einem
+    Punkt der Route, der ≥ 1000 px von allen Spielern weg ist. Route (`B.route`,
+    34 Punkte) schlaengelt durch alle 12 Raeume ueber die Tueren; Sandsaecke auf der
+    Route werden beim Bauen entfernt. Ohne Ziel folgt der Trupp der Route (hin und
+    zurueck), sieht er jemanden, kaempft er. Nach 6 min loest er sich auf (normale Gegner).
+  - Test: Breach mit Zeitsprung – Warnung, Snapshot `[[71,1]]`, danach 3 Monster aus
+    dem Tank; Patrouille startet, laeuft ueber Tueren durch 6 Wegpunkte und wendet am Ende.

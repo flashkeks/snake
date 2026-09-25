@@ -76,6 +76,10 @@ const UNDER_MOBS = {
     lab: { n: 13, hp: 1, dmg: 1, spd: 1, kinds: [['mutant', 40], ['stalker', 26], ['horror', 24], ['hulk', 10]], max: { hulk: 2 } }
 };
 const UNDER_CRATE_RESPAWN = 4 * 60e3;
+// Untergrund-Events (6.12.3, Max): Labor – ein Tank bricht auf und Monster kommen
+// raus; Keller – ein Trupp Soldaten patrouilliert durch die Raeume
+const BREACH_EVERY = [150e3, 300e3], BREACH_WARN = 3500, BREACH_REFILL = 6 * 60e3;
+const PATROL_EVERY = [180e3, 300e3], PATROL_LIFE = 6 * 60e3;
 const PORTAL_CD = 1500;
 const ENFORCERS = 4, ENFORCER_RESPAWN = 3 * 60e3;
 // Stationen: Sani heilt voll gegen Scrap, Haendler kauft und verkauft
@@ -3138,6 +3142,8 @@ module.exports = function createArena(h, opts = {}) {
             }
         } else {
             m.aimAt = 0;
+            // 6.12.3: Patrouille im Keller laeuft ihre Route
+            if (m.patrol && patrolStep(m, def, now, dt)) return;
             // umherlaufen: Bosse ueber die ganze Map, andere um ihr Zuhause
             if (Math.hypot(m.tx - m.x, m.ty - m.y) < 40) {
                 if (def.boss) {
@@ -3212,6 +3218,89 @@ module.exports = function createArena(h, opts = {}) {
         }
     }
 
+    // ---------- Untergrund-Events (6.12.3) ----------
+    const labTanks = (MAP.deco || []).map((d, i) => d[2] === 'tank' ? i : -1).filter(i => i >= 0);
+    const tankState = new Map();     // deco-Index -> { warnUntil, brokenUntil }
+    let nextBreachAt = 0, nextPatrolAt = 0, patrolSeq = 0;
+    const inRegion = id => [...players.values()].filter(p => !p.dead && regionAt(p.x, p.y) === id);
+    const tellRegion = (id, text, kind) => { for (const p of inRegion(id)) h.send(p.c, { type: 'shEvent', text, kind }); };
+    function underEvents(now) {
+        if (!MAP.regions) return;
+        // Labor: Tank reisst auf
+        const lab = inRegion('lab');
+        for (const [i, t] of tankState) {
+            if (t.warnUntil && now >= t.warnUntil) {
+                t.warnUntil = 0;
+                t.brokenUntil = now + BREACH_REFILL / SPEED;
+                const [x, y] = MAP.deco[i];
+                fxAt(x, y, { type: 'shBoom', x, y, r: 110, nuke: false });
+                const n = 2 + (Math.random() < 0.45 ? 1 : 0);
+                for (let k = 0; k < n; k++) {
+                    const r = Math.random();
+                    const kind = r < 0.1 ? 'hulk' : r < 0.45 ? 'mutant' : r < 0.75 ? 'stalker' : 'horror';
+                    const a = k / n * Math.PI * 2 + Math.random();
+                    const m = spawnMob(kind, x + Math.cos(a) * 85, y + Math.sin(a) * 85, now);
+                    m.under = 'lab';
+                    m.breach = true;
+                }
+                tellRegion('lab', '🧬 The tank burst open!', 'boss');
+            } else if (t.brokenUntil && now >= t.brokenUntil) tankState.delete(i);
+        }
+        if (lab.length) {
+            if (!nextBreachAt) nextBreachAt = now + randIn(BREACH_EVERY) / SPEED;
+            if (now >= nextBreachAt) {
+                const cand = labTanks.filter(i => !tankState.has(i) && lab.some(p => { const d = Math.hypot(p.x - MAP.deco[i][0], p.y - MAP.deco[i][1]); return d > 250 && d < 900; }));
+                if (cand.length) {
+                    const i = cand[Math.floor(Math.random() * cand.length)];
+                    tankState.set(i, { warnUntil: now + BREACH_WARN / SPEED, brokenUntil: 0 });
+                    tellRegion('lab', '⚠️ CONTAINMENT BREACH – a tank is cracking!', 'boss');
+                    nextBreachAt = now + randIn(BREACH_EVERY) / SPEED;
+                } else nextBreachAt = now + 20e3 / SPEED;
+            }
+        }
+        // Keller: Patrouille
+        const bunker = inRegion('bunker');
+        const B = MAP.regions.find(g => g.id === 'bunker');
+        const active = mobs.some(m => m.patrol && m.hp > 0);
+        if (bunker.length && B && B.route && !active) {
+            if (!nextPatrolAt) nextPatrolAt = now + randIn(PATROL_EVERY) / SPEED;
+            if (now >= nextPatrolAt) {
+                const starts = B.route.map((pt, i) => i).filter(i => bunker.every(p => Math.hypot(p.x - B.route[i].x, p.y - B.route[i].y) > 1000));
+                if (starts.length) {
+                    const i0 = starts[Math.floor(Math.random() * starts.length)];
+                    const U = UNDER_MOBS.bunker, id = ++patrolSeq, dir = Math.random() < 0.5 ? 1 : -1;
+                    ['enforcer', 'scav', 'scav', Math.random() < 0.5 ? 'sniper' : 'scav'].forEach((kind, k) => {
+                        const pt = B.route[i0];
+                        const m = spawnMob(kind, pt.x + (k % 2 ? 28 : -28), pt.y + Math.floor(k / 2) * 30, now);
+                        m.under = 'bunker';
+                        m.hp = m.maxHp = Math.round(m.maxHp * U.hp);
+                        m.dm = U.dmg;
+                        m.sp = U.spd;
+                        m.patrol = { id, i: i0, dir, off: (k - 1.5) * 26, t: now, until: now + PATROL_LIFE / SPEED };
+                    });
+                    tellRegion('bunker', '🎖️ A patrol is sweeping the base – stay out of sight!', 'boss');
+                    nextPatrolAt = now + randIn(PATROL_EVERY) / SPEED;
+                } else nextPatrolAt = now + 20e3 / SPEED;
+            }
+        }
+    }
+    // Patrouille laufen lassen (aus mobTick, wenn der Gegner niemanden jagt)
+    function patrolStep(m, def, now, dt) {
+        const B = MAP.regions.find(g => g.id === 'bunker');
+        const P = m.patrol;
+        if (now > P.until) { m.patrol = null; m.home = { x: m.x, y: m.y }; return false; }
+        const pt = B.route[P.i];
+        const tx = pt.x + P.off * 0.6, ty = pt.y + P.off * 0.3;
+        if (Math.hypot(tx - m.x, ty - m.y) < 45 || now - P.t > 12000 / SPEED) {
+            if (P.i + P.dir < 0 || P.i + P.dir >= B.route.length) P.dir = -P.dir;
+            P.i += P.dir;
+            P.t = now;
+        }
+        mobMove(m, tx, ty, def.speed * 0.7, dt);
+        m.a = Math.atan2(ty - m.y, tx - m.x);
+        return true;
+    }
+
     // Capture the Flag (6.9)
     function ctfTick(now) {
         if (!nextCtfAt) nextCtfAt = now + randIn(CTF_EVERY) / SPEED;
@@ -3273,6 +3362,7 @@ module.exports = function createArena(h, opts = {}) {
         }
         if (bossId === null && now >= nextBossAt) spawnBoss(now);
         populate(now);
+        underEvents(now);
         gridMobs();
         // Nur Gegner in der Naehe von Spielern denken und laufen
         const plist = [...players.values()];
@@ -3528,6 +3618,7 @@ module.exports = function createArena(h, opts = {}) {
                     };
                 }),
                 bullets: bullets.filter(b => inView(b.x, b.y)).map(b => b.w.look ? [b.id, Math.round(b.x), Math.round(b.y), Math.round(b.vx), Math.round(b.vy), b.owner, b.fx, b.tier, b.w.look] : [b.id, Math.round(b.x), Math.round(b.y), Math.round(b.vx), Math.round(b.vy), b.owner, b.fx, b.tier]),
+                tanks: tankState.size && regionAt(p.x, p.y) === 'lab' ? [...tankState].map(([i, t]) => [i, t.warnUntil ? 1 : 2]) : undefined,
                 crates: crates.filter(cr => inView(cr.x, cr.y)).map(cr => [cr.id, cr.x, cr.y, now >= cr.readyAt ? 1 : 0, cr.t === 'mil' ? 1 : cr.t === 'bunker' ? 2 : cr.t === 'lab' ? 3 : 0, cr.g || 0]),
                 bags: bags.filter(b => inView(b.x, b.y)).map(b => [b.id, Math.round(b.x), Math.round(b.y), b.items.length, b.kind === 'boss' ? 2 : b.kind === 'drop' ? 1 : b.kind === 'mob1' ? 3 : b.kind === 'mob2' ? 4 : b.kind === 'mob3' || b.kind === 'ctf' ? 5 : 0]),
                 // Events sieht jeder, egal wo (Karte und Pfeil am Rand)

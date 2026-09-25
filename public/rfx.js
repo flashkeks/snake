@@ -260,10 +260,14 @@ function rWall(c, g, x, y, w, h) {
 }
 
 // ---------- Deko im Untergrund ----------
-function rDeco(c, m, cam, vw, vh, now) {
-    for (const d of m.deco || []) {
+// tanks: Map deco-Index -> 1 (reisst gerade) | 2 (geplatzt), 6.12.3 Containment Breach
+function rDeco(c, m, cam, vw, vh, now, tanks) {
+    (m.deco || []).forEach((d, i) => rDecoOne(c, d, cam, vw, vh, now, tanks && tanks.get(i)));
+}
+function rDecoOne(c, d, cam, vw, vh, now, tstate) {
+    {
         const [x, y, kind, w, h] = d;
-        if (x < cam.x - 200 || x > cam.x + vw + 200 || y < cam.y - 200 || y > cam.y + vh + 200) continue;
+        if (x < cam.x - 200 || x > cam.x + vw + 200 || y < cam.y - 200 || y > cam.y + vh + 200) return;
         const p = .5 + .5 * Math.sin(now / 400 + x * .01 + y * .013);
         if (kind === 'sandbag') {
             c.fillStyle = 'rgba(0,0,0,.35)';
@@ -376,7 +380,33 @@ function rDeco(c, m, cam, vw, vh, now) {
                 c.fill();
             }
         } else if (kind === 'tank' || kind === 'tankb') {
-            rTank(c, x, y, kind === 'tankb', now);
+            rTank(c, x, y, kind === 'tankb' || tstate === 2, now);
+            if (tstate === 1) {
+                // reisst gleich: rotes Blinken, Risse, Alarmring
+                const b = .5 + .5 * Math.sin(now / 70);
+                const gr = c.createRadialGradient(x, y, 20, x, y, 110);
+                gr.addColorStop(0, `rgba(255,40,40,${.35 + .35 * b})`);
+                gr.addColorStop(1, 'rgba(255,40,40,0)');
+                c.fillStyle = gr;
+                c.beginPath();
+                c.arc(x, y, 110, 0, Math.PI * 2);
+                c.fill();
+                c.strokeStyle = `rgba(255,230,230,${.6 + .4 * b})`;
+                c.lineWidth = 2;
+                for (let k = 0; k < 5; k++) {
+                    const a = k * 1.3 + 0.4;
+                    c.beginPath();
+                    c.moveTo(x + Math.cos(a) * 8, y + Math.sin(a) * 8);
+                    c.lineTo(x + Math.cos(a + .3) * 22, y + Math.sin(a + .3) * 22);
+                    c.lineTo(x + Math.cos(a) * 36, y + Math.sin(a) * 36);
+                    c.stroke();
+                }
+                c.strokeStyle = `rgba(255,60,60,${.8 * b})`;
+                c.lineWidth = 4;
+                c.beginPath();
+                c.arc(x, y, 48 + b * 10, 0, Math.PI * 2);
+                c.stroke();
+            }
         }
     }
 }

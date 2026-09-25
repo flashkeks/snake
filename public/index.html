@@ -12539,7 +12539,7 @@ function shFrame() {
         c.fillStyle = w < 90 && h < 90 ? '#5f6671' : '#51627c';
         c.fillRect(x, y, w, 5);
     }
-    rDeco(c, m, shCam, viewW, viewH, now);
+    rDeco(c, m, shCam, viewW, viewH, now, latest.tanks ? new Map(latest.tanks) : null);
     c.strokeStyle = reg.id === 'lab' ? '#29c6a0' : reg.id === 'bunker' ? '#d8a820' : '#ff5bd6';
     c.lineWidth = 8;
     c.strokeRect(reg.x + 4, reg.y + 4, reg.w - 8, reg.h - 8);

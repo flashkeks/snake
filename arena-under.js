@@ -39,11 +39,14 @@ function buildUnder(surface) {
 
     // ---------- Ebene -1: Militaerstuetzpunkt, 4 × 3 Raeume, jeder mit jedem Nachbarn verbunden ----------
     const cols = 4, rows = 3, cw = B.w / cols, rh = B.h / rows, DOOR = 120;
+    // Tuermitten (fuer die Patrouillen-Route, 6.12.3): dv[c][r] zwischen Spalte c-1|c, dh[r][c] zwischen Zeile r-1|r
+    const dv = {}, dh = {};
     for (let c = 1; c < cols; c++) {
         const x = B.x + c * cw - T / 2;
         for (let r = 0; r < rows; r++) {
             const y0 = B.y + r * rh, at = y0 + 120 + rand() * (rh - 240 - DOOR);
             walls.push([x, y0, T, at - y0], [x, at + DOOR, T, y0 + rh - at - DOOR]);
+            dv[c + ',' + r] = { x: Math.round(x + T / 2), y: Math.round(at + DOOR / 2) };
         }
     }
     for (let r = 1; r < rows; r++) {
@@ -51,6 +54,7 @@ function buildUnder(surface) {
         for (let c = 0; c < cols; c++) {
             const x0 = B.x + c * cw, at = x0 + 120 + rand() * (cw - 240 - DOOR);
             walls.push([x0, y, at - x0, T], [at + DOOR, y, x0 + cw - at - DOOR, T]);
+            dh[r + ',' + c] = { x: Math.round(at + DOOR / 2), y: Math.round(y + T / 2) };
         }
     }
     const room = (c, r) => ({ x: B.x + c * cw, y: B.y + r * rh, w: cw, h: rh, cx: B.x + (c + .5) * cw, cy: B.y + (r + .5) * rh });
@@ -168,6 +172,41 @@ function buildUnder(surface) {
     const labUp = { kind: 'portal', dir: 'up', level: -2, x: Math.round(lx + L.w / 2), y: Math.round(ly + L.h / 2), dest: B.name };
     link(down, labUp);
     stations.push(down, labUp);
+
+    // Patrouillen-Route im Keller (6.12.3): Schlange durch alle Raeume, ueber die
+    // Tueren (davor/dahinter je ein Punkt, damit keiner an der Wand klebt)
+    const snake = [];
+    for (let r = 0; r < rows; r++) for (let k = 0; k < cols; k++) snake.push([r % 2 ? cols - 1 - k : k, r]);
+    const route = [];
+    snake.forEach(([c, r], i) => {
+        const R = room(c, r);
+        route.push({ x: Math.round(R.cx + (c % 2 ? 60 : -60)), y: Math.round(R.cy + (r % 2 ? -110 : 110)) });
+        const nx = snake[i + 1];
+        if (!nx) return;
+        if (nx[1] === r) {
+            const d = dv[Math.max(c, nx[0]) + ',' + r], s = nx[0] > c ? 1 : -1;
+            route.push({ x: d.x - s * 70, y: d.y }, { x: d.x + s * 70, y: d.y });
+        } else {
+            const d = dh[nx[1] + ',' + c];
+            route.push({ x: d.x, y: d.y - 70 }, { x: d.x, y: d.y + 70 });
+        }
+    });
+    B.route = route;
+    // Sandsaecke, die auf der Route liegen, fliegen raus (sonst bleibt der Trupp haengen)
+    const onRoute = (x, y, w, h) => route.some((p, i) => {
+        const q = route[i + 1];
+        if (!q) return false;
+        const n = Math.ceil(Math.hypot(q.x - p.x, q.y - p.y) / 10);
+        for (let k = 0; k <= n; k++) if (circleRect(p.x + (q.x - p.x) * k / n, p.y + (q.y - p.y) * k / n, 34, [x, y, w, h])) return true;
+        return false;
+    });
+    for (let i = deco.length - 1; i >= 0; i--) {
+        const d = deco[i];
+        if (d[2] !== 'sandbag' || !onRoute(d[0], d[1], d[3], d[4])) continue;
+        deco.splice(i, 1);
+        const wi = walls.findIndex(w => Math.round(w[0]) === d[0] && Math.round(w[1]) === d[1] && Math.round(w[2]) === d[3] && Math.round(w[3]) === d[4]);
+        if (wi >= 0) walls.splice(wi, 1);
+    }
 
     return {
         regions: [B, L],
