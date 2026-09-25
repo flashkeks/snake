@@ -2945,3 +2945,25 @@ Was auffällt:
 - **Killer Queen** zählt ohne Zünden (Taste R), der echte Wert liegt deutlich höher.
 - **Schrotflinten, Burst rifle, Double barrel**: auf 300 px geht der Großteil der Kugeln
   daneben (Papier 129 → Simulation 42). Aus der Nähe viel stärker.
+
+### Zombie-Bosse: HP wachsen je Welle (25.09.2026, Max)
+
+Anlass: Avalon hat Omega (Wave 40) mit einer Railgun (PaP 5) in ~8 s gekillt. Das lag
+nicht an der Railgun, sondern daran, dass Pack-a-Punch 5 jede Waffe ~×18,5 macht und die
+Boss-HP bis Wave 45 nur von der Boss-Sorte abhingen. Mythic-Uniques schafften Omega in
+2–3 s. Max hat sich für Boss-HP je Welle entschieden, nicht für schwächeres PaP.
+
+Neu: `zBossWaveHp(wave) = 1 + 0,1 × (wave − 5)`, zusätzlich zu Runde (`cycle`) und
+Schwierigkeit (`zd.hp`). Wave 5 ×1, Wave 20 ×2,5, Wave 40 ×4,5. Solo, Normal, Zeit bis
+zum Kill mit den DPS-Werten aus dem Test oben:
+
+| Welle | Boss | HP alt | HP neu | Railgun + PaP 5 | Gate of Babylon + PaP 5 | Rifle + PaP 5 |
+|---|---|---:|---:|---:|---:|---:|
+| 5 | Abomination | 3.700 | 3.700 | 0,4 s | 0,1 s | 0,9 s |
+| 10 | Lord Morvath | 7.200 | 10.800 | 1,2 s | 0,4 s | 2,8 s |
+| 20 | Ignis | 16.500 | 41.250 | 5,1 s | 1,6 s | 11,7 s |
+| 30 | Judge Bones | 27.000 | 94.500 | 10,5 s | 3,3 s | 24,1 s |
+| 40 | Omega | 48.000 | 216.000 | 28,1 s (vorher 6,3) | 8,8 s | 64,9 s |
+| 50 | Abomination (Runde 2) | 8.140 | 44.770 | 5,0 s | 1,5 s | 11,4 s |
+
+Ohne Spieler-Skills gerechnet; Boss hunter, Headshots usw. machen es schneller.

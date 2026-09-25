@@ -495,6 +495,7 @@ const zDmg = w => 1 + 0.06 * (w - 1);
 const Z_PTS_MUL = 0.4;
 // Schaden an Zombie-Bossen nach Entfernung des Schuetzen (6.12.3)
 const Z_BOSS_NEAR = 500, Z_BOSS_FAR = 1400, Z_BOSS_MIN = 0.3;
+const zBossWaveHp = wave => 1 + 0.1 * Math.max(0, wave - 5);
 const zBossFalloff = d => d <= Z_BOSS_NEAR ? 1 : Math.max(Z_BOSS_MIN, 1 - (1 - Z_BOSS_MIN) * (d - Z_BOSS_NEAR) / (Z_BOSS_FAR - Z_BOSS_NEAR));
 const Z_PTS_PER_DMG = 0.35 * Z_PTS_MUL, Z_PTS_KILL = 30 * Z_PTS_MUL;
 // Kugel-Optik der Zombie-Bosse (tier-Feld der Kugel, 1024 = Boss-Kugel)
@@ -3165,7 +3166,10 @@ module.exports = function createArena(h, opts = {}) {
             const m = spawnMob(kind, s.x, s.y, now);
             // Bullet-Hell-Bosse (6.9, Max): keine kleinen Mobs, nur der Boss
             if (m.def.pattern) zb.toSpawn = 0;
-            m.hp = m.maxHp = Math.round(m.maxHp * (1 + 1.2 * cycle) * zd.hp);
+            // 25.09.2026 (Max: Avalon killt Omega in Wave 40 mit PaP-Railgun in 8 s): Boss-HP
+            // wachsen je Welle um 10 % der Grundmenge (Wave 5 ×1, Wave 20 ×2,5, Wave 40 ×4,5),
+            // weil Pack-a-Punch bis ×18,5 bringt, die Bosse bis Wave 45 aber gleich blieben
+            m.hp = m.maxHp = Math.round(m.maxHp * (1 + 1.2 * cycle) * zd.hp * zBossWaveHp(zb.wave));
             m.dm = zDmg(zb.wave) * zd.dmg;
             m.sp = (1 + 0.1 * cycle) * zd.spd;
             m.bossIdx = idx;
