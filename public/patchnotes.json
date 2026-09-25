@@ -9,7 +9,8 @@
       "👑 Raid bosses drop loot by difficulty: easy ones 1–2 items, the toughest up to 5",
       "🧬 Lab event: containment breach – tanks crack open and monsters break out",
       "🎖️ Military base event: patrols sweep through the rooms",
-      "🔬 Analyser: fused items now show the odds of the original drop – what fuse added is listed separately"
+      "🔬 Fused items keep the odds of their original drop – the Analyser lists what fuse added separately",
+      "⚗️ Fusing raises an item's score by half of what the result would be worth as a natural drop"
     ]
   },
   {

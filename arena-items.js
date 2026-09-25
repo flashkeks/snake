@@ -465,13 +465,17 @@ function fuse(main, others, rnd = Math.random) {
         }
     }
     mods.sort((a, b) => b.lvl - a.lvl);
-    const f = finish({ kind: main.kind, base: main.base, tier: main.tier, mods });
-    // 25.09.2026 (Max): der Analyser soll die Drop-Chance des Originals zeigen,
-    // nicht so tun, als waere das gefuste Ergebnis so gedroppt. `drop` merkt sich
-    // die Effekte beim ersten Fuse und bleibt danach unveraendert, `fused` zaehlt
-    // die gefressenen Items. Vor diesem Stand gefuste Items haben kein `drop`.
+    // 25.09.2026 (Max): Odds zeigen immer die Drop-Chance des Originals, nicht so,
+    // als waere das gefuste Ergebnis so gedroppt. `drop` merkt sich die Effekte
+    // beim ersten Fuse und bleibt danach unveraendert, `fused` zaehlt die
+    // gefressenen Items. Vor diesem Stand gefuste Items haben kein `drop`.
+    // Score: Original plus die Haelfte dessen, was das Ergebnis nativ mehr wert
+    // waere (Max: 26,6k -> 33k statt 40k bei Sharp 1 -> 2).
     const drop = main.drop || (main.mods || []).map(m => ({ id: m.id, lvl: m.lvl }));
-    return { item: { ...main, mods, drop, fused: (main.fused || 0) + others.length, odds: f.odds, score: f.score }, log };
+    const o = finish({ kind: main.kind, base: main.base, tier: main.tier, mods: drop });
+    const f = finish({ kind: main.kind, base: main.base, tier: main.tier, mods });
+    const score = Math.round(o.score + Math.max(0, f.score - o.score) / 2);
+    return { item: { ...main, mods, drop, fused: (main.fused || 0) + others.length, odds: o.odds, score }, log };
 }
 
 // Vom Admin gebaut: beliebige Basis, Stufe und Mods
