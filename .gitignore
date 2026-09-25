@@ -3,3 +3,4 @@ data/
 highscores.json
 highscores.json.tmp
 *.bak-*
+package-lock.json
