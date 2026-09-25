@@ -366,3 +366,6 @@ module.exports = function createGyms(h) {
 
     return { handle, GYMS, ZONES, FRAG_PER_PACK };
 };
+
+// Fuer die Achievements (25.09.2026): welche Gyms es gibt
+module.exports.GYM_IDS = GYMS.map(g => g.id);

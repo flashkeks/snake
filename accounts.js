@@ -552,7 +552,7 @@ module.exports = function createAccounts(dataDir) {
             const a = u.arena || { inv: [], loadout: {}, scrap: 0 };
             return {
                 inventory: u.inventory || [], equipped: u.equipped || {}, rig: u.rig || {},
-                arena: { inv: a.inv.map(it => ({ ...it, sv: arenaItems.salvageValue(it) })), loadout: a.loadout, scrap: a.scrap, prog: a.prog || null, level: a.prog ? arenaLevel.levelOf(a.prog.xp).level : 1 }
+                arena: { inv: a.inv.map(it => ({ ...it, sv: arenaItems.salvageValue(it) })), loadout: a.loadout, scrap: a.scrap, creative: !!a.creative, prog: a.prog || null, level: a.prog ? arenaLevel.levelOf(a.prog.xp).level : 1 }
             };
         },
 
@@ -625,7 +625,7 @@ module.exports = function createAccounts(dataDir) {
                 const defs = kind === 'weapon' ? I.WEAPONS : kind === 'armor' ? I.ARMORS : kind === 'util' ? I.UTILS : kind === 'pack' ? I.PACKS : null;
                 if (!defs || !defs[base]) return 'unknown base';
                 const count = Math.max(1, Math.min(50, Math.floor(Number(d.count)) || 1));
-                if (a.inv.length + count > I.INV_MAX) return `stash full (${a.inv.length}/${I.INV_MAX})`;
+                if (a.inv.length + count > I.invMaxOf(a)) return `stash full (${a.inv.length}/${I.invMaxOf(a)})`;
                 const mdefs = kind === 'weapon' ? I.WEAPON_MODS : I.ARMOR_MODS;
                 const mods = kind === 'weapon' || kind === 'armor' ? (Array.isArray(d.mods) ? d.mods : [])
                     .filter(m => mdefs[m.id]).slice(0, 6)
@@ -648,6 +648,9 @@ module.exports = function createAccounts(dataDir) {
                 a.scrap = v;
             } else if (op === 'clear') {
                 a.inv = [];
+            } else if (op === 'creative') {
+                // 25.09.2026 (Max): Creative Mode – im Raid unverwundbar, Item-Menue (Taste C)
+                a.creative = !!d.on;
             } else if (op === 'xp') {
                 // Arena-Level (4.0): Gesamt-XP setzen; Punkte ueber dem neuen Level verfallen
                 const v = Math.floor(Number(d.set));
@@ -656,7 +659,7 @@ module.exports = function createAccounts(dataDir) {
                 a.prog.xp = v;
                 const pts = arenaLevel.pointsOf(a.prog);
                 if (pts.statFree < 0) a.prog.stats = {};
-                for (const [m, free] of Object.entries(pts.skillFree)) if (free < 0) a.prog.trees[m].skills = {};
+                for (const [m, free] of Object.entries(pts.skillFree)) if (free < 0) arenaLevel.treeOf(a.prog, m).skills = {};
             } else return 'unknown op';
             // Loadout zeigt nie auf Geloeschtes
             const l = a.loadout || {};

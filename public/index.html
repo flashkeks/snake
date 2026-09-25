@@ -3309,6 +3309,99 @@ body.world-arena h1 {
     font-size: 13px;
 }
 
+/* Guild House (25.09.2026) */
+.sh-guild { border-color: #ffaa50; box-shadow: 0 0 40px rgba(255,170,80,.3); }
+.sh-guild h5 { color: #ffaa50; }
+.sh-guild .st-grid button small { color: #9aa7b8; font-size: 11px; }
+.sh-guild .st-grid button.on { background: rgba(255,170,80,.3); border-color: #ffaa50; }
+.sh-guild .st-grid button.gd-easy { border-color: rgba(0,214,122,.6); }
+.sh-guild .st-grid button.gd-hard { border-color: rgba(255,91,91,.7); }
+.sh-guild .gd-party { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sh-guild .gd-party span:not(.hint) { padding: 3px 9px; border-radius: 9px; background: rgba(255,255,255,.08); }
+.sh-guild .gd-row { display: flex; gap: 8px; align-items: center; margin: 10px 0 4px; }
+
+/* Creative Mode */
+.sh-creative { border-color: #5bffb0; box-shadow: 0 0 40px rgba(91,255,176,.3); width: min(900px, 94%); max-height: 78%; }
+.sh-creative .st-head button { padding: 4px 10px; }
+.sh-creative .cr-diffs { flex-wrap: wrap; }
+.sh-creative .cr-tile { display: flex; gap: 3px; }
+.sh-creative .cr-tile > button:first-child { flex: 1; min-width: 0; }
+.sh-creative .cr-tile > button:first-child span { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.sh-creative .cr-tile > button:not(:first-child) { width: 30px; padding: 0; background: rgba(91,255,176,.15); border: 1px solid rgba(91,255,176,.5); color: #5bffb0; }
+.sh-creative .cr-tile small { color: #ffd23f; font-size: 10px; }
+.sh-creative .st-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.sh-creative .cr-diffs button.on span { color: #111; }
+.sh-creative .cr-tile svg.gi { width: 2em; height: 2em; }
+
+/* Guild-Panels im Holz-Look, Quest Board (25.09.2026, Max: „bissl schicker") */
+.sh-guild.gd-wood {
+    background:
+        repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 2px, transparent 2px 46px),
+        linear-gradient(90deg, rgba(0,0,0,.08), rgba(255,255,255,.03) 50%, rgba(0,0,0,.08)),
+        linear-gradient(#5a3b22, #4a2f1a);
+    border: 6px solid #2e1c0e;
+    outline: 2px solid #b8893e;
+    outline-offset: -10px;
+    box-shadow: 0 18px 60px rgba(0,0,0,.7), inset 0 0 60px rgba(0,0,0,.45);
+    color: #f3e7c6;
+    padding: 18px 20px;
+    width: min(860px, 94%);
+}
+.sh-guild.gd-wood .st-head b { font-family: Georgia, 'Times New Roman', serif; font-size: 22px; color: #f3d38a; text-shadow: 0 2px 0 #1f1208; letter-spacing: .5px; }
+.sh-guild.gd-wood .st-head span { color: #e6d3a6; }
+.sh-guild.gd-wood h5 { font-family: Georgia, serif; font-size: 15px; color: #f3d38a; margin: 16px 0 8px; border-bottom: 1px solid rgba(216,168,74,.35); padding-bottom: 4px; }
+.sh-guild.gd-wood .ghost { background: rgba(0,0,0,.25); border-color: rgba(216,168,74,.5); color: #f3d38a; }
+.sh-guild .gd-chip { display: inline-block; padding: 2px 10px; margin-right: 8px; border-radius: 999px; background: #2e1c0e; border: 1px solid #b8893e; color: #f3d38a; font-weight: 700; }
+.sh-guild .gd-quests { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 12px; }
+.sh-guild .gd-quest, .sh-guild .gd-note-card {
+    position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 16px 10px 12px; color: #3b2412; font-family: Georgia, serif;
+    background: radial-gradient(ellipse at 30% 20%, #fbf1d6, #ead6a4 70%, #d9bf85);
+    border: none; border-radius: 3px;
+    box-shadow: 0 6px 14px rgba(0,0,0,.45), inset 0 0 18px rgba(120,80,30,.25);
+    transform: rotate(-1deg); transition: transform .12s, box-shadow .12s;
+}
+.sh-guild .gd-quest:nth-child(3n+2) { transform: rotate(1.2deg); }
+.sh-guild .gd-quest:nth-child(3n) { transform: rotate(-.4deg); }
+.sh-guild .gd-quest:hover, .sh-guild .gd-note-card:hover { transform: rotate(0) translateY(-3px) scale(1.03); box-shadow: 0 12px 22px rgba(0,0,0,.55); }
+.sh-guild .gd-quest.on { outline: 3px solid #f3d38a; box-shadow: 0 0 0 6px rgba(243,211,138,.25), 0 10px 20px rgba(0,0,0,.5); }
+.sh-guild .gd-quest b, .sh-guild .gd-note-card b { font-size: 14px; color: #3b2412; }
+.sh-guild .gd-quest small, .sh-guild .gd-note-card small { color: #6b4a2a; font-size: 11.5px; font-family: system-ui; }
+.sh-guild .gd-qplace { font-size: 26px; line-height: 1; margin-top: 8px; }
+.sh-guild .gd-skulls { font-size: 15px; letter-spacing: 1px; }
+.sh-guild .gd-qdiff { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; }
+.sh-guild .gd-easy .gd-qdiff { color: #2f7a3e; }
+.sh-guild .gd-normal .gd-qdiff { color: #9a6a12; }
+.sh-guild .gd-hard .gd-qdiff { color: #a3262f; }
+.sh-guild .gd-hard { background: radial-gradient(ellipse at 30% 20%, #fbe9d6, #e7c6a0 70%, #cf9f78); }
+.sh-guild .gd-reward { margin-top: 6px; padding: 2px 10px; border-radius: 999px; background: #3b2412; color: #f3d38a; font: 700 12px system-ui; }
+.sh-guild .gd-pin { position: absolute; top: 4px; left: 50%; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ff8a8a, #a3262f 70%); box-shadow: 0 2px 3px rgba(0,0,0,.5); }
+.sh-guild .gd-contract { margin-top: 10px; padding: 14px; border-radius: 6px; background: rgba(0,0,0,.25); border: 1px solid rgba(216,168,74,.4); }
+.sh-guild .gd-chead { display: flex; gap: 12px; align-items: center; }
+.sh-guild .gd-chead > span { font-size: 34px; }
+.sh-guild .gd-chead b { font-family: Georgia, serif; font-size: 18px; color: #f3d38a; display: block; }
+.sh-guild .gd-chead small { color: #e6d3a6; }
+.sh-guild .gd-party { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.sh-guild .gd-seal { display: flex; align-items: center; gap: 6px; padding: 4px 12px 4px 4px; border-radius: 999px; background: rgba(0,0,0,.3); color: #f3e7c6; font-weight: 600; }
+.sh-guild .gd-seal i { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-style: normal; font-weight: 800; color: #fbe2c0; background: radial-gradient(circle at 35% 35%, #d2454f, #7d1720); box-shadow: inset 0 -2px 0 rgba(0,0,0,.35); }
+.sh-guild .gd-seal.host i { background: radial-gradient(circle at 35% 35%, #f3d38a, #9a6a12); color: #3b2412; }
+.sh-guild .gd-seal.empty { opacity: .45; }
+.sh-guild .gd-seal.empty i { background: rgba(255,255,255,.12); }
+.sh-guild .gd-row { display: flex; gap: 10px; align-items: center; margin: 14px 0 6px; }
+.sh-guild .gd-start { font: 800 16px Georgia, serif; padding: 10px 26px; color: #fbe2c0; border: 2px solid #3b0d10; border-radius: 8px; background: linear-gradient(#c43a44, #7d1720); box-shadow: 0 4px 0 #3b0d10, 0 8px 18px rgba(0,0,0,.45); text-shadow: 0 1px 0 #3b0d10; }
+.sh-guild .gd-start:hover { filter: brightness(1.12); }
+.sh-guild .gd-start:active { transform: translateY(3px); box-shadow: 0 1px 0 #3b0d10; }
+.sh-guild .gd-note { color: #d9c49a; font-size: 13px; }
+.sh-guild .gd-open { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.sh-guild .gd-note-card span { margin-top: 4px; font: 700 12px system-ui; color: #a3262f; }
+.sh-guild.gd-wood .st-grid button { background: rgba(0,0,0,.28); border-color: rgba(216,168,74,.45); border-radius: 6px; }
+.sh-guild.gd-wood .st-grid button:hover { background: rgba(216,168,74,.18); }
+.sh-guild.gd-wood .hint { color: #d9c49a; }
+@media (max-width: 640px) { .sh-guild .gd-quests { grid-template-columns: repeat(2, 1fr); } }
+/* Missions-Tod: Uebersicht */
+.sh-result .shr-mission { margin: 6px 0 2px; font-family: Georgia, serif; color: #f3d38a; font-size: 15px; }
+.sh-result .shr-saved h5 { color: #8cffaa; }
+
 /* Vorschlags-Knopf unter den Patch Notes */
 .suggest-btn {
     width: 100%;
@@ -4011,6 +4104,9 @@ body.world-arena h1 {
 }
 
 .tier-common { --tc: #cfd8e3; }
+/* Item-Icons (game-icons.net, CC BY 3.0) */
+svg.gi.gu { fill: #000; width: 1.7em; height: 1.7em; vertical-align: -.45em; overflow: visible; filter: drop-shadow(0 2px 2px rgba(0,0,0,.6)); }
+.it-ico svg.gi, .ri-big svg.gi, .co-item svg.gi, .shr-it svg.gi { width: 1.15em; height: 1.15em; vertical-align: -.18em; }
 .tier-uncommon { --tc: #7dffb0; }
 .tier-rare { --tc: #3da5ff; }
 .tier-epic { --tc: #b884ff; }
@@ -6588,7 +6684,7 @@ body.watch-mode #world-switch {
                     <div class="cs-tabs" id="hub-tabs">
                         <button type="button" data-hubtab="play" data-group="modes">🎮 Game Modes</button>
                         <button type="button" data-hubtab="inv" data-group="inv">🎒 Inventory</button>
-                        <button type="button" data-hubtab="fuse">🔥 Fuse</button>
+                        <button type="button" data-hubtab="profile" id="hub-skills-tab">🌳 Skills</button>
                         <button type="button" data-hubtab="cases">🎁 Cases</button>
                         <button type="button" data-hubtab="shop">🛒 Shop</button>
                     </div>
@@ -6961,7 +7057,7 @@ body.watch-mode #world-switch {
             </form>
         </div>
         <div class="panel" id="patchnotes">
-            <h2>📝 Patch notes</h2>
+            <h2 id="pn-head">📝 Patch notes</h2>
             <div id="pn-list"></div>
             <button type="button" id="suggest-btn" class="suggest-btn">💡 Suggest an improvement</button>
             <div class="msg" id="suggest-msg"></div>
@@ -6976,8 +7072,12 @@ const $ = id => document.getElementById(id);
 
 const status = $('status');
 
-// Patch notes (public/patchnotes.json): neueste offen, der Rest zugeklappt
-fetch('patchnotes.json').then(r => r.json()).then(list => {
+// Patch notes (public/patchnotes.json): neueste offen, der Rest zugeklappt.
+// 25.09.2026 (Max): vorerst ausgeblendet, werden spaeter ueberarbeitet – nicht loeschen.
+// Wieder an: SHOW_PATCHNOTES = true. Der Vorschlags-Knopf im selben Kasten bleibt sichtbar.
+const SHOW_PATCHNOTES = false;
+if (!SHOW_PATCHNOTES) { $('pn-head').hidden = true; $('pn-list').hidden = true; }
+if (SHOW_PATCHNOTES) fetch('patchnotes.json').then(r => r.json()).then(list => {
     $('pn-list').innerHTML = list.map((p, i) => `<details ${i === 0 ? 'open' : ''}><summary>Version ${esc(p.version)}<small>${esc(p.date)}</small></summary>` +
         `<ul>${p.items.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>`).join('');
 }).catch(() => { $('patchnotes').hidden = true; });
@@ -7195,6 +7295,8 @@ ws.onmessage = event => {
         case 'trInvite': case 'trState': case 'trClosed': case 'trDone': case 'trInfo': onTrade(data); break;
         case 'pvpError': showMsg('hub-msg', data.error, 'err'); break;
         case 'shTrader': onShTrader(data); break;
+        case 'msMenu': case 'gStash': case 'gInsure': onGuild(data); break;
+        case 'crMenu': crDraw(true); break;
         case 'arError': showMsg('hub-msg', data.error, 'err'); break;
         case 'shopOk': onShopOk(data); break;
         case 'shopRot': onShopRot(data.rot); break;
@@ -7591,6 +7693,8 @@ document.addEventListener('keydown', e => {
     }
     if (sh) {
         if (shTraderOpen) onShTrader({ close: true });
+        else if (guildOpen) onGuild({ close: true });
+        else if (crOpen) crDraw(false);
         else if (shInvOpen) shInvToggle(false);
         return;
     }
@@ -10460,10 +10564,21 @@ function itemDef(it) {
     return (k === 'weapon' ? arenaCat.weapons : k === 'armor' ? arenaCat.armors : k === 'pack' ? arenaCat.packs : arenaCat.utils)[b] || {};
 }
 
+// 25.09.2026: Uniques als eigene Grafik (public/unique-icons.js), normale Items bleiben Emoji
+// (Max: game-icons „sehen arsch aus"). Fuer Canvas/Text: itemIconTxt.
 function itemIcon(it) {
+    if (!arenaCat || !it) return '❔';
+    const b = itBase(it);
+    // Nur Uniques bekommen eigene Grafiken (public/unique-icons.js), der Rest bleibt Emoji (Max)
+    if (typeof UNIQUE_SVG !== 'undefined' && UNIQUE_SVG[b]) return `<svg class="gi gu" viewBox="0 0 64 64" aria-hidden="true">${UNIQUE_SVG[b]}</svg>`;
+    return itemDef(it).icon || '❔';
+}
+function itemIconTxt(it) {
     if (!arenaCat || !it) return '❔';
     return itemDef(it).icon || '❔';
 }
+// Katalog-Eintrag (Shop, Haendler, Slots) ohne echtes Item
+const defIcon = (kind, base) => itemIcon({ kind, base, tier: (arenaCat.tiers[((kind === 'util' ? arenaCat.utils : kind === 'pack' ? arenaCat.packs : arenaCat.weapons)[base] || {}).tier || 0] || {}).id });
 
 function modDefs(it) {
     return itKind(it) === 'armor' ? arenaCat.armorMods : arenaCat.weaponMods;
@@ -10527,6 +10642,28 @@ const INNATE_TEXT = { homing: l => `bullets curve towards enemies${l > 1 ? ' (st
     multishot: l => `+${l} extra bullets` };
 
 // Alles zu einem Item (Tooltip, Detail)
+// Lager-Upgrade (25.09.2026): +25 Plaetze je Stufe, Coins UND Scrap
+function invMaxNow() {
+    return (hub && hub.invMax) || arenaCat.invMax;
+}
+function invUpButton() {
+    const U = arenaCat.invUp;
+    if (!U || !hub) return '';
+    const n = (hub.invUp || 0) + 1, cost = U.costs[n - 1];
+    if (!cost) return '<span class="hint">📦 stash fully upgraded</span>';
+    const short = x => x >= 1e6 ? (x / 1e6).toFixed(x >= 1e7 ? 0 : 1) + 'M' : x >= 1e3 ? Math.round(x / 1e3) + 'k' : String(x);
+    const can = (hub.coins || 0) >= cost.coins && (hub.scrap || 0) >= cost.scrap;
+    return ` <button type="button" class="${can ? '' : 'ghost'}" data-invup="1" title="Stash upgrade ${n}/${U.max}: +${U.step} slots">📦 +${U.step} slots · ${short(cost.coins)} 🪙 + ${short(cost.scrap)} ⚙️</button>`;
+}
+
+// Waffen-Level (25.09.2026) – gleiche Kurve wie arena-items.js weaponLevel
+function wLevel(it) {
+    const W = arenaCat.wlv, xp = it.wxp || 0, need = lv => Math.round(W.base * Math.pow(lv - 1, W.exp));
+    let lv = 1;
+    while (lv < W.max && xp >= need(lv + 1)) lv++;
+    return { lv, xp, from: need(lv), to: lv < W.max ? need(lv + 1) : null, dmg: 1 + W.dmg * (lv - 1), rate: 1 + W.rate * W.milestones.filter(m => lv >= m).length };
+}
+
 function itemDetail(it) {
     const k = itKind(it), def = itemDef(it);
     const bonus = arenaCat.tierBonus[tierIdx(itTier(it))] || 0;
@@ -10537,18 +10674,36 @@ function itemDetail(it) {
     let s = `<div class="tip-head tier-${itTier(it)}"><span class="it-ico">${itemIcon(it)}</span><div><b>${esc(it.name || it.n)}</b>` +
         `<small class="it-tier">${tierName(itTier(it))}${odds > 1 ? ` · 1 in ${odds.toLocaleString('en-US')}` : ''}${sc ? ` · ⚡ ${scoreText(sc)}` : ''}</small></div></div>`;
     if (k === 'weapon') {
-        const dmg = def.dmg * (1 + bonus) * (1 + L('sharp') * 0.12), rate = 1000 / (def.ms / (1 + L('rapid') * 0.1)), pel = def.pellets + L('multishot');
+        const wl = arenaCat.wlv ? wLevel(it) : { lv: 1, dmg: 1, rate: 1, to: null };
+        const dmg = def.dmg * (1 + bonus) * (1 + L('sharp') * 0.12) * wl.dmg, rate = 1000 / (def.ms / (1 + L('rapid') * 0.1) / wl.rate), pel = def.pellets + L('multishot');
         if (def.unique) s += `<div class="set-box unique-box"><b>✦ Unique</b><small>${esc(def.desc || '')}</small></div>`;
+        if (def.awake) s += `<div class="set-box ${wl.lv >= arenaCat.wlv.awake ? 'unique-box' : ''}"><b>${wl.lv >= arenaCat.wlv.awake ? '✦ Awakened' : '🔒 Awakens at level ' + arenaCat.wlv.awake}</b><small>${esc(def.awake)}</small></div>`;
+        if (arenaCat.wlv && !it.starter && !it.s) {
+            const pct = wl.to ? Math.round((wl.xp - wl.from) / (wl.to - wl.from) * 100) : 100;
+            s += `<div class="set-box"><b>🔫 Weapon level ${wl.lv}${wl.to ? '' : ' (max)'}</b>` +
+                `<div style="height:6px;background:rgba(255,255,255,.12);border-radius:3px;margin:4px 0"><div style="height:6px;width:${pct}%;background:#ffd23f;border-radius:3px"></div></div>` +
+                `<small>${wl.to ? `${(wl.xp - wl.from).toLocaleString('en-US')} / ${(wl.to - wl.from).toLocaleString('en-US')} XP to level ${wl.lv + 1} · kills with this weapon level it` : 'Max level'}${wl.lv > 1 ? ` · +${Math.round((wl.dmg - 1) * 100)}% damage` : ''}${wl.rate > 1 ? `, +${Math.round((wl.rate - 1) * 100)}% fire rate` : ''}</small></div>`;
+        }
         s += `<div class="it-stats"><span>💥 ${Math.round(dmg)}${pel > 1 ? ' × ' + pel : ''}</span><span>⚡ ${rate.toFixed(1)}/s</span>` +
             `<span>📏 ${Math.round(def.speed * def.life * (1 + L('velocity') * 0.25) * (1 + L('velocity') * 0.15))}</span>` +
             (def.explode ? '<span>💣 explodes</span>' : '') + '</div>' +
             (Object.keys(inn).length ? `<div class="set-box"><b>Built in</b>${Object.entries(inn).map(([id, l]) => `<small>${(arenaCat.weaponMods[id] || {}).icon || ''} ${esc(INNATE_TEXT[id] ? INNATE_TEXT[id](l) : id)}</small>`).join('')}</div>` : '');
     } else if (k === 'armor') {
         const set = def.set && arenaCat.sets[def.set];
-        s += `<div class="it-stats"><span>❤️ +${Math.round(def.hp * (1 + bonus) + L('plating') * 8)} HP</span>` +
+        const al = arenaCat.wlv ? wLevel(it) : { lv: 1, to: null, xp: 0, from: 0 };
+        const W = arenaCat.wlv || {};
+        const ahp = 1 + (W.armorHp || 0) * (al.lv - 1), ams = (W.milestones || []).filter(m => al.lv >= m).length;
+        s += `<div class="it-stats"><span>❤️ +${Math.round(def.hp * (1 + bonus) * ahp + L('plating') * 8)} HP</span>` +
             (def.speed ? `<span>👟 ${def.speed > 0 ? '+' : ''}${Math.round(def.speed * 100)}% speed</span>` : '') + '</div>' +
             (set ? `<div class="set-box" style="border-color:${set.color}"><b style="color:${set.color}">${set.name} set · ${arenaCat.slotNames[def.slot]}</b>${set.bonus.map(x => `<small>${esc(x)} pieces</small>`).join('')}</div>`
                 : `<div class="set-box ${def.unique ? 'unique-box' : ''}"><b>${def.unique ? '✦ Unique · ' : ''}${def.full ? 'Full body – replaces all armor' : arenaCat.slotNames[def.slot] + ' · no set'}</b>${def.desc ? `<small>${esc(def.desc)}</small>` : ''}</div>`);
+        if (def.awake && arenaCat.wlv) s += `<div class="set-box ${al.lv >= W.awake ? 'unique-box' : ''}"><b>${al.lv >= W.awake ? '✦ Awakened' : '🔒 Awakens at level ' + W.awake}</b><small>${esc(def.awake)}</small></div>`;
+        if (arenaCat.wlv) {
+            const pct = al.to ? Math.round((al.xp - al.from) / (al.to - al.from) * 100) : 100;
+            s += `<div class="set-box"><b>🛡️ Armor level ${al.lv}${al.to ? '' : ' (max)'}</b>` +
+                `<div style="height:6px;background:rgba(255,255,255,.12);border-radius:3px;margin:4px 0"><div style="height:6px;width:${pct}%;background:#7dffb0;border-radius:3px"></div></div>` +
+                `<small>${al.to ? `${(al.xp - al.from).toLocaleString('en-US')} / ${(al.to - al.from).toLocaleString('en-US')} XP to level ${al.lv + 1} · kills while you wear it level it` : 'Max level'}${al.lv > 1 ? ` · +${Math.round((ahp - 1) * 100)}% HP` : ''}${ams ? `, −${Math.round((1 - Math.pow(1 - W.armorTaken, ams)) * 100)}% damage taken` : ''}</small></div>`;
+        }
     } else if (k === 'pack') {
         s += `<div class="it-stats"><span>🎒 ${def.cap} slots in the raid</span></div><div class="hint">Without a backpack you have ${arenaCat.basePack}.</div>`;
     } else {
@@ -10743,7 +10898,7 @@ function hubLoadout() {
         const other = (l.util || [])[1 - i];
         const free = u ? (have[u.base] || 0) - (other && other.base === u.base ? other.n : 0) : 0;
         return `<div class="lo-slot util ${hubPick === 'util' + i ? 'open' : ''}" data-slot="util${i}"><small>${UTIL_KEYS[i]} · Consumable</small>` +
-            (u ? `<div class="it tier-${arenaCat.tiers[def.tier].id}"><span class="it-ico">${def.icon}</span><b>${esc(def.name)}</b>` +
+            (u ? `<div class="it tier-${arenaCat.tiers[def.tier].id}"><span class="it-ico">${defIcon('util', u.base)}</span><b>${esc(def.name)}</b>` +
                 `<div class="cons"><button type="button" class="ghost" data-util="${i}" data-d="-1">−</button><b>${u.n}</b>` +
                 `<button type="button" class="ghost" data-util="${i}" data-d="1" ${u.n >= Math.min(def.stack, free) ? 'disabled' : ''}>+</button></div></div>`
                 : '<div class="it empty"><span class="it-ico">➕</span><small>empty</small></div>') + '</div>';
@@ -10920,12 +11075,16 @@ setInterval(() => {
 
 // ---------- Profil: Level, Stat-Punkte, Skill Tree ----------
 // 6.5: Baum des gewaehlten Modus; Stats gelten fuer alle
-const profSkills = () => (hub.prog.trees && hub.prog.trees[hubMode] ? hub.prog.trees[hubMode].skills : {}) || {};
-const profCat = () => lvlCat.modes ? lvlCat.modes[hubMode] : { skills: lvlCat.skills, trees: lvlCat.trees };
+// 25.09.2026 (Max): eigener Tab statt Fuse, Umschalter Skills / Skills Zombie Mode –
+// Extraction und PvP teilen sich einen Baum (Server: arena-level TREE_OF)
+let skillTree = 'extract';
+const TREE_NAMES = { extract: 'Extraction & PvP', zombies: 'Zombie Mode' };
+const profSkills = () => (hub.prog.trees && hub.prog.trees[skillTree] ? hub.prog.trees[skillTree].skills : {}) || {};
+const profCat = () => lvlCat.modes ? lvlCat.modes[skillTree] : { skills: lvlCat.skills, trees: lvlCat.trees };
 
 function profState() {
     const pr = hub.prog;
-    if (!profDraft || profDraft.mode !== hubMode) profDraft = { mode: hubMode, stats: { ...pr.stats }, skills: { ...profSkills() } };
+    if (!profDraft || profDraft.mode !== skillTree) profDraft = { mode: skillTree, stats: { ...pr.stats }, skills: { ...profSkills() } };
     const sum = o => Object.values(o).reduce((s, n) => s + n, 0);
     const statFree = (pr.level - 1) * lvlCat.statPer - sum(profDraft.stats);
     const skillFree = (pr.level - 1) - sum(profDraft.skills);
@@ -10970,8 +11129,8 @@ function hubProfile() {
             `<button type="button" data-stat="${k}" data-d="1" ${statFree <= 0 || v >= lvlCat.statMax ? 'disabled' : ''}>+</button></div>`;
     }
     html += '</div><div class="prof-box">' +
-        `<h4><span>🌳 ${HUB_MODES[hubMode]} skill tree</span><span class="${skillFree ? 'pend' : 'hint'}">${skillFree} skill point${skillFree === 1 ? '' : 's'} free</span></h4>` +
-        `<div class="hint" style="margin-bottom:8px">Every mode has its own tree with its own points – your level and stats are shared. ${hubMode === 'zombies' ? 'This tree only works in Zombies. ' : ''}Click a skill to add a rank, right-click to take back an unsaved rank. Gold numbers = level needed.</div><div class="trees">`;
+        `<h4><span>🌳 ${TREE_NAMES[skillTree]} skill tree</span><span class="${skillFree ? 'pend' : 'hint'}">${skillFree} skill point${skillFree === 1 ? '' : 's'} free</span></h4>` +
+        `<div class="hint" style="margin-bottom:8px">${skillTree === 'zombies' ? 'This tree only works in Zombies and has its own points. ' : 'One tree for Extraction and PvP. Zombies has its own tree with its own points. '}Level and stats are shared. Click a skill to add a rank, right-click to take back an unsaved rank. Gold numbers = level needed.</div><div class="trees">`;
     const PC = profCat();
     for (const [tk, t] of Object.entries(PC.trees)) {
         html += `<div class="tree" style="--tc:${t.color}"><h5 style="color:${t.color}">${t.name}</h5>`;
@@ -10990,14 +11149,14 @@ function hubProfile() {
         }
         html += '</div>';
     }
-    const cost = pr.resetCost, tcost = (pr.trees && pr.trees[hubMode] && pr.trees[hubMode].resetCost) || cost;
+    const cost = pr.resetCost, tcost = (pr.trees && pr.trees[skillTree] && pr.trees[skillTree].resetCost) || cost;
     const money = c => `🪙 ${c.coins.toLocaleString('en-US')} + ⚙️ ${c.scrap.toLocaleString('en-US')}`;
     html += '</div></div></div><div class="prof-actions">' +
         `<button type="button" class="gold" data-prof="apply" ${changed ? '' : 'disabled'}>✔ Save points</button>` +
         `<button type="button" class="ghost" data-prof="discard" ${changed ? '' : 'disabled'}>Discard</button>` +
         `<span style="flex:1"></span><span class="hint">Resets get 50% pricier each time</span>` +
-        `<button type="button" class="danger" data-prof="reset" data-what="tree">↺ Reset ${HUB_MODES[hubMode]} tree · ${money(tcost)}</button>` +
-        `<button type="button" class="danger" data-prof="reset" data-what="stats">↺ Reset stats (all modes) · ${money(cost)}</button></div>`;
+        `<button type="button" class="danger" data-prof="reset" data-what="tree">↺ Reset ${TREE_NAMES[skillTree]} tree · ${money(tcost)}</button>` +
+        `<button type="button" class="danger" data-prof="reset" data-what="stats">↺ Reset stats (all trees) · ${money(cost)}</button></div>`;
     return html;
 }
 
@@ -11019,15 +11178,15 @@ function profClick(t, ds, e) {
         }
         return hubDraw();
     }
-    if (ds.prof === 'apply') return wsSend({ type: 'arProg', op: 'apply', mode: hubMode, stats: profDraft.stats, skills: profDraft.skills });
+    if (ds.prof === 'apply') return wsSend({ type: 'arProg', op: 'apply', mode: skillTree, stats: profDraft.stats, skills: profDraft.skills });
     if (ds.prof === 'discard') {
         profDraft = null;
         return hubDraw();
     }
     if (ds.prof === 'reset') {
         const stats = ds.what === 'stats';
-        const c = stats ? pr.resetCost : pr.trees[hubMode].resetCost;
-        uiConfirm(`Reset ${stats ? 'ALL stat points (they count for every mode)' : `your ${HUB_MODES[hubMode]} skill tree`}?\nCosts ${c.coins.toLocaleString('en-US')} coins and ${c.scrap.toLocaleString('en-US')} scrap. You get the points back to spend again.`, { title: 'Reset points', ok: 'Reset', danger: true }).then(ok => ok && wsSend({ type: 'arProg', op: 'reset', mode: hubMode, what: stats ? 'stats' : 'tree' }));
+        const c = stats ? pr.resetCost : pr.trees[skillTree].resetCost;
+        uiConfirm(`Reset ${stats ? 'ALL stat points (they count for every mode)' : `your ${TREE_NAMES[skillTree]} skill tree`}?\nCosts ${c.coins.toLocaleString('en-US')} coins and ${c.scrap.toLocaleString('en-US')} scrap. You get the points back to spend again.`, { title: 'Reset points', ok: 'Reset', danger: true }).then(ok => ok && wsSend({ type: 'arProg', op: 'reset', mode: skillTree, what: stats ? 'stats' : 'tree' }));
     }
 }
 
@@ -11088,11 +11247,146 @@ function onShTraderRaw(d) {
     el.hidden = false;
     const buy = Object.entries(sh.map.trader.buy).map(([base, price]) => {
         const def = arenaCat.utils[base];
-        return `<button type="button" data-buy="${base}" ${d.scrap < price ? 'disabled' : ''} title="${esc(def.desc)}">${def.icon} ${esc(def.name)}<b>⚙️ ${price}</b></button>`;
+        return `<button type="button" data-buy="${base}" ${d.scrap < price ? 'disabled' : ''} title="${esc(def.desc)}">${defIcon('util', base)} ${esc(def.name)}<b>⚙️ ${price}</b></button>`;
     }).join('');
     const sell = d.sell.map(it => `<button type="button" class="ghost tier-${it.t}" data-sell="${esc(it.uid)}" ${it.fav ? 'disabled title="⭐ Protected"' : ''}>${itemIcon(it)} ${it.fav ? '⭐ ' : ''}${esc(it.n)}<b>+⚙️ ${it.price}</b></button>`).join('') || '<span class="hint">Your backpack is empty</span>';
     el.innerHTML = `<div class="st-head"><b>🏪 Trader</b><span>⚙️ ${d.scrap.toLocaleString('en-US')} scrap in your stash</span><button type="button" class="ghost" data-close="1">✕</button></div>` +
         `<h5>Buy</h5><div class="st-grid">${buy}</div><h5>Sell from your backpack (${Math.round(sh.map.trader.sell * 100)}% of the salvage value)</h5><div class="st-grid">${sell}</div>`;
+}
+
+// ---------- Guild House (25.09.2026): Missionen, Lager, Versicherung ----------
+// Ein Panel fuer drei Stationen; der Server schickt msMenu / gStash / gInsure.
+let guildOpen = null;
+function guildNear() {
+    const k = guildOpen === 'msMenu' ? 'missions' : guildOpen === 'gStash' ? 'stash' : 'insure';
+    if (k === 'missions' && (sh.map.guilds || []).some(g => shPred.x > g[0] && shPred.x < g[0] + g[2] && shPred.y > g[1] && shPred.y < g[1] + g[3])) return true;
+    return (sh.map.stations || []).some(s => s.kind === k && Math.hypot(s.x - shPred.x, s.y - shPred.y) < 150);
+}
+function onGuild(d) {
+    return keepScroll('guild', d.type || 'x', $('sh-guild'), () => onGuildRaw(d));
+}
+function onGuildRaw(d) {
+    let el = $('sh-guild');
+    if (d.close || !sh) {
+        if (el) el.hidden = true;
+        if (guildOpen === 'msMenu') wsSend({ type: 'msClose' });
+        guildOpen = null;
+        return;
+    }
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'sh-guild';
+        el.className = 'sh-trader sh-guild';
+        document.querySelector('#shooter .card').appendChild(el);
+        el.addEventListener('click', e => {
+            const b = e.target.closest('button');
+            if (!b || b.disabled) return;
+            const ds = b.dataset;
+            if (ds.close) return onGuild({ close: true });
+            if (ds.ms) {
+                const o = { type: ds.ms };
+                if (ds.kind) o.kind = ds.kind;
+                if (ds.diff) o.diff = ds.diff;
+                if (ds.id) o.id = Number(ds.id);
+                wsSend(o);
+            }
+            if (ds.dep) wsSend({ type: 'gDeposit', uid: ds.dep });
+            if (ds.wd) wsSend({ type: 'gWithdraw', uid: ds.wd });
+            if (ds.ins) wsSend({ type: 'gInsure', slot: ds.ins });
+        });
+    }
+    if (d.type === 'msMenu' && guildOpen && guildOpen !== 'msMenu' && !el.hidden) return; // offenes Lager nicht ueberschreiben
+    guildOpen = d.type;
+    el.hidden = false;
+    el.className = 'sh-trader sh-guild gd-wood gd-' + d.type;
+    const tk = `🎟️ ${(d.tokens || 0).toLocaleString('en-US')}`;
+    const head = (t, extra) => `<div class="st-head"><b>${t}</b><span>${extra}</span><button type="button" class="ghost" data-close="1">✕</button></div>`;
+    const card = it => `${itemIcon(it)} ${esc(it.n)}`;
+    if (d.type === 'msMenu') {
+        // 25.09.2026 (Max): Quest Board statt Liste, Bosse bleiben geheim
+        const mine = d.list.find(m => m.id === d.mine);
+        const host = mine && mine.host === d.me;
+        const kinds = Object.entries(d.kinds), diffs = Object.entries(d.diffs);
+        const skulls = k => ({ easy: '💀', normal: '💀💀', hard: '💀💀💀' })[k] || '💀';
+        const place = k => k === 'lab' ? '🧬' : '🎖️';
+        const lvTxt = x => x.lv ? `Enemies ${x.lv > 0 ? '+' : ''}${x.lv} Lv` : 'Enemies normal';
+        const quest = (k, n, dk, x, attrs, on) => `<button type="button" class="gd-quest gd-${dk}${on ? ' on' : ''}" ${attrs}>` +
+            `<i class="gd-pin"></i><span class="gd-qplace">${place(k)}</span><b>${esc(n)}</b>` +
+            `<span class="gd-skulls" title="${esc(x.name)}">${skulls(dk)}</span><span class="gd-qdiff">${esc(x.name)}</span>` +
+            `<small>${lvTxt(x)}</small><small>Boss: <b>???</b></small><span class="gd-reward">+${x.tokens} 🎟️</span></button>`;
+        let html = `<div class="st-head gd-top"><b>📜 Quest Board</b><span><span class="gd-chip">🎟️ ${(d.tokens || 0).toLocaleString('en-US')} tokens</span> Defeat the boss, then reach the exit.</span><button type="button" class="ghost" data-close="1">✕</button></div>`;
+        if (mine) {
+            html += `<div class="gd-contract"><div class="gd-chead"><span>${place(mine.kind)}</span><div><b>${esc(d.kinds[mine.kind])}</b><small>${skulls(mine.diff)} ${esc(d.diffs[mine.diff].name)} · +${d.diffs[mine.diff].tokens} 🎟️ · Boss unknown</small></div></div>` +
+                `<div class="gd-party">${Array.from({ length: d.max }, (_, i) => mine.members[i] ? `<span class="gd-seal${mine.members[i] === mine.hostName ? ' host' : ''}"><i>${esc(mine.members[i][0].toUpperCase())}</i>${esc(mine.members[i])}${mine.members[i] === mine.hostName ? ' 👑' : ''}</span>` : '<span class="gd-seal empty"><i>+</i>free</span>').join('')}</div>`;
+            if (host) {
+                html += `<h5>Choose the contract</h5><div class="gd-quests">${kinds.map(([k, n]) => diffs.map(([dk, x]) => quest(k, n, dk, x, `data-ms="msSet" data-kind="${k}" data-diff="${dk}"`, mine.kind === k && mine.diff === dk)).join('')).join('')}</div>` +
+                    `<div class="gd-row"><button type="button" class="gd-start" data-ms="msStart">⚔️ Start mission</button><button type="button" class="ghost" data-ms="msLeave">Leave party</button></div>` +
+                    `<div class="gd-note">Everyone in your party who stands inside the Guild House comes along. If you fall, only 🛡️ insured gear comes back – you wake up here again.</div>`;
+            } else html += `<div class="gd-row"><span class="gd-note">Waiting for <b>${esc(mine.hostName)}</b> to start…</span><button type="button" class="ghost" data-ms="msLeave">Leave party</button></div>`;
+            html += '</div>';
+        } else {
+            html += `<h5>Pick a contract</h5><div class="gd-quests">${kinds.map(([k, n]) => diffs.map(([dk, x]) => quest(k, n, dk, x, `data-ms="msCreate" data-kind="${k}" data-diff="${dk}"`)).join('')).join('')}</div>`;
+        }
+        const others = d.list.filter(m => m.id !== d.mine);
+        html += `<h5>Parties looking for members</h5>` + (others.length ? `<div class="gd-open">${others.map(m => `<button type="button" class="gd-note-card" data-ms="msJoin" data-id="${m.id}" ${m.members.length >= d.max ? 'disabled' : ''}><i class="gd-pin"></i><b>👑 ${esc(m.hostName)}</b><small>${place(m.kind)} ${esc(d.kinds[m.kind])}</small><small>${skulls(m.diff)} ${esc(d.diffs[m.diff].name)} · ${m.members.length}/${d.max}</small><span>${m.members.length >= d.max ? 'Full' : 'Join →'}</span></button>`).join('')}</div>` : '<div class="gd-note">No open parties – pin your own contract above.</div>');
+        el.innerHTML = html;
+    } else if (d.type === 'gStash') {
+        const pack = d.pack.filter(it => !it.s).map(it => `<button type="button" class="ghost tier-${it.t}" data-dep="${esc(it.uid)}" ${d.inv.length >= d.invMax ? 'disabled' : ''}>${card(it)}<b>→ 📦</b></button>`).join('') || '<span class="hint">Your backpack is empty</span>';
+        const inv = d.inv.slice().sort((a, b) => tierIdx(b.t) - tierIdx(a.t)).map(it => `<button type="button" class="ghost tier-${it.t}" data-wd="${esc(it.uid)}" ${d.pack.length >= d.packMax ? 'disabled' : ''}>${card(it)}<b>→ 🎒</b></button>`).join('') || '<span class="hint">Your stash is empty</span>';
+        el.innerHTML = head('📦 Guild stash', `${tk} · ⚙️ ${(d.scrap || 0).toLocaleString('en-US')}`) +
+            `<h5>Backpack ${d.pack.length}/${d.packMax} – click to store</h5><div class="st-grid">${pack}</div><h5>Stash ${d.inv.length}/${d.invMax} – click to take</h5><div class="st-grid">${inv}</div>`;
+    } else if (d.type === 'gInsure') {
+        const rows = d.gear.map(g => `<button type="button" class="ghost tier-${g.t}" data-ins="${esc(g.slot)}" ${g.insured || d.scrap < g.scrap || d.tokens < g.tokens ? 'disabled' : ''}>${card(g)}<b>${g.insured ? '🛡️ insured' : `⚙️ ${g.scrap} · 🎟️ ${g.tokens}`}</b></button>`).join('') || '<span class="hint">Nothing equipped worth insuring</span>';
+        el.innerHTML = head('🛡️ Insurance', `${tk} · ⚙️ ${(d.scrap || 0).toLocaleString('en-US')}`) +
+            `<div class="hint">Insured gear goes back to your stash if you die on a mission. Lasts one mission, per item.</div><h5>Equipped</h5><div class="st-grid">${rows}</div>`;
+    }
+}
+
+// ---------- Creative Mode (25.09.2026, Max): Taste C im Raid, nur wenn im Admin-Panel an ----------
+let crOpen = false, crKind = 'weapon', crTier = 4, crQ = '';
+function crDraw(open) {
+    let el = $('sh-creative');
+    if (!open || !sh) {
+        if (el) el.hidden = true;
+        crOpen = false;
+        return;
+    }
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'sh-creative';
+        el.className = 'sh-trader sh-creative';
+        document.querySelector('#shooter .card').appendChild(el);
+        el.addEventListener('click', e => {
+            const b = e.target.closest('button');
+            if (!b) return;
+            const ds = b.dataset;
+            if (ds.close) return crDraw(false);
+            if (ds.crkind) { crKind = ds.crkind; return crDraw(true); }
+            if (ds.crtier) { crTier = Number(ds.crtier); return crDraw(true); }
+            if (ds.crheal) return wsSend({ type: 'crHeal' });
+            if (ds.crclear) return wsSend({ type: 'crClear' });
+            if (ds.crgive) wsSend({ type: 'crGive', kind: crKind, base: ds.crgive, tier: crTier, equip: !!ds.equip, slot: ds.slot, n: crKind === 'util' ? 99 : 1 });
+        });
+        el.addEventListener('input', e => { if (e.target.id === 'cr-q') { crQ = e.target.value.toLowerCase(); crList(); } });
+    }
+    crOpen = true;
+    el.hidden = false;
+    const kinds = [['weapon', 'Weapons'], ['armor', 'Armor'], ['util', 'Consumables'], ['pack', 'Backpacks']];
+    el.innerHTML = `<div class="st-head"><b>🛠️ Creative mode</b><span>You can't take damage. Items go straight into your raid.</span><button type="button" data-crheal="1">❤️ Heal</button><button type="button" class="ghost" data-crclear="1">🗑️ Empty backpack</button><button type="button" class="ghost" data-close="1">✕</button></div>` +
+        `<div class="cr-diffs">${kinds.map(([k, n]) => `<button type="button" data-crkind="${k}" class="${crKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>` +
+        (crKind === 'weapon' || crKind === 'armor' ? `<div class="cr-diffs">${arenaCat.tiers.map((t, i) => `<button type="button" data-crtier="${i}" class="tier-${t.id} ${crTier === i ? 'on' : ''}"><span class="tier-${t.id}">${t.name}</span></button>`).join('')}</div>` : '') +
+        `<input id="cr-q" placeholder="Search…" value="${esc(crQ)}" style="width:100%;margin:6px 0"><div class="st-grid" id="cr-list"></div>`;
+    crList();
+}
+function crList() {
+    const box = $('cr-list');
+    if (!box) return;
+    const defs = crKind === 'weapon' ? arenaCat.weapons : crKind === 'armor' ? arenaCat.armors : crKind === 'util' ? arenaCat.utils : arenaCat.packs;
+    const tierOf = (b, d) => crKind === 'weapon' || crKind === 'armor' ? arenaCat.tiers[crTier].id : (arenaCat.tiers[d.tier || 0] || {}).id;
+    box.innerHTML = Object.entries(defs).filter(([b, d]) => !crQ || d.name.toLowerCase().includes(crQ) || b.includes(crQ))
+        .sort((a, b) => (b[1].unique ? 1 : 0) - (a[1].unique ? 1 : 0) || (a[1].tier || 0) - (b[1].tier || 0))
+        .map(([b, d]) => `<div class="cr-tile tier-${tierOf(b, d)}"><button type="button" class="ghost" data-crgive="${b}" title="Into your backpack">${itemIcon({ kind: crKind, base: b, tier: tierOf(b, d) })}<span>${esc(d.name)}</span>${d.unique ? '<small>✦ unique</small>' : ''}</button>` +
+            (crKind === 'util' ? '' : crKind === 'weapon' ? `<button type="button" data-crgive="${b}" data-equip="1" data-slot="primary" title="Equip as primary">1</button><button type="button" data-crgive="${b}" data-equip="1" data-slot="secondary" title="Equip as secondary">2</button>` : `<button type="button" data-crgive="${b}" data-equip="1" title="Equip">⚡</button>`) + '</div>').join('');
 }
 
 // XP im Raid: kleine Einblendung, Level-Up gross
@@ -11129,18 +11423,22 @@ function hubDraw() {
 }
 function hubDrawRaw() {
     if (!arenaCat) return;
-    const invGroup = ['inv', 'salvage'].includes(hubTab);
+    const invGroup = ['inv', 'salvage', 'fuse'].includes(hubTab);
     // 6.5: Game Modes = Modus waehlen, darunter Play / Loadout (equip) / Skills (profile)
-    const modeGroup = ['play', 'equip', 'profile'].includes(hubTab);
+    const modeGroup = ['play', 'equip'].includes(hubTab);
     document.querySelectorAll('#hub-tabs [data-hubtab]').forEach(b => b.classList.toggle('on', b.dataset.hubtab === hubTab || (invGroup && b.dataset.group === 'inv') || (modeGroup && b.dataset.group === 'modes')));
     if (hub && hub.prog) $('hub-lv').textContent = `🎖️ Lv ${hub.prog.level}`;
     $('hub-coins').textContent = me ? me.coins.toLocaleString('en-US') : '–';
     $('hub-scrap').textContent = hub ? hub.scrap.toLocaleString('en-US') : '–';
     // 6.10 (Max): volles Lager sichtbar machen – Tab-Knopf zaehlt mit, ab 90 % gelb, voll rot
     if (hub && hub.inv) {
-        const used = hub.inv.length, max = arenaCat.invMax, tab = document.querySelector('#hub-tabs [data-hubtab="inv"]');
+        const used = hub.inv.length, max = hub.invMax || arenaCat.invMax, tab = document.querySelector('#hub-tabs [data-hubtab="inv"]');
         const full = used >= max || (hub.overflow || []).length > 0;
         if (tab) tab.innerHTML = `🎒 Inventory${full ? ' <b class="inv-full">FULL</b>' : used >= max * 0.9 ? ` <b class="inv-near">${used}/${max}</b>` : ''}`;
+    }
+    if (hub && hub.prog && hub.prog.skillFree && $('hub-skills-tab')) {
+        const n = (hub.prog.skillFree.extract > 0 ? hub.prog.skillFree.extract : 0) + (hub.prog.skillFree.zombies > 0 ? hub.prog.skillFree.zombies : 0);
+        $('hub-skills-tab').innerHTML = `🌳 Skills${n ? ` <span class="pend">+${n}</span>` : ''}`;
     }
     itTip.hidden = true;
     TIP.clear();
@@ -11158,7 +11456,9 @@ function hubDrawRaw() {
             `If you die or leave, the killer gets it all. Hide in buildings, bushes and smoke – nobody outside sees you until you shoot.</div></div>` +
             (hubLast ? `<div class="raid-result ${hubLast.result}">${hubLast.html}</div>` : ''));
     } else if (hubTab === 'profile') {
-        html = hubProfile();
+        const free = k => hub.prog && hub.prog.skillFree && hub.prog.skillFree[k] > 0 ? ` <span class="pend">+${hub.prog.skillFree[k]}</span>` : '';
+        html = `<div class="cr-diffs hub-sub">${[['extract', '🌳 Skills'], ['zombies', '🧟 Skills Zombie Mode']].map(([k, n]) =>
+            `<button type="button" data-skilltree="${k}" class="${skillTree === k ? 'on' : ''}">${n}${free(k)}</button>`).join('')}</div>` + hubProfile();
     } else if (hubTab === 'equip') {
         html = `<div class="hint lo-mode">${HUB_MODES[hubMode]} loadout${hubMode === 'extract' ? ' – these items really go into the raid' : ' – copies only, you never lose anything here'}</div>` +
             hubPresets() + hubLoadout() + (hubPick ? hubPicker() : hubStash(filters));
@@ -11171,8 +11471,8 @@ function hubDrawRaw() {
         html = (waiting.length ? `<div class="inv-wait"><b>📥 ${waiting.length} item${waiting.length > 1 ? 's' : ''} waiting – your stash is full.</b> ` +
             `<span class="hint">Salvage something and they move in automatically. Nothing gets scrapped on its own.</span>` +
             `<div class="inv-grid">${waiting.map(it => itemCard(it, {})).join('')}</div></div>` : '') +
-            (inv.length >= arenaCat.invMax && !waiting.length ? `<div class="inv-wait"><b>📦 Your stash is full (${inv.length}/${arenaCat.invMax}).</b> <span class="hint">New loot waits until you salvage something.</span></div>` : '') +
-            `<div class="inv-bar">${filters}<span class="hint ${inv.length >= arenaCat.invMax ? 'inv-full' : inv.length >= arenaCat.invMax * 0.9 ? 'inv-near' : ''}">${inv.length} / ${arenaCat.invMax}</span></div>` +
+            (inv.length >= invMaxNow() && !waiting.length ? `<div class="inv-wait"><b>📦 Your stash is full (${inv.length}/${invMaxNow()}).</b> <span class="hint">New loot waits until you salvage something – or upgrade your stash.</span></div>` : '') +
+            `<div class="inv-bar">${filters}<span class="hint ${inv.length >= invMaxNow() ? 'inv-full' : inv.length >= invMaxNow() * 0.9 ? 'inv-near' : ''}">${inv.length} / ${invMaxNow()}</span>${invUpButton()}</div>` +
             `<div class="inv-main"><div class="inv-list">${hubStacks(list).map(({ it, uids }) => itemRow(it, { sel: uids.includes(hubSel), eq: hubEquippedAs(it.uid), n: uids.length })).join('') || '<div class="hint">Nothing here.</div>'}</div>` +
             `<div class="inv-detail">${sel ? itemDetail(sel) + (waiting.includes(sel) ? `<div class="hint">Waiting for space in your stash.</div><div class="it-actions"><button type="button" class="danger" data-salvage="${sel.uid}">♻️ Salvage (+${sel.sv || 0} ⚙️)</button></div>` : hubActions(sel)) : '<div class="hint">Click an item to equip or salvage it.</div>'}</div></div>`;
     } else if (hubTab === 'salvage') {
@@ -11214,7 +11514,7 @@ function hubDrawRaw() {
         const item = o => {
             const def = o.kind === 'gen' ? { name: 'Weapon with a random effect', icon: '🎲' } : o.kind === 'util' ? arenaCat.utils[o.base] : o.kind === 'pack' ? arenaCat.packs[o.base] : arenaCat.weapons[o.base];
             const desc = def.desc || (o.kind === 'pack' ? `${def.cap} slots instead of ${arenaCat.basePack}` : '');
-            return row(def.icon, def.name, desc, btn(o) + (o.kind === 'util' ? btn(o, 5) : ''));
+            return row(o.kind === 'gen' ? def.icon : defIcon(o.kind, o.base), def.name, desc, btn(o) + (o.kind === 'util' ? btn(o, 5) : ''));
         };
         const tiny = t => arenaCat.tiers.map((x, i) => t[i] > 0 ? `<span class="tier-${x.id} it-tier" title="${x.name}">${t[i] >= 0.1 ? Math.round(t[i] * 100) + '%' : '1/' + Math.round(1 / t[i]).toLocaleString('en-US')}</span>` : '').join('');
         const cases = Object.entries(arenaCat.cases).filter(([, c]) => !c.wheel).map(([k, c]) =>
@@ -11224,10 +11524,11 @@ function hubDrawRaw() {
             `<h3 class="shop-h">🔫 Weapons</h3><div class="shop-list">${coins.filter(o => o.kind === 'weapon').map(item).join('')}</div>` +
             `<h3 class="shop-h">🎒 Gear</h3><div class="shop-list">${coins.filter(o => o.kind === 'util' || o.kind === 'pack').map(item).join('')}</div>` +
             `<h3 class="shop-h">⚙️ For scrap</h3><div class="shop-list">${arenaCat.shop.filter(o => o.currency === 'scrap').map(item).join('')}</div>` +
-            `<div class="hint">Armor, bigger backpacks, rarer weapons and special consumables only come from cases and crates.</div>`;
+            `<div class="hint">Armor, bigger backpacks, rarer weapons and special consumables only come from cases and crates.</div>` +
+            '';
     }
     if (invGroup) {
-        hubInvLast = hubTab;
+        hubInvLast = hubTab === 'fuse' ? 'inv' : hubTab;
         html = `<div class="cr-diffs hub-sub">${[['inv', '📋 List'], ['salvage', '♻️ Salvage']].map(([k, n]) =>
             `<button type="button" data-hubsub="${k}" class="${hubTab === k ? 'on' : ''}">${n}</button>`).join('')}</div>` + html;
     }
@@ -11237,8 +11538,8 @@ function hubDrawRaw() {
             `<div class="mode ${hubMode === 'extract' ? 'on' : ''}" data-mode="extract"><b>🪂 Extraction</b><small>Loot, enemies, bosses, extract alive. Everything you take in is at risk.</small></div>` +
             `<div class="mode ${hubMode === 'pvp' ? 'on' : ''}" data-mode="pvp"><b>⚔️ PvP arena</b><small>1v1 · 2v2 · 3v3 lobbies, best of 5 – you never lose items</small></div>` +
             `<div class="mode ${hubMode === 'zombies' ? 'on' : ''}" data-mode="zombies"><b>🧟 Zombies</b><small>Survive the waves, up to 4 players, buy guns and perks – no item loss · earn coins for kills and waves</small></div></div>` +
-            `<div class="cr-diffs hub-sub">${[['play', '▶ Play'], ['equip', '🎒 Loadout'], ['profile', '🌳 Skills']].map(([k, n]) =>
-                `<button type="button" data-hubsub="${k}" class="${hubTab === k ? 'on' : ''}">${n}${k === 'profile' && hub.prog && hub.prog.skillFree && hub.prog.skillFree[hubMode] > 0 ? ` <span class="pend">+${hub.prog.skillFree[hubMode]}</span>` : ''}</button>`).join('')}</div>` + html;
+            `<div class="cr-diffs hub-sub">${[['play', '▶ Play'], ['equip', '🎒 Loadout']].map(([k, n]) =>
+                `<button type="button" data-hubsub="${k}" class="${hubTab === k ? 'on' : ''}">${n}</button>`).join('')}</div>` + html;
     }
     $('hub-body').innerHTML = html;
     if (hubTab === 'cases') pwIdle('ar-wheel', arWheelSegs());
@@ -11262,6 +11563,7 @@ function hubActions(it) {
         b += `<button type="button" class="ghost" data-utilset="1" data-base="${it.base}">Put ${Math.min(n, def.stack)} in slot G</button>`;
     }
     if (eq) b += `<button type="button" class="ghost" data-unequip="${GEAR_SLOTS.find(s => hubLO()[s] === it.uid)}">Take off</button>`;
+    if (canFuse(it)) b += `<button type="button" class="gold" data-fuseopen="${esc(it.uid)}">🔥 Fuse</button>`;
     // Schutz (6.9): geschuetzte Items lassen sich nicht verschrotten
     b += `<button type="button" class="ghost" data-fav="${it.uid}" data-on="${it.fav ? 0 : 1}">${it.fav ? '☆ Unprotect' : '⭐ Protect'}</button>`;
     b += `<button type="button" class="danger" data-salvage="${it.uid}" ${it.fav ? 'disabled title="Protected"' : ''}>♻️ Salvage (+${it.sv || 0} ⚙️)</button>`;
@@ -11424,7 +11726,7 @@ $('hub-tabs').addEventListener('click', e => {
     if (!b || hubCaseBusy) return;
     // Inventory merkt sich den Unter-Tab (Equip, List, Salvage)
     hubTab = b.dataset.group === 'inv' ? (['inv', 'salvage'].includes(hubTab) ? hubTab : hubInvLast)
-        : b.dataset.group === 'modes' ? (['play', 'equip', 'profile'].includes(hubTab) ? hubTab : hubModesLast) : b.dataset.hubtab;
+        : b.dataset.group === 'modes' ? (['play', 'equip'].includes(hubTab) ? hubTab : hubModesLast) : b.dataset.hubtab;
     hubDraw();
 });
 $('hub-lv').onclick = () => { if (!hubCaseBusy) { hubTab = 'profile'; hubDraw(); } };
@@ -11477,6 +11779,11 @@ function fuseUseless(main, others) {
     }
     return -1;
 }
+// Kann dieses Item Haupt-Item eines Fuse sein? (mind. eine Kopie, die es verbessert)
+function canFuse(it) {
+    if (!it || (it.kind !== 'weapon' && it.kind !== 'armor')) return false;
+    return hub.inv.some(o => o.uid !== it.uid && o.kind === it.kind && o.base === it.base && !o.fav && fuseUseless(it, [o]) < 0);
+}
 function hubFuse() {
     const cost = arenaCat.fuse.cost;
     // 6.11.1 (Max): Waffen und Ruestung
@@ -11485,14 +11792,7 @@ function hubFuse() {
     if (!main) {
         fuseMain = null;
         fuseSel.clear();
-        const can = items.filter(x => items.some(o => o.uid !== x.uid && o.kind === x.kind && o.base === x.base && !o.fav && fuseUseless(x, [o]) < 0)).sort((a, b) => tierIdx(b.tier) - tierIdx(a.tier) || itMods(b).length - itMods(a).length);
-        const grid = list => `<div class="inv-grid">${list.map(it => itemCard(it, { eq: hubEquippedAs(it.uid), n: 0 }).replace('class="it ', 'data-fusemain="' + esc(it.uid) + '" class="it ')).join('') || '<div class="hint">Nothing to fuse yet – you need one with an effect and a copy that can improve it.</div>'}</div>`;
-        return `<div class="hint">🔥 <b>Fuse</b>: pick a main weapon or armor piece, then feed it copies of the same item. Same effect on the same level → guaranteed one level up (e.g. Sharp I + Sharp I = Sharp II, Plating I + Plating I = Plating II). ` +
-            `A different effect only sticks as a <b>2nd</b> effect with ${Math.round(arenaCat.fuse.add[1] * 100)}% and as a <b>3rd</b> with ${Math.round(arenaCat.fuse.add[2] * 100)}%. ` +
-            `Every item you fuse in costs <b>${cost} ⚙️</b> and is gone afterwards. The main item keeps its rarity. ` +
-            `The main item needs at least one effect, and you can only fuse in items that actually improve it.</div>` +
-            `<h4 style="margin:12px 0 6px">1 · Pick your main weapon</h4>` + grid(can.filter(x => x.kind === 'weapon')) +
-            `<h4 style="margin:12px 0 6px">… or your main armor piece</h4>` + grid(can.filter(x => x.kind === 'armor'));
+        return '<div class="hint">That item is gone. Pick one in 🎒 Inventory and press 🔥 Fuse.</div><button type="button" class="ghost" data-fuseback="1">↩ Back to inventory</button>';
     }
     const same = items.filter(x => x.kind === main.kind && x.base === main.base && x.uid !== main.uid).sort((a, b) => itMods(b).length - itMods(a).length);
     for (const u of [...fuseSel]) if (!same.some(x => x.uid === u && !x.fav)) fuseSel.delete(u);
@@ -11504,8 +11804,11 @@ function hubFuse() {
     }
     const useless = it => !fuseSel.has(it.uid) && fuseUseless(main, [...picked, it]) >= 0;
     const pv = fusePreview(main, picked), total = cost * picked.length;
-    return `<div class="fuse-main"><div><h4 style="margin:0 0 6px">Main ${main.kind === 'armor' ? 'armor' : 'weapon'}</h4>${itemCard(main, { eq: hubEquippedAs(main.uid) })}` +
-        `<button type="button" class="ghost" data-fuseback="1">↩ Pick another</button></div>` +
+    return `<div class="hint">🔥 <b>Fuse</b>: feed copies of the same item into the main one. Same effect on the same level → guaranteed one level up. ` +
+        `A different effect only sticks as a <b>2nd</b> effect with ${Math.round(arenaCat.fuse.add[1] * 100)}% and as a <b>3rd</b> with ${Math.round(arenaCat.fuse.add[2] * 100)}%. ` +
+        `Every item you fuse in costs <b>${cost} ⚙️</b> and is gone afterwards; half of its item XP moves over.</div>` +
+        `<div class="fuse-main"><div><h4 style="margin:0 0 6px">Main ${main.kind === 'armor' ? 'armor' : 'weapon'}</h4>${itemCard(main, { eq: hubEquippedAs(main.uid) })}` +
+        `<button type="button" class="ghost" data-fuseback="1">↩ Back to inventory</button></div>` +
         `<div class="fuse-pv"><h4 style="margin:0 0 6px">Result</h4>` +
         (picked.length ? (pv.sure.length ? `<div><b>Guaranteed</b><br>${pv.sure.join('<br>')}</div>` : '<div class="hint">No guaranteed upgrade.</div>') +
             (pv.maybe.length ? `<div style="margin-top:6px"><b>Chance</b><br>${pv.maybe.join('<br>')}</div>` : '') : '<div class="hint">Pick copies below to fuse in.</div>') +
@@ -11516,7 +11819,7 @@ function hubFuse() {
 }
 function fuseClick(t, ds) {
     if (ds.fusemain) { fuseMain = ds.fusemain; fuseSel.clear(); hubDraw(); return true; }
-    if (ds.fuseback) { fuseMain = null; fuseSel.clear(); hubDraw(); return true; }
+    if (ds.fuseback) { hubSel = fuseMain || hubSel; fuseMain = null; fuseSel.clear(); hubTab = 'inv'; hubDraw(); return true; }
     if (ds.fusefav) { showMsg('hub-msg', '⭐ Protected – unprotect it in the Inventory first', ''); return true; }
     if (ds.fusenope) { showMsg('hub-msg', 'That one would not improve your item', ''); return true; }
     if (ds.fusepick) { fuseSel.has(ds.fusepick) ? fuseSel.delete(ds.fusepick) : fuseSel.add(ds.fusepick); hubDraw(); return true; }
@@ -11560,7 +11863,19 @@ $('hub-body').addEventListener('click', e => {
         hubTab = ds.hubsub;
         return hubDraw();
     }
+    if (ds.skilltree) {
+        skillTree = ds.skilltree;
+        profDraft = null;
+        return hubDraw();
+    }
     if (hubTab === 'profile') return profClick(t, ds, e);
+    // 25.09.2026: Fuse startet am Item (Inventar rechts), nicht mehr ueber einen Tab
+    if (ds.fuseopen) {
+        fuseMain = ds.fuseopen;
+        fuseSel.clear();
+        hubTab = 'fuse';
+        return hubDraw();
+    }
     if (hubTab === 'fuse' && fuseClick(t, ds)) return;
     if (ds.preset) {
         const i = ds.i === undefined ? undefined : Number(ds.i);
@@ -11598,6 +11913,7 @@ $('hub-body').addEventListener('click', e => {
     if (ds.equip) return wsSend({ type: 'arEquip', mode: hubMode, slot: ds.equip, uid: ds.uid });
     if (ds.unequip) return wsSend({ type: 'arEquip', mode: hubMode, slot: ds.unequip, uid: null });
     if (ds.fav) return wsSend({ type: 'arFav', uid: ds.fav, on: ds.on === '1' });
+    if (ds.invup) return wsSend({ type: 'arInvUp' });
     if (ds.salvage) {
         const it = hub.inv.find(x => x.uid === ds.salvage) || (hub.overflow || []).find(x => x.uid === ds.salvage);
         const uid = ds.salvage, go = () => { hubSel = null; wsSend({ type: 'arSalvage', uids: [uid] }); };
@@ -11662,11 +11978,13 @@ function onShRooms(rooms) {
 // ---------- Raid ----------
 
 function onShJoined(d) {
+    // Dungeon-Wechsel (25.09.2026): shJoined kommt mitten im Raid erneut – die Zeichenschleife laeuft schon
+    const running = !!sh;
     sh = { id: d.id, map: d.map, packMax: d.packMax, mode: d.mode || 'extract', team: d.team, mapName: d.mapName };
     shRunXp = 0;
     if ($('sh-result')) $('sh-result').hidden = true;
     $('sh-canvas').classList.remove('sh-dim');
-    $('sh-title').textContent = sh.mode === 'pvp' ? `⚔️ PvP · ${d.mapName || ''} · ${d.team === 'b' ? '🔴 Red' : '🔵 Blue'}` : sh.mode === 'zombies' ? `🧟 Zombies · ${d.mapName || ''}` : '🔫 Raid';
+    $('sh-title').textContent = sh.mode === 'pvp' ? `⚔️ PvP · ${d.mapName || ''} · ${d.team === 'b' ? '🔴 Red' : '🔵 Blue'}` : sh.mode === 'zombies' ? `🧟 Zombies · ${d.mapName || ''}` : sh.mode === 'dungeon' ? `🏚️ ${d.mapName || 'Dungeon'}` : '🔫 Raid';
     shBlindUntil = 0;
     shInvOpen = false;
     $('sh-inv').hidden = true;
@@ -11681,7 +11999,7 @@ function onShJoined(d) {
     clearInterval(shPingTimer);
     shPingTimer = setInterval(() => wsSend({ type: 'shPing', t: performance.now() }), 1000);
     shLastFrame = performance.now();
-    requestAnimationFrame(shFrame);
+    if (!running) requestAnimationFrame(shFrame);
 }
 
 // Raid-Inventar: Ausruestung und Rucksack, ausruesten/ablegen/fallen lassen
@@ -11758,10 +12076,10 @@ function shInvDrawRaw() {
     const utilSlot = i => {
         const u = d.util[i], def = u && arenaCat.utils[u.base];
         return `<div class="ri-slot util ${def ? 'tier-' + arenaCat.tiers[def.tier].id : ''} ${isSel('util', 'util' + i) ? 'sel' : ''}" data-ri="util" data-key="util${i}" title="${def ? esc(def.name + ' – ' + def.desc) : 'empty'}">` +
-            `<span>${def ? def.icon : '<span class="dim">➕</span>'}</span>${u ? `<i>${u.n}</i>` : ''}<small>${UTIL_KEYS[i]}</small></div>`;
+            `<span>${def ? defIcon('util', u.base) : '<span class="dim">➕</span>'}</span>${u ? `<i>${u.n}</i>` : ''}<small>${UTIL_KEYS[i]}</small></div>`;
     };
     // Aktionen zur Auswahl
-    let actions = '<span class="hint">Hover an item for details · click to select · drag it out of this window to drop it</span>';
+    let actions = '<span class="hint">Hover an item for details · click to select · shift-click to equip / take off · drag it out of this window to drop it</span>';
     const s = shInvSel;
     if (s && s.where === 'pack') {
         const it = d.pack.find(x => x.uid === s.key);
@@ -11776,7 +12094,7 @@ function shInvDrawRaw() {
     } else if (s && (s.where === 'gear' || s.where === 'util')) {
         const it = s.where === 'gear' ? d.gear[s.key] : null;
         const u = s.where === 'util' ? d.util[Number(s.key.slice(4))] : null;
-        if ((it && !it.s) || u) actions = `<b>${it ? itemIcon(it) + ' ' + esc(it.n) : arenaCat.utils[u.base].icon + ' ' + esc(arenaCat.utils[u.base].name)}</b><button type="button" data-inv-unequip="${s.key}">Take off (into backpack)</button>`;
+        if ((it && !it.s) || u) actions = `<b>${it ? itemIcon(it) + ' ' + esc(it.n) : defIcon('util', u.base) + ' ' + esc(arenaCat.utils[u.base].name)}</b><button type="button" data-inv-unequip="${s.key}">Take off (into backpack)</button>`;
     }
     const bonus = setBonusText(['helmet', 'vest', 'pants', 'boots'].map(x => d.gear[x]));
     $('sh-inv').innerHTML =
@@ -11880,9 +12198,42 @@ $('sh-inv').addEventListener('click', e => {
     }
     const c = e.target.closest('[data-ri]');
     if (!c) return;
+    // Shift-Klick (25.09.2026, Max): direkt anlegen bzw. ablegen, ohne Auswahl
+    if (e.shiftKey && shInvState) {
+        shInvSel = null;
+        const q = shInvQuick(c.dataset.ri, c.dataset.key);
+        if (q) wsSend(q);
+        return shInvDraw();
+    }
     shInvSel = shInvSel && shInvSel.key === c.dataset.key ? null : { where: c.dataset.ri, key: c.dataset.key };
     shInvDraw();
 });
+
+// Wohin ein Shift-Klick geht. Rucksack: Waffe in den freien Slot (Starter-Pistole
+// zaehlt als frei), sonst ersetzt sie die gerade gehaltene; Ruestung/Rucksack
+// anziehen; Verbrauchsgut auf Q/G mit derselben Sorte, sonst frei, sonst Q.
+// Angelegtes: zurueck in den Rucksack.
+function shInvQuick(where, key) {
+    const d = shInvState;
+    if (where !== 'pack') {
+        if (where === 'gear' && (!d.gear[key] || d.gear[key].s)) return null;
+        if (where === 'util' && !d.util[Number(key.slice(4))]) return null;
+        return { type: 'shInv', op: 'unequip', slot: key };
+    }
+    const it = d.pack.find(x => x.uid === key);
+    if (!it) return null;
+    if (it.k === 'weapon') {
+        const free = s => !d.gear[s] || d.gear[s].s;
+        const cur = shSnaps.length ? shSnaps[shSnaps.length - 1].me.slot : 'primary';
+        return { type: 'shInv', op: 'equip', uid: it.uid, slot: free('primary') ? 'primary' : free('secondary') ? 'secondary' : cur };
+    }
+    if (it.k === 'util') {
+        const i = d.util.findIndex(u => u && u.base === it.b);
+        const slot = i >= 0 ? i : d.util.findIndex(u => !u) >= 0 ? d.util.findIndex(u => !u) : 0;
+        return { type: 'shInv', op: 'equip', uid: it.uid, slot: String(slot) };
+    }
+    return { type: 'shInv', op: 'equip', uid: it.uid };
+}
 
 function onShLeft(d) {
     onShTrader({ close: true });
@@ -11917,6 +12268,19 @@ function onShLeft(d) {
         return shResult({ kind: 'win', big: '🚁 EXTRACTED', sub: `You made it out${wait}`,
             stats: [[t, 'time'], [d.kills || 0, 'kills'], ['+' + xp.toLocaleString('en-US'), 'XP']], items: d.items, itemsTitle: 'Loot secured', again: 'extract' });
     }
+    // Mission (25.09.2026, Max): Uebersicht, danach zurueck ins Guild House
+    if (d.mission) {
+        const ms = d.mission;
+        hubLast = { result: 'dead', html: `💀 <b>Mission failed</b> – ${esc(ms.place)} (${esc(ms.name)}). Lost: ${list(d.lost)}${ms.saved.length ? ` · insured back in your stash: ${list(ms.saved)}` : ''}` };
+        return shResult({
+            kind: 'dead', big: '💀 MISSION FAILED',
+            sub: `<div class="shr-mission">${ms.kind === 'lab' ? '🧬' : '🎖️'} ${esc(ms.place)} · ${({ easy: '💀', normal: '💀💀', hard: '💀💀💀' })[ms.diff] || ''} ${esc(ms.name)}</div>` +
+                (d.by ? `Killed by <b>${esc(d.by)}</b>${d.weapon ? ` with <span class="tier-${d.wtier}">${esc(d.weapon)}</span>` : ''}` : '') +
+                `<br>${ms.boss ? '✅ The boss was already down – but nobody made it out with you.' : '👑 The boss is still standing.'} You wake up in the Guild House.`,
+            stats: [[t, 'time'], [d.kills || 0, 'kills'], ['+' + xp.toLocaleString('en-US'), 'XP'], [ms.saved.length, 'insured saved']],
+            items: d.lost, itemsTitle: 'Lost', saved: ms.saved, again: 'guild'
+        });
+    }
     hubLast = { result: 'dead', html: `💀 <b>${d.result === 'left' ? 'You left the raid' : 'You died'}${d.by ? ` – killed by ${esc(d.by)}` : ''}.</b> Lost: ${list(d.lost)}` };
     shResult({
         kind: 'dead', big: d.result === 'left' ? '🏃 YOU LEFT' : '💀 YOU DIED',
@@ -11938,7 +12302,9 @@ function shResult(r) {
             if (!b) return;
             el.hidden = true;
             $('sh-canvas').classList.remove('sh-dim');
-            if (b.dataset.again === 'extract') {
+            if (b.dataset.again === 'guild') {
+                wsSend({ type: 'msRespawn' });
+            } else if (b.dataset.again === 'extract') {
                 hubMode = 'extract';
                 hubOpen('play');
                 wsSend({ type: 'shJoin' });
@@ -11951,11 +12317,12 @@ function shResult(r) {
     const items = r.items && r.items.length
         ? `<div class="shr-items"><h5>${r.itemsTitle} (${r.items.length})</h5><div>${r.items.map(it => `<span class="shr-it tier-${it.t}" title="${esc(it.n)}">${itemIcon(it)}<small>${esc(it.n)}</small></span>`).join('')}</div></div>`
         : r.itemsTitle ? `<div class="shr-items"><h5>${r.itemsTitle}</h5><div class="hint">nothing</div></div>` : '';
+    const saved = r.saved && r.saved.length ? `<div class="shr-items shr-saved"><h5>🛡️ Insurance – back in your stash (${r.saved.length})</h5><div>${r.saved.map(it => `<span class="shr-it tier-${it.t}" title="${esc(it.n)}">${itemIcon(it)}<small>${esc(it.n)}</small></span>`).join('')}</div></div>` : '';
     el.className = 'sh-result ' + r.kind;
     el.hidden = false;
     el.innerHTML = `<div class="shr-box"><div class="shr-big">${r.big}</div>${r.sub ? `<div class="shr-sub">${r.sub}</div>` : ''}` +
-        `<div class="shr-stats">${r.stats.map(([v, l]) => `<div><b>${v}</b><small>${l}</small></div>`).join('')}</div>${items}` +
-        `<div class="shr-btns">${r.again === 'extract' ? '<button type="button" class="gold" data-again="extract">🪂 Deploy again</button>' : `<button type="button" class="gold" data-again="${r.again}">↻ Play again</button>`}` +
+        `<div class="shr-stats">${r.stats.map(([v, l]) => `<div><b>${v}</b><small>${l}</small></div>`).join('')}</div>${items}${saved}` +
+        `<div class="shr-btns">${r.again === 'guild' ? '<button type="button" class="gold" data-again="guild">🏰 Back to the Guild House</button>' : r.again === 'extract' ? '<button type="button" class="gold" data-again="extract">🪂 Deploy again</button>' : `<button type="button" class="gold" data-again="${r.again}">↻ Play again</button>`}` +
         `<button type="button" class="ghost" data-back="1">Back to the hub</button></div></div>`;
     $('sh-canvas').classList.add('sh-dim');
     showScreen('shooter');
@@ -11995,7 +12362,7 @@ function onShLoot(d) {
     // 6.10.1 (Max): jedes Item in der Farbe seiner Seltenheit statt alles gelb
     const Y = '#ffd23f';
     const segs = !d.items.length ? [[d.full ? 'Backpack full!' : 'Empty', Y]]
-        : [[d.from ? `Looted ${d.from}: ` : '+ ', Y], ...d.items.flatMap((it, i) => [...(i ? [[', ', Y]] : []), [`${itemIcon(it)} ${it.n}`, it.t || 'common']]), ...(d.full ? [[' · backpack full!', Y]] : [])];
+        : [[d.from ? `Looted ${d.from}: ` : '+ ', Y], ...d.items.flatMap((it, i) => [...(i ? [[', ', Y]] : []), [`${itemIconTxt(it)} ${it.n}`, it.t || 'common']]), ...(d.full ? [[' · backpack full!', Y]] : [])];
     shToast = { text: segs.map(s => s[0]).join(''), segs, t: performance.now() };
     beep(900, 0.08, 0.05);
 }
@@ -12013,6 +12380,9 @@ function onShFx(d) {
     shFx.push({ ...d, t: performance.now() });
     if (shFx.length > 30) shFx.shift();
     zFxSound(d);
+    // echte Sounds (public/voice.js) fuer Faehigkeiten und Spezial-Charaktere
+    if (d.type === 'shFx') vox(({ zawarudo: 'zawarudo', shinra: 'shinra', genki: 'genkidama', chidori: 'chidori', titan: 'titan', gomu: 'gomu', void: 'gojo-void', door: 'doordoor' })[d.kind] || '');
+    if (d.type === 'shFx' && d.kind === 'portal' && [...VOX_SEEN.values()].some(v => v.kind === 'rick')) vox('rick-attack');
     if (d.type === 'shBoom') sNoise({ dur: d.nuke ? 1.6 : .4, vol: d.nuke ? .4 : .22, type: 'lowpass', f: d.nuke ? 600 : 900, f2: 60, rev: .3, a: .002 });
     if (d.nuke) {
         // tiefes Grollen und Druckwelle
@@ -12121,7 +12491,13 @@ function shPredict(dt) {
         return;
     }
     const m = sh.map, sp = m.move * (s.me.spd || 1);
-    if (shIn.mx || shIn.my) [shPred.x, shPred.y] = shSlide(shPred.x, shPred.y, shIn.mx * sp * dt, shIn.my * sp * dt, m.r);
+    if (shIn.mx || shIn.my) {
+        // Door-Door (25.09.2026): Waende zaehlen nicht, nur der Kartenrand
+        if (s.me.phase) {
+            shPred.x = Math.max(m.r, Math.min(m.w - m.r, shPred.x + shIn.mx * sp * dt));
+            shPred.y = Math.max(m.r, Math.min(m.h - m.r, shPred.y + shIn.my * sp * dt));
+        } else [shPred.x, shPred.y] = shSlide(shPred.x, shPred.y, shIn.mx * sp * dt, shIn.my * sp * dt, m.r);
+    }
     const now = performance.now();
     shHist.push({ t: now, x: shPred.x, y: shPred.y });
     while (shHist.length && now - shHist[0].t > 1500) shHist.shift();
@@ -12204,6 +12580,10 @@ function stationLook(s) {
     if (s.kind === 'portal') return { icon: s.dir === 'down' ? '🕳️' : '🪜', rgb: '255,207,106', label: s.dest || '', hint: s.dir === 'down' ? `F · climb down: ${s.dest}` : `F · climb up: ${s.dest}` };
     if (s.kind === 'medic') return { icon: '⛑️', rgb: '0,214,122', label: `Medic · ${m.medic.cost} ⚙️`, hint: `F · heal to full (${m.medic.cost} scrap)` };
     if (s.kind === 'trader') return { icon: '🏪', rgb: '255,210,63', label: 'Trader', hint: 'F · trade (buy with scrap, sell your loot)' };
+    // 25.09.2026: Guild House
+    if (s.kind === 'missions') return { icon: '📜', rgb: '255,170,80', label: 'Quest Board', hint: 'F · quest board: pick a contract and a party' };
+    if (s.kind === 'stash') return { icon: '📦', rgb: '120,190,255', label: 'Guild stash', hint: 'F · stash: store or take items' };
+    if (s.kind === 'insure') return { icon: '🛡️', rgb: '140,255,170', label: 'Insurance', hint: 'F · insure gear for your next mission (scrap + 🎟️ tokens)' };
     if (s.kind === 'wall') {
         const w = arenaCat.weapons[s.base] || {};
         return { icon: w.icon || '🔫', rgb: '120,180,255', label: `${w.name || s.base} · 💰 ${zPrice(s)}`, hint: `F · buy ${w.name || s.base} (${zPrice(s)} points)` };
@@ -12239,8 +12619,16 @@ function stationLook(s) {
 
 // Bosse (4.6): jede Art eine eigene Form statt Kreis
 function drawBoss(c, bs, BR, now) {
+    // 25.09.2026: Raid-Bosse als Pixel-Sprite (public/pfx.js), Aura aus zfx.js
+    if (PX[bs.kind]) {
+        zBossAura(c, bs, BR, now);
+        bDrawSide(c, { kind: bs.kind, x: bs.x, y: bs.y, a: bs.a, id: 'boss-' + bs.kind }, { r: BR, boss: true }, now);
+        return;
+    }
     // 6.5: Zombie-Bosse und ihre Faehigkeiten (public/zfx.js)
     if (zDrawBoss(c, bs, BR, now)) return;
+    // 25.09.2026: richtige Figuren fuer King, Golem, Queen (public/bfx.js)
+    if (bDrawBoss(c, bs, BR, now)) return;
     const x = bs.x, y = bs.y, a = bs.a;
     const glowCol = { king: '255,60,60', golem: '255,140,40', queen: '255,210,63', abomination: '184,79,255' }[bs.kind] || '255,60,60';
     const glow = c.createRadialGradient(x, y, BR * .6, x, y, BR * 2.1);
@@ -12409,10 +12797,10 @@ function shMobsInterp() {
     }
     const k = b.recv > a.recv ? Math.max(0, Math.min(1, (t - a.recv) / (b.recv - a.recv))) : 1;
     const prev = new Map((a.mobs || []).map(x => [x[0], x]));
-    return (b.mobs || []).map(([id, kind, x, y, hp, mh, ang, aim, warn, charging, cx, cy]) => {
+    return (b.mobs || []).map(([id, kind, x, y, hp, mh, ang, aim, warn, charging, cx, cy, charm, lv]) => {
         const q = prev.get(id);
-        if (!q || Math.hypot(x - q[2], y - q[3]) > 120) return { id, kind, x, y, hp, mh, a: ang, aim, warn, charging, cx, cy };
-        return { id, kind, x: q[2] + (x - q[2]) * k, y: q[3] + (y - q[3]) * k, hp, mh, a: ang, aim, warn, charging, cx, cy };
+        if (!q || Math.hypot(x - q[2], y - q[3]) > 120) return { id, kind, x, y, hp, mh, a: ang, aim, warn, charging, cx, cy, charm, lv };
+        return { id, kind, x: q[2] + (x - q[2]) * k, y: q[3] + (y - q[3]) * k, hp, mh, a: ang, aim, warn, charging, cx, cy, charm, lv };
     });
 }
 
@@ -12456,9 +12844,45 @@ function shNearLoot(s) {
     return best;
 }
 
+// ---------- Pixel-Look (25.09.2026) ----------
+const SH_PIX = 4;                     // Bildschirm-Pixel je Welt-Pixel (CSS-px)
+let PIX_WU = 1;
+let shPixCv = null, shPixC = null;
+function shPixelOn() {
+    try { return localStorage.getItem('kek-pixel') !== '0'; } catch (e) { return true; }
+}
+function shPixCtx(w, h) {
+    if (!shPixCv) {
+        shPixCv = document.createElement('canvas');
+        shPixC = shPixCv.getContext('2d');
+        // Texte nicht in die grobe Flaeche malen, sondern merken (mit Transform und Stil)
+        const grab = kind => function (t, x, y, mw) {
+            this._texts.push([kind, t, x, y, mw, this.getTransform(), this.font, kind === 'f' ? this.fillStyle : this.strokeStyle, this.textAlign, this.textBaseline, this.globalAlpha, this.lineWidth, this.shadowColor, this.shadowBlur]);
+        };
+        shPixC.fillText = grab('f');
+        shPixC.strokeText = grab('s');
+    }
+    if (shPixCv.width !== w || shPixCv.height !== h) { shPixCv.width = w; shPixCv.height = h; }
+    shPixC._texts = [];
+    shPixC.imageSmoothingEnabled = false;
+    shPixC.globalAlpha = 1;
+    return shPixC;
+}
+function shPixTexts(main, pc, P) {
+    for (const [k, t, x, y, mw, T, font, style, al, bl, ga, lw, shc, shb] of pc._texts) {
+        main.setTransform(T.a * P, T.b * P, T.c * P, T.d * P, T.e * P, T.f * P);
+        main.font = font; main.textAlign = al; main.textBaseline = bl; main.globalAlpha = ga;
+        main.shadowColor = shc; main.shadowBlur = shb * P;
+        if (k === 'f') { main.fillStyle = style; mw ? main.fillText(t, x, y, mw) : main.fillText(t, x, y); }
+        else { main.strokeStyle = style; main.lineWidth = lw; mw ? main.strokeText(t, x, y, mw) : main.strokeText(t, x, y); }
+    }
+    main.globalAlpha = 1; main.shadowBlur = 0; main.shadowColor = 'transparent';
+}
+
 function shFrame() {
     if (!sh) return;
     if (shTraderOpen && shPred && !(sh.map.stations || []).some(s => s.kind === 'trader' && Math.hypot(s.x - shPred.x, s.y - shPred.y) < 150)) onShTrader({ close: true });
+    if (guildOpen && shPred && !guildNear()) onGuild({ close: true });
     requestAnimationFrame(shFrame);
     const now = performance.now();
     const dt = Math.min(0.05, (now - shLastFrame) / 1000);
@@ -12477,7 +12901,11 @@ function shFrame() {
         cv.width = cw;
         cv.height = ch;
     }
-    const c = cv.getContext('2d');
+    const main = cv.getContext('2d');
+    // Pixel-Look (25.09.2026, Max: „alle Grafiken im Pixel-Style"): Welt in 1/P Aufloesung,
+    // danach scharf hochskaliert; Texte werden gesammelt und scharf drueber gezeichnet.
+    const P = shPixelOn() ? Math.max(1, Math.round(SH_PIX * dpr)) : 1;
+    let c = P > 1 ? shPixCtx(Math.ceil(cw / P), Math.ceil(ch / P)) : main;
     const m = sh.map;
     const latest = shSnaps[shSnaps.length - 1];
     const others = shOthers();
@@ -12499,15 +12927,19 @@ function shFrame() {
     camX += (Math.random() - .5) * shake;
     camY += (Math.random() - .5) * shake;
     shCam = { x: camX - viewW / 2, y: camY - viewH / 2, s };
+    const ws = s / P;                 // Welt -> Zeichenflaeche (bei Pixel-Look kleiner)
+    PIX_WU = P / s;                   // Welt-Einheiten je Pixel (fuer Sprites, bfx.js)
     const vis = (x, y, pad) => x > shCam.x - pad && x < shCam.x + viewW + pad && y > shCam.y - pad && y < shCam.y + viewH + pad;
 
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.fillStyle = '#070a0f';
-    c.fillRect(0, 0, cw, ch);
-    c.setTransform(s, 0, 0, s, -shCam.x * s, -shCam.y * s);
+    c.fillRect(0, 0, c.canvas.width, c.canvas.height);
+    c.setTransform(ws, 0, 0, ws, -shCam.x * ws, -shCam.y * ws);
 
-    // Boden mit Gitter (nur sichtbarer Teil); Zombie-Map hat eigenen Boden (zfx.js)
-    if (!zMallFloor(c, m, shCam, viewW, viewH, now)) {
+    // Boden mit Gitter (nur sichtbarer Teil); Zombie-Map hat eigenen Boden (zfx.js);
+    // Dungeons (25.09.2026) backen Boden und Waende in dfx.js
+    const dun = !!m.tiles && dDraw(c, m, shCam, viewW, viewH);
+    if (dun) { /* Boden und Waende schon gezeichnet */ } else if (!zMallFloor(c, m, shCam, viewW, viewH, now)) {
         rFloor(c, m, reg, shCam, viewW, viewH, now);
         if (reg.id === 'surface') for (const [x, y, w, bh] of m.buildings) if (vis(x, y, Math.max(w, bh))) rBuildingFloor(c, x, y, w, bh);
     }
@@ -12526,11 +12958,25 @@ function shFrame() {
         c.setLineDash([]);
         drawEmojiC(c, '🚁', e.x, e.y, 44);
     }
+    // 25.09.2026: Guild Houses (Holzboden, Teppich, Banner) und feindliche Stuetzpunkte
+    for (const g of m.guilds || []) {
+        if (vis(g[0] + g[2] / 2, g[1] + g[3] / 2, Math.max(g[2], g[3]))) gGuildFloor(c, g, now);
+    }
+    for (const z of m.posts || []) {
+        if (!vis(z[0] + z[2] / 2, z[1] + z[3] / 2, Math.max(z[2], z[3]))) continue;
+        c.fillStyle = 'rgba(255,91,91,.06)';
+        c.fillRect(z[0], z[1], z[2], z[3]);
+        c.fillStyle = 'rgba(255,91,91,.55)';
+        c.font = 'bold 24px system-ui';
+        c.textAlign = 'left';
+        c.fillText('⚠ ENEMY OUTPOST', z[0] + 18, z[1] - 14);
+    }
     // Waende
     zMallDecor(c, m, shCam, viewW, viewH, now);
-    for (const [x, y, w, h] of m.walls) {
+    if (!dun) for (const [x, y, w, h] of m.walls) {
         if (!vis(x, y, Math.max(w, h))) continue;
         if (zMallWall(c, m, x, y, w, h)) continue;
+        if (gWall(c, m, x, y, w, h)) continue;
         if (rWall(c, reg, x, y, w, h)) continue;
         c.fillStyle = 'rgba(0,0,0,.35)';
         c.fillRect(x + 6, y + 6, w, h);
@@ -12540,9 +12986,12 @@ function shFrame() {
         c.fillRect(x, y, w, 5);
     }
     rDeco(c, m, shCam, viewW, viewH, now, latest.tanks ? new Map(latest.tanks) : null);
-    c.strokeStyle = reg.id === 'lab' ? '#29c6a0' : reg.id === 'bunker' ? '#d8a820' : '#ff5bd6';
-    c.lineWidth = 8;
-    c.strokeRect(reg.x + 4, reg.y + 4, reg.w - 8, reg.h - 8);
+    for (const g of m.guilds || []) if (vis(g[0] + g[2] / 2, g[1] + g[3] / 2, Math.max(g[2], g[3]))) gGuildTop(c, g, now);
+    if (!dun) {
+        c.strokeStyle = reg.id === 'lab' ? '#29c6a0' : reg.id === 'bunker' ? '#d8a820' : '#ff5bd6';
+        c.lineWidth = 8;
+        c.strokeRect(reg.x + 4, reg.y + 4, reg.w - 8, reg.h - 8);
+    }
     // Feuerflaechen (Molotov)
     for (const [, x, y, r, , acid] of latest.fires || []) {
         if (acid) {
@@ -12579,6 +13028,7 @@ function shFrame() {
         if (s.kind === 'portal') { rPortal(c, s, now); continue; }
         const L = stationLook(s);
         if (zDrawStation(c, m, s, L, now)) continue;
+        if (gStation(c, s, L, now, !!shPred && Math.hypot(shPred.x - s.x, shPred.y - s.y) < 130)) continue;
         const pulse = .5 + .5 * Math.sin(now / 400 + s.x);
         // 4.6: kleiner (Max: im Zombie-Modus im Weg)
         c.fillStyle = `rgba(${L.rgb},${.12 + .08 * pulse})`;
@@ -12716,6 +13166,35 @@ function shFrame() {
         const t = owner === sh.id && !WATCH ? age + shRtt / 2000 : Math.max(0, age - SH_INTERP / 1000);
         const bx = x + vx * t, by = y + vy * t;
         const sp = Math.hypot(vx, vy) || 1;
+        // 25.09.2026: Optik der neuen Uniques
+        if (look === 'hammer' || look === 'fist') {
+            c.save();
+            c.translate(bx, by);
+            c.rotate(look === 'hammer' ? now / 60 : Math.atan2(vy, vx));
+            drawEmojiC(c, look === 'hammer' ? '🔨' : '🤜', 0, 0, look === 'hammer' ? 30 : 26);
+            c.restore();
+            continue;
+        }
+        if (look === 'petals') {
+            for (let i = 0; i < 14; i++) {
+                const a = i * 2.4 + now / 90, rr = 10 + (i * 7) % 48;
+                c.fillStyle = `hsla(${330 + (i % 4) * 8},90%,${70 + (i % 3) * 8}%,.9)`;
+                c.beginPath();
+                c.ellipse(bx + Math.cos(a) * rr, by + Math.sin(a) * rr, 5, 2.5, a, 0, Math.PI * 2);
+                c.fill();
+            }
+            continue;
+        }
+        if (look === 'portalshot') {
+            c.fillStyle = 'rgba(80,200,255,.9)';
+            c.beginPath();
+            c.arc(bx, by, 7, 0, Math.PI * 2);
+            c.fill();
+            c.strokeStyle = 'rgba(255,150,40,.8)';
+            c.lineWidth = 2;
+            c.stroke();
+            continue;
+        }
         // 6.6: Unique-Waffen mit eigener Optik (public/zfx.js)
         if (look && zDrawLook(c, bx, by, vx, vy, sp, look, now)) continue;
         if (fx & 2048) {
@@ -12848,9 +13327,14 @@ function shFrame() {
     }
 
     // Gegner (4.1): interpoliert, Lebensleiste, Sniper-Laser
-    for (const mb of shMobsInterp()) {
+    const mobsNow = shMobsInterp();
+    voxMobs(mobsNow, m);
+    for (const mb of mobsNow) {
         const def = m.mobs[mb.kind];
         if (!def || !vis(mb.x, mb.y, 80)) continue;
+        // Kopf-Oberkante: Pixel-Sprites sind hoeher als der Trefferkreis
+        const pxT = PX[mb.kind] ? pxTop(mb.kind, def.r || 20, def.special) : null;
+        const topY = pxT !== null ? mb.y + pxT : mb.y - (def.r || 20);
         if (mb.aim) {
             const k = Math.max(0, Math.min(1, 1 - mb.aim / 800));
             c.strokeStyle = `rgba(255,40,40,${.35 + .5 * k})`;
@@ -12860,10 +13344,43 @@ function shFrame() {
             c.lineTo(mb.x + Math.cos(mb.a) * 950, mb.y + Math.sin(mb.a) * 950);
             c.stroke();
         }
+        // Geass (25.09.2026): verzauberte Gegner mit rotem Ring und Auge
+        if (mb.charm) {
+            c.strokeStyle = `rgba(255,40,80,${.6 + .3 * Math.sin(now / 120)})`;
+            c.lineWidth = 3;
+            c.beginPath();
+            c.arc(mb.x, mb.y, (def.r || 20) + 8, 0, Math.PI * 2);
+            c.stroke();
+            drawEmojiC(c, '🔴', mb.x, mb.y - (def.r || 20) - 16, 14);
+        }
+        // Spezial-Charaktere (25.09.2026): Name und lange Lebensleiste
+        if (def.special) {
+            const bw = 110, by = topY - 40;
+            c.fillStyle = 'rgba(0,0,0,.7)';
+            c.fillRect(mb.x - bw / 2 - 2, by - 2, bw + 4, 12);
+            c.fillStyle = '#ff4d6d';
+            c.fillRect(mb.x - bw / 2, by, bw * Math.max(0, mb.hp / mb.mh), 8);
+            c.font = 'bold 13px system-ui';
+            c.textAlign = 'center';
+            c.fillStyle = '#ffd23f';
+            c.fillText(def.name, mb.x, by - 6);
+        }
+        // Gegner-Level (25.09.2026): Farbe nach Ebene (1–10 grau, 20–30 orange, 40–50 violett)
+        if (mb.lv) {
+            c.font = 'bold 11px system-ui';
+            c.textAlign = 'center';
+            c.fillStyle = 'rgba(0,0,0,.6)';
+            c.fillRect(mb.x - 17, topY - 17 - (def.elite ? 16 : 0), 34, 14);
+            c.fillStyle = mb.lv >= 40 ? '#c78bff' : mb.lv >= 20 ? '#ffb14d' : '#d7dde8';
+            c.fillText(`Lv ${mb.lv}`, mb.x, topY - 6 - (def.elite ? 16 : 0));
+        }
+        // 25.09.2026: Pixel-Sprites fuer alle Gegner (public/pfx.js, bfx.js)
+        // (danach trotzdem Lebensleiste und Elite-Name)
+        const drawn = PX[mb.kind] ? bDrawSide(c, mb, def, now) : false;
         // 6.5: Zombies mit eigener Figur (public/zfx.js)
-        if (zDrawMob(c, mb, def, now)) continue;
+        if (!drawn && zDrawMob(c, mb, def, now)) continue;
         // 6.12: eigene Figuren fuer Raid-Gegner (public/rfx.js), sonst Kreis mit Emoji
-        if (!rDrawMob(c, mb, def, now)) {
+        if (!drawn && !bDrawMob(c, mb, def, now) && !rDrawMob(c, mb, def, now)) {
             c.fillStyle = 'rgba(0,0,0,.35)';
             c.beginPath();
             c.ellipse(mb.x, mb.y + def.r * .8, def.r, def.r * .45, 0, 0, Math.PI * 2);
@@ -12886,15 +13403,15 @@ function shFrame() {
         if (mb.hp < mb.mh) {
             const bw = def.r * 2.4;
             c.fillStyle = 'rgba(0,0,0,.7)';
-            c.fillRect(mb.x - bw / 2, mb.y - def.r - 14, bw, 6);
+            c.fillRect(mb.x - bw / 2, topY - 2, bw, 6);
             c.fillStyle = def.elite ? '#ff5b5b' : '#ffb347';
-            c.fillRect(mb.x - bw / 2 + 1, mb.y - def.r - 13, (bw - 2) * mb.hp / mb.mh, 4);
+            c.fillRect(mb.x - bw / 2 + 1, topY - 1, (bw - 2) * mb.hp / mb.mh, 4);
         }
         if (def.elite) {
             c.fillStyle = '#ff9b9b';
             c.font = 'bold 12px system-ui';
             c.textAlign = 'center';
-            c.fillText(def.name, mb.x, mb.y - def.r - 18);
+            c.fillText(def.name, mb.x, topY - 6);
         }
     }
 
@@ -12981,6 +13498,7 @@ function shFrame() {
     // Tueren: helle Schwelle mit Pfeil, damit man den Eingang sieht
     for (const [x, y, w, dh] of m.doors) {
         if (!vis(x, y, 100)) continue;
+        if (gDoor(c, m, x, y, w, dh, now)) continue;
         c.fillStyle = 'rgba(255,210,63,.55)';
         c.fillRect(x, y, w, dh);
         c.strokeStyle = '#ffd23f';
@@ -13058,8 +13576,82 @@ function shFrame() {
         }
     }
 
+    // Portal Gun (25.09.2026): blau und orange, blass solange das Gegenstueck fehlt
+    for (const [px, py, col, linked] of latest.portals || []) {
+        const rgb = col ? '255,150,40' : '60,170,255';
+        c.save();
+        c.translate(px, py);
+        c.scale(1, 1.35);
+        c.fillStyle = `rgba(${rgb},${linked ? .35 : .15})`;
+        c.beginPath();
+        c.arc(0, 0, 24, 0, Math.PI * 2);
+        c.fill();
+        c.strokeStyle = `rgba(${rgb},${linked ? .95 : .5})`;
+        c.lineWidth = 5;
+        c.beginPath();
+        c.arc(0, 0, 24, 0, Math.PI * 2);
+        c.stroke();
+        c.restore();
+        if (linked) {
+            c.strokeStyle = `rgba(${rgb},.6)`;
+            c.lineWidth = 2;
+            c.beginPath();
+            c.arc(px, py, 14 + 6 * Math.sin(now / 150), 0, Math.PI * 2);
+            c.stroke();
+        }
+    }
+
+    // Rasenshuriken-Zonen (Awakening)
+    for (const [zx, zy, zr] of latest.zones || []) {
+        c.strokeStyle = `rgba(120,200,255,${.5 + .3 * Math.sin(now / 70)})`;
+        c.lineWidth = 3;
+        for (let i = 0; i < 4; i++) {
+            const a = now / 90 + i * Math.PI / 2;
+            c.beginPath();
+            c.arc(zx, zy, zr * 0.9, a, a + 0.9);
+            c.stroke();
+        }
+        c.fillStyle = 'rgba(120,200,255,.12)';
+        c.beginPath();
+        c.arc(zx, zy, zr, 0, Math.PI * 2);
+        c.fill();
+    }
+
+    // Hoi-Poi-Tuerme und eigene Killer-Queen-Bomben (25.09.2026)
+    for (const [, tx, ty, ta, left] of latest.turrets || []) {
+        c.fillStyle = 'rgba(0,0,0,.4)';
+        c.beginPath();
+        c.arc(tx, ty, 20, 0, Math.PI * 2);
+        c.fill();
+        c.strokeStyle = left < 3000 && Math.floor(now / 200) % 2 ? '#ff4d4d' : '#ffd23f';
+        c.lineWidth = 3;
+        c.beginPath();
+        c.moveTo(tx, ty);
+        c.lineTo(tx + Math.cos(ta) * 28, ty + Math.sin(ta) * 28);
+        c.stroke();
+        drawEmojiC(c, '💊', tx, ty, 22);
+    }
+    for (const [bx, by] of my.kq || []) {
+        c.fillStyle = `rgba(255,80,140,${.25 + .15 * Math.sin(now / 100)})`;
+        c.beginPath();
+        c.arc(bx, by, 16, 0, Math.PI * 2);
+        c.fill();
+        drawEmojiC(c, '💣', bx, by - 14, 14);
+    }
+
+    // Hiraishin-Kunai (25.09.2026): eigene Marke, pulsiert
+    if (my.kunai) {
+        const [kx, ky] = my.kunai;
+        c.strokeStyle = `rgba(255,210,80,${.5 + .3 * Math.sin(now / 150)})`;
+        c.lineWidth = 2;
+        c.beginPath();
+        c.arc(kx, ky, 22, 0, Math.PI * 2);
+        c.stroke();
+        drawEmojiC(c, '🗡️', kx, ky, 24);
+    }
+
     // Explosionen, Blitze
-    const fxMs = f => zFxMs(f) || (f.type === 'shBeam' && f.look ? 900 : 0) || (f.nuke ? 1400 : f.type === 'shBeam' ? 450 : f.kind === 'phoenix' || f.kind === 'hole' ? 1100 : 500);
+    const fxMs = f => zFxMs(f) || (f.type === 'shBeam' && f.look ? 900 : 0) || (f.nuke ? 1400 : f.type === 'shBeam' ? 450 : f.kind === 'phoenix' || f.kind === 'hole' ? 1100 : f.kind === 'jumpwarn' || f.kind === 'swordrain' ? 900 : 500);
     shFx = shFx.filter(f => now - f.t < fxMs(f));
     for (const f of shFx) {
         const k = (now - f.t) / fxMs(f);
@@ -13192,6 +13784,49 @@ function shFrame() {
                 c.beginPath();
                 c.arc(f.x, f.y, f.r * (0.3 + k * 0.7), 0, Math.PI * 2);
                 c.stroke();
+            } else if (f.kind === 'swordrain') {
+                for (let i = 0; i < 10; i++) {
+                    const a = i * 2.4, rr = (i * 37) % f.r;
+                    drawEmojiC(c, '🗡️', f.x + Math.cos(a) * rr, f.y + Math.sin(a) * rr - 120 * (1 - k), 22);
+                }
+                c.strokeStyle = `rgba(255,210,80,${1 - k})`;
+                c.lineWidth = 3;
+                c.beginPath();
+                c.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+                c.stroke();
+            } else if (['doom', 'weights', 'dragon', 'door', 'mirror', 'charm', 'titan', 'poof', 'portal', 'punch', 'haki', 'shield', 'vortex'].includes(f.kind)) {
+                c.globalAlpha = 1 - k;
+                drawEmojiC(c, { doom: '📓', weights: '🏋️', dragon: '🐉', door: '🚪', mirror: '🪞', charm: '🔴', titan: '🦖', poof: '💨', portal: '🌀', punch: '👊', haki: '👒', shield: '👹', vortex: '🌀' }[f.kind], f.x, f.y - 40 - k * 40, 40 + k * 20);
+                c.globalAlpha = 1;
+            } else if (f.kind === 'jumpwarn') {
+                // Boss-Sprung (25.09.2026): Landestelle blinkt, Linie vom Boss
+                c.strokeStyle = `rgba(255,60,60,${.5 + .4 * Math.sin(now / 60)})`;
+                c.lineWidth = 4;
+                c.beginPath();
+                c.arc(f.x, f.y, f.r * (1 - k * 0.3), 0, Math.PI * 2);
+                c.stroke();
+                c.fillStyle = `rgba(255,60,60,${.12 + .2 * k})`;
+                c.fill();
+                c.setLineDash([12, 10]);
+                c.lineWidth = 2;
+                c.beginPath();
+                c.moveTo(f.from[0], f.from[1]);
+                c.lineTo(f.x, f.y);
+                c.stroke();
+                c.setLineDash([]);
+            } else if (f.kind === 'gomu') {
+                c.strokeStyle = `rgba(255,190,150,${1 - k})`;
+                c.lineWidth = 8 * (1 - k) + 2;
+                c.beginPath();
+                c.moveTo(f.from[0], f.from[1]);
+                c.lineTo(f.x, f.y);
+                c.stroke();
+                drawEmojiC(c, '🤜', f.x, f.y, 26);
+            } else if (f.kind === 'shinra') {
+                c.fillStyle = `rgba(255,255,255,${.35 * (1 - k)})`;
+                c.beginPath();
+                c.arc(f.x, f.y, f.r * k, 0, Math.PI * 2);
+                c.fill();
             } else if (f.kind === 'blink') {
                 for (const [bx, by] of [f.from, [f.x, f.y]]) {
                     c.fillStyle = `rgba(184,132,255,${.6 * (1 - k)})`;
@@ -13252,6 +13887,12 @@ function shFrame() {
         c.globalAlpha = 1;
     }
 
+    // Dungeons (25.09.2026): Licht und Sichtfeld ueber die Welt, dann weiter in Weltkoordinaten
+    if (dun) {
+        const eye = shPred || shMeServer() || { x: shCam.x + viewW / 2, y: shCam.y + viewH / 2 };
+        dOverlay(c, m, shCam, ws, c.canvas.width, c.canvas.height, eye.x, eye.y, now);
+        c.setTransform(ws, 0, 0, ws, -shCam.x * ws, -shCam.y * ws);
+    }
     // Fadenkreuz
     if (shMouse && !shTouch.aim) {
         const wx = shCam.x + shMouse.x * dpr / s, wy = shCam.y + shMouse.y * dpr / s;
@@ -13266,6 +13907,14 @@ function shFrame() {
         c.stroke();
     }
 
+    // Pixel-Welt hochskalieren, gesammelte Texte scharf drueber
+    if (P > 1) {
+        main.setTransform(1, 0, 0, 1, 0, 0);
+        main.imageSmoothingEnabled = false;
+        main.drawImage(c.canvas, 0, 0, c.canvas.width * P, c.canvas.height * P);
+        shPixTexts(main, c, P);
+        c = main;
+    }
     // ---- Bildschirm-Ebene ----
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
     const W = r.width, H = r.height;
@@ -13285,7 +13934,7 @@ function shFrame() {
         c.fillStyle = g;
         c.fillRect(0, 0, W, H);
     }
-    shMinimap(c, latest, W, H);
+    if (!sh.map.tiles) shMinimap(c, latest, W, H);   // Zufalls-Dungeons: keine Minimap
     shEventHud(c, latest, W, H, now, dpr);
 
     // Kill-Feed
@@ -13317,7 +13966,7 @@ function shFrame() {
         const it = my.gear[k];
         if (!it) continue;
         const on = my.slot === k;
-        const label = `${key} ${itemIcon(it)} ${it.n}`;
+        const label = `${key} ${itemIconTxt(it)} ${it.n}`;
         c.font = `bold ${on ? 14 : 12}px system-ui`;
         const w = c.measureText(label).width + 16;
         c.fillStyle = on ? 'rgba(255,255,255,.18)' : 'rgba(0,0,0,.55)';
@@ -13342,6 +13991,42 @@ function shFrame() {
         c.fillRect(W / 2 - w / 2, H - 100, w, 32);
         c.fillStyle = '#ffd23f';
         c.fillText(t, W / 2, H - 83);
+    }
+    // 25.09.2026 Uniques: Combo, Buffs, Faehigkeit, Death Note
+    {
+        const tags = [];
+        if (my.combo) tags.push([`🌊 Combo ×${my.combo}${my.combo >= 10 ? ' – DRAGON' : ''}`, my.combo >= 10 ? '#5ad8ff' : '#fff']);
+        for (const b of (my.buff || '').split(',').filter(Boolean)) tags.push(b === 'hollow' ? ['👹 Hollow', '#ff5b5b'] : b === 'stone' ? ["💎 Philosopher's Stone", '#ff5bd6'] : ['⛓️ CHAINED', '#ffb14d']);
+        const ab = (my.abil || '').split(',');
+        if (ab.includes('titan')) tags.push(['R · 🦖 Titan Shift (once per raid)', '#ff9f1a']);
+        if (ab.includes('odm')) tags.push(['R · 🪝 grapple to wall', '#7dffb0']);
+        if (ab.includes('missiles')) tags.push(['R · 🚀 missile barrage', '#ff5b5b']);
+        if (my.titan) tags.push([`🦖 Titan ${Math.ceil(my.titan / 1000)} s`, '#ff9f1a']);
+        if (ab.includes('weights')) tags.push(['R · 🏋️ drop weights', '#ffd23f']);
+        if (ab.includes('kq')) tags.push([`R · 💣 detonate ${(my.kq || []).length}`, '#ff5b8a']);
+        if (ab.includes('step')) tags.push(['R · 💨 flash step', '#8fe9ff']);
+        if (my.gaze) tags.push([`🔴 Geass ${Math.round(my.gaze * 100)}%`, '#ff4d6d']);
+        if (my.inv) tags.push(['🪞 invisible', '#b884ff']);
+        if (my.phase) tags.push(['🚪 walking through walls', '#ffd23f']);
+        c.font = 'bold 14px system-ui';
+        let ty = H - 130;
+        for (const [t, col] of tags) {
+            const w = c.measureText(t).width + 18;
+            c.fillStyle = 'rgba(0,0,0,.6)';
+            c.fillRect(W / 2 - w / 2, ty - 16, w, 24);
+            c.fillStyle = col;
+            c.fillText(t, W / 2, ty);
+            ty -= 28;
+        }
+        if (my.doom !== undefined) {
+            c.font = 'bold 18px system-ui';
+            const t = `📓 Your name is in the Death Note – ${Math.ceil(my.doom / 1000)} s`;
+            const w = c.measureText(t).width + 24;
+            c.fillStyle = `rgba(60,0,0,${.7 + .2 * Math.sin(now / 200)})`;
+            c.fillRect(W / 2 - w / 2, 22, w, 32);
+            c.fillStyle = '#ff4d4d';
+            c.fillText(t, W / 2, 39);
+        }
     }
     if (my.ex !== null && my.ex !== undefined) {
         const k = 1 - my.ex / 6000;
@@ -13374,6 +14059,14 @@ function shFrame() {
             c.fillText(shToast.text, W / 2, 124, W - 60);
         }
         c.globalAlpha = 1;
+    }
+    // Za Warudo (25.09.2026): Welt graugelb, der Zeitstopper sieht einen Rand
+    if (my.zw) {
+        c.fillStyle = my.zwMe ? 'rgba(90,70,20,.22)' : 'rgba(60,50,20,.45)';
+        c.fillRect(0, 0, W, H);
+        c.font = 'bold 26px system-ui';
+        c.fillStyle = '#ffd23f';
+        c.fillText(my.zwMe ? `⏱️ ZA WARUDO – ${(my.zw / 1000).toFixed(1)} s` : '⏱️ Time has stopped', W / 2, 60);
     }
     const nk = shFx.find(f => f.nuke);
     if (nk) {
@@ -13420,6 +14113,38 @@ function drawEmojiC(c, ch, x, y, size) {
 }
 
 function shDrawPlayer(c, p, x, y, a, mine, now, my) {
+    // Senbonzakura (25.09.2026): Bluetenkreis
+    if (p.ob) {
+        for (let i = 0; i < (p.ob === 2 ? 36 : 24); i++) {
+            const t = i / (p.ob === 2 ? 36 : 24) * Math.PI * 2 + now / 260, rr = (70 + 30 * Math.sin(i * 1.7 + now / 400)) * (p.ob === 2 ? 1.5 : 1);
+            c.fillStyle = `hsla(${330 + (i % 5) * 6},90%,75%,.85)`;
+            c.beginPath();
+            c.ellipse(x + Math.cos(t) * rr, y + Math.sin(t) * rr, 5, 2.5, t + 1.2, 0, Math.PI * 2);
+            c.fill();
+        }
+    }
+    // Susanoo-Schild (Awakening)
+    if (p.sh) {
+        c.strokeStyle = `rgba(160,90,255,${.6 + .3 * Math.sin(now / 90)})`;
+        c.lineWidth = 5;
+        c.beginPath();
+        c.arc(x, y, sh.map.r + 16, 0, Math.PI * 2);
+        c.stroke();
+    }
+    // Titan: gross zeichnen; Klon: halb durchsichtig
+    if (p.ti || p.cl) {
+        c.save();
+        if (p.cl) c.globalAlpha = .7;
+        c.translate(x, y);
+        c.scale(p.ti ? 2.4 : 1, p.ti ? 2.4 : 1);
+        c.translate(-x, -y);
+        const q = { ...p, ti: 0, cl: 0 };
+        shDrawPlayer(c, q, x, y, a, mine, now, my);
+        c.restore();
+        if (p.ti) drawEmojiC(c, '🦖', x, y - 80, 30);
+        if (p.cl) drawEmojiC(c, '💨', x + 18, y - 18, 12);
+        return;
+    }
     if (p.tm && sh && sh.team) {
         c.strokeStyle = p.tm === sh.team ? 'rgba(61,165,255,.9)' : 'rgba(255,91,91,.9)';
         c.lineWidth = 3;
@@ -13428,45 +14153,29 @@ function shDrawPlayer(c, p, x, y, a, mine, now, my) {
         c.stroke();
     }
     const m = sh.map;
+    // 25.09.2026: Pixel-Figur in Spielerfarbe (public/pfx.js), Waffe dreht frei zum Ziel
+    const pk = pxPlayerKind(p.c), pTop = pxTop(pk, m.r, true), pps = pxScale(pk, m.r, true);
     c.save();
-    c.translate(x, y);
     c.globalAlpha = p.pr ? .5 + .3 * Math.sin(now / 80) : mine && my.hid ? .55 : 1;
-    c.fillStyle = 'rgba(0,0,0,.35)';
-    c.beginPath();
-    c.arc(4, 5, m.r, 0, Math.PI * 2);
-    c.fill();
-    c.rotate(a);
-    const len = { sniper: 38, rifle: 32, shotgun: 28, smg: 24, deagle: 26, minigun: 34, launcher: 36 }[p.w] || 24;
-    c.fillStyle = TIER_COLOR[p.wt] && p.wt !== 'common' ? TIER_COLOR[p.wt] : '#ccd3e0';
-    c.fillRect(8, -5, len, p.w === 'launcher' || p.w === 'minigun' ? 12 : 10);
-    if (mine && now - shFlashAt < 60) {
-        c.fillStyle = '#fff3b0';
-        c.beginPath();
-        c.arc(8 + len + 6, 0, 8, 0, Math.PI * 2);
-        c.fill();
+    if (mine) {
+        c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = 2;
+        c.beginPath(); c.ellipse(x, y + m.r * .9, m.r * 1.1, m.r * .4, 0, 0, Math.PI * 2); c.stroke();
     }
-    c.rotate(-a);
-    c.beginPath();
-    c.arc(0, 0, m.r, 0, Math.PI * 2);
-    c.fillStyle = p.c;
-    c.fill();
-    c.lineWidth = mine ? 4 : 2;
-    c.strokeStyle = mine ? '#fff' : 'rgba(0,0,0,.6)';
-    c.stroke();
-    if (p.fb) zDrawSuit(c, p.fb, m.r, now);
-    if (p.ar) {
-        c.strokeStyle = arenaCat.sets[p.ar].color;
-        c.lineWidth = 3;
-        c.beginPath();
-        c.arc(0, 0, m.r + 5, 0, Math.PI * 2);
-        c.stroke();
+    bDrawSide(c, { kind: pk, x, y, a, id: 'pl-' + (p.id || p.n) }, { r: m.r, special: true }, now);
+    // Waffe: von der Schulter aus, Farbe nach Seltenheit, Muendungsfeuer
+    {
+        const sx = x + Math.cos(a) * pps * 1.5, sy = y + pTop + pps * 13.5;
+        const len = ({ sniper: 38, rifle: 32, shotgun: 28, smg: 24, deagle: 26, minigun: 34, launcher: 36 }[p.w] || 24) * .9;
+        const thick = p.w === 'launcher' || p.w === 'minigun' ? pps * 2.2 : pps * 1.5;
+        c.save(); c.translate(sx, sy); c.rotate(a);
+        c.fillStyle = '#0b0b10'; c.fillRect(-pps * .5, -thick / 2 - pps * .5, len + pps, thick + pps);
+        c.fillStyle = TIER_COLOR[p.wt] && p.wt !== 'common' ? TIER_COLOR[p.wt] : '#9aa3ad';
+        c.fillRect(0, -thick / 2, len, thick);
+        c.fillStyle = '#f0cfb0'; c.fillRect(0, -pps * .75, pps * 1.5, pps * 1.5);
+        if (mine && now - shFlashAt < 60) { c.fillStyle = '#fff3b0'; c.fillRect(len, -pps * 1.5, pps * 3, pps * 3); }
+        c.restore();
     }
-    if (p.hm) {
-        c.fillStyle = arenaCat.sets[p.hm].color;
-        c.beginPath();
-        c.arc(0, 0, 6, 0, Math.PI * 2);
-        c.fill();
-    }
+    c.translate(x, y);
     if (p.ar === 'titan' || p.ar === 'phantom') {
         const titan = p.ar === 'titan';
         const pulse = .5 + .5 * Math.sin(now / (titan ? 220 : 140));
@@ -13489,14 +14198,14 @@ function shDrawPlayer(c, p, x, y, a, mine, now, my) {
     c.globalAlpha = 1;
     if (!mine) {
         c.fillStyle = 'rgba(0,0,0,.6)';
-        c.fillRect(-24, -m.r - 14, 48, 6);
+        c.fillRect(-24, pTop - 10, 48, 6);
         c.fillStyle = p.hp > p.mh / 2 ? '#00d67a' : p.hp > p.mh / 4 ? '#ffd23f' : '#f43f5e';
-        c.fillRect(-24, -m.r - 14, 48 * p.hp / p.mh, 6);
+        c.fillRect(-24, pTop - 10, 48 * p.hp / p.mh, 6);
     }
     c.fillStyle = '#fff';
     c.font = 'bold 14px system-ui';
     c.textAlign = 'center';
-    c.fillText(p.lv ? `${p.n} · Lv ${p.lv}` : p.n, 0, -m.r - 24);
+    c.fillText(p.lv ? `${p.n} · Lv ${p.lv}` : p.n, 0, pTop - 16);
     if (!mine && p.wt && p.wt !== 'common') {
         c.fillStyle = TIER_COLOR[p.wt];
         c.font = 'bold 11px system-ui';
@@ -13676,7 +14385,11 @@ function shMinimap(c, latest, W, H) {
         c.arc(x0 + e.x * k, y0 + e.y * k, 4, 0, Math.PI * 2);
         c.fill();
     }
-    for (const [z, col] of [[m.town, 'rgba(0,255,136,.35)'], [m.outpost, 'rgba(0,255,136,.35)'], [m.military, 'rgba(255,91,91,.45)']]) {
+    for (const g of m.guilds || []) {
+        c.fillStyle = 'rgba(255,170,80,.35)';
+        c.fillRect(x0 + g[0] * k, y0 + g[1] * k, g[2] * k, g[3] * k);
+    }
+    for (const [z, col] of [[m.town, 'rgba(0,255,136,.35)'], [m.outpost, 'rgba(0,255,136,.35)'], [m.military, 'rgba(255,91,91,.45)'], ...(m.posts || []).map(z2 => [z2, 'rgba(255,91,91,.45)'])]) {
         if (!z) continue;
         c.strokeStyle = col;
         c.lineWidth = 1.5;
@@ -13748,6 +14461,7 @@ function shLocalFire(now) {
     shLastLocalShot = now;
     shFlashAt = now;
     const b = (s.me.gear[s.me.slot] || s.me.gear.primary || {}).b;
+    vox(b); // Unique: Voiceline/Effekt (public/voice.js), Abstand regelt sfx.json
     // dumpf: Tiefpass statt Hochpass, schnelle Waffen leiser (Max: SMG tat in den Ohren weh)
     const fast = s.me.ms < 120;
     const heavy = ['sniper', 'launcher', 'railgun', 'nukelauncher', 'singularity', 'crossbow'].includes(b);
@@ -13819,6 +14533,12 @@ document.addEventListener('keydown', e => {
     if (k === 'q') shUse(0);
     if (k === 'f' || k === 'e') wsSend({ type: 'shInteract' });
     if (k === 'g') shUse(1);
+    if (k === 'r') {
+        wsSend({ type: 'shAbility' });
+        const s = shSnaps[shSnaps.length - 1];
+        if (s && s.me) for (const sl of ['vest', 'helmet', 'pants', 'boots', 'primary', 'secondary']) { const it = s.me.gear[sl]; if (it && vox(it.b)) break; }
+    }
+    if (k === 'c') { if (crOpen) crDraw(false); else wsSend({ type: 'crOpen' }); }
     if (e.key === 'Tab' || k === 'i') {
         e.preventDefault();
         shInvToggle();
@@ -13829,6 +14549,8 @@ document.addEventListener('keydown', e => {
 // Mauszeiger (Touch: 300 in Blickrichtung)
 function shUse(i) {
     if (!shPred) return;
+    const su = shSnaps.length && shSnaps[shSnaps.length - 1].me;
+    if (su && su.util && su.util[i]) vox(su.util[i].base);
     let x = shPred.x + Math.cos(shIn.a) * 300, y = shPred.y + Math.sin(shIn.a) * 300;
     if (shMouse && !shTouch.aim) {
         const cv = $('sh-canvas');
@@ -13905,7 +14627,7 @@ $('hub-back').onclick = () => { if (!hubCaseBusy) setWorld('snake'); };
 $('sh-leave').onclick = () => {
     const q = sh && sh.mode === 'pvp' ? 'Leave the match? It counts as a loss (−20 rating). You keep all your items.'
         : sh && sh.mode === 'zombies' ? 'Leave the zombies game? Your waves so far count, you keep all your items.' : 'Leave the raid? You lose everything you carry – like dying.';
-    uiConfirm(q, { title: sh && sh.mode === 'extract' ? 'Give up the raid?' : 'Leave?', ok: 'Leave', danger: true }).then(ok => ok && wsSend({ type: 'shLeave' }));
+    uiConfirm(q, { title: sh && (sh.mode === 'extract' || sh.mode === 'dungeon') ? 'Give up the raid?' : 'Leave?', ok: 'Leave', danger: true }).then(ok => ok && wsSend({ type: 'shLeave' }));
 };
 $('sh-med').onclick = () => shUse(0);
 $('sh-use').onclick = () => wsSend({ type: 'shInteract' });
@@ -15875,6 +16597,13 @@ function slotResult(d) {
 <script src="/kekemon.js"></script>
 <script src="/market.js"></script>
 <script src="/zfx.js"></script>
+<svg width="0" height="0" style="position:absolute"><defs><linearGradient id="gi-ultra" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5bd6"/><stop offset=".5" stop-color="#3da5ff"/><stop offset="1" stop-color="#ffd23f"/></linearGradient></defs></svg>
+<script src="/unique-icons.js"></script>
+<script src="/voice.js"></script>
 <script src="/rfx.js"></script>
+<script src="/gfx.js"></script>
+<script src="/bfx.js"></script>
+<script src="/pfx.js"></script>
+<script src="/dfx.js"></script>
 </body>
 </html>

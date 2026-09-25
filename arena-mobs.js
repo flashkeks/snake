@@ -54,6 +54,73 @@ const MOBS = {
         name: 'Failed Experiment', icon: '🧟‍♂️', color: '#ff4fd8', r: 34, hp: 2400, speed: 105, chase: 200, aggro: 680, taken: 0.85, elite: true,
         melee: 95, lab: true, xp: 'elite', xpMul: 2, drop: { chance: 1, src: 'npcrare', n: 2 }
     },
+    // ---------- 25.09.2026 (Max): neue Gegner fuer die Dungeon-Instanzen ----------
+    // Militaerbasis
+    heavy: {
+        name: 'Heavy Gunner', icon: '🪖', color: '#6f7d5a', r: 25, hp: 700, speed: 85, aggro: 650, range: 520, keep: 300, taken: 0.9,
+        gun: { dmg: 6, speed: 900, ms: 110, burst: 1, spread: 0.28, life: 0.7 },
+        xp: 'npc', xpMul: 3, drop: { chance: 0.55, src: 'npcdrop', n: 1 }
+    },
+    grenadier: {
+        name: 'Grenadier', icon: '💣', color: '#a0522d', r: 18, hp: 180, speed: 120, aggro: 700, range: 620, keep: 420,
+        strikes: { n: 1, r: 120, dmg: 70, warn: 1100, ms: 3400, spread: 0, fire: false },
+        xp: 'npc', xpMul: 2, drop: { chance: 0.45, src: 'npcdrop', n: 1 }
+    },
+    trooper: {
+        name: 'Riot Trooper', icon: '🛡️', color: '#4a5a78', r: 22, hp: 420, speed: 110, chase: 170, aggro: 520, shield: true,
+        melee: 45, gun: { dmg: 12, speed: 700, ms: 1400, burst: 2, spread: 0.2, life: 0.5 },
+        xp: 'npc', xpMul: 2.5, drop: { chance: 0.5, src: 'npcdrop', n: 1 }
+    },
+    k9: {
+        name: 'Attack Dog', icon: '🐕', color: '#8b6b4a', r: 14, hp: 110, speed: 200, chase: 330, aggro: 560, pack: 3,
+        melee: 35, xp: 'npc', xpMul: 0.8, drop: { chance: 0.15, src: 'npcdrop', n: 1 }
+    },
+    // Labor
+    acidspit: {
+        name: 'Acid Spitter', icon: '🐸', color: '#9bff4a', r: 19, hp: 320, speed: 115, aggro: 720, range: 600, keep: 380, lab: true,
+        strikes: { n: 2, r: 95, dmg: 45, warn: 1000, ms: 3000, spread: 110, acid: true },
+        xp: 'npc', xpMul: 2.5, drop: { chance: 0.5, src: 'npcdrop', n: 1 }
+    },
+    phaseshade: {
+        name: 'Phase Shade', icon: '👤', color: '#6a4cff', r: 17, hp: 260, speed: 160, chase: 260, aggro: 700, lab: true,
+        melee: 55, blink: { ms: 4200, dist: [70, 140] },
+        xp: 'npc', xpMul: 3, drop: { chance: 0.5, src: 'npcdrop', n: 1 }
+    },
+    leech: {
+        name: 'Leech Swarm', icon: '🪱', color: '#ff6fa8', r: 11, hp: 70, speed: 210, chase: 320, aggro: 520, lab: true, pack: 5,
+        melee: 18, xp: 'npc', xpMul: 0.6, drop: { chance: 0.08, src: 'npcdrop', n: 1 }
+    },
+    cryo: {
+        name: 'Cryo Experiment', icon: '🧊', color: '#9fe8ff', r: 22, hp: 480, speed: 95, aggro: 680, range: 560, keep: 340, lab: true, taken: 0.9,
+        gun: { dmg: 22, speed: 620, ms: 1500, burst: 3, spread: 0.2, life: 1.2, slow: 0.45 },
+        xp: 'npc', xpMul: 3, drop: { chance: 0.55, src: 'npcdrop', n: 1 }
+    },
+    // ---------- 25.09.2026 (Max): Spezial-Charaktere in den Dungeons, selten ----------
+    // special: Name/Leiste im Client, Beute wie ein Boss, Level = Ebene + 5; Faehigkeiten in shooter.js specialTick
+    rick: {
+        special: true, lab: true, name: 'Rick Sanchez', title: 'Smartest Man in the Universe', icon: '🧪', color: '#8fe3ff', r: 22, hp: 3000,
+        speed: 140, aggro: 900, range: 560, keep: 300, gun: { dmg: 26, speed: 900, ms: 1100, burst: 3, spread: 0.15, life: 1.0 },
+        xp: 'elite', xpMul: 8, drop: { chance: 1, src: 'boss', n: 3 }
+    },
+    meeseeks: {
+        name: 'Mr. Meeseeks', icon: '🔵', color: '#5ab0ff', r: 15, hp: 140, speed: 170, chase: 250, aggro: 700, lab: true,
+        melee: 22, xp: 'npc', xpMul: 0.5
+    },
+    gojo: {
+        special: true, lab: true, name: 'Satoru Gojo', title: 'The Strongest', icon: '🕶️', color: '#e8f0ff', r: 21, hp: 4000, infinity: true,
+        speed: 150, aggro: 950, range: 520, keep: 260, gun: { dmg: 30, speed: 1000, ms: 900, burst: 2, spread: 0.1, life: 1.0 },
+        xp: 'elite', xpMul: 10, drop: { chance: 1, src: 'boss', n: 3 }
+    },
+    tanya: {
+        special: true, name: 'Tanya Degurechaff', title: 'The Devil of the Rhine', icon: '🪄', color: '#ffd27a', r: 18, hp: 2500, fly: true, taken: 0.7,
+        speed: 170, aggro: 950, range: 620, keep: 380, gun: { dmg: 24, speed: 850, ms: 900, burst: 2, spread: 0.12, life: 1.1, explode: 90 },
+        xp: 'elite', xpMul: 8, drop: { chance: 1, src: 'boss', n: 3 }
+    },
+    mustang: {
+        special: true, name: 'Roy Mustang', title: 'The Flame Alchemist', icon: '🔥', color: '#3a5bd9', r: 20, hp: 2800,
+        speed: 125, aggro: 900, range: 600, keep: 360, strikes: { n: 1, r: 110, dmg: 90, warn: 700, ms: 3000, spread: 0, fire: true },
+        xp: 'elite', xpMul: 8, drop: { chance: 1, src: 'boss', n: 3 }
+    },
     // ---------- Zombies (4.4): jagen immer den naechsten Spieler, HP wachsen je Welle ----------
     zombie: {
         zombie: true, name: 'Zombie', icon: '🧟', color: '#7fbf5f', r: 17, hp: 60, speed: 95, chase: 95, aggro: 99999,
@@ -209,7 +276,7 @@ const ROAMERS = [['scav', 55], ['sniper', 14], ['drone', 13]];
 
 // Fuer den Browser: was er zum Zeichnen braucht
 function catalog() {
-    return Object.fromEntries(Object.entries(MOBS).map(([k, m]) => [k, { name: m.name, icon: m.icon, color: m.color, r: m.r, boss: !!m.boss, zombie: !!m.zombie, crown: !!m.crown, elite: !!m.elite || (!!m.boss && !!m.zombie), slamR: m.slam ? m.slam.r : 0, title: m.title || '', ghost: !!m.ghost, armored: !!m.armored, boom: m.boom ? m.boom.r : 0, beamLen: m.beam ? m.beam.len : 0, beamW: m.beam ? m.beam.width : 0, beamTwin: !!(m.beam && m.beam.twin), vortexR: m.vortex ? m.vortex.r : 0, pattern: m.pattern || '' }]));
+    return Object.fromEntries(Object.entries(MOBS).map(([k, m]) => [k, { name: m.name, icon: m.icon, color: m.color, r: m.r, boss: !!m.boss, zombie: !!m.zombie, crown: !!m.crown, elite: !!m.elite || (!!m.boss && !!m.zombie), slamR: m.slam ? m.slam.r : 0, title: m.title || '', ghost: !!m.ghost, armored: !!m.armored, boom: m.boom ? m.boom.r : 0, beamLen: m.beam ? m.beam.len : 0, beamW: m.beam ? m.beam.width : 0, beamTwin: !!(m.beam && m.beam.twin), vortexR: m.vortex ? m.vortex.r : 0, pattern: m.pattern || '', special: !!m.special }]));
 }
 
 module.exports = { MOBS, BOSSES, ZBOSSES, ROAMERS, catalog };

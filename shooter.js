@@ -30,7 +30,7 @@ const I = require('./arena-items');
 
 const SPEED = Number(process.env.SNAKE_EVENT_SPEED) || 1;
 
-const W = 7200, H = 5000;       // seit 4.1 (vorher 4000 × 2800)
+const W = 9600, H = 6400;       // 25.09.2026 Map-Umbau Phase 2 (vorher 7200 × 5000, davor 4000 × 2800)
 const R = 18;
 const MOVE = 280;
 const MAX_PLAYERS = 24;
@@ -56,6 +56,11 @@ const BOSS_LIFE = 8 * 60e3;
 // 6.9 (Max: Boss fast tot und dann weg): gegangen wird erst, wenn er seit
 // BOSS_CALM keinen Treffer bekommen hat und kein Spieler in BOSS_NEAR ist
 const BOSS_CALM = 60e3, BOSS_NEAR = 1100;
+// 25.09.2026 (Max: Boss von ganz weit weg abschiessen, er macht nix): wer einen
+// Raid-Boss von ausserhalb seiner Reichweite trifft, provoziert ihn fuer
+// BOSS_PROVOKE ms – er sprintet (x BOSS_SPRINT) auf den Schuetzen zu und legt
+// alle BOSS_RETAL ms eine Salve Einschlaege auf ihn (mit Vorwarnung, ausweichbar)
+const BOSS_PROVOKE = 8000, BOSS_SPRINT = 2.2, BOSS_RETAL = 2600;
 // Leerer Raid mit lebendem Boss: so lange bleibt alles stehen (6.10, Max)
 const EMPTY_KEEP = 30e3;
 // 6.12 (Max: bei Disconnect Items droppen): kommt so lange nichts mehr vom
@@ -66,14 +71,44 @@ const SILENT_MS = 90e3;
 // Beutel eines Verlassenen/Getrennten liegen mindestens so lange (Max: min. 2 min)
 const BAG_LIFE_LEFT = Math.max(BAG_LIFE, 2 * 60e3);
 // Gegner (4.1): so viele laufen herum, geweckt nur in der Naehe von Spielern
-const MOB_BASE = 45, MOB_PER_PLAYER = 8, MOB_MAX = 120;
+const MOB_BASE = 70, MOB_PER_PLAYER = 10, MOB_MAX = 170;
+// Gegner-Stuetzpunkte (25.09.2026): Wachmannschaft je Stuetzpunkt, kommt nach dem Raeumen wieder
+const POST_GUARDS = ['enforcer', 'heavy', 'trooper', 'grenadier', 'scav'], POST_RESPAWN = 4 * 60e3;
+// Extraction nur fuer diese Konten (Kleinbuchstaben), leer = offen fuer alle
+const EXTRACT_ONLY = (process.env.SNAKE_EXTRACT_ONLY !== undefined ? process.env.SNAKE_EXTRACT_ONLY : 'kek').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+// 25.09.2026 (Max: Gegner droppen zu viel, mit Railgun zu einfach): Dropchance
+// aller normalen Gegner halbiert, Seltenheiten bleiben. Dazu Gegner-Level je
+// Ebene: HP/Schaden steigen innerhalb der Ebene mit dem Level (zusaetzlich zu den
+// Ebenen-Faktoren in UNDER_MOBS), XP steigen mit dem Level. Oberflaeche und Keller
+// wuerfeln Epic und hoeher bei Gegner-Beute nur halb so oft, das Labor wie bisher.
+const MOB_DROP_MUL = 0.5;
+const MOB_LEVELS = { surface: [1, 10], bunker: [20, 30], lab: [40, 50] };
+// 25.09.2026 (Max: Labor mit Lv-8-Railgun zu leicht, Level muessen ~200 % mehr machen):
+// Faktor jetzt ab Level 1 statt ab Ebenen-Beginn – Lv 10 x1,4 HP, Lv 25 x2,1,
+// Lv 45 x3,0 (+200 %), Schaden Lv 45 x2,3. Obendrauf die Ebenen-Faktoren (UNDER_MOBS).
+const MOB_LV_HP = 0.045, MOB_LV_DMG = 0.03, MOB_LV_XP = 0.05;
+const MOB_EPIC_MUL = { surface: 0.5, bunker: 0.5, lab: 1 };
+// Missionen (25.09.2026, Max): Schwierigkeit, Belohnung in Mission Tokens, Versicherung
+const MISSION_DIFF = {
+    easy: { name: 'Easy', lv: -10, mobs: 0.8, bossHp: 0.7, tokens: 1 },
+    normal: { name: 'Normal', lv: 0, mobs: 1, bossHp: 1, tokens: 2 },
+    hard: { name: 'Hard', lv: 10, mobs: 1.4, bossHp: 1.6, tokens: 4 }
+};
+const MISSION_KINDS = { bunker: 'Abandoned military base', lab: 'Abandoned lab' };
+const PARTY_MAX = 4, GUILD_R = 260;
+// Versicherung je Stufe (Common … Ultra): Scrap und Tokens, gilt fuer eine Mission
+const INSURE_SCRAP = [30, 50, 90, 160, 300, 550, 1000], INSURE_TOKENS = [1, 1, 1, 2, 3, 4, 6];
+// Spezial-Charaktere (25.09.2026): je Dungeon-Run einmal SPECIAL_CHANCE, nach SPECIAL_AFTER ms
+const SPECIALS = { bunker: ['tanya', 'mustang'], lab: ['rick', 'gojo'] };
+const SPECIAL_CHANCE = 0.15, SPECIAL_AFTER = [45e3, 90e3];
 const MOB_WAKE = 1700;
 const MIL_RESPAWN = 5 * 60e3;
 // Untergrund (6.12, Max: Gegner dort „gerne deutlich staerker")
 // n = so viele leben gleichzeitig, hp/dmg/spd = Faktoren auf die Grundwerte
 const UNDER_MOBS = {
-    bunker: { n: 16, hp: 2.5, dmg: 1.7, spd: 1.1, kinds: [['scav', 40], ['brute', 22], ['sniper', 16], ['drone', 12], ['enforcer', 10]], max: { enforcer: 3 } },
-    lab: { n: 13, hp: 1, dmg: 1, spd: 1, kinds: [['mutant', 40], ['stalker', 26], ['horror', 24], ['hulk', 10]], max: { hulk: 2 } }
+    // 25.09.2026: neue Arten fuer die Dungeon-Instanzen (heavy, grenadier, trooper, k9 / acidspit, phaseshade, leech, cryo)
+    bunker: { n: 16, hp: 2.5, dmg: 1.7, spd: 1.1, kinds: [['scav', 26], ['brute', 12], ['sniper', 10], ['drone', 6], ['enforcer', 7], ['heavy', 10], ['grenadier', 10], ['trooper', 10], ['k9', 9]], max: { enforcer: 3, heavy: 3 } },
+    lab: { n: 13, hp: 1, dmg: 1, spd: 1, kinds: [['mutant', 24], ['stalker', 16], ['horror', 14], ['hulk', 7], ['acidspit', 12], ['phaseshade', 11], ['leech', 8], ['cryo', 10]], max: { hulk: 2, cryo: 3 } }
 };
 const UNDER_CRATE_RESPAWN = 4 * 60e3;
 // Untergrund-Events (6.12.3, Max): Labor – ein Tank bricht auf und Monster kommen
@@ -123,7 +158,12 @@ function buildMap() {
     // 4.6 (Max): Haendler, Sani, Stadt und Aussenposten wieder raus, nur das Lager bleibt
     void town;
     void outpost;
-    const reserved = [military];
+    // 25.09.2026 (Map-Umbau Phase 2): zwei Guild Houses (Safe-Zone, Missionen, Stash,
+    // Versicherung) und drei weitere Gegner-Stuetzpunkte neben dem Militaerlager
+    const guilds = [[Math.round(W * 0.27) - 520, Math.round(H * 0.5) - 360, 1040, 720], [Math.round(W * 0.73) - 520, Math.round(H * 0.5) - 360, 1040, 720]];
+    const posts = [[Math.round(W * 0.1), Math.round(H * 0.12), 760, 560], [Math.round(W * 0.46), Math.round(H * 0.8), 820, 600], [Math.round(W * 0.84), Math.round(H * 0.74), 760, 620]];
+    const guildPad = g => [g[0] - 220, g[1] - 220, g[2] + 440, g[3] + 440];
+    const reserved = [military, ...guilds.map(guildPad), ...posts];
     const stations = [];
     // Gebaeude: Rechteck mit Tueren
     const buildings = [];
@@ -154,12 +194,32 @@ function buildMap() {
         buildings.push([x, y, w, hh]);
         if (inner) inner(x, y, w, hh);
     };
+    // Guild Houses: breite Tore links und rechts, Stationen drinnen
+    for (const [x, y, w, hh] of guilds) {
+        const gate = 180, gy = y + hh / 2 - gate / 2;
+        walls.push([x, y, w, T], [x, y + hh - T, w / 2 - gate / 2, T], [x + w / 2 + gate / 2, y + hh - T, w / 2 - gate / 2, T]);
+        walls.push([x, y, T, gy - y], [x, gy + gate, T, y + hh - gy - gate], [x + w - T, y, T, gy - y], [x + w - T, gy + gate, T, y + hh - gy - gate]);
+        doorRects.push([x, gy, T, gate], [x + w - T, gy, T, gate], [x + w / 2 - gate / 2, y + hh - T, gate, T]);
+        stations.push({ kind: 'missions', x: x + w / 2, y: y + 130 }, { kind: 'stash', x: x + 170, y: y + 170 }, { kind: 'insure', x: x + w - 170, y: y + 170 });
+    }
+    // Stuetzpunkte: Mauerring mit zwei Luecken, Sandsack-Deckung, Militaerkisten
+    for (const [x, y, w, hh] of posts) {
+        const gap = 150;
+        const gx = x + w * (0.3 + rand() * 0.4) - gap / 2, gy = y + hh * (0.3 + rand() * 0.4) - gap / 2;
+        walls.push([x, y, gx - x, T], [gx + gap, y, x + w - gx - gap, T], [x, y + hh - T, w, T]);
+        walls.push([x, y, T, hh], [x + w - T, y, T, gy - y], [x + w - T, gy + gap, T, y + hh - gy - gap]);
+        for (let i = 0; i < 4; i++) {
+            const horiz = i % 2 === 0, bw = horiz ? 140 : 34, bh = horiz ? 34 : 140;
+            walls.push([Math.round(x + 110 + rand() * (w - 260)), Math.round(y + 110 + rand() * (hh - 260)), bw, bh]);
+        }
+        for (let i = 0; i < 3; i++) crates.push({ x: x + 120 + i * (w - 240) / 2, y: y + hh / 2 + (i % 2 ? 110 : -110), t: 'mil' });
+    }
     // Militaerlager zuerst: grosses Gebaeude, drei Militaerkisten, zwei Trennwaende
     addBuilding(military[0], military[1], military[2], military[3], 3, (x, y, w, hh) => {
         for (let i = 0; i < 3; i++) crates.push({ x: x + 180 + i * (w - 360) / 2, y: y + hh / 2 + (i % 2 ? 90 : -90), t: 'mil' });
         walls.push([x + w / 3, y + 80, T, hh * 0.35], [x + 2 * w / 3, y + hh - 80 - hh * 0.35, T, hh * 0.35]);
     });
-    for (let k = 0; k < 1500 && buildings.length < 48; k++) {
+    for (let k = 0; k < 2500 && buildings.length < 80; k++) {
         const bw = 300 + rand() * 240, bh = 240 + rand() * 200;
         const r = [200 + rand() * (W - 400 - bw), 200 + rand() * (H - 400 - bh), bw, bh];
         if (buildings.some(b => overlaps(r, b, 160)) || reserved.some(z => overlaps(r, z, 160)) || nearExtract(r)) continue;
@@ -183,7 +243,7 @@ function buildMap() {
     }
     // Hindernisse draussen: Felsen und Mauern (Kisten-Hindernisse seit 3.1 weg)
     const obstacles = [];
-    for (let k = 0; k < 6000 && obstacles.length < 280; k++) {
+    for (let k = 0; k < 9000 && obstacles.length < 480; k++) {
         const type = 0.35 + rand() * 0.65;
         const r = type < 0.7 ? [0, 0, 70 + rand() * 60, 50 + rand() * 50]              // Felsen
             : type < 0.85 ? [0, 0, 180 + rand() * 120, T]                         // Mauer quer
@@ -195,7 +255,7 @@ function buildMap() {
     }
     walls.push(...obstacles.map(o => o.map(Math.round)));
     // Kisten draussen
-    for (let k = 0; k < 3000 && crates.length < 130; k++) {
+    for (let k = 0; k < 5000 && crates.length < 220; k++) {
         const c = { x: 150 + rand() * (W - 300), y: 150 + rand() * (H - 300), t: 'crate' };
         if (walls.some(w => overlaps([c.x - 30, c.y - 30, 60, 60], w, 20)) || reserved.some(z => overlaps([c.x - 30, c.y - 30, 60, 60], z, 0))) continue;
         crates.push(c);
@@ -214,19 +274,20 @@ function buildMap() {
         walls: walls.map(w => w.map(Math.round)), crates: crates.map(c => ({ x: Math.round(c.x), y: Math.round(c.y), t: c.t })), extracts,
         buildings: buildings.map(b => b.map(Math.round)), bushes, doors: doorRects.map(d => d.map(Math.round)),
         stations: stations.map(s => ({ kind: s.kind, x: Math.round(s.x), y: Math.round(s.y) })),
-        town: null, outpost: null, military: military.map(Math.round)
+        town: null, outpost: null, military: military.map(Math.round),
+        guilds, posts
     };
 }
 
 const MAP = buildMap();
 // 6.12 (Max): Keller (Militaerstuetzpunkt) und Labor darunter, siehe arena-under.js
+// 25.09.2026 (Max: Map-Umbau): Keller und Labor sind eigene Dungeon-Instanzen je Party
+// (dungeons.js, dungeon-rooms.js). Seit Phase 2 kommt man nur noch ueber das Quest Board
+// im Guild House hinein (Max: „why wird fuer die Missionen solche Dinger noch generiert?
+// Bitte nicht") – keine Luken mehr auf der Oberflaeche. enterDungeon bleibt fuer Tests.
 {
-    const UNDER = require('./arena-under').buildUnder({ w: W, h: H, walls: MAP.walls });
-    MAP.regions = [{ id: 'surface', name: 'Surface', level: 0, x: 0, y: 0, w: W, h: H }, ...UNDER.regions];
-    MAP.walls.push(...UNDER.walls);
-    MAP.crates.push(...UNDER.crates);
-    MAP.stations.push(...UNDER.stations);
-    MAP.deco = UNDER.deco;
+    MAP.regions = [{ id: 'surface', name: 'Surface', level: 0, x: 0, y: 0, w: W, h: H }];
+    MAP.deco = [];
 }
 
 // Raster fuer schnelle Wandtests
@@ -488,7 +549,8 @@ function cornerNudge(x, y, sx, sy, r, isBlocked) {
 function brief(it) {
     return it ? {
         uid: it.uid, n: it.name, b: it.base, k: it.kind, t: it.tier, s: !!it.starter,
-        sl: it.slot || null, o: it.odds, sc: it.score, m: it.mods && it.mods.length ? it.mods.map(m => [m.id, m.lvl]) : undefined
+        sl: it.slot || null, o: it.odds, sc: it.score, m: it.mods && it.mods.length ? it.mods.map(m => [m.id, m.lvl]) : undefined,
+        wxp: it.wxp || undefined
     } : null;
 }
 
@@ -505,6 +567,8 @@ module.exports = function createArena(h, opts = {}) {
     // Die Welt dieser Instanz (ueberdeckt die Modul-Namen fuer die Extraction-Map)
     const world = opts.world || WORLD;
     const mode = opts.mode || 'extract';
+    // Extraction-Oberflaeche und Dungeon-Instanzen (25.09.2026) teilen sich Gegner-Regeln
+    const pve = mode === 'extract' || mode === 'dungeon';
     const MAP = world.map, W = world.w, H = world.h, blocked = world.blocked, slide = world.slide;
     // Ebene eines Punkts (6.12): 'surface' | 'bunker' | 'lab'; Karten ohne Ebenen -> 'surface'
     const regionAt = (x, y) => { const g = (MAP.regions || []).find(q => x >= q.x && y >= q.y && x <= q.x + q.w && y <= q.y + q.h); return g ? g.id : 'surface'; };
@@ -519,6 +583,17 @@ module.exports = function createArena(h, opts = {}) {
     const smokes = [];               // Rauchwolken { id, x, y, r, until }
     const fires = [];                // Feuerflaechen { id, x, y, r, until, owner, dps }
     const holes = [];                // Schwarze Loecher { id, x, y, r, until, owner, dmg }
+    // 25.09.2026 Uniques Welle 2
+    const kqBombs = [];              // Killer Queen { owner, mob, pid, x, y, until }
+    const turrets = [];              // Hoi-Poi { id, owner, x, y, until, next, a }
+    const decoys = [];               // Kyoka Suigetsu { id, pid, x, y, a, until }
+    // Welle 3
+    const portals = new Map();       // Portal Gun: owner -> { a, b, next, until }
+    const clones = [];               // Kage Bunshin { id, owner, k, x, y, a, until, next }
+    let zw = null;                   // Za Warudo { by, until }
+    // Awakenings (Lv 20)
+    const zones = [];                // Rasenshuriken: Schadenszone nur fuer Gegner { x, y, r, until, owner, dps }
+    const blasts = [];               // Enuma Elish: verzoegerter Einschlag nur fuer Gegner { x, y, r, dmg, at, owner }
     let seqId = 0;
     const mobs = [];                 // Gegner und Boss (4.1), siehe arena-mobs.js
     const strikes = [];              // angekuendigte Einschlaege der Bosse (4.6)
@@ -614,6 +689,33 @@ module.exports = function createArena(h, opts = {}) {
         if (after > before && after % 10 === 0) h.feed(`⭐ ${p.name} reached arena level ${after}!`, 'gold');
     }
 
+    // Waffen-Level: XP an die gehaltene Waffe; in PvP/Zombies (Kopien) auch ans Original im Lager
+    // Item-XP (25.09.2026): gehaltene Waffe und alle angelegten Ruestungsteile
+    function weaponXp(p, n) {
+        if (!p || !(n > 0) || !p.account) return;
+        const got = Math.round(n);
+        const w = p.gear[p.slot] || p.gear.primary;
+        const items = [w, ...['helmet', 'vest', 'pants', 'boots'].map(sl => p.gear[sl])].filter(it => it && !it.starter && (it.kind === 'weapon' || it.kind === 'armor'));
+        let armorUp = false;
+        for (const it of items) {
+            const before = I.itemLevel(it).level;
+            it.wxp = (it.wxp || 0) + got;
+            if (mode !== 'extract') {
+                const orig = st(p.c).inv.find(x => x.uid === it.uid);
+                if (orig && orig !== it) orig.wxp = (orig.wxp || 0) + got;
+            }
+            const after = I.itemLevel(it).level;
+            if (after <= before) continue;
+            const ms = I.WLV.milestones.includes(after), aw = after === I.WLV.awake && (it.kind === 'armor' ? I.ARMORS : I.WEAPONS)[it.base].unique;
+            if (it.kind === 'armor') armorUp = true;
+            h.send(p.c, { type: 'shEvent', text: `${it.kind === 'armor' ? '🛡️' : '🔫'} ${it.name} reached level ${after}!${aw ? ' ✦ AWAKENED' : ms ? (it.kind === 'armor' ? ' −2% damage taken' : ' +5% fire rate') : ''}`, kind: 'self' });
+            if (aw) h.feed(`✦ ${p.name}'s ${it.name} awakened!`, 'gold');
+            else if (after === I.WLV.max) h.feed(`🔫 ${p.name} maxed out a ${it.name} (level ${after})!`, 'gold');
+        }
+        if (armorUp) gearStats(p);
+        h.accounts.touch();
+    }
+
     function count(a, base) {
         return a.inv.filter(it => it.kind === 'util' && it.base === base).length;
     }
@@ -626,6 +728,7 @@ module.exports = function createArena(h, opts = {}) {
         h.send(c, {
             type: 'arHub', inv: a.inv.map(it => ({ ...it, sv: I.salvageValue(it) })), loadout: a.loadout,
             overflow: (a.overflow || []).map(it => ({ ...it, sv: I.salvageValue(it) })),
+            invMax: I.invMaxOf(a), invUp: a.invUp || 0,
             loadouts: { extract: a.loadout, pvp: loadoutOf(a, 'pvp'), zombies: loadoutOf(a, 'zombies') },
             presets: Object.fromEntries(L.MODES.map(m => [m, presetsOf(a, m).map(x => ({ name: x.name, l: x.l }))])),
             scrap: a.scrap, coins: u.coins, inRaid: players.has(c.id), prog: progView(c, a), pvp: a.pvp || null, zombies: a.zombies || null,
@@ -648,7 +751,7 @@ module.exports = function createArena(h, opts = {}) {
     const OVERFLOW_MAX = 200;
     function addItems(c, items) {
         const a = st(c);
-        const room = I.INV_MAX - a.inv.length;
+        const room = I.invMaxOf(a) - a.inv.length;
         const kept = items.slice(0, Math.max(0, room));
         const over = items.slice(kept.length);
         a.inv.push(...kept);
@@ -668,7 +771,7 @@ module.exports = function createArena(h, opts = {}) {
 
     function flushOverflow(a) {
         if (!a.overflow || !a.overflow.length) return;
-        const room = I.INV_MAX - a.inv.length;
+        const room = I.invMaxOf(a) - a.inv.length;
         if (room > 0) a.inv.push(...a.overflow.splice(0, room));
         h.accounts.touch();
     }
@@ -730,7 +833,7 @@ module.exports = function createArena(h, opts = {}) {
             const offer = I.SHOP.find(x => x.id === d.id);
             if (!offer) return;
             const n = Math.max(1, Math.min(10, Math.floor(Number(d.n)) || 1));
-            if (a.inv.length + n > I.INV_MAX) return h.send(c, { type: 'arError', error: 'Your stash is full – salvage something first' });
+            if (a.inv.length + n > I.invMaxOf(a)) return h.send(c, { type: 'arError', error: 'Your stash is full – salvage something first' });
             const err = pay(c, offer.price * n, offer.currency);
             if (err) return h.send(c, { type: 'arError', error: err });
             const items = Array.from({ length: n }, () => offer.kind === 'gen' ? I.generate(offer.source) : I.plain(offer.kind, offer.base));
@@ -766,7 +869,7 @@ module.exports = function createArena(h, opts = {}) {
             const cs = Object.prototype.hasOwnProperty.call(I.CASES, d.id) ? I.CASES[d.id] : null;
             a.cases = a.cases || {};
             if (!cs || !(a.cases[d.id] > 0)) return h.send(c, { type: 'arError', error: 'You have no such case' });
-            if (a.inv.length >= I.INV_MAX) return h.send(c, { type: 'arError', error: 'Your stash is full – salvage something first' });
+            if (a.inv.length >= I.invMaxOf(a)) return h.send(c, { type: 'arError', error: 'Your stash is full – salvage something first' });
             a.cases[d.id]--;
             if (!a.cases[d.id]) delete a.cases[d.id];
             const item = I.generate(cs.source);
@@ -825,6 +928,18 @@ module.exports = function createArena(h, opts = {}) {
             }
             return;
         }
+        // Lager-Upgrade (25.09.2026): naechste Stufe gegen Coins UND Scrap
+        if (d.type === 'arInvUp') {
+            const n = (a.invUp || 0) + 1, cost = I.invUpCost(n);
+            if (!cost) return h.send(c, { type: 'arError', error: 'Your stash is fully upgraded' });
+            const u = h.accounts.get(c.account);
+            if (u.coins < cost.coins || a.scrap < cost.scrap) return h.send(c, { type: 'arError', error: `Upgrade ${n} costs ${cost.coins.toLocaleString('en-US')} coins and ${cost.scrap.toLocaleString('en-US')} scrap` });
+            pay(c, cost.coins, 'coins');
+            pay(c, cost.scrap, 'scrap');
+            a.invUp = n;
+            h.accounts.touch();
+            return sendHub(c, { invUpped: { n, max: I.invMaxOf(a) } });
+        }
         // Schutz (6.9, Max): geschuetzte Items (it.fav) lassen sich nicht verschrotten
         if (d.type === 'arFav') {
             const it = a.inv.find(x => x.uid === String(d.uid)) || (a.overflow || []).find(x => x.uid === String(d.uid));
@@ -851,6 +966,10 @@ module.exports = function createArena(h, opts = {}) {
             if (err) return h.send(c, { type: 'arError', error: err });
             const { item, log } = I.fuse(main, others);
             Object.assign(main, item);
+            // Achievements (25.09.2026): gefuste Items, Effekt auf Maximum gebracht
+            const mdefs = main.kind === 'armor' ? I.ARMOR_MODS : I.WEAPON_MODS;
+            const maxed = log.some(l => !l.fail && mdefs[l.id] && l.to >= mdefs[l.id].max);
+            h.accounts.stat(c.account, s => { s.fuses = (s.fuses || 0) + others.length; if (maxed) s.fuseMaxed = (s.fuseMaxed || 0) + 1; });
             const gone = new Set(uids);
             a.inv = a.inv.filter(it => !gone.has(it.uid));
             fixLoadout(a);
@@ -968,6 +1087,25 @@ module.exports = function createArena(h, opts = {}) {
         p.phantom = s.phantom;
         p.critArmor = s.crit || 0;
         p.sets = s.sets;
+        // 25.09.2026 Unique-Ruestung mit Mechanik
+        p.see = s.see;
+        p.killHeal = s.killHeal;
+        p.geppo = s.geppo;
+        p.plusUltra = s.plusUltra;
+        p.counter = s.counter;
+        p.weights = s.weights;
+        p.geass = s.geass;
+        p.flashstep = s.flashstep;
+        p.mirror = s.mirror;
+        p.titanSuit = s.titan;
+        p.aw = new Set(s.awake);
+        if (p.aw.has('scouter')) p.critArmor += 0.08;
+        if (p.aw.has('geppo')) p.speedMul += 0.1;
+        if (p.aw.has('killua')) p.dodge += 0.06;
+        if (s.weights && p.weightsOff) {
+            p.speedMul += 0.4;
+            p.rateMul *= 1.25;
+        }
         p.packMax = p.gear.backpack ? I.PACKS[p.gear.backpack.base].cap : I.BASE_PACK;
         // Level: Stats und Skills (4.0)
         const b = p.b;
@@ -1002,6 +1140,11 @@ module.exports = function createArena(h, opts = {}) {
                 p.b.regenDelay = 2000;
             }
         }
+        // Titan Shift: Extra-HP bleiben, auch wenn waehrenddessen umgeruestet wird
+        if (p.titanHp) {
+            p.maxHp += p.titanHp;
+            p.hp = Math.min(p.hp + p.titanHp, p.maxHp);
+        }
     }
 
     // Spieler-Objekt fuer Raid und PvP
@@ -1019,8 +1162,11 @@ module.exports = function createArena(h, opts = {}) {
         };
     }
 
-    function join(c, name, color, team) {
+    function join(c, name, color, team, at) {
         if (!c.account) return 'Log in to raid';
+        // 25.09.2026 (Max): Extraction waehrend des Umbaus nur fuer Kek. Zum Oeffnen
+        // EXTRACT_ONLY leeren (oder SNAKE_EXTRACT_ONLY='' in snake.service setzen).
+        if (mode === 'extract' && EXTRACT_ONLY.length && !EXTRACT_ONLY.includes(String(c.account).toLowerCase()) && !players.has(c.id)) return '🚧 Extraction is closed for a rebuild – back soon!';
         if (players.has(c.id)) {
             sendJoined(c);
             return null;
@@ -1048,7 +1194,7 @@ module.exports = function createArena(h, opts = {}) {
         });
         a.loadout = EMPTY_LOADOUT();
         h.accounts.touch();
-        const p = newPlayer(c, name, color, a, gear, util, freeSpot(true));
+        const p = newPlayer(c, name, color, a, gear, util, at && !blocked(at.x, at.y, R) ? at : freeSpot(true));
         gearStats(p);
         players.set(c.id, p);
         h.accounts.stat(c.account, st2 => { st2.raids = (st2.raids || 0) + 1; });
@@ -1069,9 +1215,12 @@ module.exports = function createArena(h, opts = {}) {
             map: {
                 w: W, h: H, walls: MAP.walls, buildings: MAP.buildings, doors: MAP.doors, bushes: MAP.bushes, wallT: WALL_T,
                 extracts: MAP.extracts, extractR: EXTRACT_R, r: R, move: MOVE, view: VIEW, throwRange: I.THROW_RANGE,
-                stations: MAP.stations, town: MAP.town, outpost: MAP.outpost, military: MAP.military, mobs: M.catalog(),
+                stations: MAP.stations, town: MAP.town, outpost: MAP.outpost, military: MAP.military, guilds: MAP.guilds || null, posts: MAP.posts || null, mobs: M.catalog(),
                 trader: { buy: TRADER_BUY, sell: TRADER_SELL }, medic: { cost: MEDIC_COST, cd: MEDIC_CD },
-                perks: ZMB_PERKS, arena: MAP.arena || null, name: MAP.name || null, regions: MAP.regions || null, deco: MAP.deco || null
+                perks: ZMB_PERKS, arena: MAP.arena || null, name: MAP.name || null, regions: MAP.regions || null, deco: MAP.deco || null,
+                // Dungeons (25.09.2026): Raster, Lampen, Raumstile fuer dfx.js
+                tiles: MAP.tiles || undefined, ts: MAP.ts, gw: MAP.gw, gh: MAP.gh, lights: MAP.lights, kind: MAP.kind, seed: MAP.seed,
+                rooms: MAP.tiles ? MAP.rooms.map(r => ({ x: r.x, y: r.y, w: r.w, h: r.h, style: r.style })) : undefined
             },
             packMax: p0PackMax(c), feed: pvp ? [] : feedLog.slice(-6), mode, team: players.get(c.id) ? players.get(c.id).team : undefined,
             mapName: MAP.name || null
@@ -1133,11 +1282,23 @@ module.exports = function createArena(h, opts = {}) {
         if (zb) return how === 'left' ? zLeave(p) : zDown(p);
         if (!players.has(p.id)) return;
         players.delete(p.id);
+        // Mission (25.09.2026): versicherte Ausruestung geht zurueck ins Lager
+        const saved = [];
+        if (opts.mission && p.account) {
+            const a = st(p.c);
+            for (const sl of GEAR) {
+                const it = p.gear[sl];
+                if (it && it.insured && !it.starter) { delete it.insured; a.inv.push(it); saved.push(brief(it)); p.gear[sl] = sl === 'primary' ? starterPistol() : null; }
+            }
+            if (saved.length) h.accounts.touch();
+        }
         const loot = lootOf(p);
         let rest = loot;
         award(p, L.XP.minute * Math.floor((Date.now() - p.joinedAt) / 60000), 'time in raid');
         if (killer && players.has(killer.id)) {
+            onKill(killer, Date.now());
             award(killer, L.XP.kill + 10 * Math.max(0, (p.level || 1) - (killer.level || 1)), 'kill');
+            weaponXp(killer, L.XP.kill);
             if (killer.b.bloodlust) killer.hp = Math.min(killer.maxHp, killer.hp + killer.b.bloodlust);
             if (killer.b.rampage) killer.rampUntil = Date.now() + 4000 / SPEED;
             rest = pickUp(killer, loot);
@@ -1162,7 +1323,9 @@ module.exports = function createArena(h, opts = {}) {
         for (const q of players.values()) h.send(q.c, { type: 'shKill', ...line });
         h.send(p.c, {
             type: 'shLeft', result: how === 'left' ? 'left' : 'died', by: killer ? killer.name : by || null, lost: loot.map(brief),
-            kills: p.kills, secs: Math.round((Date.now() - p.joinedAt) / 1000), weapon: line.weapon, wtier: line.tier
+            kills: p.kills, secs: Math.round((Date.now() - p.joinedAt) / 1000), weapon: line.weapon, wtier: line.tier,
+            // Mission: Uebersicht mit Stufe, Boss-Stand, zurueckgegebener Versicherung; danach Guild House
+            mission: opts.mission && how !== 'left' ? { diff: opts.mission.diff, name: MISSION_DIFF[opts.mission.diff].name, kind: opts.kind, place: MISSION_KINDS[opts.kind] || '', boss: missionDone, saved } : undefined
         });
         h.changed();
     }
@@ -1197,6 +1360,36 @@ module.exports = function createArena(h, opts = {}) {
         return true;
     }
 
+    // Dungeon-Uebergabe (25.09.2026): Spieler samt Ausruestung, Rucksack und HP aus
+    // dieser Instanz nehmen (ohne Tod, ohne Beutel) bzw. in eine andere setzen
+    function detach(c) {
+        const p = players.get(c.id);
+        if (!p || p.dead) return null;
+        players.delete(c.id);
+        for (const m of missions.values()) m.members.delete(p.id);
+        for (let i = kqBombs.length - 1; i >= 0; i--) if (kqBombs[i].owner === p.id) kqBombs.splice(i, 1);
+        for (let i = turrets.length - 1; i >= 0; i--) if (turrets[i].owner === p.id) turrets.splice(i, 1);
+        for (let i = clones.length - 1; i >= 0; i--) if (clones[i].owner === p.id) clones.splice(i, 1);
+        portals.delete(p.id);
+        if (zw && zw.by === p.id) zw = null;
+        for (const m of mobs) if (m.tgt === p.id) m.tgt = null;
+        h.changed();
+        return p;
+    }
+    function attach(c, p, spot) {
+        const now = Date.now();
+        const at = spot && !blocked(spot.x, spot.y, R) ? spot : freeNear(spot ? spot.x : W / 2, spot ? spot.y : H / 2, R + 4) || freeSpot(true);
+        Object.assign(p, {
+            c, x: at.x, y: at.y, mx: 0, my: 0, fire: false, zone: null, smoke: null, extractAt: null, grap: null, kunai: null,
+            phaseUntil: 0, phased: false, jailUntil: 0, invisUntil: 0, doom: null, burn: null, inFire: false, gaze: null,
+            protect: now + 2500 / SPEED, portalAt: now + 3000 / SPEED, lastMove: now
+        });
+        players.set(c.id, p);
+        sendJoined(c);
+        sendInv(p);
+        h.changed();
+    }
+
     // Server faehrt herunter: alle gelten als extrahiert
     function refundAll() {
         for (const p of [...players.values()]) extract(p, true);
@@ -1227,11 +1420,52 @@ module.exports = function createArena(h, opts = {}) {
             useUtil(p, d.slot === 1 ? 1 : 0, Number(d.x), Number(d.y), now);
         } else if (d.type === 'shInteract') {
             interact(p);
+        } else if (d.type === 'shAbility') {
+            ability(p, now);
+        } else if (d.type && d.type.startsWith('ms')) {
+            missionAction(p, d, now);
+        } else if (d.type === 'gDeposit' || d.type === 'gWithdraw' || d.type === 'gInsure') {
+            guildAction(p, d);
+        } else if (d.type === 'crOpen' || d.type === 'crGive' || d.type === 'crHeal' || d.type === 'crClear') {
+            creativeAction(p, d);
         } else if (d.type === 'shInv') {
             invOp(p, d);
         } else if (d.type === 'shTrade') {
             trade(p, d);
         }
+    }
+
+    // Creative Mode (25.09.2026, Max): Schalter im Admin-Panel (accounts adminArena 'creative').
+    // Im Raid: kein Schaden, Taste C oeffnet ein Menue mit jedem Item.
+    function creativeOf(p) {
+        if (!p || !p.account) return false;
+        const a = h.accounts.arena(p.account);
+        return !!(a && a.creative);
+    }
+    function creativeAction(p, d) {
+        if (!creativeOf(p)) return h.send(p.c, { type: 'shEvent', text: '🛠️ Creative mode is off for your account', kind: 'self' });
+        if (d.type === 'crOpen') return h.send(p.c, { type: 'crMenu' });
+        if (d.type === 'crHeal') { p.hp = p.maxHp; return h.send(p.c, { type: 'shEvent', text: '🛠️ Healed', kind: 'self' }); }
+        if (d.type === 'crClear') { p.pack = []; sendInv(p); return; }
+        const kind = String(d.kind), base = String(d.base);
+        const defs = kind === 'weapon' ? I.WEAPONS : kind === 'armor' ? I.ARMORS : kind === 'util' ? I.UTILS : kind === 'pack' ? I.PACKS : null;
+        if (!defs || !Object.prototype.hasOwnProperty.call(defs, base)) return;
+        const tier = kind === 'util' || kind === 'pack' ? defs[base].tier : Math.max(0, Math.min(6, Math.floor(Number(d.tier)) || 0));
+        const mdefs = kind === 'weapon' ? I.WEAPON_MODS : I.ARMOR_MODS;
+        const mods = (kind === 'weapon' || kind === 'armor') && Array.isArray(d.mods) ? d.mods.filter(m => m && Object.prototype.hasOwnProperty.call(mdefs, m.id)).slice(0, 3).map(m => ({ id: m.id, lvl: Math.max(1, Math.min(mdefs[m.id].max, Math.floor(Number(m.lvl)) || 1)) })) : [];
+        const n = kind === 'util' ? Math.max(1, Math.min(defs[base].stack || 1, Math.floor(Number(d.n)) || 1)) : 1;
+        const made = [];
+        for (let i = 0; i < n; i++) made.push(I.craft(kind, base, tier, mods));
+        const it = made[0];
+        if (d.equip && kind !== 'util') {
+            const slot = kind === 'weapon' ? (d.slot === 'secondary' ? 'secondary' : 'primary') : kind === 'pack' ? 'backpack' : it.slot;
+            const old = p.gear[slot];
+            if (old && !old.starter) p.pack.push(old);
+            p.gear[slot] = it;
+            gearStats(p);
+        } else p.pack.push(...made); // Creative darf ueber das Rucksack-Limit
+        sendInv(p);
+        h.send(p.c, { type: 'shEvent', text: `🛠️ ${n > 1 ? n + '× ' : ''}${it.name}${d.equip && kind !== 'util' ? ' equipped' : ' in your backpack'}`, kind: 'drop' });
     }
 
     // Raid-Inventar: ausruesten, ablegen, fallen lassen, Verbrauchsgut in Slots
@@ -1381,6 +1615,16 @@ module.exports = function createArena(h, opts = {}) {
     function station(p, s, now) {
         // 6.12: Treppe/Luke in den Untergrund und zurueck
         if (s.kind === 'portal') {
+            // Dungeon-Instanzen (25.09.2026): Luke oben -> eigene Instanz, Ausgang unten -> zurueck
+            if (s.dungeon && h.enterDungeon) {
+                if (ctf && ctf.carrier === p.id) return h.send(p.c, { type: 'shEvent', text: '🚩 The flag stays on the surface', kind: 'self' });
+                if (now < (p.portalAt || 0)) return;
+                return h.enterDungeon(p.c, s.dungeon, { key: s.x + ',' + s.y, x: s.x, y: s.y });
+            }
+            if (s.exit && (opts.leaveDungeon || h.leaveDungeon)) {
+                if (now < (p.portalAt || 0)) return h.send(p.c, { type: 'shEvent', text: `🪜 Just arrived – wait ${Math.ceil((p.portalAt - now) / 1000)} s`, kind: 'self' });
+                return (opts.leaveDungeon || h.leaveDungeon)(p.c);
+            }
             if (!s.to) return;
             if (ctf && ctf.carrier === p.id) return h.send(p.c, { type: 'shEvent', text: '🚩 The flag stays on the surface', kind: 'self' });
             if (now < (p.portalAt || 0)) return;
@@ -1399,6 +1643,10 @@ module.exports = function createArena(h, opts = {}) {
             h.send(p.c, { type: 'shEvent', text: s.dir === 'down' ? `🕳️ You climb down: ${g ? g.name : s.dest}${g && g.level <= -2 ? ' – something moves in the dark…' : ' – watch out, it is dangerous down here'}` : `🪜 You climb up: ${g ? g.name : s.dest}`, kind: 'self' });
             return;
         }
+        // Guild House (25.09.2026): Menues im Browser
+        if (s.kind === 'missions') { p.msOpen = true; return sendMissions(p); }
+        if (s.kind === 'stash') return sendGuildStash(p);
+        if (s.kind === 'insure') return sendInsure(p);
         if (s.kind === 'medic') {
             if (now < (p.medicAt || 0)) return h.send(p.c, { type: 'shEvent', text: `⛑️ Medic again in ${Math.ceil((p.medicAt - now) / 1000)} s`, kind: 'self' });
             if (p.hp >= p.maxHp) return h.send(p.c, { type: 'shEvent', text: '⛑️ You are already at full health', kind: 'self' });
@@ -1450,10 +1698,524 @@ module.exports = function createArena(h, opts = {}) {
 
     // ---------- Verbrauchsgut ----------
 
+    // ---------- Guild House: Missionen, Stash, Versicherung (25.09.2026) ----------
+    const missions = new Map();      // id -> { id, host, kind, diff, members: Set(pid), created }
+    let missionSeq = 0;
+    const nearStationKind = (p, kind) => (MAP.stations || []).find(s2 => s2.kind === kind && Math.hypot(s2.x - p.x, s2.y - p.y) < GUILD_R);
+    const tokensOf = c => st(c).tokens || 0;
+    const missionOf = p => [...missions.values()].find(m => m.members.has(p.id));
+    function missionView(p) {
+        return {
+            type: 'msMenu', tokens: tokensOf(p.c), mine: (missionOf(p) || {}).id || null, me: p.id,
+            diffs: Object.fromEntries(Object.entries(MISSION_DIFF).map(([k, d]) => [k, { name: d.name, lv: d.lv, tokens: d.tokens, bossHp: d.bossHp, mobs: d.mobs }])),
+            kinds: MISSION_KINDS, max: PARTY_MAX, // Bosse bleiben geheim (Max)
+            list: [...missions.values()].map(m => ({ id: m.id, host: m.host, hostName: (players.get(m.host) || {}).name || '?', kind: m.kind, diff: m.diff, members: [...m.members].map(id => (players.get(id) || {}).name || '?') }))
+        };
+    }
+    function sendMissions(p) { h.send(p.c, missionView(p)); }
+    function missionsChanged() { for (const q of players.values()) if (q.msOpen) sendMissions(q); }
+    function missionAction(p, d, now) {
+        const at = !!nearStationKind(p, 'missions') || inGuild(p.x, p.y);
+        const cur = missionOf(p);
+        if (d.type === 'msOpen') { p.msOpen = true; return sendMissions(p); }
+        if (d.type === 'msClose') { p.msOpen = false; return; }
+        if (!at) return h.send(p.c, { type: 'shEvent', text: '📜 Go to a Guild House mission board', kind: 'self' });
+        if (d.type === 'msCreate') {
+            if (cur) cur.members.delete(p.id);
+            const kind = MISSION_KINDS[d.kind] ? d.kind : 'bunker', diff = MISSION_DIFF[d.diff] ? d.diff : 'normal';
+            const m = { id: ++missionSeq, host: p.id, kind, diff, members: new Set([p.id]), created: now };
+            missions.set(m.id, m);
+        } else if (d.type === 'msJoin') {
+            const m = missions.get(Number(d.id));
+            if (!m) return;
+            if (m.members.size >= PARTY_MAX) return h.send(p.c, { type: 'shEvent', text: '👥 That party is full', kind: 'self' });
+            if (cur) cur.members.delete(p.id);
+            m.members.add(p.id);
+        } else if (d.type === 'msLeave') {
+            if (cur) cur.members.delete(p.id);
+        } else if (d.type === 'msSet' && cur && cur.host === p.id) {
+            if (MISSION_KINDS[d.kind]) cur.kind = d.kind;
+            if (MISSION_DIFF[d.diff]) cur.diff = d.diff;
+        } else if (d.type === 'msStart' && cur && cur.host === p.id) {
+            // alle, die noch im Guild House stehen, gehen mit
+            const go = [...cur.members].map(id => players.get(id)).filter(q => q && !q.dead && inGuild(q.x, q.y, 60));
+            for (const id of cur.members) if (!go.some(q => q.id === id)) { const q = players.get(id); if (q) h.send(q.c, { type: 'shEvent', text: '👥 The party left without you – be inside the Guild House when the host starts', kind: 'self' }); }
+            missions.delete(cur.id);
+            if (!h.startMission) return;
+            const back = nearStationKind(p, 'missions') || { x: p.x, y: p.y + 120 };
+            h.startMission(go.map(q => q.c), cur.kind, cur.diff, { x: back.x, y: back.y + 150 });
+        }
+        for (const [id, m] of missions) {
+            if (!m.members.size) missions.delete(id);
+            else if (!m.members.has(m.host)) m.host = [...m.members][0];
+        }
+        missionsChanged();
+    }
+    function sendGuildStash(p) {
+        const a = st(p.c);
+        h.send(p.c, { type: 'gStash', inv: a.inv.map(brief), pack: p.pack.map(brief), packMax: p.packMax, invMax: I.invMaxOf(a), tokens: a.tokens || 0, scrap: a.scrap });
+    }
+    function sendInsure(p) {
+        const a = st(p.c);
+        const gear = GEAR.map(sl => p.gear[sl] && !p.gear[sl].starter ? { slot: sl, ...brief(p.gear[sl]), insured: !!p.gear[sl].insured, scrap: INSURE_SCRAP[I.TIER_IDX[p.gear[sl].tier] || 0], tokens: INSURE_TOKENS[I.TIER_IDX[p.gear[sl].tier] || 0] } : null).filter(Boolean);
+        h.send(p.c, { type: 'gInsure', gear, tokens: a.tokens || 0, scrap: a.scrap });
+    }
+    function guildAction(p, d) {
+        const a = st(p.c);
+        if (d.type === 'gInsure') {
+            if (!nearStationKind(p, 'insure')) return;
+            const it = p.gear[String(d.slot)];
+            if (!it || it.starter || it.insured || !GEAR.includes(String(d.slot))) return;
+            const t = I.TIER_IDX[it.tier] || 0, sc = INSURE_SCRAP[t], tk = INSURE_TOKENS[t];
+            if ((a.scrap || 0) < sc || (a.tokens || 0) < tk) return h.send(p.c, { type: 'shEvent', text: `🛡️ Insuring costs ${sc} scrap and ${tk} 🎟️ – finish missions to earn tokens`, kind: 'self' });
+            a.scrap -= sc;
+            a.tokens -= tk;
+            it.insured = true;
+            h.accounts.touch();
+            h.send(p.c, { type: 'shEvent', text: `🛡️ ${it.name} is insured for your next mission`, kind: 'self' });
+            return sendInsure(p);
+        }
+        if (!nearStationKind(p, 'stash')) return;
+        if (d.type === 'gDeposit') {
+            const i = p.pack.findIndex(x => x.uid === String(d.uid));
+            if (i < 0) return;
+            if (a.inv.length >= I.invMaxOf(a)) return h.send(p.c, { type: 'shEvent', text: '📦 Your stash is full', kind: 'self' });
+            a.inv.push(p.pack.splice(i, 1)[0]);
+        } else {
+            const i = a.inv.findIndex(x => x.uid === String(d.uid));
+            if (i < 0) return;
+            if (p.pack.length >= p.packMax) return h.send(p.c, { type: 'shEvent', text: '🎒 Your backpack is full', kind: 'self' });
+            p.pack.push(a.inv.splice(i, 1)[0]);
+            fixLoadout(a);
+        }
+        h.accounts.touch();
+        sendInv(p);
+        sendGuildStash(p);
+    }
+
+    // Taste R (25.09.2026): Faehigkeit der angelegten Ausruestung
+    function ability(p, now) {
+        if (p.dead || (pvp && pvp.phase !== 'fight')) return;
+        if (zwFrozen(p, now)) return;
+        const aw = p.aw || new Set();
+        if (p.weights && !p.weightsOff) {
+            p.weightsOff = true;
+            gearStats(p);
+            if (aw.has('rocklee')) p.gateUntil = now + 6000 / SPEED;
+            fxAt(p.x, p.y, { type: 'shFx', kind: 'weights', x: Math.round(p.x), y: Math.round(p.y) });
+            h.send(p.c, { type: 'shEvent', text: '🏋️ Weights off – full speed!', kind: 'self' });
+        }
+        // ODM Gear (Lv 20): Enterhaken zur Wand, auf die man zielt
+        if (aw.has('odm') && now >= (p.odmCd || 0)) {
+            const dx = Math.cos(p.a), dy = Math.sin(p.a);
+            let d = 40;
+            while (d < 520 && !blocked(p.x + dx * d, p.y + dy * d, 3)) d += 10;
+            if (d < 520) {
+                p.odmCd = now + 4000 / SPEED;
+                startGrapple(p, p.x + dx * d, p.y + dy * d, now);
+            }
+        }
+        // Iron Man Suit (Lv 20): 8 zielsuchende Raketen
+        if (aw.has('ironman') && now >= (p.missileCd || 0)) {
+            p.missileCd = now + 12000 / SPEED;
+            for (let k = 0; k < 8; k++) {
+                const a = p.a + (k / 7 - 0.5) * 1.6;
+                const w = { ...TURRET_W, dmg: 70 * p.dmgMul, speed: 650, life: 2.2, homing: 2, explode: 0.8, rocket: true };
+                bullets.push({ id: ++seqId, owner: p.id, x: p.x + Math.cos(a) * (R + 8), y: p.y + Math.sin(a) * (R + 8), vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed, dies: now + w.life * 1000 / SPEED, w, pierce: 0, bounce: 0, hits: new Set(), fx: 1 | 16 | 256, tier: 6 });
+            }
+        }
+        // Titan Shift: einmal je Raid 15 s Titan (Lv 20: 25 s, +2500 HP)
+        if (p.titanSuit && !p.titanUsed) {
+            const tAw = aw.has('titan');
+            p.titanUsed = true;
+            p.titanUntil = now + (tAw ? 25000 : 15000) / SPEED;
+            p.titanHp = tAw ? 2500 : 1500;
+            p.maxHp += p.titanHp;
+            p.hp += p.titanHp;
+            fxAt(p.x, p.y, { type: 'shBoom', x: Math.round(p.x), y: Math.round(p.y), r: 260, nuke: false });
+            fxAt(p.x, p.y, { type: 'shFx', kind: 'titan', x: Math.round(p.x), y: Math.round(p.y) });
+            for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `🦖 ${p.name} turned into a Titan!`, kind: q === p ? 'self' : 'boss' });
+        }
+        // Killer Queen: alle eigenen Bomben hochgehen lassen
+        const mine = kqBombs.filter(k => k.owner === p.id);
+        if (mine.length) {
+            for (const k of mine) {
+                kqBombs.splice(kqBombs.indexOf(k), 1);
+                const [bx, by] = kqPos(k);
+                kqBlast(p, bx, by, now);
+            }
+        }
+        // Flash Step: kurzer Sprung in Laufrichtung, dabei unantastbar
+        if (p.flashstep && now >= (p.stepCd || 0) && now >= (p.jailUntil || 0)) {
+            let dx = p.mx, dy = p.my;
+            if (!dx && !dy) { dx = Math.cos(p.a); dy = Math.sin(p.a); }
+            const d = Math.hypot(dx, dy) || 1;
+            dx /= d;
+            dy /= d;
+            let dist = 0;
+            while (dist < 260 && !blocked(p.x + dx * (dist + 15), p.y + dy * (dist + 15), R)) dist += 15;
+            if (dist >= 30) {
+                const from = [Math.round(p.x), Math.round(p.y)];
+                p.x += dx * dist;
+                p.y += dy * dist;
+                p.lastMove = now;
+                p.stepCd = now + (aw.has('flashstep') ? 1500 : 3000) / SPEED;
+                p.protect = Math.max(p.protect || 0, now + 300 / SPEED);
+                if (aw.has('flashstep')) {
+                    decoys.push({ id: 'dc' + p.id + '_' + now, pid: p.id, x: from[0], y: from[1], a: p.a, until: now + 1500 / SPEED });
+                    for (const m of mobs) if (m.tgt === p.id && Math.random() < 0.7) { m.tgt = null; m.seen = 0; }
+                }
+                fxAt(p.x, p.y, { type: 'shFx', kind: 'blink', x: Math.round(p.x), y: Math.round(p.y), from });
+            }
+        }
+    }
+
+    // Killer Queen: Bombe an Gegner, Spieler oder Wand
+    function plantBomb(b, tgt, x, y, now) {
+        const own = kqBombs.filter(k => k.owner === b.owner);
+        if (own.length >= 8) kqBombs.splice(kqBombs.indexOf(own[0]), 1);
+        kqBombs.push({ owner: b.owner, mob: tgt && tgt.def ? tgt.id : null, pid: tgt && !tgt.def ? tgt.id : null, x, y, until: now + 20000 / SPEED });
+    }
+    function kqPos(k) {
+        const m = k.mob && mobs.find(o => o.id === k.mob);
+        if (m) return [m.x, m.y];
+        const q = k.pid && players.get(k.pid);
+        if (q && !q.dead) return [q.x, q.y];
+        return [k.x, k.y];
+    }
+    function kqBlast(p, x, y, now, depth = 0) {
+        const r = 110, dmg = 95 * p.dmgMul;
+        fxAt(x, y, { type: 'shBoom', x: Math.round(x), y: Math.round(y), r, nuke: false });
+        for (const q of near(x, y, r + R)) if (q !== p && !(p.team && p.team === q.team)) damage(q, p, dmg, now, q.x, q.y, { how: 'explosion', noDodge: true });
+        const kw = p.gear[p.slot];
+        const chain = depth < 3 && kw && kw.base === 'killerqueen' && I.isAwake(kw);
+        for (const m of mobsNear(x, y, r + 60)) {
+            if (Math.hypot(m.x - x, m.y - y) >= r + m.def.r) continue;
+            hurtMob(m, p, dmg, now, m.x, m.y);
+            // Bites the Dust (Lv 20): wer daran stirbt, explodiert selbst
+            if (chain && !(m.hp > 0)) kqBlast(p, m.x, m.y, now, depth + 1);
+        }
+    }
+
+    // Gum-Gum: Spieler wird zum Punkt gezogen (30 px davor)
+    function startGrapple(p, tx, ty, now) {
+        if (!p || p.dead) return;
+        const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
+        if (d < 50) return;
+        p.grap = { x: tx - dx / d * 30, y: ty - dy / d * 30, until: now + 700 / SPEED };
+        const gw = p.gear[p.slot];
+        if (gw && gw.base === 'gomu' && I.isAwake(gw)) p.gear2Until = now + 3700 / SPEED;
+        fxAt(p.x, p.y, { type: 'shFx', kind: 'gomu', x: Math.round(tx), y: Math.round(ty), from: [Math.round(p.x), Math.round(p.y)] });
+    }
+
+    // Awakenings: Feind-Test und Schaden nur an Gegner (Mobs + fremde Spieler)
+    const foe = (p, q) => q !== p && !q.dead && !(p.team && p.team === q.team);
+    function hurtFoes(p, x, y, r, dmg, now, dot) {
+        for (const q of near(x, y, r + R)) if (foe(p, q)) damage(q, p, dmg, now, q.x, q.y, { how: 'explosion', noDodge: true, dot });
+        for (const m of mobsNear(x, y, r + 60)) if (Math.hypot(m.x - x, m.y - y) < r + m.def.r) hurtMob(m, p, dmg, now, m.x, m.y, false, dot ? { dot: true } : undefined);
+    }
+    // Saitama (10. Treffer x5), Byakugan (nah +15 %), Venuzdonoa (entbloesst +50 %)
+    function awakeHitMul(attacker, target, now, isPlayer) {
+        let k = 1;
+        // bei Spielern rechnet damage() die Entbloessung selbst
+        if (!isPlayer && now < (target.exposeUntil || 0)) k *= 1.5;
+        if (!attacker || !attacker.aw) return k;
+        if (attacker.aw.has('saitama')) {
+            attacker.sHits = (attacker.sHits || 0) + 1;
+            if (attacker.sHits % 10 === 0) {
+                k *= 5;
+                fxAt(target.x, target.y, { type: 'shFx', kind: 'punch', x: Math.round(target.x), y: Math.round(target.y) });
+            }
+        }
+        if (attacker.aw.has('byakugan') && Math.hypot(target.x - attacker.x, target.y - attacker.y) < 400) k *= 1.15;
+        return k;
+    }
+
+    // Tesla (Mod, Innate) und Mjoelnir: Blitz vom getroffenen Gegner auf die zwei
+    // naechsten in 260 px, halber Schaden. 25.09.2026 (Max): vorher sprang Tesla
+    // nur zwischen Spielern (hitPlayer), gegen Raid-Gegner und Zombies passierte nichts.
+    function teslaArc(m, shooter, w, now) {
+        const others = mobs.filter(o => o !== m && o.hp > 0 && Math.hypot(o.x - m.x, o.y - m.y) < 260).sort((x, y) => Math.hypot(x.x - m.x, x.y - m.y) - Math.hypot(y.x - m.x, y.y - m.y)).slice(0, 2);
+        if (!others.length) return;
+        fxAt(m.x, m.y, { type: 'shZap', pts: [[Math.round(m.x), Math.round(m.y)], ...others.map(o => [Math.round(o.x), Math.round(o.y)])] });
+        for (const o of others) hurtMob(o, shooter, w.dmg * 0.5, now, o.x, o.y, false, { dot: true });
+    }
+
+    // Kugel eines Spielers von beliebiger Stelle (Hoi-Poi-Turm)
+    const TURRET_W = { dmg: 30, ms: 330, speed: 1400, life: 0.5, spread: 0.04, pellets: 1, pierce: 0, bounce: 0, crit: 0, burn: 0, frost: 0, vamp: 0, explode: 0, homing: 0, tesla: 0, execute: 0, look: 0, hitR: 0 };
+    function turretTick(now) {
+        for (let i = turrets.length - 1; i >= 0; i--) {
+            const t = turrets[i];
+            const o = players.get(t.owner);
+            if (o && zwFrozen(o, now)) { t.until += TICK_MS / SPEED; continue; }
+            if (!o || o.dead || now >= t.until) {
+                turrets.splice(i, 1);
+                fxAt(t.x, t.y, { type: 'shFx', kind: 'mobdie', x: Math.round(t.x), y: Math.round(t.y), icon: '💊' });
+                continue;
+            }
+            if (now < t.next) continue;
+            let tgt = null, td = 620;
+            for (const m of mobs) {
+                const d = Math.hypot(m.x - t.x, m.y - t.y) - m.def.r;
+                if (m.hp > 0 && !m.charm && d < td && clear(t.x, t.y, m.x, m.y)) { tgt = m; td = d; }
+            }
+            for (const q of players.values()) {
+                if (q === o || q.dead || (o.team && o.team === q.team) || !canSee(o, q, now)) continue;
+                const d = Math.hypot(q.x - t.x, q.y - t.y);
+                if (d < td && clear(t.x, t.y, q.x, q.y)) { tgt = q; td = d; }
+            }
+            if (!tgt) continue;
+            t.next = now + TURRET_W.ms / SPEED;
+            t.a = Math.atan2(tgt.y - t.y, tgt.x - t.x) + (Math.random() - 0.5) * TURRET_W.spread;
+            const w = { ...TURRET_W, dmg: TURRET_W.dmg * o.dmgMul };
+            bullets.push({
+                id: ++seqId, owner: o.id, x: t.x + Math.cos(t.a) * 22, y: t.y + Math.sin(t.a) * 22,
+                vx: Math.cos(t.a) * w.speed, vy: Math.sin(t.a) * w.speed, dies: now + w.life * 1000 / SPEED, w, pierce: 0, bounce: 0, hits: new Set(), fx: 0, tier: 5
+            });
+        }
+    }
+
+    // Geass: 1 s auf einen Gegner schauen -> er kaempft 8 s fuer einen
+    function geassTick(p, now) {
+        if (!p.geass || now < (p.geassCd || 0)) { p.gaze = null; return; }
+        let best = null, bd = 650;
+        for (const m of mobs) {
+            if (m.def.boss || m.charm || !(m.hp > 0)) continue;
+            const d = Math.hypot(m.x - p.x, m.y - p.y);
+            if (d > bd) continue;
+            let da = Math.atan2(m.y - p.y, m.x - p.x) - p.a;
+            while (da > Math.PI) da -= Math.PI * 2;
+            while (da < -Math.PI) da += Math.PI * 2;
+            if (Math.abs(da) < 0.08 + m.def.r / Math.max(d, 1) && clear(p.x, p.y, m.x, m.y)) { best = m; bd = d; }
+        }
+        if (!best) { p.gaze = null; return; }
+        if (!p.gaze || p.gaze.id !== best.id) { p.gaze = { id: best.id, since: now }; return; }
+        if (now - p.gaze.since < 1000 / SPEED) return;
+        const gAw = p.aw && p.aw.has('geass');
+        best.charm = { by: p.id, until: now + (gAw ? 15000 : 8000) / SPEED };
+        best.tgt = null;
+        p.gaze = null;
+        p.geassCd = now + (gAw ? 1500 : 3000) / SPEED;
+        fxAt(best.x, best.y, { type: 'shFx', kind: 'charm', x: Math.round(best.x), y: Math.round(best.y) });
+    }
+
+    // Verzauberter Gegner: greift andere Gegner an, sonst folgt er seinem Herrn
+    function charmTick(m, now, dt) {
+        const def = m.def, lord = players.get(m.charm.by);
+        let o = null, od = 700;
+        for (const x of mobs) {
+            if (x === m || x.charm || !(x.hp > 0)) continue;
+            const d = Math.hypot(x.x - m.x, x.y - m.y);
+            if (d < od) { o = x; od = d; }
+        }
+        const speed = def.chase || def.speed || 100;
+        if (o) {
+            m.a = Math.atan2(o.y - m.y, o.x - m.x);
+            if (od > 180) mobMove(m, o.x, o.y, speed, dt);
+            if (now >= (m.charmHit || 0) && od < 450 && clear(m.x, m.y, o.x, o.y)) {
+                m.charmHit = now + 700 / SPEED;
+                const g = def.gun;
+                const dmg = g ? g.dmg * (g.burst || 1) * 2.5 : (def.melee || def.contact || 20) * 1.5;
+                fxAt(m.x, m.y, { type: 'shZap', pts: [[Math.round(m.x), Math.round(m.y)], [Math.round(o.x), Math.round(o.y)]] });
+                hurtMob(o, lord, dmg, now, o.x, o.y);
+            }
+        } else if (lord && Math.hypot(lord.x - m.x, lord.y - m.y) > 160) mobMove(m, lord.x, lord.y, speed, dt);
+    }
+
+    // Gegner, der dem Mauszeiger am naechsten ist (Chain Jail, Death Note):
+    // hoechstens 160 px neben dem Zeiger, in Reichweite und mit freier Sicht
+    function enemyAtCursor(p, tx, ty, range) {
+        let best = null, bd = 160;
+        for (const q of players.values()) {
+            if (q === p || q.dead || (p.team && p.team === q.team) || !canSee(p, q, Date.now())) continue;
+            const d = Math.hypot(q.x - tx, q.y - ty);
+            if (d < bd && Math.hypot(q.x - p.x, q.y - p.y) < range && clear(p.x, p.y, q.x, q.y)) { best = { p: q }; bd = d; }
+        }
+        for (const m of mobs) {
+            if (!(m.hp > 0)) continue;
+            const d = Math.hypot(m.x - tx, m.y - ty) - m.def.r;
+            if (d < bd && Math.hypot(m.x - p.x, m.y - p.y) < range + m.def.r && clear(p.x, p.y, m.x, m.y)) { best = { m }; bd = d; }
+        }
+        return best;
+    }
+
+    // Kaneki's Mask: jeder Kill heilt und gibt Tempo
+    function onKill(killer, now) {
+        if (!killer || killer.dead || !players.has(killer.id)) return;
+        const aw = killer.aw || new Set();
+        if (aw.has('kamina')) killer.kaminaStacks = Math.min(10, (killer.kaminaStacks || 0) + 1);
+        // Dragonslayer (Lv 20): Berserker-Stapel
+        const cw = killer.gear[killer.slot];
+        if (cw && cw.base === 'dragonslayer' && I.isAwake(cw)) {
+            killer.berserkN = now < (killer.berserkUntil || 0) ? Math.min(5, (killer.berserkN || 0) + 1) : 1;
+            killer.berserkUntil = now + 5000 / SPEED;
+        }
+        if (!killer.killHeal) return;
+        const kan = aw.has('kaneki');
+        killer.hp = Math.min(killer.maxHp, killer.hp + killer.maxHp * (kan ? 0.4 : 0.25));
+        killer.stim = Math.max(now < killer.stimUntil ? killer.stim : 0, 0.25);
+        killer.stimUntil = now + (kan ? 5000 : 3000) / SPEED;
+        fxAt(killer.x, killer.y, { type: 'shFx', kind: 'heal', x: Math.round(killer.x), y: Math.round(killer.y) });
+    }
+
+    // Nichirin Blade: Treffer innerhalb 1,5 s stapeln
+    function comboHit(attacker, w, now) {
+        if (!attacker || !w || !w.combo || w.dragon || !players.has(attacker.id)) return;
+        attacker.combo = now - (attacker.comboAt || 0) > (w.awake ? 3000 : 1500) / SPEED ? 1 : Math.min(w.awake ? 8 : 10, (attacker.combo || 0) + 1);
+        attacker.comboAt = now;
+    }
+
+    // All Might: Schockwelle um den Spieler, schiebt weg
+    function plusUltra(v, now) {
+        fxAt(v.x, v.y, { type: 'shFx', kind: 'nova', x: Math.round(v.x), y: Math.round(v.y), r: 300 });
+        fxAt(v.x, v.y, { type: 'shBoom', x: Math.round(v.x), y: Math.round(v.y), r: 300, nuke: false });
+        for (const q of near(v.x, v.y, 300)) {
+            if (q === v || (v.team && v.team === q.team)) continue;
+            const d = Math.hypot(q.x - v.x, q.y - v.y) || 1;
+            [q.x, q.y] = slide(q.x, q.y, (q.x - v.x) / d * 160, (q.y - v.y) / d * 160, R);
+            damage(q, v, v.aw && v.aw.has('allmight') ? 300 : 150, now, q.x, q.y, { how: 'explosion', noDodge: true });
+        }
+        for (const m of [...mobs]) {
+            const d = Math.hypot(m.x - v.x, m.y - v.y) || 1;
+            if (d > 300 + m.def.r) continue;
+            if (!m.def.boss) [m.x, m.y] = slide(m.x, m.y, (m.x - v.x) / d * 160, (m.y - v.y) / d * 160, m.def.r, mobBlocked);
+            hurtMob(m, v, v.aw && v.aw.has('allmight') ? 300 : 150, now, m.x, m.y);
+        }
+        for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `💪 ${v.name}: PLUS ULTRA!`, kind: q === v ? 'self' : 'boss' });
+    }
+
+    // Za Warudo: steht die Zeit fuer diesen Spieler still?
+    function zwFrozen(p, now) {
+        return !!(zw && now < zw.until && p.id !== zw.by);
+    }
+
+    // Portal Gun: Portal an eine freie Stelle (von der Wand weg zurueckziehen)
+    function placePortal(b, x, y, now) {
+        const sp = Math.hypot(b.vx, b.vy) || 1;
+        for (let k = 0; k < 20 && blocked(x, y, R); k++) { x -= b.vx / sp * 4; y -= b.vy / sp * 4; }
+        if (blocked(x, y, R)) return;
+        // Paare: normal eins, erwacht (Lv 20) bis zu drei
+        const pr = portals.get(b.owner) || { pairs: [], until: 0 };
+        const maxPairs = b.w.awake ? 3 : 1;
+        let cur = pr.pairs[pr.pairs.length - 1];
+        if (!cur || (cur.a && cur.b)) {
+            if (cur && pr.pairs.length >= maxPairs) { cur = pr.pairs.shift(); cur.a = null; cur.b = null; pr.pairs.push(cur); }
+            else if (!cur || pr.pairs.length < maxPairs) { cur = { a: null, b: null }; pr.pairs.push(cur); }
+        }
+        if (!cur.a) cur.a = { x, y };
+        else cur.b = { x, y };
+        pr.until = now + 30000 / SPEED;
+        portals.set(b.owner, pr);
+        fxAt(x, y, { type: 'shFx', kind: 'portal', x: Math.round(x), y: Math.round(y) });
+    }
+    function portalTick(now) {
+        for (const [owner, prs] of portals) {
+            if (now > prs.until || !players.has(owner)) { portals.delete(owner); continue; }
+            for (const pr of prs.pairs) {
+            if (!pr.a || !pr.b) continue;
+            const pairs = [[pr.a, pr.b], [pr.b, pr.a]];
+            for (const [from, to] of pairs) {
+                for (const q of players.values()) {
+                    if (q.dead || now < (q.portCd || 0) || Math.hypot(q.x - from.x, q.y - from.y) > 28) continue;
+                    q.x = to.x;
+                    q.y = to.y;
+                    q.portCd = now + 900 / SPEED;
+                    q.lastMove = now;
+                    fxAt(to.x, to.y, { type: 'shFx', kind: 'portal', x: Math.round(to.x), y: Math.round(to.y) });
+                }
+                for (const m of mobs) {
+                    if (m.def.boss || now < (m.portCd || 0) || Math.hypot(m.x - from.x, m.y - from.y) > 28 + m.def.r * 0.5 || mobBlocked(to.x, to.y, m.def.r)) continue;
+                    m.x = to.x;
+                    m.y = to.y;
+                    m.portCd = now + 900 / SPEED;
+                }
+                for (const b of bullets) {
+                    if (b.w.portal || now < (b.portCd || 0) || Math.hypot(b.x - from.x, b.y - from.y) > 24) continue;
+                    const sp = Math.hypot(b.vx, b.vy) || 1;
+                    b.x = to.x + b.vx / sp * 30;
+                    b.y = to.y + b.vy / sp * 30;
+                    b.portCd = now + 250 / SPEED;
+                }
+            }
+            }
+        }
+    }
+
+    // Senbonzakura: Klingen um den Spieler, solange der Schwarm nicht draussen ist
+    function orbitTick(p, now, dt) {
+        const cw = p.gear[p.slot];
+        const on = !!(cw && I.WEAPONS[cw.base] && I.WEAPONS[cw.base].orbit && !bullets.some(b => b.owner === p.id && b.w.orbit));
+        p.orbitOn = on;
+        if (!on) return;
+        const dps = 130 * p.dmgMul, rr = I.isAwake(cw) ? 165 : 110;
+        p.orbitBig = rr > 110;
+        for (const q of near(p.x, p.y, rr + R)) {
+            if (q === p || (p.team && p.team === q.team)) continue;
+            damage(q, p, dps * dt, now, q.x, q.y, { how: 'shot', dot: true, noDodge: true });
+        }
+        for (const m of mobsNear(p.x, p.y, rr + 60)) if (Math.hypot(m.x - p.x, m.y - p.y) < rr + m.def.r) hurtMob(m, p, dps * dt, now, m.x, m.y, false, { dot: true });
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            const b = bullets[i];
+            if (b.owner === p.id || Math.hypot(b.x - p.x, b.y - p.y) > rr - 10) continue;
+            const o = players.get(b.owner);
+            if (o && p.team && o.team === p.team) continue;
+            bullets.splice(i, 1);
+        }
+    }
+
+    // Titan: Stampfer statt Schuss
+    function titanStomp(p, now) {
+        if (now - (p.lastStomp || 0) < 700 / SPEED) return;
+        p.lastStomp = now;
+        p.lastShot = now;
+        const x = p.x + Math.cos(p.a) * 70, y = p.y + Math.sin(p.a) * 70, r = 170, dmg = 200 * p.dmgMul;
+        fxAt(x, y, { type: 'shBoom', x: Math.round(x), y: Math.round(y), r, nuke: false });
+        for (const q of near(x, y, r + R)) if (q !== p && !(p.team && p.team === q.team)) damage(q, p, dmg, now, q.x, q.y, { how: 'explosion', noDodge: true });
+        for (const m of mobsNear(x, y, r + 60)) if (Math.hypot(m.x - x, m.y - y) < r + m.def.r) hurtMob(m, p, dmg, now, m.x, m.y);
+    }
+
+    // Kage Bunshin: Klone laufen im Dreieck um den Spieler und schiessen mit
+    function cloneTick(now, dt) {
+        for (let i = clones.length - 1; i >= 0; i--) {
+            const k = clones[i];
+            const o = players.get(k.owner);
+            if (!o || o.dead || now >= k.until) {
+                clones.splice(i, 1);
+                fxAt(k.x, k.y, { type: 'shFx', kind: 'poof', x: Math.round(k.x), y: Math.round(k.y) });
+                continue;
+            }
+            if (zwFrozen(o, now)) continue;
+            const ang = o.a + Math.PI + (k.k - 1) * 0.9;
+            const gx = o.x + Math.cos(ang) * 75, gy = o.y + Math.sin(ang) * 75;
+            const d = Math.hypot(gx - k.x, gy - k.y);
+            if (d > 300) { k.x = o.x; k.y = o.y; }
+            else if (d > 6) [k.x, k.y] = slide(k.x, k.y, (gx - k.x) / d * Math.min(d, MOVE * 1.3 * dt), (gy - k.y) / d * Math.min(d, MOVE * 1.3 * dt), R);
+            let tgt = null, td = 600;
+            for (const m of mobs) {
+                const dd = Math.hypot(m.x - k.x, m.y - k.y) - m.def.r;
+                if (m.hp > 0 && !(m.charm && m.charm.by === o.id) && dd < td && clear(k.x, k.y, m.x, m.y)) { tgt = m; td = dd; }
+            }
+            for (const q of players.values()) {
+                if (q === o || q.dead || (o.team && o.team === q.team) || !canSee(o, q, now)) continue;
+                const dd = Math.hypot(q.x - k.x, q.y - k.y);
+                if (dd < td && clear(k.x, k.y, q.x, q.y)) { tgt = q; td = dd; }
+            }
+            k.a = tgt ? Math.atan2(tgt.y - k.y, tgt.x - k.x) : o.a;
+            if (!tgt || now < k.next) continue;
+            const item = o.gear[o.slot] || o.gear.primary;
+            const ws = I.weaponStats(item);
+            const w = { ...TURRET_W, dmg: ws.dmg * o.dmgMul * 0.35, speed: ws.beam ? 1600 : ws.speed, life: ws.beam ? 0.6 : Math.min(ws.life, 1.2), spread: ws.spread, burn: ws.burn, frost: ws.frost, ms: Math.max(150, ws.ms / o.rateMul) };
+            k.next = now + w.ms / SPEED;
+            const a = k.a + (Math.random() - 0.5) * w.spread;
+            bullets.push({ id: ++seqId, owner: o.id, x: k.x + Math.cos(a) * (R + 6), y: k.y + Math.sin(a) * (R + 6), vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed, dies: now + w.life * 1000 / SPEED, w, pierce: 0, bounce: 0, hits: new Set(), fx: 0, tier: I.TIER_IDX[item.tier] || 0 });
+        }
+    }
+
     function useUtil(p, si, tx, ty, now) {
         const u = p.util[si];
         if (p.dead || (pvp && pvp.phase !== 'fight')) return;
         if (!u || now - p.lastUse < 600 * p.b.utilCd / SPEED) return;
+        if (zwFrozen(p, now)) return;
         const def = I.UTILS[u.base];
         if (def.use === 'heal') {
             if (def.full) {
@@ -1516,8 +2278,109 @@ module.exports = function createArena(h, opts = {}) {
                 if (q === p || (p.team && p.team === q.team)) continue;
                 q.slow = 0.95;
                 q.slowUntil = now + def.stun / SPEED;
-                h.send(q.c, { type: 'shFlash', ms: 1500 });
+                if (!q.see) h.send(q.c, { type: 'shFlash', ms: 1500 });
             }
+        } else if (u.base === 'hiraishin') {
+            // Zweiter Einsatz: zum Kunai springen, kostet nichts
+            if (p.kunai && now < p.kunai.until) {
+                const from = [Math.round(p.x), Math.round(p.y)];
+                p.x = p.kunai.x;
+                p.y = p.kunai.y;
+                p.kunai = null;
+                p.lastMove = now;
+                p.lastUse = now;
+                fxAt(p.x, p.y, { type: 'shFx', kind: 'blink', x: Math.round(p.x), y: Math.round(p.y), from });
+                return sendInv(p);
+            }
+            if (!Number.isFinite(tx) || !Number.isFinite(ty)) return;
+            let dx = tx - p.x, dy = ty - p.y;
+            const d = Math.hypot(dx, dy) || 1;
+            dx /= d;
+            dy /= d;
+            let dist = 0;
+            while (dist < Math.min(def.range, d) && !blocked(p.x + dx * (dist + 15), p.y + dy * (dist + 15), R)) dist += 15;
+            if (dist < 30) return;
+            p.kunai = { x: p.x + dx * dist, y: p.y + dy * dist, until: now + def.keep / SPEED };
+        } else if (u.base === 'chainjail') {
+            const t = Number.isFinite(tx) && enemyAtCursor(p, tx, ty, def.range);
+            if (!t) return h.send(p.c, { type: 'shEvent', text: '⛓️ No enemy near your cursor', kind: 'self' });
+            const o = t.p || t.m;
+            fxAt(p.x, p.y, { type: 'shZap', pts: [[Math.round(p.x), Math.round(p.y)], [Math.round(o.x), Math.round(o.y)]], chain: true });
+            if (t.p) {
+                t.p.jailUntil = now + def.ms / SPEED;
+                h.send(t.p.c, { type: 'shEvent', text: `⛓️ ${p.name} chained you!`, kind: 'boss' });
+            } else if (t.m.def.boss) t.m.slowUntil = now + def.ms / SPEED;
+            else t.m.stunUntil = now + def.ms / SPEED;
+        } else if (u.base === 'deathnote') {
+            const t = Number.isFinite(tx) && enemyAtCursor(p, tx, ty, def.range);
+            if (!t) return h.send(p.c, { type: 'shEvent', text: '📓 No enemy near your cursor', kind: 'self' });
+            const o = t.p || t.m;
+            o.doom = { at: now + def.ms / SPEED, by: p.id };
+            fxAt(o.x, o.y, { type: 'shFx', kind: 'doom', x: Math.round(o.x), y: Math.round(o.y) });
+            h.send(p.c, { type: 'shEvent', text: `📓 You wrote ${t.p ? t.p.name : 'the ' + o.def.name}'s name – 40 s`, kind: 'self' });
+            if (t.p) h.send(t.p.c, { type: 'shEvent', text: `📓 ${p.name} wrote your name in the Death Note – you die in 40 s unless you kill them or extract!`, kind: 'boss' });
+        } else if (u.base === 'doordoor') {
+            p.phaseUntil = now + def.ms / SPEED;
+            p.phased = true;
+            fxAt(p.x, p.y, { type: 'shFx', kind: 'door', x: Math.round(p.x), y: Math.round(p.y) });
+        } else if (u.base === 'shinra') {
+            fxAt(p.x, p.y, { type: 'shFx', kind: 'nova', x: Math.round(p.x), y: Math.round(p.y), r: def.r });
+            fxAt(p.x, p.y, { type: 'shFx', kind: 'shinra', x: Math.round(p.x), y: Math.round(p.y), r: def.r });
+            const push = (x, y, r, far, isB) => {
+                const d = Math.hypot(x - p.x, y - p.y) || 1;
+                const [nx, ny] = slide(x, y, (x - p.x) / d * far, (y - p.y) / d * far, r, isB);
+                return [nx, ny, Math.hypot(nx - x, ny - y) < far * 0.75];
+            };
+            for (const q of near(p.x, p.y, def.r)) {
+                if (q === p || (p.team && p.team === q.team)) continue;
+                const [nx, ny, wall] = push(q.x, q.y, R, 320, blocked);
+                q.x = nx;
+                q.y = ny;
+                damage(q, p, def.dmg + (wall ? 120 : 0), now, q.x, q.y, { how: 'explosion', noDodge: true });
+            }
+            for (const m of [...mobs]) {
+                if (Math.hypot(m.x - p.x, m.y - p.y) > def.r + m.def.r) continue;
+                const [nx, ny, wall] = push(m.x, m.y, m.def.r, m.def.boss ? 80 : 320, mobBlocked);
+                m.x = nx;
+                m.y = ny;
+                hurtMob(m, p, def.dmg + (wall ? 120 : 0), now, m.x, m.y);
+            }
+            // gegnerische Kugeln im Umkreis loeschen
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const b = bullets[i];
+                if (b.owner === p.id || Math.hypot(b.x - p.x, b.y - p.y) > def.r) continue;
+                const o = players.get(b.owner);
+                if (o && p.team && o.team === p.team) continue;
+                bullets.splice(i, 1);
+            }
+        } else if (u.base === 'hoipoi') {
+            if (!Number.isFinite(tx) || !Number.isFinite(ty)) return;
+            let dx = tx - p.x, dy = ty - p.y;
+            const d = Math.hypot(dx, dy) || 1;
+            dx /= d;
+            dy /= d;
+            let dist = Math.min(def.range, d);
+            while (dist > 30 && blocked(p.x + dx * dist, p.y + dy * dist, 20)) dist -= 15;
+            const x = dist > 30 ? p.x + dx * dist : p.x, y = dist > 30 ? p.y + dy * dist : p.y;
+            turrets.push({ id: ++seqId, owner: p.id, x, y, until: now + def.ms / SPEED, next: now + 400 / SPEED, a: p.a });
+            fxAt(x, y, { type: 'shBoom', x: Math.round(x), y: Math.round(y), r: 60, nuke: false });
+        } else if (u.base === 'zawarudo') {
+            if (zw && now < zw.until) return;
+            zw = { by: p.id, until: now + def.ms / SPEED };
+            for (const q of players.values()) {
+                h.send(q.c, { type: 'shEvent', text: `⏱️ ${p.name}: ZA WARUDO! Time has stopped.`, kind: q === p ? 'self' : 'boss' });
+                h.send(q.c, { type: 'shFx', kind: 'zawarudo', x: Math.round(p.x), y: Math.round(p.y), ms: def.ms });
+            }
+        } else if (u.base === 'bunshin') {
+            for (const c of clones.filter(c => c.owner === p.id)) clones.splice(clones.indexOf(c), 1);
+            for (let k = 0; k < 3; k++) clones.push({ id: 'kb' + p.id + '_' + k + '_' + now, owner: p.id, k, x: p.x, y: p.y, a: p.a, until: now + def.ms / SPEED, next: now + 300 / SPEED });
+            fxAt(p.x, p.y, { type: 'shFx', kind: 'poof', x: Math.round(p.x), y: Math.round(p.y) });
+        } else if (u.base === 'philosopher') {
+            p.stoneUntil = now + def.ms / SPEED;
+            fxAt(p.x, p.y, { type: 'shFx', kind: 'phoenix', x: Math.round(p.x), y: Math.round(p.y) });
+        } else if (u.base === 'hollowmask') {
+            p.hollowUntil = now + def.ms / SPEED;
+            fxAt(p.x, p.y, { type: 'shFx', kind: 'enrage', x: Math.round(p.x), y: Math.round(p.y) });
         } else if (u.base === 'blink') {
             if (!Number.isFinite(tx) || !Number.isFinite(ty)) return;
             let dx = tx - p.x, dy = ty - p.y;
@@ -1634,7 +2497,7 @@ module.exports = function createArena(h, opts = {}) {
                 fxAt(g.x, g.y, { type: 'shFx', kind: 'flash', x: Math.round(g.x), y: Math.round(g.y), r: def.r });
                 for (const q of near(g.x, g.y, def.r)) {
                     if (!clear(g.x, g.y, q.x, q.y)) continue;
-                    h.send(q.c, { type: 'shFlash', ms: Math.round(def.blind * (1 - Math.hypot(q.x - g.x, q.y - g.y) / def.r * 0.5)) });
+                    if (!q.see) h.send(q.c, { type: 'shFlash', ms: Math.round(def.blind * (1 - Math.hypot(q.x - g.x, q.y - g.y) / def.r * 0.5)) });
                 }
             } else if (g.base === 'smoke') {
                 smokes.push({ id: g.id, x: g.x, y: g.y, r: def.r, until: now + def.dur / SPEED });
@@ -1693,6 +2556,8 @@ module.exports = function createArena(h, opts = {}) {
         if (v === t) return true;
         if (t.dead) return false;
         if (v.team && v.team === t.team) return true;
+        if (v.see) return true;
+        if (now < (t.invisUntil || 0)) return false;
         if (Math.hypot(v.x - t.x, v.y - t.y) < SEE_NEAR) return true;
         if (now - t.lastShot < REVEAL_MS * t.b.reveal) return true;
         if (stillHidden(t, now)) return false;
@@ -1717,8 +2582,65 @@ module.exports = function createArena(h, opts = {}) {
             w.ms /= Math.pow(1.12, item.pap);
         }
         if (now < p.rampUntil) w.ms /= 1.25;
+        // Awakenings / Ruestung, die den Schuss veraendern
+        if (p.kaminaStacks) w.dmg *= 1 + 0.03 * p.kaminaStacks;
+        if (now < (p.gateUntil || 0)) w.dmg *= 1.6;
+        if (now < (p.gear2Until || 0)) w.ms /= 1.4;
+        if (now < (p.berserkUntil || 0)) w.ms /= 1 + 0.1 * (p.berserkN || 0);
+        // Hollow Mask
+        if (now < (p.hollowUntil || 0)) {
+            w.dmg *= 1.6;
+            w.ms /= 1.3;
+            w.vamp = (w.vamp || 0) + 0.15;
+        }
+        // Kagune: fehlende HP -> Schaden und Lifesteal
+        if (w.berserk) {
+            const miss = Math.max(0, Math.min(1, (1 - p.hp / p.maxHp) / 0.9));
+            w.dmg *= 1 + 1.5 * miss;
+            w.vamp = (w.vamp || 0) + 0.08 + 0.2 * miss;
+            // Kagune (Lv 20): unter 30 % ein zweiter Faecher
+            if (w.awake && p.hp < p.maxHp * 0.3) w.pellets *= 2;
+        }
+        if ((now < (p.jailUntil || 0) && !(p.aw && p.aw.has('geppo'))) || zwFrozen(p, now)) return;
+        if (now < (p.titanUntil || 0)) return titanStomp(p, now);
         if (now - p.lastShot < w.ms / SPEED) return;
+        // Kettensaege: Dauerfeuer dreht hoch, heilt
+        if (w.rev) {
+            if (now - (p.revLast || 0) > 400 / SPEED) p.revStart = now;
+            p.revLast = now;
+            const rev = Math.min(1, (now - p.revStart) / (3000 / SPEED));
+            w.dmg *= 1 + 2 * rev;
+            w.vamp = (w.vamp || 0) + (w.awake && rev >= 1 ? 0.5 : 0.25);
+        }
         p.lastShot = now;
+        // Waffen-Awakenings (Lv 20), die den einzelnen Schuss aendern
+        if (w.awake) {
+            p.awShots = (p.awShots || 0) + 1;
+            if (w.base === 'getsuga' && p.awShots % 3 === 0) { w.dmg *= 2; w.hitR *= 1.8; }
+            if (w.base === 'spiritgun' && p.awShots % 4 === 0) { w.pellets = 8; w.spread = 0.6; w.dmg *= 0.45; w.explode = 0; }
+            if (w.base === 'gob' && now >= (p.gobCd || 0)) {
+                p.gobCd = now + 10000 / SPEED;
+                const tx = p.x + Math.cos(p.a) * 450, ty = p.y + Math.sin(p.a) * 450;
+                let tg = null, td = 350;
+                for (const m of mobs) { const d = Math.hypot(m.x - tx, m.y - ty); if (m.hp > 0 && d < td) { tg = m; td = d; } }
+                for (const q of players.values()) { const d = Math.hypot(q.x - tx, q.y - ty); if (foe(p, q) && d < td) { tg = q; td = d; } }
+                const bx = tg ? tg.x : tx, by = tg ? tg.y : ty;
+                blasts.push({ x: bx, y: by, r: 170, dmg: w.dmg * 4, at: now + 900 / SPEED, owner: p.id });
+                fxAt(bx, by, { type: 'shFx', kind: 'swordrain', x: Math.round(bx), y: Math.round(by), r: 170 });
+            }
+            if (w.base === 'kamehameha') p.kameUntil = now + 1000 / SPEED;
+        }
+        // Nichirin Blade: Combo, bei 10 Stacks ein Wasserdrache
+        if (w.combo) {
+            if (now - (p.comboAt || 0) > (w.awake ? 3000 : 1500) / SPEED) p.combo = 0;
+            w.dmg *= 1 + 0.1 * (p.combo || 0);
+            if ((p.combo || 0) >= (w.awake ? 8 : 10)) {
+                p.combo = 0;
+                Object.assign(w, { dragon: true, wave: true, hitR: 70, life: w.life * 3, speed: w.speed * 1.2, look: 'getsuga' });
+                w.dmg *= 2.5;
+                fxAt(p.x, p.y, { type: 'shFx', kind: 'dragon', x: Math.round(p.x), y: Math.round(p.y) });
+            }
+        }
         if (w.beam) return railBeam(p, w, now);
         for (let k = 0; k < w.pellets; k++) {
             const off = w.pellets > 1 ? (k / (w.pellets - 1) - 0.5) * Math.max(w.spread, 0.08 * w.pellets) : (Math.random() - 0.5) * w.spread;
@@ -1743,6 +2665,13 @@ module.exports = function createArena(h, opts = {}) {
                     (w.rocket ? 256 : 0) | (w.magic ? 512 : 0),
                 tier: I.TIER_IDX[item.tier] || 0
             };
+            if (w.awake && w.pin) b.pierce = 999;
+            // Mjoelnir: fliegt hin, kehrt um, kommt zurueck
+            if (w.boomerang) {
+                b.pierce = 999;
+                b.turnAt = now + w.life * 1000 / SPEED;
+                b.dies = now + w.life * 4000 / SPEED;
+            }
             // 6.12.1 (Max: Stalker kann man nicht treffen, wenn er an einem dran ist):
             // Kugeln starten vor dem Lauf – wer schon am Spieler klebt, steht dahinter
             // und wurde nie getroffen. Solche Gegner trifft der Schuss sofort.
@@ -1753,8 +2682,11 @@ module.exports = function createArena(h, opts = {}) {
                     b.hits.add(close.id);
                     const crit = w.crit && Math.random() < w.crit;
                     hurtMob(close, p, w.dmg * (crit ? p.b.critMul : 1), now, close.x, close.y, crit, w);
+                    if (w.tesla || w.chain) teslaArc(close, p, w, now);
                     if (w.explode) explode({ ...b, x: close.x, y: close.y }, now, null);
-                    if (!(w.wave || w.erase)) {
+                    if (w.grapple) startGrapple(p, close.x, close.y, now);
+                    if (w.stick) plantBomb(b, close, close.x, close.y, now);
+                    if (!(w.wave || w.erase || w.boomerang)) {
                         if (b.pierce > 0) b.pierce--;
                         else continue;
                     }
@@ -1765,12 +2697,12 @@ module.exports = function createArena(h, opts = {}) {
     }
 
     // Railgun: sofortiger Strahl durch Waende und alle Gegner auf der Linie
-    function railBeam(p, w, now) {
+    function railBeam(p, w, now, quiet) {
         const len = w.speed * w.life;
         const dx = Math.cos(p.a), dy = Math.sin(p.a);
         const x1 = p.x + dx * (R + 6), y1 = p.y + dy * (R + 6);
         const x2 = p.x + dx * len, y2 = p.y + dy * len;
-        fxAt(p.x, p.y, { type: 'shBeam', x1: Math.round(x1), y1: Math.round(y1), x2: Math.round(x2), y2: Math.round(y2), owner: p.id, look: w.look || undefined, bw: w.beamW || undefined });
+        if (!quiet) fxAt(p.x, p.y, { type: 'shBeam', x1: Math.round(x1), y1: Math.round(y1), x2: Math.round(x2), y2: Math.round(y2), owner: p.id, look: w.look || undefined, bw: w.beamW || undefined });
         // Breite (6.6): Kamehameha und Venuzdonoa treffen einen breiten Streifen
         const bw = w.beamW || 10;
         for (const q of [...players.values()]) {
@@ -1786,11 +2718,13 @@ module.exports = function createArena(h, opts = {}) {
             const t = (m.x - p.x) * dx + (m.y - p.y) * dy;
             if (t >= 0 && t <= len && Math.abs((m.x - p.x) * dy - (m.y - p.y) * dx) < m.def.r + bw) {
                 // Venuzdonoa: Risse ins Nichts an bis zu drei Getroffenen
-                if (w.rift && rifts < 3 && m.hp > 0) {
+                if (w.rift && w.awake) m.exposeUntil = now + 5000 / SPEED;
+                if (w.rift && rifts < 3 && m.hp > 0 && !quiet) {
                     rifts++;
                     bulletHole({ x: m.x, y: m.y, owner: p.id, w: { dmg: w.dmg * 0.3 } }, now);
                 }
                 hurtMob(m, p, w.dmg, now, m.x, m.y);
+                if (w.tesla) teslaArc(m, p, w, now);
             }
         }
     }
@@ -1812,10 +2746,43 @@ module.exports = function createArena(h, opts = {}) {
     // Schaden mit allen Folgen; true = tot
     function damage(v, attacker, dmg, now, x, y, opts = {}) {
         if (!players.has(v.id) || now < v.protect || v.dead) return false;
+        // Creative Mode (25.09.2026, Max, im Admin-Panel schaltbar): unverwundbar
+        if (creativeOf(v)) return false;
         // PvP: kein Schaden unter Teamkameraden
         if (attacker && attacker !== v && attacker.team && attacker.team === v.team) return false;
-        if (!opts.noDodge && v.dodge && Math.random() < v.dodge) {
+        // Guild House (25.09.2026): kein Schaden unter Spielern drinnen oder von drinnen
+        // drinnen ist man ganz sicher (auch vor Mob-Schuessen durchs Tor), wer drinnen steht, trifft keine Spieler draussen
+        if (attacker !== v && inGuild(v.x, v.y)) return false;
+        if (attacker && attacker !== v && players.has(attacker.id) && inGuild(attacker.x, attacker.y)) return false;
+        // Geppo: Feuer und Saeure (beides 'fire') tun nichts
+        if (v.geppo && opts.how === 'fire') return false;
+        // Straw Hat (Lv 20): Haki – alle 20 s geht ein grosser Treffer daneben
+        if (v.aw && v.aw.has('strawhat') && !opts.dot && dmg >= 30 && now >= (v.hakiCd || 0)) {
+            v.hakiCd = now + 20000 / SPEED;
             if (attacker) h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: 0, dodge: true });
+            fxAt(v.x, v.y, { type: 'shFx', kind: 'haki', x: Math.round(v.x), y: Math.round(v.y) });
+            return false;
+        }
+        // Susanoo (Lv 20): Schild schluckt 80 %
+        if (now < (v.shieldUntil || 0)) dmg *= 0.2;
+        if (now < (v.exposeUntil || 0)) dmg *= 1.5;
+        if (!opts.noDodge && !opts.pure && v.dodge && Math.random() < v.dodge) {
+            if (attacker) h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: 0, dodge: true });
+            // Killua: jeder Dodge schlaegt mit einem Blitz zurueck
+            if (v.counter && now >= (v.counterCd || 0)) {
+                const src = attacker && players.has(attacker.id) ? attacker : opts.src && opts.src.hp > 0 ? opts.src : null;
+                if (src) {
+                    v.counterCd = now + 300 / SPEED;
+                    fxAt(v.x, v.y, { type: 'shZap', pts: [[Math.round(v.x), Math.round(v.y)], [Math.round(src.x), Math.round(src.y)]] });
+                    if (src.def) hurtMob(src, v, 120, now, src.x, src.y);
+                    else damage(src, v, 120, now, src.x, src.y, { how: 'tesla', noDodge: true });
+                    if (v.aw && v.aw.has('killua')) {
+                        const more = mobs.filter(o => o !== src && o.hp > 0 && Math.hypot(o.x - src.x, o.y - src.y) < 300).slice(0, 2);
+                        if (more.length) fxAt(src.x, src.y, { type: 'shZap', pts: [[Math.round(src.x), Math.round(src.y)], ...more.map(o => [Math.round(o.x), Math.round(o.y)])] });
+                        for (const o of more) hurtMob(o, v, 60, now, o.x, o.y);
+                    }
+                }
+            }
             return false;
         }
         if (attacker && attacker.b && attacker.b.exec && v.hp < v.maxHp * 0.3) dmg *= 1 + attacker.b.exec;
@@ -1826,12 +2793,31 @@ module.exports = function createArena(h, opts = {}) {
             if (opts.how === 'boss') dmg *= v.b.zBossTaken;
         }
         if (opts.how === 'fire') dmg *= v.b.fire;
-        if (v.b.iron && v.hp < v.maxHp / 2) dmg *= 0.85;
-        dmg *= v.taken;
+        if (!opts.pure) {
+            if (v.b.iron && v.hp < v.maxHp / 2) dmg *= 0.85;
+            dmg *= v.taken;
+        }
         v.hp -= dmg;
         v.lastHurt = now;
         v.extractAt = null;
         let killed = v.hp <= 0 || (opts.execute && v.hp <= v.maxHp * opts.execute);
+        // Stein der Weisen: ein toedlicher Treffer laesst einen mit halben HP stehen
+        if (killed && now < (v.stoneUntil || 0)) {
+            v.stoneUntil = 0;
+            v.hp = v.maxHp * 0.5;
+            v.protect = now + 1000 / SPEED;
+            killed = false;
+            fxAt(v.x, v.y, { type: 'shFx', kind: 'phoenix', x: Math.round(v.x), y: Math.round(v.y) });
+            h.send(v.c, { type: 'shEvent', text: "💎 The Philosopher's Stone saved you!", kind: 'self' });
+        }
+        // All Might: unter 25 % (auch toedlich) Schockwelle und 3 s unverwundbar, einmal je Minute
+        if (v.plusUltra && v.hp < v.maxHp * 0.25 && now >= (v.plusUltraCd || 0)) {
+            v.plusUltraCd = now + (v.aw && v.aw.has('allmight') ? 30000 : 60000) / SPEED;
+            if (killed) v.hp = 1;
+            killed = false;
+            v.protect = now + 3000 / SPEED;
+            plusUltra(v, now);
+        }
         // Last stand: einmal je Raid bleibt man mit 1 HP stehen
         if (killed && v.b.last && !v.lastUsed) {
             v.lastUsed = true;
@@ -1849,6 +2835,21 @@ module.exports = function createArena(h, opts = {}) {
             v.adrenCd = now + 15000 / SPEED;
             v.stim = Math.max(now < v.stimUntil ? v.stim : 0, 0.3);
             v.stimUntil = now + 3000 / SPEED;
+        }
+        // Susanoo (Lv 20): unter 30 % Schild, alle 45 s
+        if (!killed && v.aw && v.aw.has('susanoo') && v.hp < v.maxHp * 0.3 && now >= (v.shieldCd || 0)) {
+            v.shieldCd = now + 45000 / SPEED;
+            v.shieldUntil = now + 4000 / SPEED;
+            fxAt(v.x, v.y, { type: 'shFx', kind: 'shield', x: Math.round(v.x), y: Math.round(v.y) });
+        }
+        // Kyoka Suigetsu: Trugbild bleibt stehen, man selbst verschwindet
+        if (!killed && v.mirror && !opts.dot && dmg >= 1 && now >= (v.mirrorCd || 0)) {
+            const kyAw = v.aw && v.aw.has('kyoka');
+            v.mirrorCd = now + (kyAw ? 8000 : 12000) / SPEED;
+            v.invisUntil = now + (kyAw ? 3500 : 2000) / SPEED;
+            decoys.push({ id: 'dc' + v.id + '_' + now, pid: v.id, x: v.x, y: v.y, a: v.a, until: now + 3000 / SPEED });
+            for (const m of mobs) if (m.tgt === v.id) { m.tgt = null; m.seen = 0; }
+            fxAt(v.x, v.y, { type: 'shFx', kind: 'mirror', x: Math.round(v.x), y: Math.round(v.y) });
         }
         // Schaden ueber Zeit (Brennen, Feuer) meldet sich nur beim Getroffenen als Rand
         if (attacker && (!opts.dot || killed)) h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: Math.round(dmg), kill: killed, crit: !!opts.crit });
@@ -1874,8 +2875,16 @@ module.exports = function createArena(h, opts = {}) {
         let dmg = w.dmg;
         const crit = w.crit && Math.random() < w.crit;
         if (crit) dmg *= shooter ? shooter.b.critMul : 2;
-        const killed = damage(v, shooter, dmg, now, b.x, b.y, { crit, execute: w.execute, how: w.how, by: w.by });
+        const src = !shooter && isMob(b.owner) ? mobs.find(m => m.id === b.owner) : null;
+        dmg *= awakeHitMul(shooter, v, now, true);
+        const killed = damage(v, shooter, dmg, now, b.x, b.y, { crit, execute: w.execute, how: w.how, by: w.by, pure: w.pure, src });
+        if (!killed && w.awake && w.rift) v.exposeUntil = now + 5000 / SPEED;
         if (shooter && w.vamp) shooter.hp = Math.min(shooter.maxHp, shooter.hp + dmg * w.vamp);
+        comboHit(shooter, w, now);
+        if (!killed && w.pin && players.has(v.id)) {
+            v.slow = 0.9;
+            v.slowUntil = now + 1500 / SPEED;
+        }
         if (!killed && players.has(v.id)) {
             if (w.burn) v.burn = { dps: w.burn, until: now + 3000 / SPEED, from: b.owner };
             if (w.frost) {
@@ -1895,6 +2904,11 @@ module.exports = function createArena(h, opts = {}) {
 
     function explode(b, now, skipId) {
         const w = b.w;
+        // Rasengan (Lv 20): Rasenshuriken – schneidende Zone fuer 2 s
+        if (w.awake && w.base === 'rasengan' && players.has(b.owner)) {
+            zones.push({ x: b.x, y: b.y, r: 150, until: now + 2000 / SPEED, owner: b.owner, dps: w.dmg * 0.6 });
+            fxAt(b.x, b.y, { type: 'shFx', kind: 'vortex', x: Math.round(b.x), y: Math.round(b.y), r: 150 });
+        }
         const r = w.nukeShell ? 300 : 70 + w.explode * 40;
         fxAt(b.x, b.y, { type: 'shBoom', x: Math.round(b.x), y: Math.round(b.y), r: Math.round(r), nuke: !!w.nukeShell });
         const shooter = players.get(b.owner);
@@ -1973,6 +2987,7 @@ module.exports = function createArena(h, opts = {}) {
         if (killer && killer !== p) {
             pvp.kills.set(killer.id, (pvp.kills.get(killer.id) || 0) + 1);
             award(killer, 60, 'pvp kill');
+            weaponXp(killer, 60);
             const ka = st(killer.c);
             ka.pvp = ka.pvp || { rating: 1000, wins: 0, losses: 0, draws: 0, kills: 0, deaths: 0 };
             ka.pvp.kills++;
@@ -2481,6 +3496,15 @@ module.exports = function createArena(h, opts = {}) {
             nextRing: now + 6000, nextSlam: now + 8000, slamAt: 0, nextSummon: now + 6000,
             nextCharge: now + 4000, chargeAt: 0, charging: false, chargeEnd: 0, cx: 0, cy: 0, nextStrike: now + 5000
         };
+        // Level (nur Extraction, keine Bosse): Ebene bestimmt den Bereich
+        if (pve && !def.boss && !def.zombie) {
+            const [lo, hi] = MOB_LEVELS[regionAt(x, y)] || MOB_LEVELS.surface;
+            m.lv = def.special ? hi + 5 : lo + Math.floor(Math.random() * (hi - lo + 1));
+            if (opts.mission) m.lv = Math.max(1, m.lv + MISSION_DIFF[opts.mission.diff].lv);
+            const k = m.lv - 1;
+            m.hp = m.maxHp = Math.round(m.maxHp * (1 + MOB_LV_HP * k));
+            m.dm = 1 + MOB_LV_DMG * k;
+        }
         mobs.push(m);
         return m;
     }
@@ -2495,7 +3519,19 @@ module.exports = function createArena(h, opts = {}) {
     }
     const inZone = (x, y, z, m) => !!z && x > z[0] - m && x < z[0] + z[2] + m && y > z[1] - m && y < z[1] + z[3] + m;
     // Stadt und Aussenposten sind Schutzzonen: Gegner kommen nicht hinein (schiessen aber hinein)
-    const mobBlocked = (x, y, r) => blocked(x, y, r) || inZone(x, y, MAP.town, r) || inZone(x, y, MAP.outpost, r);
+    // Tod in der Mission (25.09.2026): zurueck in ein Guild House, freie Stelle drinnen
+    function guildSpot(near) {
+        const gs = MAP.guilds || [];
+        if (!gs.length) return null;
+        const g = near ? gs.slice().sort((a, b) => Math.hypot(a[0] + a[2] / 2 - near.x, a[1] + a[3] / 2 - near.y) - Math.hypot(b[0] + b[2] / 2 - near.x, b[1] + b[3] / 2 - near.y))[0] : gs[0];
+        for (let i = 0; i < 40; i++) {
+            const x = g[0] + g[2] * (0.3 + Math.random() * 0.4), y = g[1] + g[3] * (0.45 + Math.random() * 0.35);
+            if (!blocked(x, y, R + 6)) return { x, y };
+        }
+        return { x: g[0] + g[2] / 2, y: g[1] + g[3] * 0.7 };
+    }
+    const inGuild = (x, y, m = 0) => (MAP.guilds || []).some(g => inZone(x, y, g, m));
+    const mobBlocked = (x, y, r) => blocked(x, y, r) || inZone(x, y, MAP.town, r) || inZone(x, y, MAP.outpost, r) || inGuild(x, y, r + 120);
 
     function spawnBoss(now, kind) {
         const pool = M.BOSSES.filter(k => k !== lastBoss);
@@ -2521,7 +3557,8 @@ module.exports = function createArena(h, opts = {}) {
             // 6.5: Zustand der neuen Faehigkeiten fuer die Optik
             b.enraged ? 1 : 0, now < (b.spiralUntil || 0) ? 1 : 0, now < (b.vortexUntil || 0) ? 1 : 0,
             b.beamAt ? Math.max(0, Math.round(b.beamAt - now)) : 0, b.beamAt || now < (b.beamUntil || 0) ? Math.round(b.beamA * 100) / 100 : null,
-            b.introUntil && now < b.introUntil ? Math.round(b.introUntil - now) : 0] : null;
+            b.introUntil && now < b.introUntil ? Math.round(b.introUntil - now) : 0,
+            b.jumpAt ? Math.max(0, Math.round(b.jumpAt - now)) : 0] : null;
     }
 
     // Spieler trifft Gegner
@@ -2545,11 +3582,28 @@ module.exports = function createArena(h, opts = {}) {
                 if (attacker.b.zCull && m.hp < m.maxHp * 0.25) dmg *= 1 + attacker.b.zCull;
             }
         }
-        dmg *= m.def.taken || 1;
+        if (!(w && w.pure)) dmg *= m.def.taken || 1;
+        // Gojo (25.09.2026): Infinity – aus der Ferne kommt kaum etwas an
+        if (m.def.infinity && attacker && attacker.x !== undefined && Math.hypot(attacker.x - m.x, attacker.y - m.y) > 300) dmg *= m.diff === 'easy' ? 0.4 : m.diff === 'hard' ? 0.08 : 0.15;
+        // Riot Trooper (25.09.2026): Schild vorne haelt 80 % ab – flankieren!
+        if (m.def.shield && attacker && attacker.x !== undefined && !(w && (w.pure || w.dot))) {
+            let da = Math.atan2(attacker.y - m.y, attacker.x - m.x) - m.a;
+            while (da > Math.PI) da -= Math.PI * 2;
+            while (da < -Math.PI) da += Math.PI * 2;
+            if (Math.abs(da) < 1.0) dmg *= 0.2;
+        }
+        if (!(w && w.dot)) dmg *= awakeHitMul(attacker && players.has(attacker.id) ? attacker : null, m, now);
+        else if (now < (m.exposeUntil || 0)) dmg *= 1.5;
+        comboHit(attacker, w, now);
+        // Longinus: festnageln (Bosse nur verlangsamen, sonst waeren sie dauerhaft betaeubt)
+        if (w && w.pin && attacker) {
+            if (m.def.boss) m.slowUntil = now + 1500 / SPEED;
+            else m.stunUntil = Math.max(m.stunUntil || 0, now + 2000 / SPEED);
+        }
         // 6.12.3 (Max: Railgun macht Bosse von ultra weit weg platt): im Zombie-Modus
         // weniger Schaden an Bossen, je weiter der Schuetze weg ist – bis 500 px voll,
         // dann linear runter bis 30 % ab 1400 px
-        if (zb && m.def.boss && attacker && attacker.x !== undefined) {
+        if (zb && m.def.boss && attacker && attacker.x !== undefined && !(w && w.nofall)) {
             const d = Math.hypot(attacker.x - m.x, attacker.y - m.y);
             dmg *= zBossFalloff(d);
         }
@@ -2561,12 +3615,16 @@ module.exports = function createArena(h, opts = {}) {
         if (attacker && players.has(attacker.id)) {
             m.tgt = attacker.id;
             m.seen = now;
+            if (m.def.boss && !m.def.zombie && Math.hypot(attacker.x - m.x, attacker.y - m.y) > (m.def.range || m.def.aggro)) {
+                if (!(now < (m.provoked || 0))) h.send(attacker.c, { type: 'shEvent', text: `${m.def.icon} ${m.def.name} is coming for you!`, kind: 'boss' });
+                m.provoked = now + BOSS_PROVOKE / SPEED;
+            }
             // 6.10 (Max: Amaterasu-Brand zu laut): Brand-Ticks kamen je Server-Tick
             // als Treffer an und piepten im Dauerfeuer – wie bei Spielern nur noch der Kill
             if (!(w && w.dot) || m.hp <= 0) h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: Math.round(dmg), kill: m.hp <= 0, crit: !!crit });
         }
         if (m.hp > 0 && w) {
-            if (w.burn) m.burn = { dps: w.burn, until: now + 3000 / SPEED, from: attacker ? attacker.id : null };
+            if (w.burn) m.burn = { dps: w.burn, until: now + 3000 / SPEED, from: attacker ? attacker.id : null, spread: !!(w.awake && w.base === 'amaterasu') };
             if (w.frost) m.slowUntil = now + 1500 / SPEED;
             if (w.vamp && attacker) attacker.hp = Math.min(attacker.maxHp, attacker.hp + dmg * w.vamp);
         }
@@ -2580,6 +3638,13 @@ module.exports = function createArena(h, opts = {}) {
         const i = mobs.indexOf(m);
         if (i < 0) return;
         mobs.splice(i, 1);
+        onKill(killer, now);
+        // Amaterasu (Lv 20): der Brand springt ueber
+        if (m.burn && m.burn.spread) {
+            const from = players.get(m.burn.from);
+            for (const o of mobs) if (o.hp > 0 && Math.hypot(o.x - m.x, o.y - m.y) < 220) o.burn = { ...m.burn, until: now + 3000 / SPEED };
+            if (from) fxAt(m.x, m.y, { type: 'shFx', kind: 'nova', x: Math.round(m.x), y: Math.round(m.y), r: 220 });
+        }
         const def = m.def;
         if (def.pattern) hz.clear();
         if (zb) {
@@ -2595,6 +3660,7 @@ module.exports = function createArena(h, opts = {}) {
                 zb.kills.set(killer.id, (zb.kills.get(killer.id) || 0) + 1);
                 zb.kc.set(killer.id, (zb.kc.get(killer.id) || 0) + (def.boss ? Z_COINS.boss * bi : m.kind === 'tank' ? Z_COINS.tank : def.coins || Z_COINS.kill));
                 award(killer, L.XP[def.xp || 'npc'] * (def.boss ? 20 * bi : def.xpMul || 1), def.name.toLowerCase());
+                weaponXp(killer, L.XP[def.xp || 'npc'] * (def.boss ? 20 * bi : def.xpMul || 1));
             }
             if (def.boss) {
                 // Alle, die mitgeschossen haben: Punkte und XP anteilig (Boss zaehlt fuer das Team)
@@ -2626,7 +3692,8 @@ module.exports = function createArena(h, opts = {}) {
             for (let k = 0; k < nLoot; k++) {
                 const a = k / nLoot * Math.PI * 2;
                 const x = m.x + Math.cos(a) * 55, y = m.y + Math.sin(a) * 55;
-                dropBag(blocked(x, y, 10) ? m.x : x, blocked(x, y, 10) ? m.y : y, [I.generate('boss')], 'boss');
+                // 25.09.2026 (Max): Bosse an der Oberflaeche -30 % auf Legendary und hoeher
+                dropBag(blocked(x, y, 10) ? m.x : x, blocked(x, y, 10) ? m.y : y, [I.generate('boss', 1, regionAt(m.x, m.y) === 'surface' ? 0.7 : 1)], 'boss');
             }
             fxAt(m.x, m.y, { type: 'shBoom', x: Math.round(m.x), y: Math.round(m.y), r: 220, nuke: false });
             const line = { killer: killer ? killer.name : null, victim: def.icon + ' ' + def.name, how: 'shot', loot: nLoot };
@@ -2636,6 +3703,7 @@ module.exports = function createArena(h, opts = {}) {
             announce(`${def.icon} ${killer ? killer.name + ' killed' : 'Down goes'} the ${def.name}! ${nLoot} item${nLoot > 1 ? 's' : ''} dropped`, 'boss');
             if (killer && killer.account) h.accounts.stat(killer.account, s => { s.bossKills = (s.bossKills || 0) + 1; });
             if (killer) award(killer, L.XP.boss, 'boss');
+            if (killer) weaponXp(killer, L.XP.boss);
             const total = [...m.dmgBy.values()].reduce((s, n) => s + n, 0);
             for (const [id, n] of m.dmgBy) {
                 const q = players.get(id);
@@ -2645,19 +3713,39 @@ module.exports = function createArena(h, opts = {}) {
             for (const o of [...mobs]) if (o.parent === m.id) mobs.splice(mobs.indexOf(o), 1);
             return;
         }
+        if (def.special && m.id === missionBoss) {
+            missionDone = true;
+            for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `✅ Mission complete! Head back to the exit to claim ${MISSION_DIFF[opts.mission.diff].tokens} 🎟️ Mission Tokens`, kind: 'drop' });
+        }
+        if (def.special) {
+            const n = def.drop ? def.drop.n : 3;
+            for (let k = 0; k < n; k++) {
+                const a = k / n * Math.PI * 2, x = m.x + Math.cos(a) * 55, y = m.y + Math.sin(a) * 55;
+                dropBag(blocked(x, y, 10) ? m.x : x, blocked(x, y, 10) ? m.y : y, [I.generate('boss')], 'boss');
+            }
+            fxAt(m.x, m.y, { type: 'shBoom', x: Math.round(m.x), y: Math.round(m.y), r: 200, nuke: false });
+            for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `${def.icon} ${killer ? killer.name + ' defeated' : 'Down goes'} ${def.name}! ${n} items dropped`, kind: 'drop' });
+            if (killer) { award(killer, L.XP.boss * 0.6, def.name.toLowerCase()); weaponXp(killer, L.XP.boss * 0.6); }
+            for (const o of [...mobs]) if (o.parent === m.id) mobs.splice(mobs.indexOf(o), 1);
+            fxAt(m.x, m.y, { type: 'shFx', kind: 'mobdie', x: Math.round(m.x), y: Math.round(m.y), icon: def.icon });
+            return;
+        }
         if (m.kind === 'enforcer') enforcerAt.push(now + ENFORCER_RESPAWN / SPEED);
         if (killer) {
-            award(killer, L.XP[def.xp] * (def.xpMul || 1), def.name.toLowerCase());
+            const mxp = L.XP[def.xp] * (def.xpMul || 1) * (1 + MOB_LV_XP * ((m.lv || 1) - 1));
+            award(killer, mxp, m.lv ? `${def.name.toLowerCase()} lv ${m.lv}` : def.name.toLowerCase());
+            weaponXp(killer, mxp);
             if (killer.account) h.accounts.stat(killer.account, s => { s.npcKills = (s.npcKills || 0) + 1; });
             if (killer.b.bloodlust) killer.hp = Math.min(killer.maxHp, killer.hp + killer.b.bloodlust / 2);
         }
-        if (def.drop && !m.parent && Math.random() < def.drop.chance) {
+        if (def.drop && !m.parent && Math.random() < def.drop.chance * (pve ? MOB_DROP_MUL : 1)) {
+            const em = pve ? MOB_EPIC_MUL[regionAt(m.x, m.y)] || 1 : 1;
             // 6.6 (Max): drei Stufen, die oberste (1 in 50) aus dem Boss-Pool
             if (def.drop.src === 'npcdrop') {
                 const r = Math.random();
                 const g = r < 1 / 50 ? 3 : r < 1 / 50 + 1 / 8 ? 2 : 1;
-                dropBag(m.x, m.y, Array.from({ length: def.drop.n }, () => I.generate(g === 3 ? 'boss' : g === 2 ? 'npcrare' : 'npcdrop')), 'mob' + g);
-            } else dropBag(m.x, m.y, Array.from({ length: def.drop.n }, () => I.generate(def.drop.src)));
+                dropBag(m.x, m.y, Array.from({ length: def.drop.n }, () => I.generate(g === 3 ? 'boss' : g === 2 ? 'npcrare' : 'npcdrop', em)), 'mob' + g);
+            } else dropBag(m.x, m.y, Array.from({ length: def.drop.n }, () => I.generate(def.drop.src, em)));
         }
         fxAt(m.x, m.y, { type: 'shFx', kind: 'mobdie', x: Math.round(m.x), y: Math.round(m.y), icon: def.icon });
     }
@@ -2686,7 +3774,7 @@ module.exports = function createArena(h, opts = {}) {
     // Sieht der Gegner den Spieler? Versteckte nur aus der Naehe
     function mobSees(m, q, now, range) {
         const d = Math.hypot(q.x - m.x, q.y - m.y);
-        if (d > range || now < q.protect) return false;
+        if (d > range || now < q.protect || now < (q.invisUntil || 0)) return false;
         const hidden = d > SEE_NEAR && now - q.lastShot >= REVEAL_MS * q.b.reveal && (q.zone || q.smoke !== null || stillHidden(q, now));
         return !hidden && clear(m.x, m.y, q.x, q.y);
     }
@@ -2695,7 +3783,7 @@ module.exports = function createArena(h, opts = {}) {
         const d = Math.hypot(gx - m.x, gy - m.y);
         if (d < 1) return;
         const step = Math.min(d, speed * (m.sp || 1) * (m.enraged ? 1.25 : 1) * dt * (m.slowUntil > Date.now() ? 0.5 : 1));
-        const [nx, ny] = slide(m.x, m.y, (gx - m.x) / d * step, (gy - m.y) / d * step, m.def.r, mobBlocked);
+        const [nx, ny] = slide(m.x, m.y, (gx - m.x) / d * step, (gy - m.y) / d * step, m.def.r, m.def.fly ? (x, y, r) => world.outside(x, y, r) : mobBlocked);
         const moved = Math.hypot(nx - m.x, ny - m.y);
         m.x = nx;
         m.y = ny;
@@ -2719,7 +3807,10 @@ module.exports = function createArena(h, opts = {}) {
     // die sonst an Tueren und Ecken haengen blieben). Frei = mobBlocked, also
     // auch keine Wege durch Stadt und Aussenposten.
     const NAV_CELL = 40, NAV_MS = 250;
-    const NAV_W = Math.ceil(W / NAV_CELL), NAV_H = Math.ceil(H / NAV_CELL);
+    // 25.09.2026: Raster ueber die ganze Welt samt Ebenen (Keller/Labor liegen rechts
+    // neben der Oberflaeche) – vorher endete es bei W, unten liefen alle geradeaus
+    const NAV_W = Math.ceil(Math.max(W, ...(MAP.regions || []).map(g => g.x + g.w)) / NAV_CELL);
+    const NAV_H = Math.ceil(Math.max(H, ...(MAP.regions || []).map(g => g.y + g.h)) / NAV_CELL);
     const NAVS = { small: { r: 20 }, big: { r: 44 } };
     let navFree = null, navDist = null;
     const NAV_DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
@@ -2778,7 +3869,9 @@ module.exports = function createArena(h, opts = {}) {
     }
     // Wegpunkt fuer einen Zombie: direkt, wenn nah und frei, sonst das beste Nachbarfeld
     function zNav(m, tgt, d) {
-        if (d < 160 || (d < 500 && clearFor(m.x, m.y, tgt.x, tgt.y, m.def.r))) return tgt;
+        // direkt nur, wenn der Koerper frei durchkommt (vorher: unter 160 px immer –
+        // durch duenne Waende liefen sie dann dagegen)
+        if (d < 50 || (d < 500 && clearFor(m.x, m.y, tgt.x, tgt.y, m.def.r))) return tgt;
         navBuild(Date.now(), m.def.r > 30 ? 'big' : 'small');
         const cx = Math.floor(m.x / NAV_CELL), cy = Math.floor(m.y / NAV_CELL);
         if (cx < 0 || cy < 0 || cx >= NAV_W || cy >= NAV_H) return tgt;
@@ -2942,6 +4035,179 @@ module.exports = function createArena(h, opts = {}) {
         return false;
     }
 
+    // 25.09.2026 (Ticket #6, Maddy + Max): Raid-Bosse haengen zwischen Waenden und
+    // in Haeusern fest. Kein Durch-die-Wand-Laufen, sondern: merkt der Boss, dass er
+    // seit BOSS_STUCK_MS kaum vorankommt, obwohl er irgendwo hin will, springt er an
+    // eine freie Stelle naeher am Ziel (Vorwarnkreis, Druckwelle bei der Landung).
+    const BOSS_STUCK_MS = 2500, BOSS_STUCK_DIST = 60, BOSS_JUMP_WARN = 700, BOSS_JUMP_CD = 5000;
+    function bossStuckCheck(m, tgt, now) {
+        if (!m.progAt || m.jumpAt) { m.progAt = now; m.progX = m.x; m.progY = m.y; return false; }
+        if (now - m.progAt < BOSS_STUCK_MS / SPEED) return false;
+        const moved = Math.hypot(m.x - m.progX, m.y - m.progY);
+        m.progAt = now;
+        m.progX = m.x;
+        m.progY = m.y;
+        if (moved >= BOSS_STUCK_DIST || now < (m.jumpCd || 0)) return false;
+        // will er ueberhaupt irgendwo hin? Mit Ziel: nur wenn keine freie Schusslinie
+        // (sonst steht er absichtlich und schiesst); ohne Ziel: Wanderziel noch weit weg
+        const gx = tgt ? tgt.x : m.tx, gy = tgt ? tgt.y : m.ty;
+        if (tgt ? clear(m.x, m.y, tgt.x, tgt.y) : Math.hypot(gx - m.x, gy - m.y) < 120) return false;
+        return bossJump(m, gx, gy, !!tgt, now);
+    }
+    function bossJump(m, gx, gy, useNav, now) {
+        const r = m.def.r;
+        if (useNav) navBuild(now, 'big');
+        const cost = (x, y) => {
+            if (useNav) {
+                const cx = Math.floor(x / NAV_CELL), cy = Math.floor(y / NAV_CELL);
+                const v = cx >= 0 && cy >= 0 && cx < NAV_W && cy < NAV_H ? navDist[cy * NAV_W + cx] : Infinity;
+                if (Number.isFinite(v)) return v * NAV_CELL;
+            }
+            return Math.hypot(gx - x, gy - y);
+        };
+        const here = cost(m.x, m.y);
+        let best = null, bc = here - 80;
+        for (let d = 160; d <= 480; d += 80) {
+            for (let k = 0; k < 16; k++) {
+                const a = k / 16 * Math.PI * 2, x = m.x + Math.cos(a) * d, y = m.y + Math.sin(a) * d;
+                if (mobBlocked(x, y, r + 4)) continue;
+                // nicht auf jemandem landen
+                if ([...players.values()].some(q => !q.dead && Math.hypot(q.x - x, q.y - y) < r + R + 80)) continue;
+                const c = cost(x, y);
+                if (c < bc) { best = { x, y }; bc = c; }
+            }
+        }
+        // nichts Besseres in Sprungweite: an die freie Stelle nahe dem Ziel
+        if (!best) {
+            const a = Math.atan2(m.y - gy, m.x - gx);
+            best = freeNear(gx + Math.cos(a) * (r + R + 120), gy + Math.sin(a) * (r + R + 120), r + 4);
+        }
+        if (!best) return false;
+        m.jumpAt = now + BOSS_JUMP_WARN / SPEED;
+        m.jx = best.x;
+        m.jy = best.y;
+        m.jumpCd = now + BOSS_JUMP_CD / SPEED;
+        fxAt(best.x, best.y, { type: 'shFx', kind: 'jumpwarn', x: Math.round(best.x), y: Math.round(best.y), r: r + 60, from: [Math.round(m.x), Math.round(m.y)] });
+        return true;
+    }
+    function bossLand(m, now) {
+        m.x = m.jx;
+        m.y = m.jy;
+        m.jumpAt = 0;
+        m.progAt = now;
+        m.progX = m.x;
+        m.progY = m.y;
+        const r = m.def.r + 90;
+        fxAt(m.x, m.y, { type: 'shBoom', x: Math.round(m.x), y: Math.round(m.y), r, nuke: false });
+        for (const q of near(m.x, m.y, r + R)) damage(q, null, 50 * (m.dm || 1), now, q.x, q.y, { how: 'boss', by: m.def.icon + ' ' + m.def.name, noDodge: true });
+    }
+
+    // Spezial-Charaktere (25.09.2026): eigene Faehigkeiten
+    function specialTick(m, tgt, now, cd) {
+        const def = m.def, dm = m.dm || 1, by = def.icon + ' ' + def.name;
+        // Missions-Schwierigkeit (25.09.2026): easy schwaecher/langsamer, hard mit Extras
+        const hard = m.diff === 'hard', easy = m.diff === 'easy', slow = easy ? 1.5 : hard ? 0.7 : 1;
+        const tell = t => { for (const q of near(m.x, m.y, 900)) h.send(q.c, { type: 'shEvent', text: t, kind: 'boss' }); };
+        const ring = (n, speed, dmg) => { for (let k = 0; k < n; k++) { const a = k / n * Math.PI * 2; bullets.push({ id: ++seqId, owner: m.id, x: m.x + Math.cos(a) * (def.r + 8), y: m.y + Math.sin(a) * (def.r + 8), vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, dies: now + 1600 / SPEED, pierce: 0, bounce: 0, hits: new Set(), w: { dmg: dmg * dm, how: 'boss', by, mob: true }, fx: 1024, tier: 6 }); } };
+        const strike = (x, y, r, dmg, warn, look, fire) => strikes.push({ id: ++seqId, x, y, r, dmg: dmg * dm, at: now + warn / SPEED, total: warn, by, how: 'boss', look, fire: !!fire, acid: false });
+        if (m.kind === 'rick') {
+            // Portal-Sprung
+            if (now >= (m.nextBlink || now + 1)) {
+                m.nextBlink = now + cd(5000 * slow);
+                // hard: am alten Platz bleibt eine Portal-Falle
+                if (hard) strike(m.x, m.y, 130, 90, 900, 2);
+                for (let k = 0; k < 12; k++) {
+                    const a = Math.random() * 6.28, r = 250 + Math.random() * 150, x = tgt.x + Math.cos(a) * r, y = tgt.y + Math.sin(a) * r;
+                    if (mobBlocked(x, y, def.r)) continue;
+                    fxAt(m.x, m.y, { type: 'shFx', kind: 'portal', x: Math.round(m.x), y: Math.round(m.y) });
+                    m.x = x; m.y = y;
+                    fxAt(x, y, { type: 'shFx', kind: 'portal', x: Math.round(x), y: Math.round(y) });
+                    break;
+                }
+            }
+            if (!m.nextBlink) m.nextBlink = now + cd(3000);
+            // Meeseeks rufen
+            if (now >= (m.nextSummon || 0) && mobs.filter(o => o.parent === m.id).length < (easy ? 4 : hard ? 8 : 6)) {
+                m.nextSummon = now + cd(12000 * slow);
+                for (let k = 0; k < (easy ? 2 : hard ? 4 : 3); k++) {
+                    const a = Math.random() * 6.28, o = spawnMob('meeseeks', m.x + Math.cos(a) * 60, m.y + Math.sin(a) * 60, now);
+                    o.parent = m.id; o.tgt = tgt.id; o.seen = now; o.under = m.under;
+                }
+                for (const q of near(m.x, m.y, 900)) h.send(q.c, { type: 'shEvent', text: "🔵 I'm Mr. Meeseeks, look at me!", kind: 'boss' });
+            }
+            // hard: Laserring aus der Portal-Kanone
+            if (hard && now >= (m.nextRing || 0)) { if (m.nextRing) { ring(14, 520, 30); tell('🧪 "Wubba lubba dub dub!"'); } m.nextRing = now + cd(8000); }
+            // Flachmann
+            if (!m.flask && m.hp < m.maxHp * 0.5) {
+                m.flask = true;
+                m.hp = Math.min(m.maxHp, m.hp + m.maxHp * 0.15);
+                fxAt(m.x, m.y, { type: 'shFx', kind: 'heal', x: Math.round(m.x), y: Math.round(m.y) });
+            }
+        } else if (m.kind === 'gojo') {
+            if (!m.nextPurple) { m.nextPurple = now + cd(6000); m.nextVoid = now + cd(12000); m.nextRed = now + cd(5000); }
+            // hard: Red – Rueckstoss-Explosion um ihn herum
+            if (hard && now >= m.nextRed) {
+                m.nextRed = now + cd(7000);
+                fxAt(m.x, m.y, { type: 'shBoom', x: Math.round(m.x), y: Math.round(m.y), r: 320, nuke: false });
+                for (const q of near(m.x, m.y, 320)) {
+                    const d = Math.hypot(q.x - m.x, q.y - m.y) || 1;
+                    [q.x, q.y] = slide(q.x, q.y, (q.x - m.x) / d * 260, (q.y - m.y) / d * 260, R);
+                    damage(q, null, 90 * dm, now, q.x, q.y, { how: 'boss', by, noDodge: true });
+                }
+                tell('🔴 Reversal: Red');
+            }
+            // Hollow Purple: langsame Riesenkugel
+            if (now >= m.nextPurple) {
+                m.nextPurple = now + cd(10000 * slow);
+                const a = Math.atan2(tgt.y - m.y, tgt.x - m.x);
+                bullets.push({ id: ++seqId, owner: m.id, x: m.x + Math.cos(a) * (def.r + 30), y: m.y + Math.sin(a) * (def.r + 30), vx: Math.cos(a) * 380, vy: Math.sin(a) * 380, dies: now + 2600 / SPEED, pierce: 99, bounce: 0, hits: new Set(),
+                    w: { dmg: 180 * dm, how: 'boss', by, mob: true, big: true, hitR: 50, look: 'purple' }, fx: 1024, tier: 6 });
+                for (const q of near(m.x, m.y, 900)) h.send(q.c, { type: 'shEvent', text: '🟣 Hollow Purple!', kind: 'boss' });
+            }
+            // Infinite Void: alle in der Naehe erstarren, dann Einschlaege
+            if (!easy && now >= m.nextVoid) {
+                m.nextVoid = now + cd(hard ? 12000 : 18000);
+                fxAt(m.x, m.y, { type: 'shFx', kind: 'void', x: Math.round(m.x), y: Math.round(m.y), r: 650 });
+                for (const q of near(m.x, m.y, 650)) {
+                    if (!(q.aw && q.aw.has('geppo'))) q.jailUntil = now + 2500 / SPEED;
+                    h.send(q.c, { type: 'shEvent', text: '♾️ Domain Expansion: Infinite Void', kind: 'boss' });
+                    if (!q.see) h.send(q.c, { type: 'shFlash', ms: 1200 });
+                    for (let k = 0; k < 4; k++) strike(q.x + (Math.random() - 0.5) * 120, q.y + (Math.random() - 0.5) * 120, 90, 70, 1600 + k * 150, 2);
+                }
+            }
+        } else if (m.kind === 'tanya') {
+            if (!m.nextBarrage) m.nextBarrage = now + cd(4000);
+            // hard: Elinium Type 95 – riesige Explosion mit langer Vorwarnung
+            if (hard && now >= (m.nextNuke || now + 1)) { strike(tgt.x, tgt.y, 300, 250, 2600, 1, true); tell('💥 Elinium Type 95 – RUN!'); m.nextNuke = now + cd(20000); }
+            if (hard && !m.nextNuke) m.nextNuke = now + cd(10000);
+            if (now >= m.nextBarrage) {
+                m.nextBarrage = now + cd(easy ? 11000 : hard ? 6000 : 8000);
+                for (let k = 0; k < (easy ? 4 : hard ? 10 : 6); k++) { const a = Math.random() * 6.28, r = k ? 60 + Math.random() * 180 : 0; strike(tgt.x + Math.cos(a) * r, tgt.y + Math.sin(a) * r, 100, 70, 900 + k * 120, 1); }
+                for (const q of near(m.x, m.y, 900)) h.send(q.c, { type: 'shEvent', text: '🪄 "Deus lo vult!" – explosion barrage', kind: 'boss' });
+            }
+        } else if (m.kind === 'mustang') {
+            if (!m.nextRing) m.nextRing = now + cd(8000);
+            // hard: Flammenwand in Richtung Ziel, dreifacher Schnipp
+            if (hard && now >= (m.nextWall || 0)) {
+                if (m.nextWall) {
+                    const a = Math.atan2(tgt.y - m.y, tgt.x - m.x);
+                    for (let k = 1; k <= 7; k++) fires.push({ id: ++seqId, x: m.x + Math.cos(a) * k * 90, y: m.y + Math.sin(a) * k * 90, r: 60, until: now + 4000 / SPEED, owner: null, dps: 45 * dm });
+                    for (let k = 0; k < 2; k++) strike(tgt.x + (Math.random() - .5) * 200, tgt.y + (Math.random() - .5) * 200, 110, 90, 700 + k * 200, 1, true);
+                    tell('🔥 Flame Alchemy!');
+                }
+                m.nextWall = now + cd(6000);
+            }
+            if (!easy && now >= m.nextRing) {
+                m.nextRing = now + cd(hard ? 9000 : 15000);
+                for (let k = 0; k < 10; k++) {
+                    const a = k / 10 * Math.PI * 2, x = m.x + Math.cos(a) * 230, y = m.y + Math.sin(a) * 230;
+                    fires.push({ id: ++seqId, x, y, r: 70, until: now + 5000 / SPEED, owner: null, dps: 35 * dm });
+                }
+                fxAt(m.x, m.y, { type: 'shFx', kind: 'nova', x: Math.round(m.x), y: Math.round(m.y), r: 260 });
+            }
+        }
+    }
+
     function mobTick(m, now, dt) {
         const def = m.def;
         // Steckt trotzdem einer fest (alte Spawns, Rueckstoss): rausschieben, hoechstens alle 0,5 s pruefen
@@ -2962,6 +4228,13 @@ module.exports = function createArena(h, opts = {}) {
         }
         // Infinite Void (6.6): wer drin ist, steht still
         if (now < (m.stunUntil || 0)) return;
+        // Za Warudo: alles steht
+        if (zw && now < zw.until) return;
+        // Geass: verzauberte Gegner kaempfen fuer den Spieler
+        if (m.charm) {
+            if (now >= m.charm.until || !players.has(m.charm.by)) { m.charm = null; m.tgt = null; }
+            else { charmTick(m, now, dt); return; }
+        }
         // Zombie-Boss (6.5): Auftritt abwarten, ab halber HP Wut
         if (m.introUntil && now < m.introUntil) return;
         if (def.enrage && !m.enraged && m.hp < m.maxHp * def.enrage) {
@@ -2987,7 +4260,7 @@ module.exports = function createArena(h, opts = {}) {
                 m.nextThink = now + 300 + Math.random() * 200;
                 let best = null, bd = Infinity;
                 for (const q of players.values()) {
-                    if (q.dead) continue;
+                    if (q.dead || now < (q.invisUntil || 0)) continue;
                     const d = Math.hypot(q.x - m.x, q.y - m.y);
                     if (d < bd) { best = q; bd = d; }
                 }
@@ -3016,6 +4289,42 @@ module.exports = function createArena(h, opts = {}) {
                     // Reaktionszeit: nicht sofort schiessen
                     m.nextShot = Math.max(m.nextShot, now + (600 + Math.random() * 300) / SPEED);
                 }
+            }
+        }
+        // Raid-Boss steckt fest -> Sprung (steht waehrend der Vorwarnung)
+        if (def.boss && !def.zombie) {
+            if (m.jumpAt) {
+                if (now >= m.jumpAt) bossLand(m, now);
+                return;
+            }
+            if (!m.charging && !m.chargeAt && !m.slamAt && bossStuckCheck(m, tgt, now)) return;
+        }
+        if (def.special && tgt) specialTick(m, tgt, now, cd);
+        // Phase Shade (25.09.2026): taucht neben dem Ziel auf (bei Zombie-Bossen macht das bossSkills)
+        if (def.blink && !def.zombie && tgt && now >= (m.nextBlink || 0)) {
+            m.nextBlink = now + cd(def.blink.ms);
+            const [dmin, dmax] = def.blink.dist || [220, 360];
+            for (let k = 0; k < 12; k++) {
+                const a = Math.random() * 6.28, r = dmin + Math.random() * (dmax - dmin);
+                const x = tgt.x + Math.cos(a) * r, y = tgt.y + Math.sin(a) * r;
+                if (mobBlocked(x, y, def.r) || !clear(tgt.x, tgt.y, x, y)) continue;
+                fxAt(m.x, m.y, { type: 'shFx', kind: 'blink', x: Math.round(x), y: Math.round(y), from: [Math.round(m.x), Math.round(m.y)] });
+                m.x = x;
+                m.y = y;
+                break;
+            }
+        }
+        // Provozierter Raid-Boss: Einschlaege auf Fernschuetzen ausserhalb der Reichweite
+        const provoked = def.boss && !def.zombie && now < (m.provoked || 0);
+        if (provoked && tgt && !tgt.dead && now >= (m.nextRetal || 0)
+            && Math.hypot(tgt.x - m.x, tgt.y - m.y) > (def.range || def.aggro)) {
+            m.nextRetal = now + cd(BOSS_RETAL);
+            // Vorhalten: der erste Einschlag dahin, wo der Schuetze gleich ist
+            const lead = 0.6 * 280;
+            for (let k = 0; k < 3; k++) {
+                const a = Math.random() * 6.28, rr = k ? 60 + Math.random() * 120 : 0;
+                const bx = tgt.x + (k ? 0 : tgt.mx * lead), by = tgt.y + (k ? 0 : tgt.my * lead);
+                strikes.push({ id: ++seqId, x: bx + Math.cos(a) * rr, y: by + Math.sin(a) * rr, r: 110, dmg: 55 * (m.dm || 1), at: now + (1100 + k * 150) / SPEED, total: 1100 + k * 150, by: def.icon + ' ' + def.name, how: 'boss', look: 1, fire: false, acid: false });
             }
         }
         // Beruehrung: Nahkaempfer und Bosse
@@ -3074,7 +4383,7 @@ module.exports = function createArena(h, opts = {}) {
         }
         // Einschlaege (4.6): Warnkreise, dann Schaden – der erste genau aufs Ziel
         if (def.strikes && tgt && now >= m.nextStrike) {
-            m.nextStrike = now + cd(def.strikes.ms);
+            m.nextStrike = now + cd(def.strikes.ms * (m.diff === 'easy' ? 1.5 : 1));
             const s = def.strikes;
             for (let k = 0; k < s.n + (m.enraged ? 3 : 0); k++) {
                 const a = Math.random() * 6.28, rr = k ? Math.random() * s.spread : 0;
@@ -3106,12 +4415,13 @@ module.exports = function createArena(h, opts = {}) {
             const d = Math.hypot(tgt.x - m.x, tgt.y - m.y);
             m.a = Math.atan2(tgt.y - m.y, tgt.x - m.x);
             // Zombies (6.5.1): um Ecken herum ueber das Wegfeld statt geradeaus
-            const goal = (zb && def.zombie) || def.boss ? zNav(m, tgt, d) : tgt;
+            // 25.09.2026 (Max: Pathfinding mau): in der Extraction laufen alle ueber das Wegfeld
+            const goal = def.fly ? tgt : (zb && def.zombie) || def.boss || pve ? zNav(m, tgt, d) : tgt;
             if (def.melee) {
                 mobMove(m, goal.x, goal.y, def.chase, dt);
             } else {
                 const keep = def.keep || 200, range = def.range || def.aggro;
-                if (d > range * 0.9 || goal !== tgt) mobMove(m, goal.x, goal.y, def.speed * 1.1, dt);
+                if (d > range * 0.9 || goal !== tgt) mobMove(m, goal.x, goal.y, def.speed * 1.1 * (provoked ? BOSS_SPRINT : 1), dt);
                 else if (d < keep) mobMove(m, m.x - (tgt.x - m.x), m.y - (tgt.y - m.y), def.speed, dt);
                 else {
                     // seitlich ausweichen
@@ -3162,9 +4472,11 @@ module.exports = function createArena(h, opts = {}) {
     }
 
     // Bestand halten: Streuner nachschieben, Enforcer im Militaerlager
+    const postAt = [];
+    let postInit = false;
     function populate(now) {
         const want = Math.min(MOB_MAX, MOB_BASE + MOB_PER_PLAYER * players.size);
-        let roam = mobs.filter(m => !m.def.boss && m.kind !== 'enforcer' && !m.parent && !m.under).length;
+        let roam = mobs.filter(m => !m.def.boss && m.kind !== 'enforcer' && !m.parent && !m.under && m.post === undefined).length;
         populateUnder(now);
         for (let k = 0; k < 3 && roam < want; k++) {
             const s = mobSpot();
@@ -3175,7 +4487,26 @@ module.exports = function createArena(h, opts = {}) {
             spawnMob(kind, s.x, s.y, now);
             roam++;
         }
-        const enf = mobs.filter(m => m.kind === 'enforcer').length;
+        // Stuetzpunkte (25.09.2026): je 5 Wachen, nach dem Raeumen POST_RESPAWN Pause
+        (MAP.posts || []).forEach((z, i) => {
+            const alive = mobs.filter(m => m.post === i).length;
+            postAt[i] = postAt[i] || 0;
+            if (alive) { postAt[i] = 0; return; }
+            if (!postAt[i]) { postAt[i] = now + (postInit ? POST_RESPAWN : 0) / SPEED; return; }
+            if (now < postAt[i] || [...players.values()].some(p => inZone(p.x, p.y, z, 400))) return;
+            postAt[i] = 0;
+            for (const kind of POST_GUARDS) {
+                for (let tries = 0; tries < 30; tries++) {
+                    const x = z[0] + 90 + Math.random() * (z[2] - 180), y = z[1] + 90 + Math.random() * (z[3] - 180);
+                    if (blocked(x, y, 28)) continue;
+                    const m = spawnMob(kind, x, y, now, { x: z[0] + z[2] / 2, y: z[1] + z[3] / 2 });
+                    m.post = i;
+                    break;
+                }
+            }
+        });
+        postInit = true;
+        const enf = mobs.filter(m => m.kind === 'enforcer' && m.post === undefined).length;
         enforcerAt = enforcerAt.filter(t => t > now);
         const z = MAP.military;
         for (let k = enf + enforcerAt.length; k < ENFORCERS; k++) {
@@ -3192,12 +4523,51 @@ module.exports = function createArena(h, opts = {}) {
 
     // 6.12: Untergrund-Bestand. Keller: bekannte Gegner, deutlich staerker;
     // Labor: Monster aus den Tanks. Nachschub nie in Sichtweite von Spielern.
+    // Dungeon-Instanz (25.09.2026): Gegner nachschieben (mehr bei groesserer Party)
+    let specialAt = 0, specialDone = false, missionBoss = null, missionDone = false;
+    function dungeonTick(now, dt) {
+        populateUnder(now);
+        if (opts.mission && !specialDone) {
+            // Mission: Ziel-Boss sitzt von Anfang an im entferntesten Raum
+            specialDone = true;
+            const pool = SPECIALS[opts.kind] || [];
+            const kind = opts.forceSpecial || pool[Math.floor(Math.random() * pool.length)];
+            const at = (MAP.farRooms || [])[0] || freeSpot(true);
+            const m = spawnMob(kind, at.x, at.y, now);
+            m.under = opts.kind;
+            m.diff = opts.mission.diff;
+            m.hp = m.maxHp = Math.round(m.maxHp * MISSION_DIFF[m.diff].bossHp);
+            missionBoss = m.id;
+            for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `🎯 Mission (${MISSION_DIFF[m.diff].name}): find and defeat the boss – somewhere deep inside`, kind: 'boss' });
+        }
+        if (!specialAt) specialAt = now + randIn(SPECIAL_AFTER) / SPEED;
+        if (!specialDone && now >= specialAt) {
+            specialDone = true;
+            const pool = SPECIALS[opts.kind] || [];
+            if (pool.length && (Math.random() < SPECIAL_CHANCE || opts.forceSpecial)) {
+                const kind = opts.forceSpecial && M.MOBS[opts.forceSpecial] ? opts.forceSpecial : pool[Math.floor(Math.random() * pool.length)];
+                const far = (MAP.farRooms || []).filter(r => [...players.values()].every(p => Math.hypot(p.x - r.x, p.y - r.y) > 700));
+                const at = far[0] || (MAP.farRooms || [])[0] || freeSpot(true);
+                const m = spawnMob(kind, at.x, at.y, now);
+                m.under = opts.kind;
+                for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `⚠️ ${m.def.icon} ${m.def.name} – ${m.def.title} – is somewhere down here…`, kind: 'boss' });
+            }
+        }
+        gridMobs();
+        const plist = [...players.values()];
+        for (const m of [...mobs]) {
+            if (!(m.hp > 0) || !mobs.includes(m)) continue;
+            if (!plist.some(p => Math.abs(p.x - m.x) < MOB_WAKE && Math.abs(p.y - m.y) < MOB_WAKE)) continue;
+            mobTick(m, now, dt);
+        }
+        gridMobs();
+    }
     function populateUnder(now) {
         for (const g of MAP.regions || []) {
             const U = UNDER_MOBS[g.id];
             if (!U) continue;
             const have = mobs.filter(m => m.under === g.id);
-            if (have.length >= U.n) continue;
+            if (have.length >= Math.round((U.n + (mode === 'dungeon' ? 4 * Math.max(0, players.size - 1) : 0)) * (opts.mission ? MISSION_DIFF[opts.mission.diff].mobs : 1))) continue;
             const total = U.kinds.reduce((a, [, w]) => a + w, 0);
             let r = Math.random() * total, kind = U.kinds[0][0];
             for (const [kk, w] of U.kinds) if ((r -= w) < 0) { kind = kk; break; }
@@ -3208,11 +4578,14 @@ module.exports = function createArena(h, opts = {}) {
                 if (blocked(x, y, def.r + 6)) continue;
                 if ([...players.values()].some(p => Math.hypot(p.x - x, p.y - y) < 900)) continue;
                 if ((MAP.stations || []).some(s => s.kind === 'portal' && Math.hypot(s.x - x, s.y - y) < 400)) continue;
-                const m = spawnMob(kind, x, y, now);
-                m.under = g.id;
-                m.hp = m.maxHp = Math.round(m.maxHp * U.hp);
-                m.dm = U.dmg;
-                m.sp = U.spd;
+                // Rudel (Hunde, Leech-Schwarm): gleich mehrere nebeneinander
+                for (let k = 0; k < (def.pack || 1); k++) {
+                    const m = spawnMob(kind, x + (k ? (Math.random() - 0.5) * 120 : 0), y + (k ? (Math.random() - 0.5) * 120 : 0), now);
+                    m.under = g.id;
+                    m.hp = m.maxHp = Math.round(m.maxHp * U.hp);
+                    m.dm = (m.dm || 1) * U.dmg;
+                    m.sp = U.spd;
+                }
                 break;
             }
         }
@@ -3274,7 +4647,7 @@ module.exports = function createArena(h, opts = {}) {
                         const m = spawnMob(kind, pt.x + (k % 2 ? 28 : -28), pt.y + Math.floor(k / 2) * 30, now);
                         m.under = 'bunker';
                         m.hp = m.maxHp = Math.round(m.maxHp * U.hp);
-                        m.dm = U.dmg;
+                        m.dm = (m.dm || 1) * U.dmg;
                         m.sp = U.spd;
                         m.patrol = { id, i: i0, dir, off: (k - 1.5) * 26, t: now, until: now + PATROL_LIFE / SPEED };
                     });
@@ -3423,6 +4796,14 @@ module.exports = function createArena(h, opts = {}) {
             smokes.length = 0;
             fires.length = 0;
             holes.length = 0;
+            kqBombs.length = 0;
+            turrets.length = 0;
+            decoys.length = 0;
+            portals.clear();
+            clones.length = 0;
+            zw = null;
+            zones.length = 0;
+            blasts.length = 0;
             // leerer Raid: Events und Gegner weg, Uhr startet mit dem naechsten Spieler neu
             mobs.length = 0;
             strikes.length = 0;
@@ -3436,7 +4817,40 @@ module.exports = function createArena(h, opts = {}) {
             nextCtfAt = 0;
             return;
         }
-        if (hz.list.length) hz.tick(now, dt);
+        // Za Warudo: Uhren anhalten (Einschlaege, Granaten, Gefahrenzonen)
+        const frozen = zw && now < zw.until;
+        if (zw && (!frozen || !players.has(zw.by))) zw = null;
+        if (frozen) {
+            for (const s2 of strikes) s2.at += dt * 1000 / SPEED;
+            for (const g of nades) { g.landAt += dt * 1000 / SPEED; if (g.fuseAt) g.fuseAt += dt * 1000 / SPEED; }
+        } else if (hz.list.length) hz.tick(now, dt);
+        portalTick(now);
+        cloneTick(now, dt);
+        // Rasenshuriken-Zonen und Enuma-Elish-Einschlaege (nur Gegner)
+        for (let i = zones.length - 1; i >= 0; i--) {
+            const z = zones[i], o = players.get(z.owner);
+            if (now > z.until || !o) { zones.splice(i, 1); continue; }
+            hurtFoes(o, z.x, z.y, z.r, z.dps * dt, now, true);
+        }
+        for (let i = blasts.length - 1; i >= 0; i--) {
+            const bl = blasts[i];
+            if (now < bl.at) continue;
+            blasts.splice(i, 1);
+            const o = players.get(bl.owner);
+            fxAt(bl.x, bl.y, { type: 'shBoom', x: Math.round(bl.x), y: Math.round(bl.y), r: bl.r, nuke: false });
+            if (o) hurtFoes(o, bl.x, bl.y, bl.r, bl.dmg, now, false);
+        }
+        turretTick(now);
+        for (let i = kqBombs.length - 1; i >= 0; i--) if (now > kqBombs[i].until || !players.has(kqBombs[i].owner)) kqBombs.splice(i, 1);
+        for (let i = decoys.length - 1; i >= 0; i--) if (now > decoys[i].until) decoys.splice(i, 1);
+        // Death Note an Gegnern: normale sterben, Bosse verlieren 30 %
+        for (const m of [...mobs]) {
+            if (!m.doom || now < m.doom.at) continue;
+            const wr = players.get(m.doom.by) || null;
+            m.doom = null;
+            fxAt(m.x, m.y, { type: 'shFx', kind: 'doom', x: Math.round(m.x), y: Math.round(m.y) });
+            hurtMob(m, wr, m.def.boss ? m.maxHp * 0.3 : m.hp + 99999, now, m.x, m.y, false, { pure: true, nofall: true });
+        }
         for (let i = strikes.length - 1; i >= 0; i--) {
             const s = strikes[i];
             if (now < s.at) continue;
@@ -3446,9 +4860,10 @@ module.exports = function createArena(h, opts = {}) {
             if (s.fire || s.acid) fires.push({ id: ++seqId, x: s.x, y: s.y, r: s.r * 0.8, until: now + 3500 / SPEED, owner: null, dps: s.acid ? 12 : 18, acid: !!s.acid });
         }
         if (mode === 'extract') eventTick(now, dt);
+        else if (mode === 'dungeon') dungeonTick(now, dt);
         if (pvp) pvpTick(now);
         if (zb) zTick(now, dt);
-        nadeTick(now, dt);
+        if (!(zw && now < zw.until)) nadeTick(now, dt);
 
         for (const p of [...players.values()]) {
             if (!players.has(p.id) || p.dead) continue;
@@ -3472,9 +4887,65 @@ module.exports = function createArena(h, opts = {}) {
             // Alle regenerieren langsam; Ruestung (Mod, Medic-Set) legt drauf
             if (now - p.lastHurt > p.b.regenDelay / SPEED) p.hp = Math.min(p.maxHp, p.hp + (REGEN_BASE + p.regen) * dt);
             else if (p.regen && now - p.lastHurt > 3000 / SPEED) p.hp = Math.min(p.maxHp, p.hp + p.regen * dt);
-            const sp = MOVE * p.speedMul * (now < p.slowUntil ? 1 - p.slow : 1) * (now < p.stimUntil ? 1 + p.stim : 1);
+            // Hollow Mask zehrt (toetet aber nicht)
+            if (now < (p.hollowUntil || 0)) p.hp = Math.max(1, p.hp - 5 * dt);
+            // Death Note: faellig, solange der Schreiber noch lebt
+            // (Schutzzeit schiebt auf; rettet einen etwas anderes – Stein, All Might –, ist der Name verbraucht)
+            if (p.doom && now >= p.doom.at && now >= p.protect) {
+                const wr = players.get(p.doom.by);
+                p.doom = null;
+                if (wr && !wr.dead && damage(p, wr, p.hp + 99999, now, p.x, p.y, { how: 'deathnote', by: '📓 Death Note', noDodge: true, pure: true })) continue;
+                if (!players.has(p.id)) continue;
+                if (!wr || wr.dead) h.send(p.c, { type: 'shEvent', text: '📓 The writer is gone – your name fades from the Death Note', kind: 'self' });
+            }
+            // Titan vorbei: Extra-HP wieder weg
+            if (p.titanHp && now >= p.titanUntil) {
+                p.maxHp -= p.titanHp;
+                p.titanHp = 0;
+                p.hp = Math.min(p.hp, p.maxHp);
+            }
+            const sp = (now < (p.jailUntil || 0) && !(p.aw && p.aw.has('geppo'))) || zwFrozen(p, now) ? 0 : MOVE * p.speedMul * (now < p.slowUntil && !p.geppo ? 1 - p.slow : 1) * (now < p.stimUntil ? 1 + p.stim : 1);
             const ox = p.x, oy = p.y;
-            if (p.mx || p.my) [p.x, p.y] = slide(p.x, p.y, p.mx * sp * dt, p.my * sp * dt, R);
+            const phase = now < (p.phaseUntil || 0);
+            if (p.grap) {
+                // Gum-Gum: schnell zum Punkt, bricht an Hindernissen ab
+                const gx = p.grap.x - p.x, gy = p.grap.y - p.y, gd = Math.hypot(gx, gy), st = Math.min(gd, 1700 * dt);
+                if (gd < 20 || now > p.grap.until) p.grap = null;
+                else {
+                    const [nx, ny] = slide(p.x, p.y, gx / gd * st, gy / gd * st, R);
+                    if (Math.hypot(nx - p.x, ny - p.y) < st * 0.3) p.grap = null;
+                    p.x = nx;
+                    p.y = ny;
+                }
+            } else if (phase) {
+                // Door-Door: Waende zaehlen nicht, nur der Kartenrand
+                if (p.mx || p.my) [p.x, p.y] = slide(p.x, p.y, p.mx * sp * dt, p.my * sp * dt, R, (x, y, r) => world.outside(x, y, r));
+            } else if (p.mx || p.my) [p.x, p.y] = slide(p.x, p.y, p.mx * sp * dt, p.my * sp * dt, R);
+            // Door-Door vorbei, aber in einer Wand: zur naechsten freien Stelle
+            if (!phase && p.phased) {
+                p.phased = false;
+                if (blocked(p.x, p.y, R)) {
+                    search: for (let d = 10; d <= 600; d += 10) for (let k = 0; k < 16; k++) {
+                        const a = k / 16 * Math.PI * 2, nx = p.x + Math.cos(a) * d, ny = p.y + Math.sin(a) * d;
+                        if (!blocked(nx, ny, R)) { p.x = nx; p.y = ny; break search; }
+                    }
+                }
+            }
+            geassTick(p, now);
+            if (!zwFrozen(p, now)) orbitTick(p, now, dt);
+            // Kamehameha (Lv 20): Strahl haelt 1 s und folgt dem Zielen
+            if (now < (p.kameUntil || 0) && !zwFrozen(p, now)) {
+                const kw = p.gear[p.slot];
+                if (kw && kw.base === 'kamehameha') {
+                    const ws = { ...I.weaponStats(kw) };
+                    ws.dmg *= p.dmgMul * 1.2 * dt;
+                    const loud = now - (p.kameFx || 0) > 120 / SPEED;
+                    if (loud) p.kameFx = now;
+                    railBeam(p, ws, now, !loud);
+                } else p.kameUntil = 0;
+            }
+            // Hokage Cloak (Lv 20): unter 50 % doppelte Regeneration
+            if (p.aw && p.aw.has('hokage') && p.hp < p.maxHp * 0.5) p.hp = Math.min(p.maxHp, p.hp + 3 * dt);
             if (p.x !== ox || p.y !== oy) p.lastMove = now;
             p.zone = zoneOf(p.x, p.y);
             const sm = smokes.find(s => Math.hypot(s.x - p.x, s.y - p.y) < s.r);
@@ -3493,8 +4964,40 @@ module.exports = function createArena(h, opts = {}) {
 
         for (let i = bullets.length - 1; i >= 0; i--) {
             const b = bullets[i];
+            // Za Warudo: fremde Kugeln haengen in der Luft
+            if (zw && now < zw.until && b.owner !== zw.by) { b.dies += dt * 1000 / SPEED; continue; }
             let gone = now >= b.dies;
+            // Portal Gun: Schuss ohne Treffer -> Portal am Ende der Reichweite
+            if (gone && b.w.portal && !b.hitAny && !blocked(b.x, b.y, 3)) placePortal(b, b.x, b.y, now);
             const steps = Math.max(2, Math.ceil(Math.hypot(b.vx, b.vy) * dt / 12));
+            // Hollow Purple (Lv 20): zieht Gegner in die Bahn
+            if (b.w.erase && b.w.awake && !gone) {
+                const bo = players.get(b.owner);
+                for (const m of mobsNear(b.x, b.y, 280)) {
+                    if (m.def.boss) continue;
+                    const d = Math.hypot(b.x - m.x, b.y - m.y) || 1;
+                    [m.x, m.y] = slide(m.x, m.y, (b.x - m.x) / d * 260 * dt, (b.y - m.y) / d * 260 * dt, m.def.r, mobBlocked);
+                }
+                if (bo) for (const q of near(b.x, b.y, 240)) {
+                    if (!foe(bo, q)) continue;
+                    const d = Math.hypot(b.x - q.x, b.y - q.y) || 1;
+                    [q.x, q.y] = slide(q.x, q.y, (b.x - q.x) / d * 200 * dt, (b.y - q.y) / d * 200 * dt, R);
+                }
+            }
+            // Mjoelnir: nach der halben Zeit (oder an der Wand) zurueck zur Hand, dann durch Waende
+            if (b.w.boomerang && !gone) {
+                const bo = players.get(b.owner);
+                if (!bo || bo.dead) gone = true;
+                else {
+                    if (!b.back && now >= b.turnAt) { b.back = true; b.hits.clear(); }
+                    if (b.back) {
+                        const dx = bo.x - b.x, dy = bo.y - b.y, d = Math.hypot(dx, dy) || 1, sp = Math.hypot(b.vx, b.vy);
+                        b.vx = dx / d * sp;
+                        b.vy = dy / d * sp;
+                        if (d < R + 24) gone = true;
+                    }
+                }
+            }
             // Zielsuchend: Richtung langsam zum naechsten Gegner drehen
             if (b.w.homing && !gone) {
                 let tgt = null, td = 380;
@@ -3527,7 +5030,14 @@ module.exports = function createArena(h, opts = {}) {
                 b.x += b.vx * dt / steps;
                 b.y += b.vy * dt / steps;
                 if (b.w.erase && world.outside(b.x, b.y)) { gone = true; break; }
-                if (!b.w.erase && blocked(b.x, b.y, 3)) {
+                if (!b.w.erase && !b.back && blocked(b.x, b.y, 3)) {
+                    if (b.w.boomerang) {
+                        b.back = true;
+                        b.hits.clear();
+                        b.x = px;
+                        b.y = py;
+                        continue;
+                    }
                     if (b.bounce > 0) {
                         b.bounce--;
                         const hx = blocked(b.x, py, 3), hy = blocked(px, b.y, 3);
@@ -3535,8 +5045,33 @@ module.exports = function createArena(h, opts = {}) {
                         if (hy || !hx) b.vy = -b.vy;
                         b.x = px;
                         b.y = py;
+                        // Revy's Cutlasses: +50 % je Abpraller, springt zum naechsten Gegner
+                        if (b.w.smart) {
+                            b.w = { ...b.w, dmg: b.w.dmg * 1.5 };
+                            b.hits.clear();
+                            b.dies = Math.max(b.dies, now + 500 / SPEED);
+                            const bo = players.get(b.owner);
+                            let tgt = null, td = 650;
+                            for (const q of players.values()) {
+                                if (q.id === b.owner || q.dead || (bo && bo.team && bo.team === q.team) || (bo && !canSee(bo, q, now))) continue;
+                                const dd = Math.hypot(q.x - b.x, q.y - b.y);
+                                if (dd < td && clear(b.x, b.y, q.x, q.y)) { tgt = q; td = dd; }
+                            }
+                            for (const m of mobs) {
+                                const dd = Math.hypot(m.x - b.x, m.y - b.y);
+                                if (m.hp > 0 && dd < td && clear(b.x, b.y, m.x, m.y)) { tgt = m; td = dd; }
+                            }
+                            if (tgt) {
+                                const sp = Math.hypot(b.vx, b.vy), a = Math.atan2(tgt.y - b.y, tgt.x - b.x);
+                                b.vx = Math.cos(a) * sp;
+                                b.vy = Math.sin(a) * sp;
+                            }
+                        }
                         continue;
                     }
+                    if (b.w.grapple) startGrapple(players.get(b.owner), px, py, now);
+                    if (b.w.stick) plantBomb(b, null, px, py, now);
+                    if (b.w.portal) placePortal(b, px, py, now);
                     if (b.w.explode) explode(b, now, null);
                     if (b.w.hole) bulletHole(b, now);
                     if (b.w.mobBoom) mobBoom(b, now);
@@ -3544,13 +5079,26 @@ module.exports = function createArena(h, opts = {}) {
                     break;
                 }
                 const bowner = players.get(b.owner);
+                // Kage Bunshin: ein Klon faengt eine fremde Kugel ab und verpufft
+                if (clones.length) {
+                    const ci = clones.findIndex(k => k.owner !== b.owner && !(bowner && players.get(k.owner) && bowner.team && bowner.team === players.get(k.owner).team) && Math.hypot(k.x - b.x, k.y - b.y) < R);
+                    if (ci >= 0) {
+                        const k = clones.splice(ci, 1)[0];
+                        fxAt(k.x, k.y, { type: 'shFx', kind: 'poof', x: Math.round(k.x), y: Math.round(k.y) });
+                        gone = true;
+                        break;
+                    }
+                }
                 for (const q of players.values()) {
                     if (q.id === b.owner || b.hits.has(q.id) || q.dead || (bowner && bowner.team && bowner.team === q.team)) continue;
                     if (Math.hypot(q.x - b.x, q.y - b.y) < R + Math.max(b.w.big ? 14 : 4, b.w.hitR || 0)) {
                         b.hits.add(q.id);
+                        b.hitAny = true;
                         if (b.w.mobBoom) mobBoom(b, now);
                         else hitPlayer(b, q, now);
-                        if (b.w.wave || b.w.erase) continue;
+                        if (b.w.grapple) startGrapple(bowner, q.x, q.y, now);
+                        if (b.w.stick) plantBomb(b, q, q.x, q.y, now);
+                        if (b.w.wave || b.w.erase || b.w.boomerang) continue;
                         if (b.pierce > 0) b.pierce--;
                         else gone = true;
                         break;
@@ -3561,14 +5109,22 @@ module.exports = function createArena(h, opts = {}) {
                     for (const m of mobsNear(b.x, b.y, 60 + hitR)) {
                         if (b.hits.has(m.id) || Math.hypot(m.x - b.x, m.y - b.y) >= m.def.r + hitR) continue;
                         b.hits.add(m.id);
+                        b.hitAny = true;
                         const shooter = players.get(b.owner) || null;
                         const crit = b.w.crit && Math.random() < b.w.crit;
                         // jeder durchschlagene Gegner vorher kostet 20 % Schaden (6.5.1)
-                        const sweep = b.w.wave || b.w.erase;
+                        const sweep = b.w.wave || b.w.erase || b.w.boomerang;
                         const fall = sweep ? 1 : Math.pow(0.8, b.hits.size - 1);
                         hurtMob(m, shooter, b.w.dmg * fall * (crit ? (shooter ? shooter.b.critMul : 2) : 1), now, b.x, b.y, crit, b.w);
                         if (b.w.hole) bulletHole(b, now);
                         if (b.w.explode) explode(b, now, null);
+                        if (b.w.grapple) startGrapple(shooter, m.x, m.y, now);
+                        if (b.w.stick) plantBomb(b, m, m.x, m.y, now);
+                        if (b.w.tesla || b.w.chain) teslaArc(m, shooter, b.w, now);
+                        if (b.w.boomerang && b.w.chain && b.w.awake && b.back && m.hp > 0) {
+                            fxAt(m.x, m.y, { type: 'shBoom', x: Math.round(m.x), y: Math.round(m.y), r: 70, nuke: false });
+                            hurtMob(m, shooter, b.w.dmg * 0.6, now, m.x, m.y, false, { dot: true });
+                        }
                         // Getsuga / Hollow Purple: schneiden durch alles, ohne Grenze
                         if (sweep) continue;
                         if (b.pierce > 0) b.pierce--;
@@ -3583,11 +5139,26 @@ module.exports = function createArena(h, opts = {}) {
         if (now - lastSend >= SEND_MS / SPEED) push(now);
     }
 
+    // Dungeons (25.09.2026): Sichtlinie ueber das Kachelraster, wie im Client (dfx.js):
+    // Wand ('0') und Saeule ('3') verdecken, Tanks und Deckung nicht
+    const losT = MAP.tiles ? MAP.ts : 0;
+    function los(x1, y1, x2, y2) {
+        const d = Math.hypot(x2 - x1, y2 - y1), n = Math.ceil(d / 24);
+        for (let i = 1; i < n; i++) {
+            const tx = Math.floor((x1 + (x2 - x1) * i / n) / losT), ty = Math.floor((y1 + (y2 - y1) * i / n) / losT);
+            if (tx < 0 || ty < 0 || tx >= MAP.gw || ty >= MAP.gh) return false;
+            const t = MAP.tiles[ty * MAP.gw + tx];
+            if (t === '0' || t === '3') return false;
+        }
+        return true;
+    }
+
     function push(now) {
         lastSend = now;
         const plist = [...players.values()];
         for (const p of plist) {
-            const inView = (x, y) => Math.abs(x - p.x) < VIEW && Math.abs(y - p.y) < VIEW * 0.75;
+            const inView = losT ? (x, y) => Math.abs(x - p.x) < VIEW && Math.abs(y - p.y) < VIEW * 0.75 && los(p.x, p.y, x, y)
+                : (x, y) => Math.abs(x - p.x) < VIEW && Math.abs(y - p.y) < VIEW * 0.75;
             const w = p.gear[p.slot] || p.gear.primary;
             h.send(p.c, {
                 type: 'sh', t: now, ack: p.seq,
@@ -3595,7 +5166,20 @@ module.exports = function createArena(h, opts = {}) {
                     hp: Math.max(0, Math.round(p.hp)), mh: p.maxHp, slot: p.slot, pack: p.pack.length, packMax: p.packMax, util: p.util,
                     gear: { primary: brief(p.gear.primary), secondary: brief(p.gear.secondary) },
                     ms: Math.round(I.weaponStats(w).ms / p.rateMul),
-                    spd: Math.round(p.speedMul * (now < p.slowUntil ? 1 - p.slow : 1) * (now < p.stimUntil ? 1 + p.stim : 1) * 100) / 100,
+                    spd: now < (p.jailUntil || 0) ? 0 : Math.round(p.speedMul * (now < p.slowUntil && !p.geppo ? 1 - p.slow : 1) * (now < p.stimUntil ? 1 + p.stim : 1) * 100) / 100,
+                    // 25.09.2026 Uniques: Kunai-Marke, Combo, Death-Note-Uhr, Faehigkeit bereit
+                    kunai: p.kunai && now < p.kunai.until ? [Math.round(p.kunai.x), Math.round(p.kunai.y)] : undefined,
+                    combo: p.combo && now - (p.comboAt || 0) < 3000 / SPEED ? p.combo : undefined,
+                    doom: p.doom ? Math.max(0, Math.round(p.doom.at - now)) : undefined,
+                    abil: [p.aw && p.aw.has('odm') && now >= (p.odmCd || 0) ? 'odm' : '', p.aw && p.aw.has('ironman') && now >= (p.missileCd || 0) ? 'missiles' : '', p.titanSuit && !p.titanUsed ? 'titan' : '', p.weights && !p.weightsOff ? 'weights' : '', p.flashstep ? (now >= (p.stepCd || 0) ? 'step' : 'step-cd') : '', kqBombs.some(k => k.owner === p.id) ? 'kq' : ''].filter(Boolean).join(',') || undefined,
+                    kq: kqBombs.some(k => k.owner === p.id) ? kqBombs.filter(k => k.owner === p.id).map(k => kqPos(k).map(Math.round)) : undefined,
+                    phase: now < (p.phaseUntil || 0) ? 1 : undefined,
+                    gaze: p.gaze ? Math.min(1, Math.round((now - p.gaze.since) / (1000 / SPEED) * 100) / 100) : undefined,
+                    inv: now < (p.invisUntil || 0) ? 1 : undefined,
+                    zw: zw && now < zw.until ? Math.round(zw.until - now) : undefined,
+                    zwMe: zw && zw.by === p.id ? 1 : undefined,
+                    titan: now < (p.titanUntil || 0) ? Math.round(p.titanUntil - now) : undefined,
+                    buff: [now < (p.hollowUntil || 0) ? 'hollow' : '', now < (p.stoneUntil || 0) ? 'stone' : '', now < (p.jailUntil || 0) ? 'jail' : ''].filter(Boolean).join(',') || undefined,
                     ex: p.extractAt ? Math.max(0, p.extractAt - now) : null,
                     burn: !!p.burn || !!p.inFire, heal: now < p.healUntil, pr: now < p.protect, dead: !!p.dead, fz: !!(pvp && pvp.phase !== 'fight'),
                     hid: (!!(p.zone || p.smoke !== null) && now - p.lastShot >= REVEAL_MS * p.b.reveal) || stillHidden(p, now)
@@ -3606,7 +5190,8 @@ module.exports = function createArena(h, opts = {}) {
                     fx: Object.fromEntries(Object.entries(zb.fx).filter(([, t]) => t > now).map(([k, t]) => [k, Math.round(t - now)])),
                     pap: zPapPrice((p.gear[p.slot] && p.gear[p.slot].pap) || 0), box: zBoxPrice(p.boxN || 0), heal: zHealPrice(zb.wave, p.healN || 0), ubox: zUboxPrice(p.uboxN || 0), shrine: zShrinePrice(zb.shrineN), armor: p.armorN || 0,
                     team: plist.map(q => [q.name, Math.floor(q.pts), zb.kills.get(q.id) || 0, q.dead ? 1 : 0]) } : undefined,
-                players: plist.filter(q => q === p || (inView(q.x, q.y) && canSee(p, q, now))).map(q => {
+                players: [...plist.filter(q => q === p || ((losT ? Math.hypot(q.x - p.x, q.y - p.y) < VIEW * 1.5 : inView(q.x, q.y)) && canSee(p, q, now))), ...decoys.filter(d => d.pid !== p.id && inView(d.x, d.y) && players.has(d.pid)).map(d => ({ ...players.get(d.pid), id: d.id, x: d.x, y: d.y, a: d.a })),
+                    ...clones.filter(k => inView(k.x, k.y) && players.has(k.owner)).map(k => ({ ...players.get(k.owner), id: k.id, x: k.x, y: k.y, a: k.a, clone: true, orbitOn: false, titanUntil: 0 }))].map(q => {
                     const qw = q.gear[q.slot] || q.gear.primary;
                     return {
                         id: q.id, n: q.name, c: q.color, lv: q.level, tm: q.team, dead: q.dead || undefined,
@@ -3614,7 +5199,8 @@ module.exports = function createArena(h, opts = {}) {
                         hp: Math.max(0, Math.round(q.hp)), mh: q.maxHp, w: qw.base, wt: qw.tier, wn: qw.name,
                         ar: q.gear.vest ? I.ARMORS[q.gear.vest.base].set : null, hm: q.gear.helmet ? I.ARMORS[q.gear.helmet.base].set : null,
                         fb: ['helmet', 'vest', 'pants', 'boots'].map(sl => q.gear[sl] && I.ARMORS[q.gear[sl].base] && I.ARMORS[q.gear[sl].base].full ? q.gear[sl].base : null).find(Boolean) || undefined,
-                        burn: !!q.burn, slow: now < q.slowUntil, pr: now < q.protect
+                        burn: !!q.burn, slow: now < q.slowUntil, pr: now < q.protect,
+                        ob: q.orbitOn ? (q.orbitBig ? 2 : 1) : undefined, sh: now < (q.shieldUntil || 0) ? 1 : undefined, ti: now < (q.titanUntil || 0) ? 1 : undefined, cl: q.clone ? 1 : undefined
                     };
                 }),
                 bullets: bullets.filter(b => inView(b.x, b.y)).map(b => b.w.look ? [b.id, Math.round(b.x), Math.round(b.y), Math.round(b.vx), Math.round(b.vy), b.owner, b.fx, b.tier, b.w.look] : [b.id, Math.round(b.x), Math.round(b.y), Math.round(b.vx), Math.round(b.vy), b.owner, b.fx, b.tier]),
@@ -3627,7 +5213,10 @@ module.exports = function createArena(h, opts = {}) {
                 hz: hz.list.length ? hz.view(now) : undefined,
                 strikes: strikes.filter(s => inView(s.x, s.y)).map(s => [s.id, Math.round(s.x), Math.round(s.y), s.r, Math.max(0, Math.round(s.at - now)), s.total, s.look || 0]),
                 mobs: mobs.filter(m => !m.def.boss && inView(m.x, m.y)).map(m => [m.id, m.kind, Math.round(m.x), Math.round(m.y), Math.max(0, Math.round(m.hp)), m.maxHp, Math.round(m.a * 100) / 100, m.aimAt ? Math.max(0, Math.round(m.aimAt - now)) : 0,
-                    m.chargeAt ? Math.max(0, Math.round(m.chargeAt - now)) : 0, m.charging ? 1 : 0, Math.round(m.cx || 0), Math.round(m.cy || 0)]),
+                    m.chargeAt ? Math.max(0, Math.round(m.chargeAt - now)) : 0, m.charging ? 1 : 0, Math.round(m.cx || 0), Math.round(m.cy || 0), m.charm ? 1 : 0, m.lv || 0]),
+                portals: portals.size ? [...portals.values()].flatMap(prs => prs.pairs.flatMap(pr => [pr.a ? [Math.round(pr.a.x), Math.round(pr.a.y), 0, pr.b ? 1 : 0] : null, pr.b ? [Math.round(pr.b.x), Math.round(pr.b.y), 1, pr.a ? 1 : 0] : null])).filter(x => x && inView(x[0], x[1])) : undefined,
+                zones: zones.length ? zones.filter(z => inView(z.x, z.y)).map(z => [Math.round(z.x), Math.round(z.y), z.r]) : undefined,
+                turrets: turrets.length ? turrets.filter(t => inView(t.x, t.y)).map(t => [t.id, Math.round(t.x), Math.round(t.y), Math.round(t.a * 100) / 100, Math.max(0, Math.round(t.until - now))]) : undefined,
                 drop: drop ? [Math.round(drop.x), Math.round(drop.y), Math.max(0, Math.round(drop.at - now)), drop.landed ? 1 : 0] : null,
                 // Capture the Flag (6.9): [Flagge x, y, Traeger-Id|0, Ziel x, y, ms uebrig]
                 ctf: ctf ? [Math.round(ctf.x), Math.round(ctf.y), ctf.carrier || 0, Math.round(ctf.bx), Math.round(ctf.by), Math.max(0, Math.round(ctf.until - now))] : undefined,
@@ -3640,7 +5229,9 @@ module.exports = function createArena(h, opts = {}) {
     }
 
     return {
-        join, leave, input, action, tick, refundAll, hubAction, joinedMsg,
+        join, leave, input, action, tick, refundAll, hubAction, joinedMsg, detach, attach,
+        guildSpot, missionDone: () => missionDone, missionReward: () => opts.mission ? MISSION_DIFF[opts.mission.diff].tokens : 0,
+        size: () => players.size, map: MAP,
         startPvp: () => pvpRound(Date.now()), pvpState: () => pvp,
         startZombies: () => zStart(), zState: () => zb,
         has: c => players.has(c.id),
@@ -3654,6 +5245,7 @@ module.exports = function createArena(h, opts = {}) {
 };
 
 module.exports.MAP = MAP;
+module.exports.makeWorld = makeWorld;
 module.exports.blocked = blocked;
 module.exports.slide = WORLD.slide;
 module.exports.WORLD = WORLD;

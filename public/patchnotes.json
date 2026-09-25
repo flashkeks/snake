@@ -1,5 +1,82 @@
 [
   {
+    "version": "7.0 (preview)",
+    "date": "25.09.2026",
+    "items": [
+      "🏚️ The military base and the lab are now dungeons: your own instance per party, a new twisting layout every run – hatches on the surface take you down, the exit brings you back",
+      "🎖️ New enemies in the military base: Heavy Gunner, Grenadier, Riot Trooper (shield in front – flank him!), Attack Dogs",
+      "🧬 New enemies in the lab: Acid Spitter, Phase Shade, Leech Swarm, Cryo Experiment",
+      "⚠️ Rare special characters: Rick Sanchez and Satoru Gojo in the lab, Tanya Degurechaff and Roy Mustang in the military base",
+      "🧭 Enemies find their way around walls now, and their levels hit much harder (level 45 = triple HP)",
+      "👑 Surface bosses: 30% less chance for Legendary and better"
+    ]
+  },
+  {
+    "version": "6.15",
+    "date": "25.09.2026",
+    "items": [
+      "🛡️ Armor levels too: kills level up every piece you wear (1–30) – +2% HP per level, 2% less damage taken at 10, 20 and 30",
+      "✦ Awakening: every unique weapon and unique armor piece gets a new ability at level 20 – hover an item to see what it unlocks",
+      "🌀 e.g. Rasengan becomes Rasenshuriken, Gate of Babylon calls Enuma Elish, Kamehameha holds and follows your aim, Portal Gun keeps three pairs, Iron Man fires missiles on R, Susanoo raises a shield"
+    ]
+  },
+  {
+    "version": "6.14",
+    "date": "25.09.2026",
+    "items": [
+      "📉 Enemies drop items half as often",
+      "🎚️ Enemies have levels now: surface 1–10, military base 20–30, lab 40–50 – higher level, tougher enemy, more XP",
+      "💎 Enemy loot on the surface and in the military base rolls Epic and better half as often – the lab stays as it was",
+      "🔫 Weapon levels: kills level up the weapon you hold (1–30) – +1.5% damage per level, +5% fire rate at 10, 20 and 30. Fusing passes on half the XP",
+      "📦 Stash upgrades: +25 slots per level (up to 500) – for coins AND scrap, and it gets expensive fast",
+      "🦘 Raid bosses that get stuck between walls or in houses now leap out – watch for the red circle where they land (idea by Maddy)",
+      "🌩️ Fix: the Tesla effect now also jumps between raid enemies and zombies (it only worked against players)"
+    ]
+  },
+  {
+    "version": "6.13.2",
+    "date": "25.09.2026",
+    "items": [
+      "✨ The last 5 unique items – all Ultra rare",
+      "🌀 Portal Gun: missed shots open portals – players, enemies and bullets go through",
+      "🌸 Senbonzakura: a ring of blades shreds everyone close and eats bullets – fire to send the swarm out",
+      "🦖 Titan Shift: press R once per raid to become a Titan for 15 s",
+      "⏱️ Za Warudo: stop time for 4 s · 👥 Kage Bunshin: three shadow clones fight with you",
+      "🔨 Mjölnir and 🤜 Gum-Gum got their own look in flight"
+    ]
+  },
+  {
+    "version": "6.13.1",
+    "date": "25.09.2026",
+    "items": [
+      "✨ 10 more unique items (wave 2)",
+      "🔨 Mjölnir (flies back to your hand, lightning chains) · 🤜 Gum-Gum Pistol (slingshots you to walls and enemies) · 🪚 Chainsaw (revs up while you hold fire, heals) · 💣 Killer Queen (bombs stick, R detonates)",
+      "🔴 Geass (stare at an enemy, it fights for you) · 💨 Flash Step (R to dash) · 🪞 Kyoka Suigetsu (leave an illusion, turn invisible)",
+      "🚪 Door-Door Fruit (walk through walls) · 🌐 Shinra Tensei (push everything away, erase bullets) · 💊 Hoi-Poi Capsule (turret)",
+      "🎲 More uniques, same unique drop rate – just more variety"
+    ]
+  },
+  {
+    "version": "6.13",
+    "date": "25.09.2026",
+    "items": [
+      "✨ 15 new unique items – strong through mechanics, not stats (more coming)",
+      "🌊 Nichirin Blade (combo into a Water Dragon) · 🔫 Revy's Cutlasses (smart ricochets) · 🩸 Kagune (stronger the lower your HP) · 🔱 Spear of Longinus (ignores every defense, pins targets)",
+      "👁️ Byakugan (see hidden players) · 🎭 Kaneki's Mask (kills heal) · 🏋️ Rock Lee's Weights (press R to drop them) · 🌙 Geppo (immune to fire, acid and slows) · 💪 All Might's Suit (PLUS ULTRA below 25% HP) · ⚡ Killua's Godspeed (dodges strike back)",
+      "🗡️ Hiraishin Kunai (throw, then teleport) · ⛓️ Chain Jail · 👹 Hollow Mask · 📓 Death Note · 💎 Philosopher's Stone",
+      "⌨️ New key in raids: R – ability of your gear"
+    ]
+  },
+  {
+    "version": "6.12.3",
+    "date": "25.09.2026",
+    "items": [
+      "🏆 56 new achievements – Zombies, PvP, Kekemon, Market, Fuse, arena levels and more, most with a new title",
+      "😡 Raid bosses fight back: shoot them from outside their range and they sprint at you and call down strikes on your position",
+      "⇧ Raid inventory: shift-click an item to equip it, shift-click gear to take it off"
+    ]
+  },
+  {
     "version": "6.12.2",
     "date": "25.09.2026",
     "items": [
@@ -8,7 +85,9 @@
       "🎯 Zombie bosses take less damage the farther away you shoot from",
       "👑 Raid bosses drop loot by difficulty: easy ones 1–2 items, the toughest up to 5",
       "🧬 Lab event: containment breach – tanks crack open and monsters break out",
-      "🎖️ Military base event: patrols sweep through the rooms"
+      "🎖️ Military base event: patrols sweep through the rooms",
+      "🔬 Fused items keep the odds of their original drop – the Analyser lists what fuse added separately",
+      "⚗️ Fusing raises an item's score by half of what the result would be worth as a natural drop"
     ]
   },
   {

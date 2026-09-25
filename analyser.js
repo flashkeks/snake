@@ -17,9 +17,8 @@ const fmtIn = p => p >= 0.1 ? `${(p * 100).toFixed(p >= 0.995 ? 0 : 1)} %` : p >
 
 // Wahrscheinlichkeit, dass pickBase genau diese Basis zieht, wenn die Stufe feststeht
 function baseChance(kind, base, tierIdx) {
-    const defs = kind === 'weapon' ? I.WEAPONS : kind === 'armor' ? I.ARMORS : kind === 'util' ? I.UTILS : I.PACKS;
-    const all = Object.entries(defs).filter(([, b]) => b.tier <= tierIdx && (kind === 'util' || kind === 'pack' || I.maxTierOf(b) >= tierIdx));
-    const w = ([, b]) => Math.pow(4, b.tier) * (b.unique ? 0.12 : 1);
+    const all = I.poolAt(kind, tierIdx);
+    const w = ([, b]) => I.baseWeight(kind, b, tierIdx);
     const sum = all.reduce((s, e) => s + w(e), 0);
     const me = all.find(([k]) => k === base);
     return me && sum ? w(me) / sum : 0;
@@ -50,7 +49,10 @@ function analyseItem(it, users) {
     const defs = kind === 'weapon' ? I.WEAPONS : kind === 'armor' ? I.ARMORS : kind === 'util' ? I.UTILS : I.PACKS;
     const b = defs[it.base] || {};
     const mdefs = kind === 'armor' ? I.ARMOR_MODS : I.WEAPON_MODS;
-    const mods = (it.mods || []).filter(m => mdefs[m.id]);
+    // Drop-Chance immer vom Original (vor dem ersten Fuse); was Fuse draufgelegt
+    // hat, steht als eigener Abschnitt darunter
+    const now = (it.mods || []).filter(m => mdefs[m.id]);
+    const mods = Array.isArray(it.drop) ? it.drop.filter(m => mdefs[m.id]) : now;
     const pTier = 1 / I.TIER_ODDS[t];
     const gear = kind === 'weapon' || kind === 'armor';
     const pBase = gear ? baseChance(kind, it.base, t) : 1;
@@ -68,6 +70,25 @@ function analyseItem(it, users) {
         ...mods.map((m, i) => [`${mdefs[m.id].icon} ${mdefs[m.id].name} level ${m.lvl} (max ${mdefs[m.id].max})`, fmtIn(lv[i]), mdefs[m.id].desc(m.lvl)])
     ];
 
+    // Was Fuse draufgelegt hat (nur Anzeige, geht nicht in die Drop-Chance ein)
+    let fuseSection = null;
+    if (Array.isArray(it.drop)) {
+        const fr = [];
+        for (const m of now) {
+            const o = mods.find(x => x.id === m.id);
+            const d = mdefs[m.id];
+            if (!o) fr.push([`${d.icon} ${d.name} ${m.lvl}`, 'added', 'new effect from fuse']);
+            else if (m.lvl !== o.lvl) fr.push([`${d.icon} ${d.name}`, `${o.lvl} → ${m.lvl}`, 'level raised by fuse']);
+        }
+        fuseSection = {
+            title: 'Fused on top (not part of the drop chance)',
+            rows: [
+                ['Items fused in', (it.fused || 0).toLocaleString('en-US')],
+                ...(fr.length ? fr : [['No effect changes', '–']])
+            ]
+        };
+    }
+
     // Wie viele gibt es auf dem Server?
     let same = 0, sameTier = 0, sameExact = 0, sameMods = 0;
     const sig = x => (x.mods || []).map(m => m.id + m.lvl).sort().join(',');
@@ -82,7 +103,7 @@ function analyseItem(it, users) {
                 sameTier++;
                 if (sig(x) === mySig) sameExact++;
             }
-            if (mods.length && sig(x) === mySig) sameMods++;
+            if (now.length && sig(x) === mySig) sameMods++;
         }
     }
     return {
@@ -90,18 +111,21 @@ function analyseItem(it, users) {
         lines: [
             ['Kind', kind === 'util' ? 'Consumable' : kind === 'pack' ? 'Backpack' : kind[0].toUpperCase() + kind.slice(1)],
             ['Rarity', tierName],
-            ['Effects', mods.length ? mods.map(m => `${mdefs[m.id].icon} ${mdefs[m.id].name} ${m.lvl}`).join(' · ') : 'none'],
+            ['Effects', now.length ? now.map(m => `${mdefs[m.id].icon} ${mdefs[m.id].name} ${m.lvl}`).join(' · ') : 'none'],
+            ...(fuseSection ? [['Dropped with', mods.length ? mods.map(m => `${mdefs[m.id].icon} ${mdefs[m.id].name} ${m.lvl}`).join(' · ') : 'none']] : []),
+            ...(kind === 'weapon' || kind === 'armor' ? [[kind === 'weapon' ? 'Weapon level' : 'Armor level', (() => { const w = I.weaponLevel(it); return `${w.level}${w.to ? ` (${(w.xp - w.from).toLocaleString('en-US')} / ${(w.to - w.from).toLocaleString('en-US')} XP)` : ' (max)'}`; })()]] : []),
             ['Shown in game', it.odds > 1 ? `1 in ${it.odds.toLocaleString('en-US')}` : '–'],
             ['Salvage value', `${I.salvageValue(it)} ⚙️`]
         ],
         sections: [
-            { title: 'How rare is exactly this item?', rows, total: ['This exact combination', pAll ? fmtIn(pAll) : 'cannot drop'] },
+            { title: fuseSection ? 'How rare was the original drop?' : 'How rare is exactly this item?', rows, total: [fuseSection ? 'The original drop' : 'This exact combination', pAll ? fmtIn(pAll) : 'cannot drop'] },
+            ...(fuseSection ? [fuseSection] : []),
             {
                 title: 'On this server', rows: [
                     [`${b.name || it.base} (any rarity)`, same.toLocaleString('en-US')],
                     [`${tierName} ${b.name || it.base}`, sameTier.toLocaleString('en-US')],
                     [`${tierName} with exactly these effects`, sameExact.toLocaleString('en-US'), sameExact <= 1 ? 'yours is the only one' : ''],
-                    ...(mods.length ? [['Same effects, any rarity', sameMods.toLocaleString('en-US')]] : [])
+                    ...(now.length ? [['Same effects, any rarity', sameMods.toLocaleString('en-US')]] : [])
                 ]
             }
         ],

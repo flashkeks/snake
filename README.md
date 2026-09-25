@@ -2494,3 +2494,307 @@ Nachtrag 6.12.1 (Max: „Stalker zu op, man kann ihn nicht hitten, wenn er an ei
     zurueck), sieht er jemanden, kaempft er. Nach 6 min loest er sich auf (normale Gegner).
   - Test: Breach mit Zeitsprung – Warnung, Snapshot `[[71,1]]`, danach 3 Monster aus
     dem Tank; Patrouille startet, laeuft ueber Tueren durch 6 Wegpunkte und wendet am Ende.
+
+## 🔫 25.09.2026: Fuse-Odds, Achievements, Boss-Aggro, 30 Uniques mit Mechanik
+
+### Fuse und Analyser
+- `fuse()` merkt sich beim ersten Fuse die Effekte des Originals in `item.drop`
+  (bleibt danach fest) und zaehlt gefressene Items in `item.fused`.
+- `odds` eines gefusten Items = Drop-Chance des Originals. `score` = Original +
+  halbe Differenz zum nativen Wert des Ergebnisses (Max: 26,6k -> 33k statt 40k
+  bei Sharp 1 -> 2).
+- Analyser: Drop-Chance aus `item.drop`, Abschnitt „Fused on top" (gefuste
+  Items, neue Effekte, Stufen alt -> neu). Items, die vor diesem Stand gefust
+  wurden, haben kein `drop` – dort rechnet alles wie vorher.
+
+### Achievements (6.12.3)
+30 -> 86. Neu u. a. fuer Zombies (`u.arena.zombies`), PvP (`u.arena.pvp`),
+Arena-Level (`levelOf(prog.xp)`), Kekemon (verschiedene Karten, Shiny/Masterball,
+Gyms ueber `km-gyms.GYM_IDS`), Markt, Handel, Bosse, Faelle, Fuse. Neue
+Statistik `s.fuses`, `s.fuseMaxed`. Zustandsbasierte Achievements werden beim
+naechsten `stat()` bzw. beim Serverstart (still) vergeben.
+
+### Boss-Aggro gegen Fernschuetzen (6.12.3)
+Treffer von ausserhalb der Reichweite (`def.range || def.aggro`) provoziert
+einen Raid-Boss `BOSS_PROVOKE` = 8 s: Sprint x`BOSS_SPRINT` 2,2 zum Schuetzen,
+alle `BOSS_RETAL` 2,6 s drei Einschlaege mit Vorwarnung (55, r 110, der erste
+vorgehalten). Zombie-Modus unveraendert (dort `zBossFalloff`).
+
+### Raid-Inventar
+Shift-Klick: Rucksack-Item anlegen (Waffe in freien Slot, Starter-Pistole
+zaehlt als frei, sonst die gehaltene; Q/G nach gleicher Sorte, frei, sonst Q),
+Angelegtes zurueck in den Rucksack. Nur Client (`shInvQuick`).
+
+### 30 neue Uniques (6.13–6.13.2)
+Wunsch Max: je Typ 10, stark durch Mechanik statt Werte. Je Typ 4 Legendary,
+4 Mythic, 2 Ultra.
+
+**Droprate:** gleich viele Unique-Drops wie vorher. Alle Uniques einer (Art,
+Stufe) teilen sich das Gewicht der 17 Uniques vom Stand 6.12
+(`LEGACY_UNIQUES`, `uniqueScale`, `baseWeight`). Verbrauchsgut hatte keine
+Uniques, dort `UNIQUE_W` je Item. Der Analyser rechnet mit `baseWeight`.
+
+**Taste R** (`shAbility` -> `ability()`): macht alles zugleich, was die
+Ausruestung kann – Titan Shift, Rock Lees Gewichte, Killer-Queen-Zuender,
+Flash Step. HUD zeigt die verfuegbaren Faehigkeiten.
+
+| Item | Art, Stufe | Mechanik (Flag) |
+|---|---|---|
+| 🌊 Nichirin Blade | Waffe L | `combo`: Treffer in 1,5 s +10 % (max 10), bei 10 Wasserdrache (Welle x2,5) |
+| 🔫 Revy's Cutlasses | Waffe L | `smart`: Ricochet 3, je Abpraller +50 % und springt zum naechsten Ziel |
+| 🤜 Gum-Gum Pistol | Waffe L | `grapple`: Treffer an Wand/Gegner zieht den Schuetzen hin (`p.grap`) |
+| 🪚 Chainsaw | Waffe L | `rev`: Dauerfeuer dreht in 3 s auf x3, 25 % Lifesteal |
+| 🩸 Kagune | Waffe M | `berserk`: bis x2,5 Schaden und 28 % Lifesteal bei wenig HP |
+| 🔱 Spear of Longinus | Waffe M | `pure` (ignoriert taken/Dodge/Mob-Reduktion), `pin` (2 s betaeubt, Bosse/Spieler langsam) |
+| 🔨 Mjölnir | Waffe M | `boomerang` (zurueck durch Waende, trifft auf beiden Wegen), `chain` (Blitz auf 2 Mobs) |
+| 💣 Killer Queen | Waffe M | `stick`: Treffer pflanzen Bomben (max 8, 20 s), R sprengt (`kqBombs`) |
+| 🌀 Portal Gun | Waffe U | `portal`: Fehlschuss setzt Blau/Orange; Spieler, Mobs (ohne Bosse), Kugeln gehen durch (`portals`) |
+| 🌸 Senbonzakura | Waffe U | `orbit`: Klingenkreis 110 px, 130 dps, frisst Kugeln; Schuss = Schwarm als Bumerang |
+| 👁️ Byakugan | Helm L | `see`: `canSee` immer wahr (auch Kyoka), immun gegen Flash |
+| 🎭 Kaneki's Mask | Helm L | `killHeal`: Kill heilt 25 %, +25 % Tempo 3 s (`onKill`) |
+| 🏋️ Rock Lee's Weights | Hose L | `weights`: -15 % Tempo, R: +40 % Tempo, +25 % Rate bis Raid-Ende |
+| 🌙 Geppo | Stiefel L | `geppo`: Feuer/Saeure und Verlangsamung wirken nicht |
+| 💪 All Might's Suit | Weste M | `plusUltra`: unter 25 % (auch toedlich) Schockwelle + 3 s Schutz, 60 s CD |
+| ⚡ Killua's Godspeed | Hose M | `counter`: 12 % Dodge, jeder Dodge schlaegt mit 120 zurueck |
+| 🔴 Geass | Helm M | `geass`: 1 s Blick auf Nicht-Boss -> 8 s verzaubert (`m.charm`, `charmTick`) |
+| 💨 Flash Step | Stiefel M | `flashstep`: R, 260 px, 300 ms Schutz, 3 s CD |
+| 🪞 Kyoka Suigetsu | Weste U | `mirror`: bei Treffer 2 s unsichtbar + Trugbild 3 s (`decoys`), 12 s CD |
+| 🦖 Titan Shift | Ganzkoerper U | `titan`: R einmal je Raid, 15 s +1500 HP, Stampfer statt Schuss |
+| 🗡️ Hiraishin Kunai | Util L | Kunai werfen, zweiter Einsatz teleportiert (gratis), 30 s |
+| ⛓️ Chain Jail | Util L | Gegner am Cursor 3 s ohne Laufen/Schiessen (`jailUntil`), Bosse langsam |
+| 👹 Hollow Mask | Util L | 10 s +60 % Schaden, +30 % Rate, 15 % Lifesteal, -5 HP/s |
+| 🚪 Door-Door Fruit | Util L | 3 s durch Waende (`phaseUntil`), danach zur naechsten freien Stelle |
+| 📓 Death Note | Util M | Ziel stirbt nach 40 s, ausser der Schreiber ist weg; Bosse -30 % |
+| 💎 Philosopher's Stone | Util M | 60 s: toedlicher Treffer -> 50 % HP |
+| 🌐 Shinra Tensei | Util M | r 380 wegstossen, +120 bei Wandaufprall, loescht Gegner-Kugeln |
+| 💊 Hoi-Poi Capsule | Util M | Turm 20 s, 30 Schaden alle 330 ms (`turrets`) |
+| ⏱️ Za Warudo | Util U | 4 s Zeitstopp (`zw`): Mobs, andere Spieler, fremde Kugeln, Granaten, Einschlaege stehen |
+| 👥 Kage Bunshin | Util U | 3 Klone 15 s, schiessen mit 35 %, fangen je eine Kugel (`clones`) |
+
+Snapshot-Felder dazu: `me.kunai/combo/doom/abil/buff/kq/phase/gaze/inv/zw/zwMe/titan`,
+Spieler `ob/ti/cl`, `turrets`, `portals`, Mob-Feld 12 = verzaubert.
+
+**Tests** (Skripte gegen die Raid-Engine mit virtueller Zeit, nicht im Repo):
+je Welle ein Skript mit mindestens einer Pruefung je Item (23 + 15 + 18), dazu
+36 s Zombie-Modus, 90 s PvP und 3 min Extraction-Chaos mit drei Spielern und
+zufaelligen neuen Uniques ohne Absturz.
+
+### Gegner-Drops, Gegner-Level, Waffen-Level, Lager, Boss-Sprung (6.14, 25.09.2026)
+- **Drops** (`MOB_DROP_MUL` 0,5): Dropchance aller normalen Gegner in der
+  Extraction halbiert, ueberall. Seltenheiten der Quelle bleiben; nur Gegner-
+  Beute an der Oberflaeche und im Keller wuerfelt Epic+ mit halbem Gewicht
+  (`MOB_EPIC_MUL`, `generate(src, epicMul)`), das Labor wie vorher.
+- **Gegner-Level** (`MOB_LEVELS`): Oberflaeche 1–10, Keller 20–30, Labor 40–50,
+  gewuerfelt in `spawnMob` nach `regionAt`. Innerhalb der Ebene je Level +6 % HP,
+  +4 % Schaden (auf die Ebenen-Faktoren aus `UNDER_MOBS` obendrauf), XP je Kill
+  x(1 + 0,05 x (Level−1)). Mob-Tupel Feld 13 = Level, Client zeigt „Lv N".
+- **Waffen-Level** (`WLV`, `weaponLevel`): `item.wxp`, Level 1–30, XP gesamt
+  100 x (L−1)^1,7. Je Level +1,5 % Schaden, +5 % Feuerrate bei 10/20/30. XP
+  = die XP des Spielers fuer Kills mit der gehaltenen Waffe (Gegner, Boss,
+  Spieler, Zombies, PvP; in PvP/Zombies auch ans Original im Lager). Fuse:
+  Haupt-Item + halbe XP der gefressenen (Entscheidung Max: halb).
+- **Lager-Upgrade** (`INV_UP`, `invMaxOf`): +25 Plaetze je Stufe, max 12 Stufen
+  (500). Kosten Coins 25k x 1,9^(n−1) und Scrap 150 x 1,75^(n−1), beides noetig.
+  Hub-Aktion `arInvUp`.
+- **Boss-Sprung** (Ticket #6, Maddy): `bossStuckCheck` – unter 60 px Fortschritt
+  in 2,5 s, obwohl der Boss hin will (mit Ziel nur ohne freie Schusslinie) ->
+  `bossJump` an eine freie Stelle mit kleinerer Wegfeld-Entfernung, nie naeher
+  als r+R+80 an Spielern; 700 ms Warnkreis, Landung mit Druckwelle, 5 s CD.
+- **Tesla-Fix** (`teslaArc`): Tesla springt auch zwischen Mobs (vorher nur Spieler).
+
+### Ruestungs-Level und Awakenings (6.15, 25.09.2026)
+- **Ruestungs-Level:** gleiche Kurve wie Waffen (`itemLevel`, `item.wxp`). Jeder
+  Kill gibt der gehaltenen Waffe UND jedem angelegten Ruestungsteil die volle XP.
+  Je Level +2 % HP des Teils (`WLV.armorHp`), je Meilenstein 10/20/30 2 % weniger
+  Schaden (`WLV.armorTaken`). Fuse gibt auch bei Ruestung die halbe XP weiter.
+  Level-up einer Ruestung ruft `gearStats` neu auf.
+- **Awakening ab Level 20** (`WLV.awake`, `isAwake`, Text im Feld `awake` am
+  Eintrag, im Tooltip gesperrt/erwacht): Waffen ueber `w.awake`/`w.base` aus
+  `weaponStats`, Ruestung ueber `armorStats().awake` -> `p.aw` (Set der Basen).
+  - Waffen: Rasengan Schneide-Zone 2 s (`zones`); Zangetsu jeder 3. Hieb x2 und
+    breiter; Amaterasu Brand springt beim Tod ueber (`burn.spread`); Spirit Gun
+    jeder 4. Schuss 8 Kugeln; Gate of Babylon alle 10 s Schwert-Regen (`blasts`,
+    x4 Schaden, r 170); Kamehameha Strahl 1 s haltend (`kameUntil`, `railBeam`
+    leise); Dragonslayer Kill = +10 % Rate 5 s (x5); Venuzdonoa Getroffene 5 s
+    +50 % (`exposeUntil`); Hollow Purple zieht Gegner in die Bahn; Nichirin Combo
+    3 s, Drache bei 8; Cutlasses 5 Abpraller; Gum-Gum Gear Second (+40 % Tempo
+    und Rate 3 s); Chainsaw voll hochgedreht 50 % Lifesteal; Kagune unter 30 % HP
+    doppelter Faecher; Longinus unbegrenzt durchbohrend; Mjoelnir Blitzschlag auf
+    dem Rueckweg (60 %); Killer Queen Kettenexplosion (Tiefe 3); Portal Gun bis 3
+    Paare (`portals` jetzt `{ pairs, until }`); Senbonzakura Kreis 165 statt 110.
+  - Ruestung: Scouter +8 % Crit; Straw Hat Haki (alle 20 s ein Treffer ab 30
+    daneben); ODM R-Enterhaken zur anvisierten Wand (4 s); Hokage unter 50 %
+    +3 HP/s; Kamina je Kill +3 % Schaden (max +30 %, bis Raid-Ende); Saitama
+    jeder 10. Treffer x5 (Explosionen zaehlen als Treffer); Iron Man R 8
+    zielsuchende Raketen (12 s); Susanoo unter 30 % Schild 4 s, 80 % weniger
+    (45 s); Byakugan +15 % Schaden bis 400 px; Kaneki Kill heilt 40 %, 5 s Tempo;
+    Rock Lee Gewichte ab = 6 s +60 % Schaden; Geppo +10 % Tempo, Chain Jail
+    wirkungslos; All Might alle 30 s, 300 Schaden; Killua +6 % Dodge, Konter
+    springt auf 2 weitere; Geass 15 s, 1,5 s CD; Flash Step 1,5 s CD mit
+    Nachbild; Kyoka 3,5 s unsichtbar, 8 s CD; Titan 25 s, +2500 HP.
+- **Gewollt (Entscheidung Max, 25.09.2026: so lassen):** Die schwarzen Loecher von Singularity und den
+  Venuzdonoa-Rissen treffen beim Zusammenfallen auch den eigenen Schuetzen
+  (`blast()` wie bei Granaten) – im Test 921 Schaden am Schuetzen, wenn er
+  neben dem getroffenen Gegner steht.
+- Tests: Einzelpruefung je Awakening (31/31), Extraction-Chaos, PvP und
+  Zombies mit allen Items auf Level 20 ohne Absturz. Dabei gefunden und
+  behoben: `ability()` nutzte `aw` vor der Definition (Rock Lee + R).
+
+## 🏚️ Map-Umbau Phase 1: Dungeons (25.09.2026)
+Max: Labor/Militaer zu einfach und nur 4-eckige Boxen; Gesamtkonzept neu – groessere
+Oberflaeche mit 3–4 Gegner-Stuetzpunkten und 2 Friendly-Bereichen (Missionen,
+PvE-Partys), von dort in Militaerbasis/Labor mit Spezial-Charakteren. Entscheidungen:
+Instanz je Party, danach zurueck zum Friendly-Bereich, Tod wie im Raid, Dungeons zuerst.
+
+**Waehrend des Umbaus** kommt nur Kek in die Extraction (`EXTRACT_ONLY`, Standard
+`kek`; `SNAKE_EXTRACT_ONLY=''` in `snake.service` oeffnet fuer alle).
+
+- **Generator** (`dungeons.js`, Vorschau `node dungeons.js bunker|lab SEED`):
+  Kachelraster 80 px, Raeume Rechteck/L/Kreuz/Halle mit Saeulen/Tank-Raum, Spannbaum
+  plus Schleifen, Gaenge mit L-/Z-Knick. Waende = feste Kacheln an Boden (zeilenweise
+  zusammengefasst). Deckung nur, wenn alles erreichbar bleibt. Kisten in den
+  entferntesten Raeumen, `farRooms` fuer Spezial-Charaktere, Ausgang am Start.
+- **Instanzen** (`dungeon-rooms.js`): Luke oben (Station `dungeon`) -> neue Instanz
+  mit neuem Seed; wer binnen 20 s durch dieselbe Luke steigt, kommt mit (max 4) –
+  Zwischenloesung bis Missionen/Partys. `detach`/`attach` in `shooter.js` uebergeben
+  den Spieler samt Ausruestung, Rucksack und HP. Ausgang (Station `exit`) -> zurueck an
+  die Luke. Tod/Aufgeben/Verbindung weg wie im Raid.
+- **Oberflaeche:** die alten Ebenen daneben sind raus, von `arena-under.js` bleiben die
+  drei Luken-Plaetze (2x Militaerbasis, 1x Labor).
+- **Gegner** (Modus `dungeon`, `pve` teilt Level/Drops/Wegfeld mit der Extraction):
+  neu Heavy Gunner, Grenadier, Riot Trooper (`shield`: -80 % von vorn), Attack Dog
+  (`pack` 3) / Acid Spitter, Phase Shade (`blink` jetzt auch fuer normale Gegner),
+  Leech Swarm (`pack` 5), Cryo Experiment (verlangsamt). Schluessel `trooper`,
+  `acidspit`, `phaseshade`, weil `riot`/`spitter`/`shade` Zombies sind.
+- **Spezial-Charaktere** (`special`, `SPECIALS`, `SPECIAL_CHANCE` 15 % je Run nach
+  45–90 s, Level = Ebene + 5, 3 Beutel aus `boss`, Name + Leiste im Client):
+  Rick Sanchez (Portal-Sprung, Meeseeks, Flachmann), Satoru Gojo (Infinity: > 300 px
+  nur 15 % Schaden; Hollow Purple; Infinite Void setzt 2,5 s fest + Einschlaege),
+  Tanya Degurechaff (fliegt ueber Waende, explodierende Kugeln, Salve), Roy Mustang
+  (Flammen-Schnipp mit Feuerflaeche, Flammenring).
+- **Dazu:** Wegfeld ueber die ganze Welt, alle PvE-Gegner nutzen es; Gegner-Level ab
+  Lv 1 (+4,5 % HP / +3 % Schaden je Level, Lv 45 = x3 HP); Oberflaechen-Bosse
+  Legendary+ -30 %.
+
+## 🏰 Map-Umbau Phase 2: Optik, Missionen, Guild Houses (25.09.2026)
+Max: Labor haesslich -> viel bessere Grafik, keine Minimap auf Zufallskarten, Sicht nur
+drumherum; Missionen im Spiel-Menue mit Easy/Normal/Hard, Bosse je Stufe anders;
+Guild House mit Lager und Versicherung (Scrap + Mission Tokens); groessere Oberflaeche
+mit 3–4 Stuetzpunkten und 2 Friendly-Bereichen. Entscheidungen: versicherte Items
+„Zurueck ins Lager", Versicherung „pro Item", Ziel „Boss besiegen + raus".
+
+- **Dungeon-Optik** (`public/dfx.js`): Boden je Raumstil in Chunks vorgebacken,
+  2,5D-Waende, Lichter mit Flackern, Sicht per Strahlen (nur was in Sichtlinie liegt),
+  Nebel + Vignette; Server schickt nur, was der Spieler sehen kann (`los()`).
+- **Oberflaeche** 9600 x 6400, bis 170 Gegner. **Zwei Guild Houses** (Holzboden,
+  Teppich, Feuer; Tore links/rechts/unten): drinnen kein Schaden, weder von Spielern
+  noch von Gegnern, Gegner kommen nicht rein. **Drei feindliche Stuetzpunkte**
+  (Mauerring mit Luecken, Sandsaecke, Militaerkisten, Wachen mit Respawn).
+- **Missionen** (Station `missions`, Panel `msMenu`): Party erstellen/beitreten (max 4),
+  Host waehlt Dungeon und Stufe. Easy: Gegner-Lv -10, Mobs x0,8, Boss-HP x0,7, 1 🎟️;
+  Normal 2 🎟️; Hard: Lv +10, Mobs x1,4, Boss-HP x1,6, 4 🎟️. Start nimmt alle mit, die
+  im Guild House stehen; eigene Instanz, Ziel-Boss (Spezial-Charakter) im entferntesten
+  Raum. Boss tot + Ausgang = Tokens, zurueck ins Guild House. Bosse je Stufe: Hard
+  bekommt Extras (Rick Falle + Ring, Gojo Red + schnellere Void + staerkere Infinity,
+  Tanya Elinium-Nuke, Mustang Flammenwand), Easy ist langsamer/schwaecher ohne
+  Void/Ring.
+- **Guild stash** (Station `stash`, Panel `gStash`): Rucksack <-> Lager im Raid.
+- **Versicherung** (Station `insure`, Panel `gInsure`): pro angelegtem Item, kostet
+  Scrap `INSURE_SCRAP` und Tokens `INSURE_TOKENS` je Stufe (Common 30/1 … Ultra
+  1000/6), gilt eine Mission. Tod in der Mission -> versicherte Items zurueck ins Lager.
+- Tokens liegen im Konto (`arena.tokens`), Statistik `missions`, `missions_DIFF`.
+
+**Noch offen:** Tokens im Hub anzeigen, weitere Missionsarten.
+
+## 🌳 Hub: Skills-Tab statt Fuse, ein Baum fuer Extraction + PvP (25.09.2026)
+Max: „Fuse Menue weg, stattdessen … Button im Inventar … dort wo das Fuse-Menue ist,
+ziehen die Skills hin … triggern zwischen Skills und Skills Zombie Mode. Die Skills fuer
+PvP und Extraction werden zu einem."
+
+- **Fuse** hat keinen Tab mehr. Im Inventar steht rechts beim Item ein 🔥-Fuse-Knopf,
+  sobald es eine Kopie gibt, die es verbessert (`canFuse`). Der Knopf oeffnet die
+  bekannte Fuse-Ansicht mit dem Item als Haupt-Item, „Back to inventory" fuehrt zurueck.
+- **Skills** sitzen im alten Fuse-Tab (Game Modes hat nur noch Play / Loadout).
+  Umschalter „🌳 Skills" (Extraction & PvP) / „🧟 Skills Zombie Mode"; der Tab zaehlt
+  freie Punkte beider Baeume.
+- **Server** (`arena-level.js`): `TREE_OF(mode)` – PvP nutzt den Baum `extract`.
+  Migration in `ensureTrees`: hatte ein Konto getrennte Baeume, bleibt der mit mehr
+  vergebenen Punkten, die Punkte des anderen sind wieder frei (Level bestimmt die
+  Summe, verloren geht nichts ausser der Verteilung). Resets = Maximum beider.
+
+## 🎨 Grafik-Paket (25.09.2026, Max: „wirklich komplett das Design huebscher machen")
+- **Guild House** (`public/gfx.js`): Dielen mit Steinrand, Laeufer und Rundteppich,
+  Kamin mit Feuer und Funken, Tische mit Baenken, Faesser, Kisten, Waffenstaender,
+  Pflanzen, Banner, Fackeln mit Lichtschein, Fachwerk-Steinmauern, offene Holztore,
+  Holzschild „GUILD HOUSE" ueber dem Tor. Hooks in `index.html`: `gGuildFloor` vor den
+  Waenden, `gWall`/`gDoor` statt Standard, `gGuildTop` danach.
+- **Stationen als Objekte** statt Kreis mit Emoji (`gStation`): Quest Board, Truhen vor
+  Schrankwand (Lager), Tresen mit Schreiber (Versicherung), Marktstand (Haendler),
+  Sanitaetszelt (Medic). Holzschild darunter, Leuchten, wenn man davorsteht.
+- **Figuren** (`public/bfx.js`): Raccoon King, Iron Golem, Hive Queen; Dungeon-Gegner
+  (Heavy, Grenadier, Riot Trooper, Attack Dog, Acid Spitter, Phase Shade, Leech, Cryo);
+  Spezial-Charaktere (Rick, Meeseeks, Gojo, Tanya, Mustang).
+- **Quest-Board-Menue** im Holz/Pergament-Look, Bosse geheim. **Missions-Tod** zeigt eine
+  Uebersicht und schickt zurueck ins Guild House (`msRespawn`).
+- **Luken weg:** Dungeons nur noch ueber das Quest Board.
+
+### Item-Icons
+Normale Items bleiben Emojis (Max: die game-icons-Variante „sieht arsch aus", zurueckgenommen).
+Nur Uniques haben eigene Grafiken:
+- **Uniques** (`public/unique-icons.js`): 51 SVGs (viewBox 64) mit echten Filtern – Bloom
+  (`ug-glow`, `ug-halo`), Turbulenz fuer Feuer/Portale (`ug-fire`, `ug-fire2`), Metall- und
+  Stoffverlaeufe. Helfer `orb()` (Energiekugel mit Wirbeln, Referenz Max: Rasengan-Bild),
+  `bolt()` (Blitz), `blade()` (Katana), `flame()`. Filter/Verlaeufe haengen einmal im
+  Dokument (`UNIQUE_DEFS`). Bilder aus dem Netz gehen aus dem Container nicht (Bild-Hosts
+  gesperrt), deshalb gezeichnet.
+- **Spezial-Charaktere als Pixel-Sprites** (`PX` + `bDrawSide` in `public/bfx.js`; Max:
+  die gezeichneten Figuren sahen „interessant" aus -> Pixel-Design): Raster 16 x 22, Palette
+  je Zeichen, zwei Bein-Frames, 1-px-Umriss, einmal gerendert und ohne Glaettung skaliert.
+  Blickrichtung links/rechts, Wippen beim Laufen; Glow an Portal-Gun/Hollow Purple/Elinium,
+  Gojo mit Infinity-Ringen, Tanya fliegt mit Mana-Schweif, Mustang schnippt Funken.
+
+## 🛠️ Creative Mode (25.09.2026, Max)
+Pro Konto im Admin-Panel schaltbar (Arena-Bereich, „Creative mode", `adminArena` Op
+`creative`, Feld `arena.creative`). Wirkt sofort, auch mitten im Raid:
+- `damage()` tut nichts, solange das Konto Creative hat (Raid, Missionen, PvP).
+- Taste **C** im Raid: Menue mit jedem Item (Waffen, Ruestung je Stufe, Verbrauchsgut,
+  Rucksaecke, Suche). Klick = in den Rucksack (ueber das Limit), „1"/„2"/„⚡" = sofort
+  anlegen. Dazu Heilen und Rucksack leeren. Server: `crOpen`/`crGive`/`crHeal`/`crClear`,
+  ohne Creative kommt nur ein Hinweis.
+- Was man rausbringt, landet wie normal im Lager – der Modus ist fuers Testen gedacht.
+
+## 🔊 Echte Voicelines und Sound-Effekte (25.09.2026, Max)
+- Slots in `public/sfx.json` (Slot -> Datei auf myinstants.com, `max` Sekunden, `cd`
+  Mindestabstand, `vol`). Die mp3 liegen **nicht im Repo**, sondern in `DATA_DIR/sfx/`
+  (edge: `/srv/snake-data/sfx`, ~6 MB). Holen/erneuern auf edge:
+  `/srv/snake/tools/fetch-sfx.sh` (vorhandene bleiben, `FORCE=1` laedt neu). Aus dem
+  Claude-Container gehen Soundboards nicht, von edge aus schon (User-Agent noetig).
+- Server liefert `/sfx/SLOT.mp3` aus `DATA_DIR/sfx` (nur `[a-z0-9-]`).
+- Client `public/voice.js`: `vox(slot)` laedt beim ersten Mal, dekodiert ueber den
+  gemeinsamen AudioContext (Lautstaerke/Mute wie alle Sounds), schneidet nach `max` mit
+  Ausblenden ab, Stimmen ueberlappen nicht. Fehlt eine Datei, bleibt der Synth-Sound.
+- Ausloeser: Schuss mit Unique-Waffe (Slot = Waffen-Basis), Taste R mit Unique-Ruestung,
+  Unique-Verbrauchsgut (Q/G), Effekte `zawarudo/shinra/genki/chidori/titan/gomu/void`,
+  Spezial-Charaktere: Auftritt (`KIND-spawn`), Tod unter 25 % HP (`KIND-death`),
+  gelegentlich `KIND-line`, Rick-Portal (`rick-attack`).
+- Neuer Slot: Eintrag in `sfx.json`, dann `fetch-sfx.sh` auf edge.
+
+## 👾 Pixel-Look fuer alles (25.09.2026, Max: „ich LIEBE den Pixel-Style … alle Grafiken")
+- **Pixel-Pass** (`shFrame`, index.html): die Welt wird in 1/P Aufloesung gezeichnet
+  (`SH_PIX` = 4 CSS-px je Welt-Pixel, mal devicePixelRatio) und ohne Glaettung
+  hochskaliert – Boden, Waende, Guild House, Deko, Effekte, Schuesse, alles pixelig. Texte
+  (Namen, Level, Schilder, Schadenszahlen) werden auf der kleinen Flaeche nur *gemerkt*
+  (`fillText`/`strokeText` umgebogen) und danach scharf auf die grosse Flaeche gezeichnet.
+  `PIX_WU` = Welt-Einheiten je Pixel, damit Sprites auf dem Raster einrasten.
+  Abschalten (Test): `localStorage.setItem('kek-pixel', '0')`.
+- **Sprites fuer alle Gegner** (`public/pfx.js`): Menschen und Zombies aus einem Baukasten
+  (Kopf cap/helmet/hood/bald/zombie/gasmask/scream, Koerper normal/fat, Waffe
+  rifle/longrifle/pistol/shotgun/minigun/launcher/fist/claws, Schild, Palette je Mob);
+  eigene Raster fuer Drohne, Hund, Frosch, Geister, Egel, Wolf, Echse, Blob, Spinne und
+  die Raid-Bosse (Raccoon King, Iron Golem, Hive Queen, Titan Mk-IV, Reaper). Seitenansicht,
+  Blickrichtung, zwei Lauf-Frames, Umriss. Zombie-Bosse bleiben die gezeichneten Figuren aus
+  `zfx.js` (durch den Pixel-Pass ebenfalls pixelig).
+- **Spieler** als Pixel-Figur in Spielerfarbe (`pxPlayerKind`), Waffe dreht frei zum Ziel,
+  Farbe nach Seltenheit, eigener Spieler mit weissem Bodenring.
+- Schilder ueber Mobs/Spielern sitzen ueber dem Sprite (`pxTop`).
+- Missionen: Banner verraet den Boss nicht mehr, Ausgang heisst „Guild House".
