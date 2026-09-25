@@ -74,8 +74,9 @@ const BAG_LIFE_LEFT = Math.max(BAG_LIFE, 2 * 60e3);
 const MOB_BASE = 70, MOB_PER_PLAYER = 10, MOB_MAX = 170;
 // Gegner-Stuetzpunkte (25.09.2026): Wachmannschaft je Stuetzpunkt, kommt nach dem Raeumen wieder
 const POST_GUARDS = ['enforcer', 'heavy', 'trooper', 'grenadier', 'scav'], POST_RESPAWN = 4 * 60e3;
-// Extraction nur fuer diese Konten (Kleinbuchstaben), leer = offen fuer alle
-const EXTRACT_ONLY = (process.env.SNAKE_EXTRACT_ONLY !== undefined ? process.env.SNAKE_EXTRACT_ONLY : 'kek').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+// Extraction nur fuer diese Konten (Kleinbuchstaben), leer = offen fuer alle.
+// 25.09.2026 abends (Max): Umbau fertig, wieder fuer alle offen. Zum Sperren z. B. SNAKE_EXTRACT_ONLY=kek
+const EXTRACT_ONLY = (process.env.SNAKE_EXTRACT_ONLY !== undefined ? process.env.SNAKE_EXTRACT_ONLY : '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
 // 25.09.2026 (Max: Gegner droppen zu viel, mit Railgun zu einfach): Dropchance
 // aller normalen Gegner halbiert, Seltenheiten bleiben. Dazu Gegner-Level je
 // Ebene: HP/Schaden steigen innerhalb der Ebene mit dem Level (zusaetzlich zu den
@@ -1181,8 +1182,8 @@ module.exports = function createArena(h, opts = {}) {
 
     function join(c, name, color, team, at) {
         if (!c.account) return 'Log in to raid';
-        // 25.09.2026 (Max): Extraction waehrend des Umbaus nur fuer Kek. Zum Oeffnen
-        // EXTRACT_ONLY leeren (oder SNAKE_EXTRACT_ONLY='' in snake.service setzen).
+        // 25.09.2026 (Max): Extraction war waehrend des Umbaus nur fuer Kek, abends wieder offen.
+        // Wieder sperren: SNAKE_EXTRACT_ONLY=kek (Komma-Liste) in snake.service setzen.
         if (mode === 'extract' && EXTRACT_ONLY.length && !EXTRACT_ONLY.includes(String(c.account).toLowerCase()) && !players.has(c.id)) return '🚧 Extraction is closed for a rebuild – back soon!';
         if (players.has(c.id)) {
             sendJoined(c);
