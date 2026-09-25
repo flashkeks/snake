@@ -2475,3 +2475,9 @@ Nachtrag 6.12.1 (Max: „Stalker zu op, man kann ihn nicht hitten, wenn er an ei
   nur Zombie-Modus: `zBossFalloff(d)` in `hurtMob` – bis 500 px voll, dann linear bis
   30 % ab 1400 px, gemessen vom Schuetzen zum Boss. Test mit Legendary-Railgun:
   300/500 px 310, 800 px 238, 1000 px 189, 1400/2000 px 93 Schaden.
+- **Raid-Boss-Beute nach Schwierigkeit** (Max: Waschbaer leicht -> 1–2, Golem -> 3–4):
+  neues Feld `loot: [min, max]` je Boss in `arena-mobs.js`, vorher immer 3.
+  Hive Queen / Raccoon King 1–2, Iron Golem 3–4, The Reaper / Titan Mk-IV 4–5.
+  Pro Item ein Beutel (Quelle `boss`, Legendary+ 0,4 % je Item). Ansage und Kill-Feed
+  nennen die echte Zahl; „Sovereign loot" in der Boss-Ansage -> „big loot" (seit 6.10.1
+  nicht mehr Sovereign). Test: je Boss 12 Kills, Anzahl immer im Bereich.

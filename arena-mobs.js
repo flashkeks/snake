@@ -169,29 +169,29 @@ const MOBS = {
     // 6.9 (Max: neue extrem krasse Bosse): nutzen die Gefahrenzonen aus
     // arena-hazards.js in einer Box um sich, dazu eigene Waffen
     titan: {
-        boss: true, name: 'Titan Mk-IV', title: 'War Machine', icon: '🤖', color: '#ff8a3a', r: 58, hpBase: 14000, hpPer: 5000, speed: 95, aggro: 900, keep: 260, taken: 0.85,
+        boss: true, loot: [4, 5], name: 'Titan Mk-IV', title: 'War Machine', icon: '🤖', color: '#ff8a3a', r: 58, hpBase: 14000, hpPer: 5000, speed: 95, aggro: 900, keep: 260, taken: 0.85,
         gun: { dmg: 20, speed: 700, ms: 900, burst: 4, spread: 0.18, life: 1.6 }, charge: { ms: 9000, warn: 800, dur: 650, speed: 760 },
         contact: 60, pattern: 'titan', gap: 900, enrage: 0.5
     },
     reaper: {
-        boss: true, name: 'The Reaper', title: 'Harvester of Raids', icon: '☠️', color: '#9d6bff', r: 46, hpBase: 12000, hpPer: 4500, speed: 150, aggro: 950, keep: 200,
+        boss: true, loot: [4, 5], name: 'The Reaper', title: 'Harvester of Raids', icon: '☠️', color: '#9d6bff', r: 46, hpBase: 12000, hpPer: 4500, speed: 150, aggro: 950, keep: 200,
         gun: { dmg: 14, speed: 480, ms: 1300, burst: 3, spread: 0.4, life: 2.2, homing: 1 }, blink: { ms: 6000 },
         contact: 50, pattern: 'reaper', gap: 800, enrage: 0.5
     },
     king: {
-        boss: true, name: 'Raccoon King', icon: '🦝', crown: true, color: '#ff3b3b', r: 44, hpBase: 5000, hpPer: 2500, speed: 125, aggro: 700, keep: 170,
+        boss: true, loot: [1, 2], name: 'Raccoon King', icon: '🦝', crown: true, color: '#ff3b3b', r: 44, hpBase: 5000, hpPer: 2500, speed: 125, aggro: 700, keep: 170,
         gun: { dmg: 16, speed: 620, ms: 850, burst: 3, spread: 0.12, life: 1.5, fan: true },
         ring: { n: 20, ms: 9000 }, slam: { r: 250, dmg: 70, ms: 7000 }, contact: 45,
         charge: { ms: 8000, warn: 800, dur: 650, speed: 720 }, summon: { kind: 'scav', n: 2, ms: 22000, max: 4 }
     },
     golem: {
-        boss: true, name: 'Iron Golem', icon: '🗿', color: '#a0a8b8', r: 52, hpBase: 8000, hpPer: 3500, speed: 85, aggro: 650, keep: 110, taken: 0.85,
+        boss: true, loot: [3, 4], name: 'Iron Golem', icon: '🗿', color: '#a0a8b8', r: 52, hpBase: 8000, hpPer: 3500, speed: 85, aggro: 650, keep: 110, taken: 0.85,
         gun: { dmg: 45, speed: 430, ms: 2100, burst: 1, spread: 0, life: 2.2, explode: 110, big: true },
         slam: { r: 320, dmg: 90, ms: 5500 }, contact: 60,
         strikes: { n: 6, r: 120, dmg: 75, warn: 1300, ms: 8500, spread: 300 }
     },
     queen: {
-        boss: true, name: 'Hive Queen', icon: '🐝', color: '#ffd23f', r: 40, hpBase: 4200, hpPer: 2000, speed: 150, aggro: 800, keep: 340,
+        boss: true, loot: [1, 2], name: 'Hive Queen', icon: '🐝', color: '#ffd23f', r: 40, hpBase: 4200, hpPer: 2000, speed: 150, aggro: 800, keep: 340,
         gun: { dmg: 12, speed: 520, ms: 620, burst: 2, spread: 0.25, life: 1.9, homing: 0.9 },
         ring: { n: 14, ms: 7000 }, summon: { kind: 'drone', n: 3, ms: 10000, max: 8 }, contact: 35,
         charge: { ms: 6500, warn: 600, dur: 500, speed: 820 }
@@ -204,6 +204,7 @@ const BOSSES = Object.keys(MOBS).filter(k => MOBS[k].boss && !MOBS[k].zombie);
 const ZBOSSES = ['abomination', 'necro', 'brood', 'inferno', 'storm', 'judge', 'seraph', 'omega', 'overlord'];
 // Wer normal auf der Map herumlaeuft (Gewichte); Enforcer bewachen das Militaerlager
 // 6.12.1 (Max: Brutes oben zu stark fuers Early Game): nur noch im Keller (UNDER_MOBS)
+// 6.12.3 (Max: je schwerer der Raid-Boss, desto mehr Beute): loot [min, max] Items
 const ROAMERS = [['scav', 55], ['sniper', 14], ['drone', 13]];
 
 // Fuer den Browser: was er zum Zeichnen braucht

@@ -2500,7 +2500,7 @@ module.exports = function createArena(h, opts = {}) {
         const s = freeSpot(true);
         const m = spawnMob(kind, s.x, s.y, now);
         bossId = m.id;
-        announce(`${m.def.icon} The ${m.def.name} is roaming the map – kill it for Sovereign loot!`, 'boss');
+        announce(`${m.def.icon} The ${m.def.name} is roaming the map – kill it for big loot!`, 'boss');
     }
 
     function spawnDrop(now) {
@@ -2615,18 +2615,21 @@ module.exports = function createArena(h, opts = {}) {
         if (m.id === bossId) {
             bossId = null;
             nextBossAt = now + randIn(BOSS_EVERY) / SPEED;
-            // drei Beutel mit je einem Item, jeder darf sie sich schnappen
-            for (let k = 0; k < 3; k++) {
-                const a = k / 3 * Math.PI * 2;
+            // je ein Beutel pro Item, jeder darf sie sich schnappen. 6.12.3 (Max): Anzahl
+            // nach Schwierigkeit (def.loot), leichte Bosse 1–2, schwere bis 5
+            const [lo, hi] = def.loot || [3, 3];
+            const nLoot = lo + Math.floor(Math.random() * (hi - lo + 1));
+            for (let k = 0; k < nLoot; k++) {
+                const a = k / nLoot * Math.PI * 2;
                 const x = m.x + Math.cos(a) * 55, y = m.y + Math.sin(a) * 55;
                 dropBag(blocked(x, y, 10) ? m.x : x, blocked(x, y, 10) ? m.y : y, [I.generate('boss')], 'boss');
             }
             fxAt(m.x, m.y, { type: 'shBoom', x: Math.round(m.x), y: Math.round(m.y), r: 220, nuke: false });
-            const line = { killer: killer ? killer.name : null, victim: def.icon + ' ' + def.name, how: 'shot', loot: 3 };
+            const line = { killer: killer ? killer.name : null, victim: def.icon + ' ' + def.name, how: 'shot', loot: nLoot };
             feedLog.push(line);
             if (feedLog.length > 20) feedLog.shift();
             for (const q of players.values()) h.send(q.c, { type: 'shKill', ...line });
-            announce(`${def.icon} ${killer ? killer.name + ' killed' : 'Down goes'} the ${def.name}! 3 items dropped`, 'boss');
+            announce(`${def.icon} ${killer ? killer.name + ' killed' : 'Down goes'} the ${def.name}! ${nLoot} item${nLoot > 1 ? 's' : ''} dropped`, 'boss');
             if (killer && killer.account) h.accounts.stat(killer.account, s => { s.bossKills = (s.bossKills || 0) + 1; });
             if (killer) award(killer, L.XP.boss, 'boss');
             const total = [...m.dmgBy.values()].reduce((s, n) => s + n, 0);
