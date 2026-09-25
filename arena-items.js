@@ -52,7 +52,9 @@ const WEAPONS = {
     launcher: { name: 'Launcher', icon: '🚀', tier: 3, tag: 'demo', ms: 1000, dmg: 45, speed: 700, life: 1.4, spread: 0, pellets: 1, explode: 1, rocket: true },
     flamethrower: { name: 'Flamethrower', icon: '🔥', tier: 3, tag: 'demo', ms: 60, dmg: 5, speed: 520, life: 0.42, spread: 0.35, pellets: 1, flame: true, innate: { burn: 2 } },
     stormstaff: { name: 'Storm staff', icon: '🌩️', tier: 3, tag: 'mage', ms: 500, dmg: 34, speed: 1000, life: 1.0, spread: 0.02, pellets: 1, innate: { tesla: 1 } },
-    // Railgun: Strahl sofort ueber 3000, durch Waende und alle Gegner
+    // Railgun: Strahl sofort ueber 3000 durch alle Gegner. 25.09.2026 (Max: „wirklich zu op",
+    // Game-Breaker nur ab Mythic): stoppt an der ersten Wand – durch Waende gehen nur
+    // Strahlen mit thruWalls (Kamehameha, Venuzdonoa)
     railgun: { name: 'Railgun', icon: '⚡', tier: 4, ms: 1300, dmg: 250, speed: 3200, life: 0.95, spread: 0, pellets: 1, beam: true },
     arcaneorb: { name: 'Arcane orb', icon: '🔮', tier: 4, tag: 'mage', ms: 300, dmg: 36, speed: 900, life: 1.4, spread: 0.02, pellets: 1, innate: { homing: 2, pierce: 1 } },
     // Fat Boy: Mini-Nuke, 300 Radius, trifft auch den direkt Getroffenen voll
@@ -81,9 +83,9 @@ const WEAPONS = {
     amaterasu: { name: 'Amaterasu', icon: '👁️', tier: 4, unique: true, awake: 'When a burning enemy dies, the black flames jump to enemies nearby', ms: 380, dmg: 32, speed: 900, life: 1.0, spread: 0.02, pellets: 1, innate: { burn: 5 }, look: 'amaterasu', desc: 'Black flames that never stop burning (Naruto)' },
     spiritgun: { name: 'Spirit Gun', icon: '👉', tier: 4, unique: true, awake: 'Spirit Shotgun: every 4th shot fans out into 8 bullets', ms: 650, dmg: 170, speed: 1600, life: 1.2, spread: 0, pellets: 1, explode: 1, look: 'spirit', desc: 'Rei Gun – a finger-shot of pure spirit energy (Yu Yu Hakusho)' },
     gob: { name: 'Gate of Babylon', icon: '🌟', tier: 5, unique: true, awake: 'Enuma Elish: every 10 s a rain of swords crashes down on your target', ms: 650, dmg: 60, speed: 1300, life: 1.2, spread: 0.5, pellets: 7, portals: true, innate: { homing: 1 }, look: 'gob', desc: 'Golden portals open behind you and rain legendary weapons (Fate)' },
-    kamehameha: { name: 'Kamehameha', icon: '🌊', tier: 5, unique: true, awake: 'The beam holds for 1 s and follows your aim', ms: 2200, dmg: 560, speed: 3000, life: 0.4, spread: 0, pellets: 1, beam: true, beamW: 60, look: 'kame', desc: 'A massive energy wave through walls and everything in its way (Dragon Ball)' },
+    kamehameha: { name: 'Kamehameha', icon: '🌊', tier: 5, unique: true, awake: 'The beam holds for 1 s and follows your aim', ms: 2200, dmg: 560, speed: 3000, life: 0.4, spread: 0, pellets: 1, beam: true, thruWalls: true, beamW: 60, look: 'kame', desc: 'A massive energy wave through walls and everything in its way (Dragon Ball)' },
     dragonslayer: { name: 'Dragonslayer', icon: '⚔️', tier: 5, unique: true, awake: 'Berserker: every kill gives +10% fire rate for 5 s (stacks ×5)', ms: 1000, dmg: 115, speed: 1100, life: 0.22, spread: 1.2, pellets: 9, look: 'cleave', desc: 'Too big to be called a sword – cleaves everything in front of you (Berserk)' },
-    venuzdonoa: { name: 'Venuzdonoa', icon: '⚫', tier: 6, unique: true, awake: 'Everything it hits takes +50% damage from all sources for 5 s', ms: 1400, dmg: 950, speed: 3500, life: 0.4, spread: 0, pellets: 1, beam: true, beamW: 44, rift: true, look: 'venuz', desc: 'The sword of the Demon King: destroys even the concept of what it hits (Misfit of Demon King Academy)' },
+    venuzdonoa: { name: 'Venuzdonoa', icon: '⚫', tier: 6, unique: true, awake: 'Everything it hits takes +50% damage from all sources for 5 s', ms: 1400, dmg: 950, speed: 3500, life: 0.4, spread: 0, pellets: 1, beam: true, thruWalls: true, beamW: 44, rift: true, look: 'venuz', desc: 'The sword of the Demon King: destroys even the concept of what it hits (Misfit of Demon King Academy)' },
     hollowpurple: { name: 'Hollow Purple', icon: '🟣', tier: 6, unique: true, awake: 'The sphere drags enemies into its path', ms: 3000, dmg: 750, speed: 520, life: 3.2, spread: 0, pellets: 1, erase: true, hitR: 110, look: 'purple', desc: 'Imaginary technique: erases everything it touches, walls included (Jujutsu Kaisen)' },
     // ---------- 25.09.2026 (Max): zehn neue Unique-Waffen, stark durch Mechanik statt Werte ----------
     // combo: jeder Treffer innerhalb 1,5 s +10 % (max 10), bei 10 wird der naechste Schuss ein Wasserdrache
@@ -698,6 +700,7 @@ function weaponStats(item) {
         execute: L('execute') * 0.15,
         flame: !!b.flame,
         beam: !!b.beam,
+        thruWalls: !!b.thruWalls,
         nukeShell: !!b.nukeShell,
         hole: !!b.hole,
         rocket: !!b.rocket,

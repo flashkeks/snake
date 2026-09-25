@@ -2711,10 +2711,16 @@ module.exports = function createArena(h, opts = {}) {
         }
     }
 
-    // Railgun: sofortiger Strahl durch Waende und alle Gegner auf der Linie
+    // Railgun: sofortiger Strahl durch alle Gegner auf der Linie. Waende stoppen ihn
+    // (25.09.2026, Max: Railgun zu op) – ausser thruWalls (Kamehameha, Venuzdonoa)
     function railBeam(p, w, now, quiet) {
-        const len = w.speed * w.life;
         const dx = Math.cos(p.a), dy = Math.sin(p.a);
+        let len = w.speed * w.life;
+        if (!w.thruWalls) {
+            let d = R + 6;
+            while (d < len && !blocked(p.x + dx * d, p.y + dy * d, 2)) d += 8;
+            len = Math.min(len, d);
+        }
         const x1 = p.x + dx * (R + 6), y1 = p.y + dy * (R + 6);
         const x2 = p.x + dx * len, y2 = p.y + dy * len;
         if (!quiet) fxAt(p.x, p.y, { type: 'shBeam', x1: Math.round(x1), y1: Math.round(y1), x2: Math.round(x2), y2: Math.round(y2), owner: p.id, look: w.look || undefined, bw: w.beamW || undefined });

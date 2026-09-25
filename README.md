@@ -2848,3 +2848,100 @@ Test (13/13): Einstieg nimmt Items aus dem Lager, `left` loggt sie voll, Rückga
 die Admin-API, zweite Rückgabe abgelehnt, Extraction nicht rückgebbar, laufender Raid
 abgelehnt, Absturz nach Neustart erkannt, Dateimodus 600. Dazu Playwright-Screenshot des
 Admin-Panels.
+
+## ⚡ Railgun-Nerf und DPS-Test aller Waffen (25.09.2026, Max)
+
+Max: „Railgun ist zu op … game breaking stuff sollte nur bei Ultra oder ggf. Mythic
+Waffen sein. Nerf 1: kein Schießen durch Wände."
+
+**Nerf:** Der Railgun-Strahl endet an der ersten Wand (`railBeam` tastet die Linie in
+8-px-Schritten ab, `blocked(x, y, 2)`), Gegner dahinter bekommen nichts, und der
+Leuchtstrahl im Client endet ebenfalls an der Wand. Durch Wände gehen nur noch Strahlen
+mit `thruWalls` am Waffen-Eintrag: **Kamehameha** (ab Mythic) und **Venuzdonoa** (Ultra).
+Hollow Purple (Ultra) radiert Wände ohnehin aus, das bleibt. Probe mit Wand zwischen
+Schütze und Dummy: Railgun vorher 248 DPS, jetzt 0; Kamehameha 375, Venuzdonoa 1.526
+(unverändert).
+
+**DPS-Test** (`node tools/dps.js --md`): echte Simulation in der Engine, keine Formel.
+Spieler im Creative Mode auf leerer Fläche, 12 s Dauerfeuer auf einen stehenden
+Trainings-Dummy (Brute, 1e9 HP), gezählt von Sekunde 2 bis 12. Abstand 300 px, bei kurzer
+Reichweite 60 % davon. Drin: Brennen, Explosionen, Tesla, Combo, Hochdrehen, Awakenings
+ab Lv 20, Streuung. Nicht drin: Zielen auf bewegliche Gegner, Effekte (Mods),
+Spieler-Skills (`dmgMul` = 1).
+
+- **Basis** = niedrigste Stufe der Basis, Level 1
+- **Max** = höchste Stufe (`maxTierOf`), Level 30
+- **Max + PaP 5** = dazu Pack-a-Punch 5 (Zombies: ×1,6⁵ ≈ ×10,5 Schaden, ×1,12⁵ ≈ ×1,76 Feuerrate)
+- **Papier** = Schaden × Kugeln / Schussabstand, ohne Treffer-Effekte – zeigt, wo die
+  Simulation durch Streuung oder Effekte abweicht
+
+| # | Waffe | Stufen | DPS Basis | DPS Max (Lv 30) | DPS Max + PaP 5 | Papier Basis | Papier Max |
+|---|---|---|---:|---:|---:|---:|---:|
+| 1 | ★ Venuzdonoa | ✦ Ultra rare–✦ Ultra rare | 1.526 | 3.755 | 72.122 | 1.018 | 1.680 |
+| 2 | ★ Rasengan | Legendary–✦ Ultra rare | 696 | 1.916 | 34.045 | 207 | 413 |
+| 3 | ★ Gate of Babylon | Mythic–✦ Ultra rare | 844 | 1.589 | 28.981 | 866 | 1.599 |
+| 4 | ★ Kamehameha | Mythic–✦ Ultra rare | 375 | 1.386 | 13.947 | 341 | 630 |
+| 5 | ★ Spirit Gun | Legendary–✦ Ultra rare | 632 | 1.010 | 19.645 | 324 | 647 |
+| 6 | ★ Chainsaw | Legendary–✦ Ultra rare | 562 | 976 | 15.249 | 207 | 413 |
+| 7 | ★ Mjölnir | Mythic–✦ Ultra rare | 362 | 907 | 15.845 | 181 | 334 |
+| 8 | ★ Spear of Longinus | Mythic–✦ Ultra rare | 434 | 852 | 14.626 | 292 | 540 |
+| 9 | ★ Dragonslayer | Mythic–✦ Ultra rare | 462 | 817 | 16.352 | 1.387 | 2.562 |
+| 10 | ★ Nichirin Blade | Legendary–✦ Ultra rare | 400 | 725 | 13.719 | 218 | 435 |
+| 11 | Staff of the Archmage | Mythic–✦ Ultra rare | 402 | 723 | 13.813 | 423 | 782 |
+| 12 | Fat Boy | Mythic–✦ Ultra rare | 322 | 646 | 10.834 | 64 | 119 |
+| 13 | ★ Hollow Purple | ✦ Ultra rare–✦ Ultra rare | 338 | 646 | 10.157 | 375 | 619 |
+| 14 | ★ Portal Gun | ✦ Ultra rare–✦ Ultra rare | 360 | 594 | 10.292 | 375 | 619 |
+| 15 | ★ Zangetsu | Legendary–✦ Ultra rare | 210 | 560 | 9.976 | 215 | 429 |
+| 16 | Railgun | Legendary–✦ Ultra rare | 248 | 484 | 9.028 | 238 | 476 |
+| 17 | ★ Kagune | Mythic–✦ Ultra rare | 271 | 474 | 8.739 | 562 | 1.037 |
+| 18 | ★ Revy's Cutlasses | Legendary–✦ Ultra rare | 182 | 393 | 5.471 | 213 | 424 |
+| 19 | ★ Gum-Gum Pistol | Legendary–✦ Ultra rare | 140 | 371 | 7.448 | 143 | 286 |
+| 20 | Singularity | ✦ Ultra rare–✦ Ultra rare | 230 | 363 | 7.059 | 84 | 139 |
+| 21 | Golden Deagle | Rare–✦ Ultra rare | 151 | 331 | 6.207 | 159 | 358 |
+| 22 | Minigun | Epic–✦ Ultra rare | 111 | 311 | 3.259 | 147 | 314 |
+| 23 | ★ Senbonzakura | ✦ Ultra rare–✦ Ultra rare | 180 | 310 | 5.417 | 92 | 152 |
+| 24 | Arcane orb | Legendary–✦ Ultra rare | 134 | 294 | 4.957 | 149 | 297 |
+| 25 | Rifle | Common–Epic | 134 | 278 | 3.917 | 147 | 281 |
+| 26 | Launcher | Epic–✦ Ultra rare | 104 | 232 | 4.063 | 52 | 111 |
+| 27 | ★ Amaterasu | Legendary–✦ Ultra rare | 129 | 223 | 3.714 | 104 | 208 |
+| 28 | LMG | Common–Epic | 99 | 221 | 3.449 | 124 | 237 |
+| 29 | Crossbow | Rare–✦ Ultra rare | 92 | 211 | 3.950 | 96 | 217 |
+| 30 | Revolver | Uncommon–Legendary | 101 | 187 | 3.448 | 105 | 205 |
+| 31 | Throwing knives | Common–Epic | 84 | 177 | 2.981 | 93 | 179 |
+| 32 | Micro Uzi | Common–Epic | 71 | 176 | 1.857 | 100 | 191 |
+| 33 | DMR | Common–Epic | 91 | 176 | 3.184 | 92 | 177 |
+| 34 | Flamethrower | Epic–✦ Ultra rare | 100 | 176 | 3.443 | 97 | 206 |
+| 35 | SMG | Common–Epic | 101 | 168 | 2.653 | 111 | 213 |
+| 36 | Sniper | Common–Epic | 81 | 165 | 2.828 | 82 | 157 |
+| 37 | Fire staff | Rare–✦ Ultra rare | 80 | 163 | 2.730 | 68 | 154 |
+| 38 | Carbine | Common–Epic | 97 | 161 | 3.383 | 100 | 191 |
+| 39 | Storm staff | Epic–✦ Ultra rare | 75 | 161 | 2.916 | 79 | 168 |
+| 40 | Pistol | Common–Epic | 76 | 143 | 2.653 | 77 | 147 |
+| 41 | Frost staff | Rare–✦ Ultra rare | 63 | 140 | 2.523 | 64 | 143 |
+| 42 | Musket | Common–Epic | 74 | 140 | 2.749 | 75 | 144 |
+| 43 | Nail gun | Common–Epic | 76 | 127 | 2.653 | 80 | 153 |
+| 44 | Slingshot | Common–Epic | 55 | 103 | 1.920 | 58 | 111 |
+| 45 | Apprentice wand | Common–Epic | 54 | 102 | 1.885 | 55 | 104 |
+| 46 | Double barrel | Common–Epic | 53 | 88 | 1.676 | 126 | 242 |
+| 47 | ★ Killer Queen | Mythic–✦ Ultra rare | 47 | 84 | 1.612 | 49 | 91 |
+| 48 | Shotgun | Common–Epic | 42 | 79 | 1.466 | 129 | 247 |
+| 49 | Flare gun | Common–Epic | 40 | 70 | 1.179 | 34 | 66 |
+| 50 | Burst rifle | Common–Epic | 33 | 62 | 1.152 | 105 | 200 |
+
+Was auffällt:
+
+- **Railgun** liegt beim reinen DPS nur auf Platz 16 (248 → 484). Op war sie nicht über
+  den Schaden, sondern über Wände + unbegrenzten Durchschlag + 3.000 px sofort. Mit dem
+  Nerf bleibt Durchschlag und Reichweite.
+- **Rasengan** (ab Legendary) steht auf Platz 2, über allen Mythics außer keinem Ultra –
+  die Explosion (2,4) trifft den Dummy zusätzlich zum Direkttreffer. Legendary mit
+  Mythic-/Ultra-Schaden.
+- **Spirit Gun, Chainsaw, Nichirin** (alle ab Legendary) liegen ebenfalls über den
+  meisten Mythics.
+- **Tick-Grenze:** Ein Tick dauert 33 ms, schneller kann keine Waffe schießen. Minigun
+  und Micro Uzi stoßen mit PaP 5 daran (nur ×10 statt ×18,5).
+- **Kamehameha-Awakening ignoriert PaP:** der gehaltene Strahl (Lv 20) rechnet mit
+  `dmgMul`, nicht mit `pap` – daher nur ×10 mit PaP.
+- **Killer Queen** zählt ohne Zünden (Taste R), der echte Wert liegt deutlich höher.
+- **Schrotflinten, Burst rifle, Double barrel**: auf 300 px geht der Großteil der Kugeln
+  daneben (Papier 129 → Simulation 42). Aus der Nähe viel stärker.
