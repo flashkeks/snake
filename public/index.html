@@ -6599,7 +6599,7 @@ body.watch-mode #world-switch {
                     <div class="cs-tabs" id="hub-tabs">
                         <button type="button" data-hubtab="play" data-group="modes">🎮 Game Modes</button>
                         <button type="button" data-hubtab="inv" data-group="inv">🎒 Inventory</button>
-                        <button type="button" data-hubtab="fuse">🔥 Fuse</button>
+                        <button type="button" data-hubtab="profile" id="hub-skills-tab">🌳 Skills</button>
                         <button type="button" data-hubtab="cases">🎁 Cases</button>
                         <button type="button" data-hubtab="shop">🛒 Shop</button>
                     </div>
@@ -10977,12 +10977,16 @@ setInterval(() => {
 
 // ---------- Profil: Level, Stat-Punkte, Skill Tree ----------
 // 6.5: Baum des gewaehlten Modus; Stats gelten fuer alle
-const profSkills = () => (hub.prog.trees && hub.prog.trees[hubMode] ? hub.prog.trees[hubMode].skills : {}) || {};
-const profCat = () => lvlCat.modes ? lvlCat.modes[hubMode] : { skills: lvlCat.skills, trees: lvlCat.trees };
+// 25.09.2026 (Max): eigener Tab statt Fuse, Umschalter Skills / Skills Zombie Mode –
+// Extraction und PvP teilen sich einen Baum (Server: arena-level TREE_OF)
+let skillTree = 'extract';
+const TREE_NAMES = { extract: 'Extraction & PvP', zombies: 'Zombie Mode' };
+const profSkills = () => (hub.prog.trees && hub.prog.trees[skillTree] ? hub.prog.trees[skillTree].skills : {}) || {};
+const profCat = () => lvlCat.modes ? lvlCat.modes[skillTree] : { skills: lvlCat.skills, trees: lvlCat.trees };
 
 function profState() {
     const pr = hub.prog;
-    if (!profDraft || profDraft.mode !== hubMode) profDraft = { mode: hubMode, stats: { ...pr.stats }, skills: { ...profSkills() } };
+    if (!profDraft || profDraft.mode !== skillTree) profDraft = { mode: skillTree, stats: { ...pr.stats }, skills: { ...profSkills() } };
     const sum = o => Object.values(o).reduce((s, n) => s + n, 0);
     const statFree = (pr.level - 1) * lvlCat.statPer - sum(profDraft.stats);
     const skillFree = (pr.level - 1) - sum(profDraft.skills);
@@ -11027,8 +11031,8 @@ function hubProfile() {
             `<button type="button" data-stat="${k}" data-d="1" ${statFree <= 0 || v >= lvlCat.statMax ? 'disabled' : ''}>+</button></div>`;
     }
     html += '</div><div class="prof-box">' +
-        `<h4><span>🌳 ${HUB_MODES[hubMode]} skill tree</span><span class="${skillFree ? 'pend' : 'hint'}">${skillFree} skill point${skillFree === 1 ? '' : 's'} free</span></h4>` +
-        `<div class="hint" style="margin-bottom:8px">Every mode has its own tree with its own points – your level and stats are shared. ${hubMode === 'zombies' ? 'This tree only works in Zombies. ' : ''}Click a skill to add a rank, right-click to take back an unsaved rank. Gold numbers = level needed.</div><div class="trees">`;
+        `<h4><span>🌳 ${TREE_NAMES[skillTree]} skill tree</span><span class="${skillFree ? 'pend' : 'hint'}">${skillFree} skill point${skillFree === 1 ? '' : 's'} free</span></h4>` +
+        `<div class="hint" style="margin-bottom:8px">${skillTree === 'zombies' ? 'This tree only works in Zombies and has its own points. ' : 'One tree for Extraction and PvP. Zombies has its own tree with its own points. '}Level and stats are shared. Click a skill to add a rank, right-click to take back an unsaved rank. Gold numbers = level needed.</div><div class="trees">`;
     const PC = profCat();
     for (const [tk, t] of Object.entries(PC.trees)) {
         html += `<div class="tree" style="--tc:${t.color}"><h5 style="color:${t.color}">${t.name}</h5>`;
@@ -11047,14 +11051,14 @@ function hubProfile() {
         }
         html += '</div>';
     }
-    const cost = pr.resetCost, tcost = (pr.trees && pr.trees[hubMode] && pr.trees[hubMode].resetCost) || cost;
+    const cost = pr.resetCost, tcost = (pr.trees && pr.trees[skillTree] && pr.trees[skillTree].resetCost) || cost;
     const money = c => `🪙 ${c.coins.toLocaleString('en-US')} + ⚙️ ${c.scrap.toLocaleString('en-US')}`;
     html += '</div></div></div><div class="prof-actions">' +
         `<button type="button" class="gold" data-prof="apply" ${changed ? '' : 'disabled'}>✔ Save points</button>` +
         `<button type="button" class="ghost" data-prof="discard" ${changed ? '' : 'disabled'}>Discard</button>` +
         `<span style="flex:1"></span><span class="hint">Resets get 50% pricier each time</span>` +
-        `<button type="button" class="danger" data-prof="reset" data-what="tree">↺ Reset ${HUB_MODES[hubMode]} tree · ${money(tcost)}</button>` +
-        `<button type="button" class="danger" data-prof="reset" data-what="stats">↺ Reset stats (all modes) · ${money(cost)}</button></div>`;
+        `<button type="button" class="danger" data-prof="reset" data-what="tree">↺ Reset ${TREE_NAMES[skillTree]} tree · ${money(tcost)}</button>` +
+        `<button type="button" class="danger" data-prof="reset" data-what="stats">↺ Reset stats (all trees) · ${money(cost)}</button></div>`;
     return html;
 }
 
@@ -11076,15 +11080,15 @@ function profClick(t, ds, e) {
         }
         return hubDraw();
     }
-    if (ds.prof === 'apply') return wsSend({ type: 'arProg', op: 'apply', mode: hubMode, stats: profDraft.stats, skills: profDraft.skills });
+    if (ds.prof === 'apply') return wsSend({ type: 'arProg', op: 'apply', mode: skillTree, stats: profDraft.stats, skills: profDraft.skills });
     if (ds.prof === 'discard') {
         profDraft = null;
         return hubDraw();
     }
     if (ds.prof === 'reset') {
         const stats = ds.what === 'stats';
-        const c = stats ? pr.resetCost : pr.trees[hubMode].resetCost;
-        uiConfirm(`Reset ${stats ? 'ALL stat points (they count for every mode)' : `your ${HUB_MODES[hubMode]} skill tree`}?\nCosts ${c.coins.toLocaleString('en-US')} coins and ${c.scrap.toLocaleString('en-US')} scrap. You get the points back to spend again.`, { title: 'Reset points', ok: 'Reset', danger: true }).then(ok => ok && wsSend({ type: 'arProg', op: 'reset', mode: hubMode, what: stats ? 'stats' : 'tree' }));
+        const c = stats ? pr.resetCost : pr.trees[skillTree].resetCost;
+        uiConfirm(`Reset ${stats ? 'ALL stat points (they count for every mode)' : `your ${TREE_NAMES[skillTree]} skill tree`}?\nCosts ${c.coins.toLocaleString('en-US')} coins and ${c.scrap.toLocaleString('en-US')} scrap. You get the points back to spend again.`, { title: 'Reset points', ok: 'Reset', danger: true }).then(ok => ok && wsSend({ type: 'arProg', op: 'reset', mode: skillTree, what: stats ? 'stats' : 'tree' }));
     }
 }
 
@@ -11265,9 +11269,9 @@ function hubDraw() {
 }
 function hubDrawRaw() {
     if (!arenaCat) return;
-    const invGroup = ['inv', 'salvage'].includes(hubTab);
+    const invGroup = ['inv', 'salvage', 'fuse'].includes(hubTab);
     // 6.5: Game Modes = Modus waehlen, darunter Play / Loadout (equip) / Skills (profile)
-    const modeGroup = ['play', 'equip', 'profile'].includes(hubTab);
+    const modeGroup = ['play', 'equip'].includes(hubTab);
     document.querySelectorAll('#hub-tabs [data-hubtab]').forEach(b => b.classList.toggle('on', b.dataset.hubtab === hubTab || (invGroup && b.dataset.group === 'inv') || (modeGroup && b.dataset.group === 'modes')));
     if (hub && hub.prog) $('hub-lv').textContent = `🎖️ Lv ${hub.prog.level}`;
     $('hub-coins').textContent = me ? me.coins.toLocaleString('en-US') : '–';
@@ -11277,6 +11281,10 @@ function hubDrawRaw() {
         const used = hub.inv.length, max = hub.invMax || arenaCat.invMax, tab = document.querySelector('#hub-tabs [data-hubtab="inv"]');
         const full = used >= max || (hub.overflow || []).length > 0;
         if (tab) tab.innerHTML = `🎒 Inventory${full ? ' <b class="inv-full">FULL</b>' : used >= max * 0.9 ? ` <b class="inv-near">${used}/${max}</b>` : ''}`;
+    }
+    if (hub && hub.prog && hub.prog.skillFree && $('hub-skills-tab')) {
+        const n = (hub.prog.skillFree.extract > 0 ? hub.prog.skillFree.extract : 0) + (hub.prog.skillFree.zombies > 0 ? hub.prog.skillFree.zombies : 0);
+        $('hub-skills-tab').innerHTML = `🌳 Skills${n ? ` <span class="pend">+${n}</span>` : ''}`;
     }
     itTip.hidden = true;
     TIP.clear();
@@ -11294,7 +11302,9 @@ function hubDrawRaw() {
             `If you die or leave, the killer gets it all. Hide in buildings, bushes and smoke – nobody outside sees you until you shoot.</div></div>` +
             (hubLast ? `<div class="raid-result ${hubLast.result}">${hubLast.html}</div>` : ''));
     } else if (hubTab === 'profile') {
-        html = hubProfile();
+        const free = k => hub.prog && hub.prog.skillFree && hub.prog.skillFree[k] > 0 ? ` <span class="pend">+${hub.prog.skillFree[k]}</span>` : '';
+        html = `<div class="cr-diffs hub-sub">${[['extract', '🌳 Skills'], ['zombies', '🧟 Skills Zombie Mode']].map(([k, n]) =>
+            `<button type="button" data-skilltree="${k}" class="${skillTree === k ? 'on' : ''}">${n}${free(k)}</button>`).join('')}</div>` + hubProfile();
     } else if (hubTab === 'equip') {
         html = `<div class="hint lo-mode">${HUB_MODES[hubMode]} loadout${hubMode === 'extract' ? ' – these items really go into the raid' : ' – copies only, you never lose anything here'}</div>` +
             hubPresets() + hubLoadout() + (hubPick ? hubPicker() : hubStash(filters));
@@ -11363,7 +11373,7 @@ function hubDrawRaw() {
             `<div class="hint">Armor, bigger backpacks, rarer weapons and special consumables only come from cases and crates.</div>`;
     }
     if (invGroup) {
-        hubInvLast = hubTab;
+        hubInvLast = hubTab === 'fuse' ? 'inv' : hubTab;
         html = `<div class="cr-diffs hub-sub">${[['inv', '📋 List'], ['salvage', '♻️ Salvage']].map(([k, n]) =>
             `<button type="button" data-hubsub="${k}" class="${hubTab === k ? 'on' : ''}">${n}</button>`).join('')}</div>` + html;
     }
@@ -11373,8 +11383,8 @@ function hubDrawRaw() {
             `<div class="mode ${hubMode === 'extract' ? 'on' : ''}" data-mode="extract"><b>🪂 Extraction</b><small>Loot, enemies, bosses, extract alive. Everything you take in is at risk.</small></div>` +
             `<div class="mode ${hubMode === 'pvp' ? 'on' : ''}" data-mode="pvp"><b>⚔️ PvP arena</b><small>1v1 · 2v2 · 3v3 lobbies, best of 5 – you never lose items</small></div>` +
             `<div class="mode ${hubMode === 'zombies' ? 'on' : ''}" data-mode="zombies"><b>🧟 Zombies</b><small>Survive the waves, up to 4 players, buy guns and perks – no item loss · earn coins for kills and waves</small></div></div>` +
-            `<div class="cr-diffs hub-sub">${[['play', '▶ Play'], ['equip', '🎒 Loadout'], ['profile', '🌳 Skills']].map(([k, n]) =>
-                `<button type="button" data-hubsub="${k}" class="${hubTab === k ? 'on' : ''}">${n}${k === 'profile' && hub.prog && hub.prog.skillFree && hub.prog.skillFree[hubMode] > 0 ? ` <span class="pend">+${hub.prog.skillFree[hubMode]}</span>` : ''}</button>`).join('')}</div>` + html;
+            `<div class="cr-diffs hub-sub">${[['play', '▶ Play'], ['equip', '🎒 Loadout']].map(([k, n]) =>
+                `<button type="button" data-hubsub="${k}" class="${hubTab === k ? 'on' : ''}">${n}</button>`).join('')}</div>` + html;
     }
     $('hub-body').innerHTML = html;
     if (hubTab === 'cases') pwIdle('ar-wheel', arWheelSegs());
@@ -11398,6 +11408,7 @@ function hubActions(it) {
         b += `<button type="button" class="ghost" data-utilset="1" data-base="${it.base}">Put ${Math.min(n, def.stack)} in slot G</button>`;
     }
     if (eq) b += `<button type="button" class="ghost" data-unequip="${GEAR_SLOTS.find(s => hubLO()[s] === it.uid)}">Take off</button>`;
+    if (canFuse(it)) b += `<button type="button" class="gold" data-fuseopen="${esc(it.uid)}">🔥 Fuse</button>`;
     // Schutz (6.9): geschuetzte Items lassen sich nicht verschrotten
     b += `<button type="button" class="ghost" data-fav="${it.uid}" data-on="${it.fav ? 0 : 1}">${it.fav ? '☆ Unprotect' : '⭐ Protect'}</button>`;
     b += `<button type="button" class="danger" data-salvage="${it.uid}" ${it.fav ? 'disabled title="Protected"' : ''}>♻️ Salvage (+${it.sv || 0} ⚙️)</button>`;
@@ -11560,7 +11571,7 @@ $('hub-tabs').addEventListener('click', e => {
     if (!b || hubCaseBusy) return;
     // Inventory merkt sich den Unter-Tab (Equip, List, Salvage)
     hubTab = b.dataset.group === 'inv' ? (['inv', 'salvage'].includes(hubTab) ? hubTab : hubInvLast)
-        : b.dataset.group === 'modes' ? (['play', 'equip', 'profile'].includes(hubTab) ? hubTab : hubModesLast) : b.dataset.hubtab;
+        : b.dataset.group === 'modes' ? (['play', 'equip'].includes(hubTab) ? hubTab : hubModesLast) : b.dataset.hubtab;
     hubDraw();
 });
 $('hub-lv').onclick = () => { if (!hubCaseBusy) { hubTab = 'profile'; hubDraw(); } };
@@ -11613,6 +11624,11 @@ function fuseUseless(main, others) {
     }
     return -1;
 }
+// Kann dieses Item Haupt-Item eines Fuse sein? (mind. eine Kopie, die es verbessert)
+function canFuse(it) {
+    if (!it || (it.kind !== 'weapon' && it.kind !== 'armor')) return false;
+    return hub.inv.some(o => o.uid !== it.uid && o.kind === it.kind && o.base === it.base && !o.fav && fuseUseless(it, [o]) < 0);
+}
 function hubFuse() {
     const cost = arenaCat.fuse.cost;
     // 6.11.1 (Max): Waffen und Ruestung
@@ -11621,14 +11637,7 @@ function hubFuse() {
     if (!main) {
         fuseMain = null;
         fuseSel.clear();
-        const can = items.filter(x => items.some(o => o.uid !== x.uid && o.kind === x.kind && o.base === x.base && !o.fav && fuseUseless(x, [o]) < 0)).sort((a, b) => tierIdx(b.tier) - tierIdx(a.tier) || itMods(b).length - itMods(a).length);
-        const grid = list => `<div class="inv-grid">${list.map(it => itemCard(it, { eq: hubEquippedAs(it.uid), n: 0 }).replace('class="it ', 'data-fusemain="' + esc(it.uid) + '" class="it ')).join('') || '<div class="hint">Nothing to fuse yet – you need one with an effect and a copy that can improve it.</div>'}</div>`;
-        return `<div class="hint">🔥 <b>Fuse</b>: pick a main weapon or armor piece, then feed it copies of the same item. Same effect on the same level → guaranteed one level up (e.g. Sharp I + Sharp I = Sharp II, Plating I + Plating I = Plating II). ` +
-            `A different effect only sticks as a <b>2nd</b> effect with ${Math.round(arenaCat.fuse.add[1] * 100)}% and as a <b>3rd</b> with ${Math.round(arenaCat.fuse.add[2] * 100)}%. ` +
-            `Every item you fuse in costs <b>${cost} ⚙️</b> and is gone afterwards. The main item keeps its rarity. ` +
-            `The main item needs at least one effect, and you can only fuse in items that actually improve it.</div>` +
-            `<h4 style="margin:12px 0 6px">1 · Pick your main weapon</h4>` + grid(can.filter(x => x.kind === 'weapon')) +
-            `<h4 style="margin:12px 0 6px">… or your main armor piece</h4>` + grid(can.filter(x => x.kind === 'armor'));
+        return '<div class="hint">That item is gone. Pick one in 🎒 Inventory and press 🔥 Fuse.</div><button type="button" class="ghost" data-fuseback="1">↩ Back to inventory</button>';
     }
     const same = items.filter(x => x.kind === main.kind && x.base === main.base && x.uid !== main.uid).sort((a, b) => itMods(b).length - itMods(a).length);
     for (const u of [...fuseSel]) if (!same.some(x => x.uid === u && !x.fav)) fuseSel.delete(u);
@@ -11640,8 +11649,11 @@ function hubFuse() {
     }
     const useless = it => !fuseSel.has(it.uid) && fuseUseless(main, [...picked, it]) >= 0;
     const pv = fusePreview(main, picked), total = cost * picked.length;
-    return `<div class="fuse-main"><div><h4 style="margin:0 0 6px">Main ${main.kind === 'armor' ? 'armor' : 'weapon'}</h4>${itemCard(main, { eq: hubEquippedAs(main.uid) })}` +
-        `<button type="button" class="ghost" data-fuseback="1">↩ Pick another</button></div>` +
+    return `<div class="hint">🔥 <b>Fuse</b>: feed copies of the same item into the main one. Same effect on the same level → guaranteed one level up. ` +
+        `A different effect only sticks as a <b>2nd</b> effect with ${Math.round(arenaCat.fuse.add[1] * 100)}% and as a <b>3rd</b> with ${Math.round(arenaCat.fuse.add[2] * 100)}%. ` +
+        `Every item you fuse in costs <b>${cost} ⚙️</b> and is gone afterwards; half of its item XP moves over.</div>` +
+        `<div class="fuse-main"><div><h4 style="margin:0 0 6px">Main ${main.kind === 'armor' ? 'armor' : 'weapon'}</h4>${itemCard(main, { eq: hubEquippedAs(main.uid) })}` +
+        `<button type="button" class="ghost" data-fuseback="1">↩ Back to inventory</button></div>` +
         `<div class="fuse-pv"><h4 style="margin:0 0 6px">Result</h4>` +
         (picked.length ? (pv.sure.length ? `<div><b>Guaranteed</b><br>${pv.sure.join('<br>')}</div>` : '<div class="hint">No guaranteed upgrade.</div>') +
             (pv.maybe.length ? `<div style="margin-top:6px"><b>Chance</b><br>${pv.maybe.join('<br>')}</div>` : '') : '<div class="hint">Pick copies below to fuse in.</div>') +
@@ -11652,7 +11664,7 @@ function hubFuse() {
 }
 function fuseClick(t, ds) {
     if (ds.fusemain) { fuseMain = ds.fusemain; fuseSel.clear(); hubDraw(); return true; }
-    if (ds.fuseback) { fuseMain = null; fuseSel.clear(); hubDraw(); return true; }
+    if (ds.fuseback) { hubSel = fuseMain || hubSel; fuseMain = null; fuseSel.clear(); hubTab = 'inv'; hubDraw(); return true; }
     if (ds.fusefav) { showMsg('hub-msg', '⭐ Protected – unprotect it in the Inventory first', ''); return true; }
     if (ds.fusenope) { showMsg('hub-msg', 'That one would not improve your item', ''); return true; }
     if (ds.fusepick) { fuseSel.has(ds.fusepick) ? fuseSel.delete(ds.fusepick) : fuseSel.add(ds.fusepick); hubDraw(); return true; }
@@ -11696,7 +11708,19 @@ $('hub-body').addEventListener('click', e => {
         hubTab = ds.hubsub;
         return hubDraw();
     }
+    if (ds.skilltree) {
+        skillTree = ds.skilltree;
+        profDraft = null;
+        return hubDraw();
+    }
     if (hubTab === 'profile') return profClick(t, ds, e);
+    // 25.09.2026: Fuse startet am Item (Inventar rechts), nicht mehr ueber einen Tab
+    if (ds.fuseopen) {
+        fuseMain = ds.fuseopen;
+        fuseSel.clear();
+        hubTab = 'fuse';
+        return hubDraw();
+    }
     if (hubTab === 'fuse' && fuseClick(t, ds)) return;
     if (ds.preset) {
         const i = ds.i === undefined ? undefined : Number(ds.i);

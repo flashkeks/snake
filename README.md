@@ -2705,3 +2705,19 @@ mit 3–4 Stuetzpunkten und 2 Friendly-Bereichen. Entscheidungen: versicherte It
 - Tokens liegen im Konto (`arena.tokens`), Statistik `missions`, `missions_DIFF`.
 
 **Noch offen:** Tokens im Hub anzeigen, weitere Missionsarten.
+
+## 🌳 Hub: Skills-Tab statt Fuse, ein Baum fuer Extraction + PvP (25.09.2026)
+Max: „Fuse Menue weg, stattdessen … Button im Inventar … dort wo das Fuse-Menue ist,
+ziehen die Skills hin … triggern zwischen Skills und Skills Zombie Mode. Die Skills fuer
+PvP und Extraction werden zu einem."
+
+- **Fuse** hat keinen Tab mehr. Im Inventar steht rechts beim Item ein 🔥-Fuse-Knopf,
+  sobald es eine Kopie gibt, die es verbessert (`canFuse`). Der Knopf oeffnet die
+  bekannte Fuse-Ansicht mit dem Item als Haupt-Item, „Back to inventory" fuehrt zurueck.
+- **Skills** sitzen im alten Fuse-Tab (Game Modes hat nur noch Play / Loadout).
+  Umschalter „🌳 Skills" (Extraction & PvP) / „🧟 Skills Zombie Mode"; der Tab zaehlt
+  freie Punkte beider Baeume.
+- **Server** (`arena-level.js`): `TREE_OF(mode)` – PvP nutzt den Baum `extract`.
+  Migration in `ensureTrees`: hatte ein Konto getrennte Baeume, bleibt der mit mehr
+  vergebenen Punkten, die Punkte des anderen sind wieder frei (Level bestimmt die
+  Summe, verloren geht nichts ausser der Verteilung). Resets = Maximum beider.

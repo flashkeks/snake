@@ -656,7 +656,7 @@ module.exports = function createAccounts(dataDir) {
                 a.prog.xp = v;
                 const pts = arenaLevel.pointsOf(a.prog);
                 if (pts.statFree < 0) a.prog.stats = {};
-                for (const [m, free] of Object.entries(pts.skillFree)) if (free < 0) a.prog.trees[m].skills = {};
+                for (const [m, free] of Object.entries(pts.skillFree)) if (free < 0) arenaLevel.treeOf(a.prog, m).skills = {};
             } else return 'unknown op';
             // Loadout zeigt nie auf Geloeschtes
             const l = a.loadout || {};

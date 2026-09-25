@@ -129,17 +129,28 @@ const ZTREES = { slayer: { name: 'Slayer', color: '#ff5b5b' }, survivor: { name:
 const MODES = ['extract', 'pvp', 'zombies'];
 const skillsFor = mode => mode === 'zombies' ? ZSKILLS : SKILLS;
 
-// Alte Konten: ein Baum fuer alles -> Extraction und PvP bekommen ihn (keiner verliert etwas)
+// Baeume (25.09.2026, Max: „Die Skills fuer PvP und Extraction werden zu einem"):
+// Extraction und PvP teilen sich den Baum 'extract', Zombies hat seinen eigenen.
+// MODES bleibt fuer Loadouts/Presets, TREE_OF sagt, welcher Baum fuer einen Modus gilt.
+const TREE_OF = mode => mode === 'zombies' ? 'zombies' : 'extract';
+const sumOf = t => Object.values((t && t.skills) || {}).reduce((s, n) => s + n, 0);
+
+// Alte Konten: ein Baum fuer alles -> Extraction bekommt ihn (keiner verliert etwas).
+// Hatte jemand getrennte Baeume fuer Extraction und PvP, bleibt der groessere; die Punkte
+// des anderen werden frei (sie sind nur „verbraucht", nicht gekauft – Level bestimmt die Summe).
 function ensureTrees(pr) {
-    if (!pr.trees) {
-        const old = pr.skills || {};
-        pr.trees = { extract: { skills: { ...old }, resets: 0 }, pvp: { skills: { ...old }, resets: 0 }, zombies: { skills: {}, resets: 0 } };
+    if (!pr.trees) pr.trees = { extract: { skills: { ...(pr.skills || {}) }, resets: 0 }, zombies: { skills: {}, resets: 0 } };
+    if (pr.trees.pvp) {
+        const e = pr.trees.extract, p = pr.trees.pvp;
+        if (!e || sumOf(p) > sumOf(e)) pr.trees.extract = { skills: { ...p.skills }, resets: Math.max(p.resets || 0, (e && e.resets) || 0) };
+        else e.resets = Math.max(e.resets || 0, p.resets || 0);
+        delete pr.trees.pvp;
     }
-    for (const m of MODES) pr.trees[m] = pr.trees[m] || { skills: {}, resets: 0 };
+    for (const m of ['extract', 'zombies']) pr.trees[m] = pr.trees[m] || { skills: {}, resets: 0 };
     delete pr.skills;
     return pr.trees;
 }
-const treeOf = (pr, mode) => ensureTrees(pr)[MODES.includes(mode) ? mode : 'extract'];
+const treeOf = (pr, mode) => ensureTrees(pr)[TREE_OF(mode)];
 
 // Zuruecksetzen: 50k Coins + 2.500 Scrap, jedes weitere Mal +50 %
 function resetCost(resets) {
@@ -148,7 +159,7 @@ function resetCost(resets) {
 }
 
 function fresh() {
-    return { xp: 0, stats: {}, resets: 0, trees: { extract: { skills: {}, resets: 0 }, pvp: { skills: {}, resets: 0 }, zombies: { skills: {}, resets: 0 } } };
+    return { xp: 0, stats: {}, resets: 0, trees: { extract: { skills: {}, resets: 0 }, zombies: { skills: {}, resets: 0 } } };
 }
 
 function pointsOf(p, mode) {
@@ -259,7 +270,7 @@ function catalog() {
     };
 }
 
-module.exports = { MAX_LEVEL, XP, STATS, SKILLS, ZSKILLS, TREES, ZTREES, MODES, skillsFor, ensureTrees, treeOf, xpNeed, levelOf, pointsOf, validate, bonuses, resetCost, fresh, catalog };
+module.exports = { MAX_LEVEL, XP, STATS, SKILLS, ZSKILLS, TREES, ZTREES, MODES, TREE_OF, skillsFor, ensureTrees, treeOf, xpNeed, levelOf, pointsOf, validate, bonuses, resetCost, fresh, catalog };
 
 // Nachsehen: node arena-level.js – XP bis zu einigen Leveln
 if (require.main === module) {
