@@ -3273,3 +3273,11 @@ Jetzt (`gdRedraw`, `public/index.html`):
 Test (6/6): kein Schaden zwischen Spielern in der Mission, Ausgang vor dem Boss zu, Hund ×0,7 auf
 Easy, erste Mission gibt Ausrüstung und Rucksack zurück, drinnen kein Schuss, außen an der oberen
 Mauer wieder verwundbar.
+
+### Nachtrag: Gegner in Häusern von außen unsichtbar (Max: „man sieht Gegner in Häusern von außen, wenn sie oben an die Wand gehen")
+
+Das Dach deckt nur das Hausinnere ab; die hohe Pixel-Figur eines Gegners an der oberen Innenwand
+ragte darüber hinaus. Spieler in Häusern schickt der Server Außenstehenden ohnehin nicht –
+Gegner jetzt genauso (`mobHidden`): im Inneren eines Gebäudes nur an Spieler im selben Gebäude
+(oder mit Durchblick-Effekt). In der Tür (auf der Wandlinie) bleiben sie sichtbar. Test: von
+außen über dem Haus versteckt, im selben Haus sichtbar, mit Durchblick sichtbar.

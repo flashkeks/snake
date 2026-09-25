@@ -2619,6 +2619,18 @@ module.exports = function createArena(h, opts = {}) {
 
     // ---------- Sichtbarkeit: Gebaeude, Buesche, Rauch, Phantom ----------
 
+    // 25.09.2026 (Max: Gegner in Haeusern sieht man von aussen, wenn sie oben an der Wand stehen –
+    // die Pixel-Figur ragt uebers Dach): Gegner im Inneren eines Gebaeudes nur an Spieler im
+    // selben Gebaeude schicken, wie bei Spielern. In der Tuer (auf der Wandlinie) bleiben sie sichtbar.
+    function mobHidden(m, p, now) {
+        if (m.zoneAt !== now) {
+            m.zoneAt = now;
+            const z = zoneOf(m.x, m.y);
+            m.bzone = z && z[0] === 'b' ? z : null;
+        }
+        return !!m.bzone && p.zone !== m.bzone && !p.see;
+    }
+
     function zoneOf(x, y) {
         for (let i = 0; i < MAP.buildings.length; i++) {
             const [bx, by, bw, bh] = MAP.buildings[i];
@@ -5614,7 +5626,7 @@ module.exports = function createArena(h, opts = {}) {
                 // Gefahrenzonen (6.9): alle, sie sind riesig und gehen ueber den Bildschirm hinaus
                 hz: hz.list.length ? hz.view(now) : undefined,
                 strikes: strikes.filter(s => inView(s.x, s.y)).map(s => [s.id, Math.round(s.x), Math.round(s.y), s.r, Math.max(0, Math.round(s.at - now)), s.total, s.look || 0]),
-                mobs: mobs.filter(m => !m.def.boss && inView(m.x, m.y)).map(m => [m.id, m.kind, Math.round(m.x), Math.round(m.y), Math.max(0, Math.round(m.hp)), m.maxHp, Math.round(m.a * 100) / 100, m.aimAt ? Math.max(0, Math.round(m.aimAt - now)) : 0,
+                mobs: mobs.filter(m => !m.def.boss && inView(m.x, m.y) && !mobHidden(m, p, now)).map(m => [m.id, m.kind, Math.round(m.x), Math.round(m.y), Math.max(0, Math.round(m.hp)), m.maxHp, Math.round(m.a * 100) / 100, m.aimAt ? Math.max(0, Math.round(m.aimAt - now)) : 0,
                     m.chargeAt ? Math.max(0, Math.round(m.chargeAt - now)) : 0, m.charging ? 1 : 0, Math.round(m.cx || 0), Math.round(m.cy || 0), m.charm ? 1 : 0, m.lv || 0,
                     m.phase || 0, now < (m.shieldUntil || 0) ? Math.round(m.shieldUntil - now) : 0, m.parent || 0,
                     // Brennen sichtbar (25.09.2026, Schmoggi): 1 Feuer, 2 Amaterasu (schwarz)
