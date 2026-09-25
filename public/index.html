@@ -6961,7 +6961,7 @@ body.watch-mode #world-switch {
             </form>
         </div>
         <div class="panel" id="patchnotes">
-            <h2>📝 Patch notes</h2>
+            <h2 id="pn-head">📝 Patch notes</h2>
             <div id="pn-list"></div>
             <button type="button" id="suggest-btn" class="suggest-btn">💡 Suggest an improvement</button>
             <div class="msg" id="suggest-msg"></div>
@@ -6976,8 +6976,12 @@ const $ = id => document.getElementById(id);
 
 const status = $('status');
 
-// Patch notes (public/patchnotes.json): neueste offen, der Rest zugeklappt
-fetch('patchnotes.json').then(r => r.json()).then(list => {
+// Patch notes (public/patchnotes.json): neueste offen, der Rest zugeklappt.
+// 25.09.2026 (Max): vorerst ausgeblendet, werden spaeter ueberarbeitet – nicht loeschen.
+// Wieder an: SHOW_PATCHNOTES = true. Der Vorschlags-Knopf im selben Kasten bleibt sichtbar.
+const SHOW_PATCHNOTES = false;
+if (!SHOW_PATCHNOTES) { $('pn-head').hidden = true; $('pn-list').hidden = true; }
+if (SHOW_PATCHNOTES) fetch('patchnotes.json').then(r => r.json()).then(list => {
     $('pn-list').innerHTML = list.map((p, i) => `<details ${i === 0 ? 'open' : ''}><summary>Version ${esc(p.version)}<small>${esc(p.date)}</small></summary>` +
         `<ul>${p.items.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>`).join('');
 }).catch(() => { $('patchnotes').hidden = true; });
