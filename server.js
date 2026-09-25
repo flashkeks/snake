@@ -1643,6 +1643,7 @@ async function handle(c, data) {
         case 'shSlot':
         case 'shUse':
         case 'shInteract':
+        case 'shAbility':
         case 'shInv':
         case 'shTrade':
             (rooms.arenaOf(c) || shooter).action(c, data);

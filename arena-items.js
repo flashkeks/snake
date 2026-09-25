@@ -84,7 +84,16 @@ const WEAPONS = {
     kamehameha: { name: 'Kamehameha', icon: '🌊', tier: 5, unique: true, ms: 2200, dmg: 560, speed: 3000, life: 0.4, spread: 0, pellets: 1, beam: true, beamW: 60, look: 'kame', desc: 'A massive energy wave through walls and everything in its way (Dragon Ball)' },
     dragonslayer: { name: 'Dragonslayer', icon: '⚔️', tier: 5, unique: true, ms: 1000, dmg: 115, speed: 1100, life: 0.22, spread: 1.2, pellets: 9, look: 'cleave', desc: 'Too big to be called a sword – cleaves everything in front of you (Berserk)' },
     venuzdonoa: { name: 'Venuzdonoa', icon: '⚫', tier: 6, unique: true, ms: 1400, dmg: 950, speed: 3500, life: 0.4, spread: 0, pellets: 1, beam: true, beamW: 44, rift: true, look: 'venuz', desc: 'The sword of the Demon King: destroys even the concept of what it hits (Misfit of Demon King Academy)' },
-    hollowpurple: { name: 'Hollow Purple', icon: '🟣', tier: 6, unique: true, ms: 3000, dmg: 750, speed: 520, life: 3.2, spread: 0, pellets: 1, erase: true, hitR: 110, look: 'purple', desc: 'Imaginary technique: erases everything it touches, walls included (Jujutsu Kaisen)' }
+    hollowpurple: { name: 'Hollow Purple', icon: '🟣', tier: 6, unique: true, ms: 3000, dmg: 750, speed: 520, life: 3.2, spread: 0, pellets: 1, erase: true, hitR: 110, look: 'purple', desc: 'Imaginary technique: erases everything it touches, walls included (Jujutsu Kaisen)' },
+    // ---------- 25.09.2026 (Max): zehn neue Unique-Waffen, stark durch Mechanik statt Werte ----------
+    // combo: jeder Treffer innerhalb 1,5 s +10 % (max 10), bei 10 wird der naechste Schuss ein Wasserdrache
+    nichirin: { name: 'Nichirin Blade', icon: '🌊', tier: 4, unique: true, ms: 330, dmg: 58, speed: 1100, life: 0.32, spread: 0, pellets: 1, hitR: 30, combo: true, desc: 'Water Breathing: every hit within 1.5 s stacks +10% damage – at 10 stacks the next slash is a Water Dragon (Demon Slayer)' },
+    // smart: jeder Abpraller +50 % Schaden und springt aufs naechste Ziel
+    cutlasses: { name: "Revy's Cutlasses", icon: '🔫', tier: 4, unique: true, ms: 140, dmg: 24, speed: 1300, life: 1.1, spread: 0.05, pellets: 1, smart: true, innate: { ricochet: 3 }, desc: 'Every bullet bounces 3× – each bounce +50% damage and it jumps to the nearest enemy (Black Lagoon)' },
+    // berserk: je weniger HP, desto mehr Schaden (bis ×2,5) und Lifesteal
+    kagune: { name: 'Kagune', icon: '🩸', tier: 5, unique: true, ms: 420, dmg: 44, speed: 900, life: 0.38, spread: 0.7, pellets: 4, berserk: true, desc: 'The lower your HP, the harder it hits: up to ×2.5 damage and 28% lifesteal (Tokyo Ghoul)' },
+    // pure: ignoriert Schadensreduktion und Ausweichen; pin: nagelt fest
+    longinus: { name: 'Spear of Longinus', icon: '🔱', tier: 5, unique: true, ms: 1100, dmg: 240, speed: 1500, life: 0.9, spread: 0, pellets: 1, pure: true, pin: true, innate: { pierce: 2 }, desc: 'Pierces every defense – ignores armor, damage reduction and dodge, and pins whatever it hits in place (Evangelion)' },
 };
 // Obergrenze der Stufe je Basis (6.6, Max: keine legendaere Pistole). Grundware
 // (tier 0) hoechstens Epic, tier 1 hoechstens Legendary, sonst offen.
@@ -163,7 +172,14 @@ Object.assign(ARMORS, {
     kamina: { name: "Kamina's Shades", icon: '🕶️', slot: 'helmet', tier: 5, unique: true, hp: 40, speed: 0.03, fx: { dmg: 1.15, rate: 1.1 }, desc: '+15% damage, +10% fire rate – who the hell do you think we are (Gurren Lagann)' },
     saitama: { name: "Saitama's Cape", icon: '🦸', slot: 'vest', tier: 5, unique: true, hp: 60, speed: 0.05, fx: { dmg: 1.35 }, desc: '+35% damage – just a hero for fun (One Punch Man)' },
     ironman: { name: 'Iron Man Suit', icon: '🤖', slot: 'vest', tier: 6, unique: true, full: true, hp: 420, speed: 0.12, fx: { dmg: 1.2, dodge: 0.1, thorns: 0.15 }, desc: 'Full body: +420 HP, +12% speed, +20% damage, 10% dodge, reflects 15%' },
-    susanoo: { name: 'Susanoo', icon: '👹', slot: 'vest', tier: 6, unique: true, full: true, hp: 600, speed: -0.05, fx: { taken: 0.7, regen: 5 }, desc: 'Full body: +600 HP, 30% less damage, +5 HP/s – the ultimate defense (Naruto)' }
+    susanoo: { name: 'Susanoo', icon: '👹', slot: 'vest', tier: 6, unique: true, full: true, hp: 600, speed: -0.05, fx: { taken: 0.7, regen: 5 }, desc: 'Full body: +600 HP, 30% less damage, +5 HP/s – the ultimate defense (Naruto)' },
+    // ---------- 25.09.2026 (Max): Unique-Ruestung mit Mechanik (fx-Flags werden in armorStats gesammelt) ----------
+    byakugan: { name: 'Byakugan', icon: '👁️', slot: 'helmet', tier: 4, unique: true, hp: 20, speed: 0, fx: { see: true }, desc: 'See every hidden player – in bushes, buildings, smoke or invisible – and flashbangs do nothing to you (Naruto)' },
+    kaneki: { name: "Kaneki's Mask", icon: '🎭', slot: 'helmet', tier: 4, unique: true, hp: 25, speed: 0, fx: { killHeal: true }, desc: 'Every kill heals 25% of your HP and gives +25% speed for 3 s (Tokyo Ghoul)' },
+    rocklee: { name: "Rock Lee's Weights", icon: '🏋️', slot: 'pants', tier: 4, unique: true, hp: 20, speed: -0.15, fx: { weights: true }, desc: '−15% speed while worn – press R to drop them: +40% speed and +25% fire rate for the rest of the raid (Naruto)' },
+    geppo: { name: 'Geppo', icon: '🌙', slot: 'boots', tier: 4, unique: true, hp: 12, speed: 0.06, fx: { geppo: true }, desc: 'Walk on air: immune to fire, acid and every slow (One Piece)' },
+    allmight: { name: "All Might's Suit", icon: '💪', slot: 'vest', tier: 5, unique: true, hp: 85, speed: 0.02, fx: { plusUltra: true }, desc: 'PLUS ULTRA: dropping below 25% HP (even from a killing blow) unleashes a shockwave and makes you invulnerable for 3 s – once a minute (My Hero Academia)' },
+    killua: { name: "Killua's Godspeed", icon: '⚡', slot: 'pants', tier: 5, unique: true, hp: 18, speed: 0.08, fx: { dodge: 0.12, counter: true }, desc: '12% dodge – every dodge strikes the attacker with lightning (Hunter × Hunter)' },
 });
 
 // ---------- Verbrauchsgut: zwei Slots im Loadout (Q und G) ----------
@@ -192,6 +208,12 @@ const UTILS = {
     senzu: { name: 'Senzu Bean', icon: '🫘', tier: 5, use: 'heal', stack: 1, full: true, protect: 5000, speed: 0.3, speedMs: 8000, desc: 'Full heal, 5 s invulnerable, +30% speed for 8 s (Dragon Ball)' },
     genkidama: { name: 'Spirit Bomb', icon: '🌕', tier: 5, tag: 'demo', use: 'throw', stack: 1, r: 400, dmg: 750, fuse: 2600, desc: 'Everyone lends you energy: 750 damage in a huge radius (Dragon Ball)' },
     infinitevoid: { name: 'Infinite Void', icon: '♾️', tier: 6, use: 'self', stack: 1, r: 700, stun: 6000, desc: 'Domain Expansion: every enemy around you freezes for 6 s and takes 50% more damage (Jujutsu Kaisen)' },
+    // ---------- 25.09.2026 (Max): Unique-Verbrauchsgut mit Mechanik ----------
+    hiraishin: { name: 'Hiraishin Kunai', icon: '🗡️', tier: 4, unique: true, use: 'self', stack: 3, range: 560, keep: 30000, desc: 'Throw the kunai to the cursor – use again within 30 s to teleport to it (the teleport is free) (Naruto)' },
+    chainjail: { name: 'Chain Jail', icon: '⛓️', tier: 4, unique: true, use: 'self', stack: 2, range: 650, ms: 3000, desc: 'Chains the enemy nearest your cursor: cannot move or shoot for 3 s – bosses are slowed (Hunter × Hunter)' },
+    hollowmask: { name: 'Hollow Mask', icon: '👹', tier: 4, unique: true, use: 'self', stack: 2, ms: 10000, desc: '10 s berserk: +60% damage, +30% fire rate, 15% lifesteal – but you lose 5 HP/s (Bleach)' },
+    deathnote: { name: 'Death Note', icon: '📓', tier: 5, unique: true, use: 'self', stack: 1, range: 900, ms: 40000, desc: 'Write the name of the enemy nearest your cursor: it dies in 40 s unless it kills you or extracts first – bosses lose 30% of their HP (Death Note)' },
+    philosopher: { name: "Philosopher's Stone", icon: '💎', tier: 5, unique: true, use: 'self', stack: 1, ms: 60000, desc: 'For 60 s: a killing blow leaves you at 50% HP instead (Fullmetal Alchemist)' },
     worldender: { name: 'World Ender', icon: '☄️', tier: 6, tag: 'demo', use: 'throw', stack: 1, r: 99999, fuse: 4500, world: true, desc: '4.5 s countdown, then EVERYTHING on the map dies – except you and your team' }
 };
 // ---------- Rucksaecke: eigener Slot, bestimmen den Platz im Raid ----------
@@ -592,13 +614,16 @@ function weaponStats(item) {
         rocket: !!b.rocket,
         magic: b.tag === 'mage',
         // 6.6 Uniques
-        look: b.look || 0, wave: !!b.wave, erase: !!b.erase, hitR: b.hitR || 0, portals: !!b.portals, rift: !!b.rift, beamW: b.beamW || 0
+        look: b.look || 0, wave: !!b.wave, erase: !!b.erase, hitR: b.hitR || 0, portals: !!b.portals, rift: !!b.rift, beamW: b.beamW || 0,
+        // 25.09.2026 Uniques mit Mechanik
+        combo: !!b.combo, smart: !!b.smart, berserk: !!b.berserk, pure: !!b.pure, pin: !!b.pin
     };
 }
 
 // Summe aller Ruestungsteile samt Set-Bonus; gear = { helmet, vest, pants, boots }
 function armorStats(gear) {
-    const s = { hp: 0, speed: 1, regen: 0, thorns: 0, dodge: 0, dmg: 1, rate: 1, taken: 1, healMul: 1, homing: 0, crit: 0, phantom: false, sets: {} };
+    const s = { hp: 0, speed: 1, regen: 0, thorns: 0, dodge: 0, dmg: 1, rate: 1, taken: 1, healMul: 1, homing: 0, crit: 0, phantom: false, sets: {},
+        see: false, killHeal: false, weights: false, geppo: false, plusUltra: false, counter: false };
     // Ganzkoerper-Ruestung (6.6): nur sie zaehlt
     const fullSlot = SLOTS.find(sl => gear && gear[sl] && ARMORS[gear[sl].base] && ARMORS[gear[sl].base].full);
     for (const slot of SLOTS) {
@@ -615,6 +640,7 @@ function armorStats(gear) {
             s.dodge += a.fx.dodge || 0;
             s.thorns += a.fx.thorns || 0;
             s.crit += a.fx.crit || 0;
+            for (const f of ['see', 'killHeal', 'weights', 'geppo', 'plusUltra', 'counter']) if (a.fx[f]) s[f] = true;
         }
         const L = id => lvlOf(it, id);
         s.hp += a.hp * (1 + TIER_BONUS[TIER_IDX[it.tier] || 0]) + L('plating') * 8;

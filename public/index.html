@@ -13091,6 +13091,17 @@ function shFrame() {
         }
     }
 
+    // Hiraishin-Kunai (25.09.2026): eigene Marke, pulsiert
+    if (my.kunai) {
+        const [kx, ky] = my.kunai;
+        c.strokeStyle = `rgba(255,210,80,${.5 + .3 * Math.sin(now / 150)})`;
+        c.lineWidth = 2;
+        c.beginPath();
+        c.arc(kx, ky, 22, 0, Math.PI * 2);
+        c.stroke();
+        drawEmojiC(c, '🗡️', kx, ky, 24);
+    }
+
     // Explosionen, Blitze
     const fxMs = f => zFxMs(f) || (f.type === 'shBeam' && f.look ? 900 : 0) || (f.nuke ? 1400 : f.type === 'shBeam' ? 450 : f.kind === 'phoenix' || f.kind === 'hole' ? 1100 : 500);
     shFx = shFx.filter(f => now - f.t < fxMs(f));
@@ -13225,6 +13236,10 @@ function shFrame() {
                 c.beginPath();
                 c.arc(f.x, f.y, f.r * (0.3 + k * 0.7), 0, Math.PI * 2);
                 c.stroke();
+            } else if (f.kind === 'doom' || f.kind === 'weights' || f.kind === 'dragon') {
+                c.globalAlpha = 1 - k;
+                drawEmojiC(c, f.kind === 'doom' ? '📓' : f.kind === 'weights' ? '🏋️' : '🐉', f.x, f.y - 40 - k * 40, 40 + k * 20);
+                c.globalAlpha = 1;
             } else if (f.kind === 'blink') {
                 for (const [bx, by] of [f.from, [f.x, f.y]]) {
                     c.fillStyle = `rgba(184,132,255,${.6 * (1 - k)})`;
@@ -13375,6 +13390,32 @@ function shFrame() {
         c.fillRect(W / 2 - w / 2, H - 100, w, 32);
         c.fillStyle = '#ffd23f';
         c.fillText(t, W / 2, H - 83);
+    }
+    // 25.09.2026 Uniques: Combo, Buffs, Faehigkeit, Death Note
+    {
+        const tags = [];
+        if (my.combo) tags.push([`🌊 Combo ×${my.combo}${my.combo >= 10 ? ' – DRAGON' : ''}`, my.combo >= 10 ? '#5ad8ff' : '#fff']);
+        for (const b of (my.buff || '').split(',').filter(Boolean)) tags.push(b === 'hollow' ? ['👹 Hollow', '#ff5b5b'] : b === 'stone' ? ["💎 Philosopher's Stone", '#ff5bd6'] : ['⛓️ CHAINED', '#ffb14d']);
+        if (my.abil === 'weights') tags.push(['R · 🏋️ drop weights', '#ffd23f']);
+        c.font = 'bold 14px system-ui';
+        let ty = H - 130;
+        for (const [t, col] of tags) {
+            const w = c.measureText(t).width + 18;
+            c.fillStyle = 'rgba(0,0,0,.6)';
+            c.fillRect(W / 2 - w / 2, ty - 16, w, 24);
+            c.fillStyle = col;
+            c.fillText(t, W / 2, ty);
+            ty -= 28;
+        }
+        if (my.doom !== undefined) {
+            c.font = 'bold 18px system-ui';
+            const t = `📓 Your name is in the Death Note – ${Math.ceil(my.doom / 1000)} s`;
+            const w = c.measureText(t).width + 24;
+            c.fillStyle = `rgba(60,0,0,${.7 + .2 * Math.sin(now / 200)})`;
+            c.fillRect(W / 2 - w / 2, 22, w, 32);
+            c.fillStyle = '#ff4d4d';
+            c.fillText(t, W / 2, 39);
+        }
     }
     if (my.ex !== null && my.ex !== undefined) {
         const k = 1 - my.ex / 6000;
@@ -13852,6 +13893,7 @@ document.addEventListener('keydown', e => {
     if (k === 'q') shUse(0);
     if (k === 'f' || k === 'e') wsSend({ type: 'shInteract' });
     if (k === 'g') shUse(1);
+    if (k === 'r') wsSend({ type: 'shAbility' });
     if (e.key === 'Tab' || k === 'i') {
         e.preventDefault();
         shInvToggle();
