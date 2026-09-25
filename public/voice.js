@@ -35,7 +35,8 @@ function vox(slot, gain = 1) {
 function voxPlay(buf, c, gain) {
     const t = audio.currentTime, src = audio.createBufferSource(), g = audio.createGain();
     src.buffer = buf;
-    const max = Math.min(buf.duration, c.max || 3), v = Math.max(.02, (c.vol || .8) * gain * .9);
+    // 25.09.2026 (Max: alle Clips bissl leiser): Gesamtfaktor .9 -> .55
+    const max = Math.min(buf.duration, c.max || 3), v = Math.max(.02, (c.vol || .8) * gain * .55);
     g.gain.setValueAtTime(v, t);
     g.gain.setValueAtTime(v, t + Math.max(0, max - .25));
     g.gain.linearRampToValueAtTime(.0001, t + max);

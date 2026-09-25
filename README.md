@@ -2784,7 +2784,8 @@ Pro Konto im Admin-Panel schaltbar (Arena-Bereich, „Creative mode", `adminAren
 mehr – weder beim Schießen (`shLocalFire`) noch über die Fähigkeiten-Taste (die sucht nur noch
 in den Rüstungsslots) noch beim Gomu-Effekt. Die Slots in `sfx.json` und die mp3 auf edge
 bleiben liegen, z. B. für einen späteren Goku-Boss (Kamehameha). Rüstungs-Fähigkeiten,
-Spezial-Charaktere und Welt-Effekte (Za Warudo, Shinra Tensei, Domain …) klingen weiter.
+Spezial-Charaktere und Welt-Effekte (Za Warudo, Shinra Tensei, Domain …) klingen weiter. Alle übrigen
+Clips sind zugleich leiser geworden (Gesamtfaktor in `voxPlay` 0,9 → 0,55, rund −40 %).
 ## 👾 Pixel-Look fuer alles (25.09.2026, Max: „ich LIEBE den Pixel-Style … alle Grafiken")
 - **Pixel-Pass** (`shFrame`, index.html): die Welt wird in 1/P Aufloesung gezeichnet
   (`SH_PIX` = 4 CSS-px je Welt-Pixel, mal devicePixelRatio) und ohne Glaettung
