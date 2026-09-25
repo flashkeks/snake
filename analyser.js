@@ -17,9 +17,8 @@ const fmtIn = p => p >= 0.1 ? `${(p * 100).toFixed(p >= 0.995 ? 0 : 1)} %` : p >
 
 // Wahrscheinlichkeit, dass pickBase genau diese Basis zieht, wenn die Stufe feststeht
 function baseChance(kind, base, tierIdx) {
-    const defs = kind === 'weapon' ? I.WEAPONS : kind === 'armor' ? I.ARMORS : kind === 'util' ? I.UTILS : I.PACKS;
-    const all = Object.entries(defs).filter(([, b]) => b.tier <= tierIdx && (kind === 'util' || kind === 'pack' || I.maxTierOf(b) >= tierIdx));
-    const w = ([, b]) => Math.pow(4, b.tier) * (b.unique ? 0.12 : 1);
+    const all = I.poolAt(kind, tierIdx);
+    const w = ([, b]) => I.baseWeight(kind, b, tierIdx);
     const sum = all.reduce((s, e) => s + w(e), 0);
     const me = all.find(([k]) => k === base);
     return me && sum ? w(me) / sum : 0;

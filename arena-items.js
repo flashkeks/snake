@@ -98,6 +98,12 @@ const WEAPONS = {
 // Obergrenze der Stufe je Basis (6.6, Max: keine legendaere Pistole). Grundware
 // (tier 0) hoechstens Epic, tier 1 hoechstens Legendary, sonst offen.
 const UNIQUE_W = 0.12;
+// 25.09.2026 (Max: mehr Uniques, aber nicht oefter): alle Uniques einer Stufe
+// teilen sich das Gewicht, das die 17 Uniques vom Stand 6.12 zusammen hatten.
+// Mehr Uniques = mehr Vielfalt, gleich viele Unique-Drops. Verbrauchsgut hatte
+// vorher keine Uniques, dort gilt UNIQUE_W je Item.
+const LEGACY_UNIQUES = new Set(['rasengan', 'getsuga', 'amaterasu', 'spiritgun', 'gob', 'kamehameha', 'dragonslayer', 'venuzdonoa', 'hollowpurple',
+    'scouter', 'strawhat', 'odm', 'hokage', 'kamina', 'saitama', 'ironman', 'susanoo']);
 const maxTierOf = b => b.max !== undefined ? b.max : b.tier === 0 ? 3 : b.tier === 1 ? 4 : 6;
 // Im Shop fuer Coins (nur Grundwaffen, immer Common)
 const WEAPON_PRICES = { smg: 600, shotgun: 900, rifle: 1400, sniper: 2500 };
@@ -392,7 +398,26 @@ function pickBase(kind, tier, src) {
         if (tagged.length && Math.random() < src.tagShare) pool = tagged;
     }
     // Uniques (6.6) sind auch innerhalb ihrer Stufe selten
-    return pickWeighted(pool.map(([k, b]) => [k, Math.pow(4, b.tier) * (b.unique ? UNIQUE_W : 1)]));
+    return pickWeighted(pool.map(([k, b]) => [k, baseWeight(kind, b, tier)]));
+}
+
+// Gewicht einer Basis beim Ziehen zu einer Stufe (auch fuer den Analyser)
+function poolAt(kind, tier) {
+    return Object.entries(defsOf(kind)).filter(([, b]) => b.tier <= tier && (kind === 'util' || kind === 'pack' || maxTierOf(b) >= tier));
+}
+const uniqueScaleCache = new Map();
+function uniqueScale(kind, tier) {
+    const key = kind + tier;
+    if (!uniqueScaleCache.has(key)) {
+        const u = poolAt(kind, tier).filter(([, b]) => b.unique);
+        const all = u.reduce((a, [, b]) => a + Math.pow(4, b.tier), 0);
+        const old = u.filter(([k]) => LEGACY_UNIQUES.has(k)).reduce((a, [, b]) => a + Math.pow(4, b.tier), 0);
+        uniqueScaleCache.set(key, old > 0 && all > 0 ? UNIQUE_W * old / all : UNIQUE_W);
+    }
+    return uniqueScaleCache.get(key);
+}
+function baseWeight(kind, b, tier) {
+    return Math.pow(4, b.tier) * (b.unique ? uniqueScale(kind, tier) : 1);
 }
 
 // Stufe 1..max mit P(L) ~ decay^(L-1)
@@ -679,7 +704,7 @@ function catalog() {
 
 module.exports = {
     TIERS, TIER_IDX, TIER_ODDS, TIER_BONUS, WEAPONS, ARMORS, SETS, SLOTS, UTILS, PACKS, BASE_PACK, THROW_RANGE, WEAPON_MODS, ARMOR_MODS,
-    SOURCES, CASES, SHOP, INV_MAX, fuse, fuseUseless, FUSE_COST, FUSE_ADD, FUSE_MAX_MODS, EFFECT_N, maxTierOf, generate, plain, craft, salvageValue, weaponStats, armorStats, catalog, migrate, effectFactor
+    SOURCES, CASES, SHOP, INV_MAX, baseWeight, poolAt, fuse, fuseUseless, FUSE_COST, FUSE_ADD, FUSE_MAX_MODS, EFFECT_N, maxTierOf, generate, plain, craft, salvageValue, weaponStats, armorStats, catalog, migrate, effectFactor
 };
 
 // Nachrechnen: node arena-items.js [N] – Verteilung je Quelle
