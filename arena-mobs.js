@@ -109,7 +109,8 @@ const MOBS = {
     gojo: {
         special: true, lab: true, name: 'Satoru Gojo', title: 'The Strongest', icon: '🕶️', color: '#e8f0ff', r: 21, hp: 4000, infinity: true,
         speed: 150, aggro: 950, range: 520, keep: 260, gun: { dmg: 30, speed: 1000, ms: 900, burst: 2, spread: 0.1, life: 1.0 },
-        xp: 'elite', xpMul: 10, drop: { chance: 1, src: 'boss', n: 3 }
+        xp: 'elite', xpMul: 10, drop: { chance: 1, src: 'boss', n: 3 },
+        phases: [{ at: 0.4, key: 'void', name: 'Domain Expansion', shield: 3500, up: { dmg: 1.15, spd: 1.05, cd: 0.9 } }]
     },
     tanya: {
         special: true, name: 'Tanya Degurechaff', title: 'The Devil of the Rhine', icon: '🪄', color: '#ffd27a', r: 18, hp: 2500, fly: true, taken: 0.7,
@@ -198,7 +199,8 @@ const MOBS = {
         speed: 75, chase: 85, aggro: 99999, melee: 70, contact: 60, taken: 0.9,
         slam: { r: 300, dmg: 85, ms: 6500, fire: true }, trail: { every: 350, r: 55, dur: 5000, dps: 22 },
         ring: { n: 16, ms: 5500 }, gun: { dmg: 16, speed: 360, ms: 99999, burst: 1, spread: 0, life: 2.4, burn: 10 },
-        strikes: { n: 6, r: 115, dmg: 70, warn: 1400, ms: 9000, spread: 320, fire: true }, enrage: 0.5
+        strikes: { n: 6, r: 115, dmg: 70, warn: 1400, ms: 9000, spread: 320, fire: true }, enrage: 0.5,
+        phases: [{ at: 0.5, key: 'molten', name: 'Molten Core', shield: 5000, up: { dmg: 1.15, spd: 1.05, cd: 0.85 } }]
     },
     storm: {
         zombie: true, boss: true, name: 'Voltra', title: 'The Storm Wraith', icon: '⚡', color: '#5ad8ff', r: 44, hpBase: 16000, hpPer: 6000,
@@ -215,22 +217,29 @@ const MOBS = {
         vortex: { ms: 15000, dur: 3500, r: 700, pull: 170, dps: 12 },
         beam: { ms: 17000, warn: 1200, dur: 4000, len: 1000, width: 34, dps: 110, turn: 0.9, twin: true },
         summon: { kind: 'runner', n: 4, ms: 12000, max: 10, ring: true },
-        strikes: { n: 7, r: 110, dmg: 75, warn: 1300, ms: 10000, spread: 320 }, enrage: 0.5
+        strikes: { n: 7, r: 110, dmg: 75, warn: 1300, ms: 10000, spread: 320 }, enrage: 0.5,
+        phases: [{ at: 0.5, key: 'watchers', name: 'The Watchers', shield: 'adds', maxMs: 25000, up: { dmg: 1.15, spd: 1, cd: 0.85 } }]
     },
     // ---------- 6.9: Bullet-Hell-Bosse (Max: wie Undertale, keine Minions) ----------
     // pattern: Angriffs-Skript aus arena-hazards.js (riesige Zonen, erst rot
     // angekuendigt); gap = Pause zwischen zwei Angriffen (ms)
     judge: {
         zombie: true, boss: true, name: 'Judge Bones', title: 'The Last Judgement', icon: '🦴', color: '#7fd8ff', r: 42, hpBase: 20000, hpPer: 7000,
-        speed: 75, aggro: 99999, range: 99999, keep: 420, contact: 40, blink: { ms: 5200 }, pattern: 'judge', gap: 700, enrage: 0.5
+        speed: 75, aggro: 99999, range: 99999, keep: 420, contact: 40, blink: { ms: 5200 }, pattern: 'judge', gap: 700, enrage: 0.5,
+        phases: [{ at: 0.5, key: 'karma', name: 'Judgement', shield: 0, karma: 3000, up: { dmg: 1.1, spd: 1.05, cd: 0.85 } }]
     },
     seraph: {
         zombie: true, boss: true, name: 'Solaris', title: 'The Sun Eater', icon: '☀️', color: '#ffcf3a', r: 60, hpBase: 28000, hpPer: 9000,
-        speed: 55, aggro: 99999, range: 99999, keep: 400, contact: 60, taken: 0.9, pattern: 'seraph', gap: 650, enrage: 0.5
+        speed: 55, aggro: 99999, range: 99999, keep: 400, contact: 60, taken: 0.9, pattern: 'seraph', gap: 650, enrage: 0.5,
+        phases: [{ at: 0.5, key: 'eclipse', name: 'Eclipse', shield: 6000, up: { dmg: 1.15, spd: 1.05, cd: 0.85 } }]
     },
     omega: {
         zombie: true, boss: true, name: 'Omega', title: 'The End of All', icon: '🌌', color: '#b06bff', r: 64, hpBase: 36000, hpPer: 12000,
-        speed: 50, aggro: 99999, range: 99999, keep: 380, contact: 70, taken: 0.85, pattern: 'omega', gap: 550, enrage: 0.5
+        speed: 50, aggro: 99999, range: 99999, keep: 380, contact: 70, taken: 0.85, pattern: 'omega', gap: 550, enrage: 0.5,
+        phases: [
+            { at: 0.6, key: 'crunch', name: 'Big Crunch', shield: 4000, up: { dmg: 1.12, spd: 1.05, cd: 0.9 } },
+            { at: 0.25, key: 'lastlight', name: 'Last Light', shield: 3000, up: { dmg: 1.2, spd: 1.1, cd: 0.8 } }
+        ]
     },
     // ---------- Bosse (einer zur Zeit, reihum zufaellig) ----------
     // 6.9 (Max: neue extrem krasse Bosse): nutzen die Gefahrenzonen aus
@@ -238,7 +247,16 @@ const MOBS = {
     titan: {
         boss: true, loot: [4, 5], name: 'Titan Mk-IV', title: 'War Machine', icon: '🤖', color: '#ff8a3a', r: 58, hpBase: 14000, hpPer: 5000, speed: 95, aggro: 900, keep: 260, taken: 0.85,
         gun: { dmg: 20, speed: 700, ms: 900, burst: 4, spread: 0.18, life: 1.6 }, charge: { ms: 9000, warn: 800, dur: 650, speed: 760 },
-        contact: 60, pattern: 'titan', gap: 900, enrage: 0.5
+        contact: 60, pattern: 'titan', gap: 900, enrage: 0.5,
+        phases: [{ at: 0.5, key: 'reactor', name: 'Reactor Overload', shield: 'adds', maxMs: 30000, up: { dmg: 1.15, spd: 1.05, cd: 0.85 } }]
+    },
+    // ---------- Phasen-Adds (25.09.2026): halten den Schild ihres Bosses ----------
+    watcher: {
+        zombie: true, name: 'Watcher', icon: '👁️', color: '#c86bff', r: 24, hp: 1, speed: 0, aggro: 99999, range: 1100, keep: 0,
+        gun: { dmg: 12, speed: 520, ms: 1500, burst: 3, spread: 0.3, life: 2.2, homing: 0.5 }, ring: { n: 10, ms: 3400 }, xp: 'npc', xpMul: 0, pts: 150, coins: 0
+    },
+    reactor: {
+        name: 'Reactor', icon: '⚛️', color: '#ff8a3a', r: 26, hp: 1, speed: 0, aggro: 0, xp: 'npc', xpMul: 0
     },
     reaper: {
         boss: true, loot: [4, 5], name: 'The Reaper', title: 'Harvester of Raids', icon: '☠️', color: '#9d6bff', r: 46, hpBase: 12000, hpPer: 4500, speed: 150, aggro: 950, keep: 200,
@@ -276,7 +294,7 @@ const ROAMERS = [['scav', 55], ['sniper', 14], ['drone', 13]];
 
 // Fuer den Browser: was er zum Zeichnen braucht
 function catalog() {
-    return Object.fromEntries(Object.entries(MOBS).map(([k, m]) => [k, { name: m.name, icon: m.icon, color: m.color, r: m.r, boss: !!m.boss, zombie: !!m.zombie, crown: !!m.crown, elite: !!m.elite || (!!m.boss && !!m.zombie), slamR: m.slam ? m.slam.r : 0, title: m.title || '', ghost: !!m.ghost, armored: !!m.armored, boom: m.boom ? m.boom.r : 0, beamLen: m.beam ? m.beam.len : 0, beamW: m.beam ? m.beam.width : 0, beamTwin: !!(m.beam && m.beam.twin), vortexR: m.vortex ? m.vortex.r : 0, pattern: m.pattern || '', special: !!m.special }]));
+    return Object.fromEntries(Object.entries(MOBS).map(([k, m]) => [k, { name: m.name, icon: m.icon, color: m.color, r: m.r, boss: !!m.boss, zombie: !!m.zombie, crown: !!m.crown, elite: !!m.elite || (!!m.boss && !!m.zombie), slamR: m.slam ? m.slam.r : 0, title: m.title || '', ghost: !!m.ghost, armored: !!m.armored, boom: m.boom ? m.boom.r : 0, beamLen: m.beam ? m.beam.len : 0, beamW: m.beam ? m.beam.width : 0, beamTwin: !!(m.beam && m.beam.twin), vortexR: m.vortex ? m.vortex.r : 0, pattern: m.pattern || '', special: !!m.special, phases: m.phases ? m.phases.map(ph => ph.at) : null }]));
 }
 
 module.exports = { MOBS, BOSSES, ZBOSSES, ROAMERS, catalog };

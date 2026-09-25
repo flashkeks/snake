@@ -495,15 +495,10 @@ const zDmg = w => 1 + 0.06 * (w - 1);
 const Z_PTS_MUL = 0.4;
 // Schaden an Zombie-Bossen nach Entfernung des Schuetzen (6.12.3)
 const Z_BOSS_NEAR = 500, Z_BOSS_FAR = 1400, Z_BOSS_MIN = 0.3;
-// Boss-Phasen (25.09.2026, Max: „Bosse mehr phasenbasiert – krasse Animationen, dabei
-// unverwundbar, danach staerker"): gilt fuer alle Bosse (Raid, Zombie, Dungeon-Specials).
-// Bei 75/50/25 % HP bleibt der Boss auf der Schwelle stehen (kein Ueberspringen per
-// Burst), ist PHASE_SHIELD ms unverwundbar, laedt einen Phasen-Angriff (Kugel-Novas,
-// Einschlaege auf jeden Spieler) und kommt je Phase staerker zurueck (PHASE_UP).
-const BOSS_PHASES = [0.75, 0.5, 0.25];
-const PHASE_SHIELD = 3500;
-// je erreichter Phase (1..3): Schaden ×, Tempo ×, Abklingzeiten ×
-const PHASE_UP = [null, { dmg: 1.12, spd: 1.06, cd: 0.88 }, { dmg: 1.15, spd: 1.08, cd: 0.8 }, { dmg: 1.2, spd: 1.1, cd: 0.7 }];
+// Boss-Phasen (25.09.2026, Max): nur ausgewaehlte Bosse, jeder mit eigener Mechanik –
+// Daten in arena-mobs.js (phases: at, key, shield, up), Ablauf in bossPhase/phaseTick/phasePost.
+// Schild waehrend der Phase: 1 = unverwundbar, 2 = Karma (wirft Schaden zurueck)
+const PHASE_RGB = { crunch: '176,107,255', lastlight: '255,40,80', watchers: '200,107,255', eclipse: '255,150,40', karma: '255,60,60', reactor: '255,138,58', void: '120,180,255', molten: '255,90,30' };
 const zBossWaveHp = wave => 1 + 0.1 * Math.max(0, wave - 5);
 const zBossFalloff = d => d <= Z_BOSS_NEAR ? 1 : Math.max(Z_BOSS_MIN, 1 - (1 - Z_BOSS_MIN) * (d - Z_BOSS_NEAR) / (Z_BOSS_FAR - Z_BOSS_NEAR));
 const Z_PTS_PER_DMG = 0.35 * Z_PTS_MUL, Z_PTS_KILL = 30 * Z_PTS_MUL;
@@ -3594,7 +3589,9 @@ module.exports = function createArena(h, opts = {}) {
             b.introUntil && now < b.introUntil ? Math.round(b.introUntil - now) : 0,
             b.jumpAt ? Math.max(0, Math.round(b.jumpAt - now)) : 0,
             // Boss-Phasen (25.09.2026): erreichte Phase, Schild ms uebrig
-            b.phase || 0, now < (b.shieldUntil || 0) ? Math.round(b.shieldUntil - now) : 0] : null;
+            b.phase || 0, now < (b.shieldUntil || 0) ? Math.round(b.shieldUntil - now) : now < (b.karmaUntil || 0) ? Math.round(b.karmaUntil - now) : 0,
+            b.shieldKind || 0, b.orbX !== undefined ? Math.round(b.orbX) : null, b.orbY !== undefined ? Math.round(b.orbY) : null,
+            b.phaseKey === 'lastlight' ? 1 : 0, b.phaseKey || ''] : null;
     }
 
     // Spieler trifft Gegner
@@ -3610,6 +3607,17 @@ module.exports = function createArena(h, opts = {}) {
             if (attacker && players.has(attacker.id) && !(w && w.dot) && now >= (attacker.immuneAt || 0)) {
                 attacker.immuneAt = now + 250 / SPEED;
                 h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: 0, dodge: true, immune: true });
+            }
+            return;
+        }
+        // Judge Bones (Phase „Judgement"): Karma – der Schaden geht an den Schuetzen zurueck
+        if (now < (m.karmaUntil || 0)) {
+            if (attacker && players.has(attacker.id) && !(w && w.dot)) {
+                damage(attacker, null, Math.min(dmg * 0.35, 45 * (m.dm || 1)), now, attacker.x, attacker.y, { how: 'boss', by: m.def.icon + ' ' + m.def.name, noDodge: true });
+                if (now >= (attacker.immuneAt || 0)) {
+                    attacker.immuneAt = now + 250 / SPEED;
+                    h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: 0, dodge: true, karma: true });
+                }
             }
             return;
         }
@@ -3653,7 +3661,8 @@ module.exports = function createArena(h, opts = {}) {
         }
         if (now < (m.stunUntil || 0)) dmg *= 1.5;
         // Boss-Phasen: auf der naechsten Schwelle stehen bleiben, dann Phasenwechsel
-        const phTh = isPhaseBoss(m) ? BOSS_PHASES[m.phase || 0] : undefined;
+        const phNext = m.def.phases && m.def.phases[m.phase || 0];
+        const phTh = phNext ? phNext.at : undefined;
         const phHit = phTh !== undefined && m.hp - dmg <= m.maxHp * phTh;
         if (phHit) dmg = Math.max(0, m.hp - m.maxHp * phTh);
         const real = Math.min(dmg, m.hp);
@@ -3683,59 +3692,191 @@ module.exports = function createArena(h, opts = {}) {
         if (m.hp <= 0) mobDies(m, attacker && players.has(attacker.id) ? attacker : null, now);
     }
 
-    const isPhaseBoss = m => !!(m.def.boss || m.def.special);
-
-    // Phasenwechsel: Schild, Ansage, Animation, Angriffsfolge, danach staerker
+    // Phasenwechsel: Schild, Ansage, Animation, Start der Boss-eigenen Mechanik, Power-up
     function bossPhase(m, now) {
+        const def = m.def, ph = def.phases[m.phase || 0];
         m.phase = (m.phase || 0) + 1;
-        const n = m.phase, def = m.def, up = PHASE_UP[n];
-        m.shieldUntil = now + PHASE_SHIELD / SPEED;
-        m.dm = (m.dm || 1) * up.dmg;
-        m.sp = (m.sp || 1) * up.spd;
-        m.phaseCd = up.cd;
+        m.phaseKey = ph.key;
+        const up = ph.up || {};
+        m.dm = (m.dm || 1) * (up.dmg || 1);
+        m.sp = (m.sp || 1) * (up.spd || 1);
+        m.phaseCd = (m.phaseCd || 1) * (up.cd || 1);
         m.charging = false; m.chargeAt = 0; m.slamAt = 0;
-        if (m.patNext) m.patNext = Math.max(m.patNext, m.shieldUntil + 500 / SPEED);
-        // Angriffsfolge waehrend des Schilds (ms nach Beginn); spaetere Phasen dichter
+        m.shieldKind = 0;
+        if (ph.shield === 'adds') { m.shieldUntil = now + (ph.maxMs || 30000) / SPEED; m.shieldMin = now + 2500 / SPEED; m.shieldKind = 1; }
+        else if (ph.shield) { m.shieldUntil = now + ph.shield / SPEED; m.shieldKind = 1; }
+        if (ph.karma) { m.karmaUntil = now + ph.karma / SPEED; m.shieldKind = 2; }
+        const busy = Math.max(m.shieldUntil || 0, m.karmaUntil || 0);
+        if (m.patNext) m.patNext = Math.max(m.patNext, busy + 500 / SPEED);
+        m.phaseSeq = [];
         const T = t => now + t / SPEED;
-        m.phaseSeq = [
-            { at: T(700), nova: 14 + 6 * n, off: 0 },
-            { at: T(1500), rain: 2 + n },
-            { at: T(2300), nova: 14 + 6 * n, off: Math.PI / (14 + 6 * n) },
-            ...(n >= 2 ? [{ at: T(2900), nova: 20 + 6 * n, off: 0.2, fast: true }] : []),
-            ...(n >= 3 ? [{ at: T(3300), rain: 3 }] : [])
-        ];
-        fxAt(m.x, m.y, { type: 'shFx', kind: 'bphase', x: Math.round(m.x), y: Math.round(m.y), boss: m.kind, n, r: def.r, ms: PHASE_SHIELD });
-        const name = def.icon + ' ' + def.name;
-        const text = n === BOSS_PHASES.length ? `${name} – FINAL PHASE!` : `${name} – Phase ${n + 1}!`;
+        const by = def.icon + ' ' + def.name;
+        const k = ph.key;
+        if (k === 'crunch') {
+            // Omega: alle werden zur Mitte gezogen, dann kollabiert das Loch
+            m.pullUntil = T(3500);
+            m.phaseSeq.push({ at: T(3500), implode: 380 });
+        } else if (k === 'lastlight') {
+            m.phaseSeq.push({ at: T(600), nova: 30 }, { at: T(1600), nova: 30, off: Math.PI / 30 }, { at: T(2600), nova: 36, fast: true });
+        } else if (k === 'watchers') {
+            // Kek Eye: drei Waechter-Augen halten den Schild
+            m.adds = [0, 1, 2].map(i => spawnAdd(m, 'watcher', m.x + Math.cos(i * 2.094) * 330, m.y + Math.sin(i * 2.094) * 330, 0.035, now));
+        } else if (k === 'eclipse') {
+            // Solaris: Feuerringe ziehen sich zusammen, je eine Luecke
+            for (let i = 0; i < 5; i++) m.phaseSeq.push({ at: T(700 + i * 1000), ring: 1150 - i * 200 });
+        } else if (k === 'reactor') {
+            // Titan: vier Reaktoren halten den Schild, dazu Raketensalven
+            m.adds = [0, 1, 2, 3].map(i => spawnAdd(m, 'reactor', m.x + Math.cos(0.785 + i * 1.571) * 230, m.y + Math.sin(0.785 + i * 1.571) * 230, 0.03, now));
+            m.salvoAt = T(900);
+        } else if (k === 'void') {
+            // Gojo: Domain Expansion – Kuppel, alle drin erstarren, dann Hollow Purple
+            m.phaseSeq.push({ at: T(1000), freeze: 560 }, { at: T(2600), purple: true });
+        } else if (k === 'molten') {
+            // Ignis: Boden wird Lava ausser auf Inseln, zwei Wellen
+            m.phaseSeq.push({ at: T(400), lava: 3 }, { at: T(2700), lava: 2 });
+        }
+        fxAt(m.x, m.y, { type: 'shFx', kind: 'bphase', x: Math.round(m.x), y: Math.round(m.y), boss: m.kind, key: k, label: ph.name.toUpperCase(), rgb: PHASE_RGB[k] || '255,210,63', n: m.phase, r: def.r, ms: Math.max(1500, busy - now) });
+        const last = m.phase === def.phases.length && def.phases.length > 1;
+        const text = `${by} – ${last ? 'FINAL PHASE: ' : ''}${ph.name}!`;
         for (const q of players.values()) if (!def.special || Math.hypot(q.x - m.x, q.y - m.y) < 1400) h.send(q.c, { type: 'shEvent', text, kind: 'boss' });
     }
 
-    function phaseTick(m, now) {
-        const seq = m.phaseSeq || [];
-        while (seq.length && now >= seq[0].at) {
-            const s = seq.shift(), dm = m.dm || 1, by = m.def.icon + ' ' + m.def.name;
-            if (s.nova) {
-                const sp = s.fast ? 560 : 420;
-                for (let k = 0; k < s.nova; k++) {
-                    const a = s.off + k / s.nova * Math.PI * 2;
-                    bullets.push({
-                        id: ++seqId, owner: m.id, x: m.x + Math.cos(a) * (m.def.r + 6), y: m.y + Math.sin(a) * (m.def.r + 6),
-                        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, dies: now + 2600 / SPEED, pierce: 0, bounce: 0, hits: new Set(),
-                        w: { dmg: 14 * dm, how: 'boss', by, homing: 0, mobBoom: 0, big: false, mob: true, frost: 0, burn: 0 },
-                        fx: 1024, tier: BOSS_LOOK[m.kind] || 5
-                    });
-                }
-            }
-            if (s.rain) {
-                for (const q of players.values()) {
-                    if (q.dead || Math.hypot(q.x - m.x, q.y - m.y) > 1600) continue;
-                    for (let k = 0; k < s.rain; k++) {
-                        const a = Math.random() * 6.28, rr = k ? 70 + Math.random() * 140 : 0;
-                        strikes.push({ id: ++seqId, x: q.x + Math.cos(a) * rr, y: q.y + Math.sin(a) * rr, r: 105, dmg: 40 * dm, at: now + (1100 + k * 140) / SPEED, total: 1100 + k * 140, by, how: 'boss', look: 1, fire: false, acid: false });
-                    }
-                }
+    // Add eines Phasen-Bosses: haelt still, gehoert zum Boss (parent), HP als Anteil des Bosses
+    function spawnAdd(m, kind, x, y, share, now) {
+        const a = spawnMob(kind, x, y, now);
+        a.parent = m.id;
+        a.hp = a.maxHp = Math.max(200, Math.round(m.maxHp * share));
+        a.dm = m.dm || 1;
+        a.lv = 0;
+        return a.id;
+    }
+
+    function phaseNova(m, now, n, off, fast) {
+        const sp = fast ? 560 : 420, by = m.def.icon + ' ' + m.def.name;
+        for (let k = 0; k < n; k++) {
+            const a = (off || 0) + k / n * Math.PI * 2;
+            bullets.push({
+                id: ++seqId, owner: m.id, x: m.x + Math.cos(a) * (m.def.r + 6), y: m.y + Math.sin(a) * (m.def.r + 6),
+                vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, dies: now + 2600 / SPEED, pierce: 0, bounce: 0, hits: new Set(),
+                w: { dmg: 14 * (m.dm || 1), how: 'boss', by, homing: 0, mobBoom: 0, big: false, mob: true, frost: 0, burn: 0 },
+                fx: 1024, tier: BOSS_LOOK[m.kind] || 5
+            });
+        }
+    }
+
+    function missileSalvo(m, now, n) {
+        const by = m.def.icon + ' ' + m.def.name;
+        for (const q of players.values()) {
+            if (q.dead || Math.hypot(q.x - m.x, q.y - m.y) > 1400) continue;
+            for (let k = 0; k < n; k++) {
+                const a = Math.random() * 6.28, rr = k ? 60 + Math.random() * 150 : 0;
+                strikes.push({ id: ++seqId, x: q.x + Math.cos(a) * rr, y: q.y + Math.sin(a) * rr, r: 95, dmg: 45 * (m.dm || 1), at: now + (1100 + k * 130) / SPEED, total: 1100 + k * 130, by, how: 'boss', look: 1, fire: false, acid: false });
             }
         }
+    }
+
+    // Waehrend des Schilds: Boss steht, die Mechanik seiner Phase laeuft
+    function phaseTick(m, now, dt) {
+        const def = m.def, by = def.icon + ' ' + def.name, dm = m.dm || 1;
+        // Schild aus Adds: bricht, sobald alle tot sind
+        if (m.adds) {
+            const alive = m.adds.filter(id => mobs.some(x => x.id === id && x.hp > 0));
+            m.adds = alive;
+            // mindestens 2,5 s, damit der Auftritt nicht verpufft, wenn die Adds sofort fallen
+            if (!alive.length && now >= (m.shieldMin || 0)) {
+                m.adds = null;
+                m.shieldUntil = now;
+                fxAt(m.x, m.y, { type: 'shFx', kind: 'enrage', x: Math.round(m.x), y: Math.round(m.y), boss: m.kind });
+                for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `${by} – shield broken!`, kind: 'boss' });
+                return;
+            }
+        }
+        // Omega: Sog zur Mitte, Kern schadet
+        if (now < (m.pullUntil || 0)) {
+            for (const q of players.values()) {
+                if (q.dead) continue;
+                const d = Math.hypot(q.x - m.x, q.y - m.y) || 1;
+                if (d > 1600) continue;
+                const pull = Math.min(d - def.r - R, 230 * dt);
+                if (pull > 0) [q.x, q.y] = slide(q.x, q.y, (m.x - q.x) / d * pull, (m.y - q.y) / d * pull, R);
+                if (d < 150) damage(q, null, 40 * dm * dt, now, q.x, q.y, { how: 'boss', by, noDodge: true, dot: true });
+            }
+        }
+        if (m.salvoAt && now >= m.salvoAt && now < m.shieldUntil) { m.salvoAt = now + 1500 / SPEED; missileSalvo(m, now, 3); }
+        const seq = m.phaseSeq || [];
+        while (seq.length && now >= seq[0].at) {
+            const s = seq.shift();
+            if (s.nova) phaseNova(m, now, s.nova, s.off, s.fast);
+            if (s.implode) {
+                fxAt(m.x, m.y, { type: 'shBoom', x: Math.round(m.x), y: Math.round(m.y), r: s.implode, nuke: true });
+                for (const q of near(m.x, m.y, s.implode + R)) damage(q, null, 70 * dm, now, q.x, q.y, { how: 'boss', by, noDodge: true });
+                m.orbA = 0;
+            }
+            if (s.ring) {
+                const gap = Math.random() * 6.28;
+                hz.add({ sh: 'g', x: m.x, y: m.y, r: Math.max(def.r + 40, s.ring - 45), r2: s.ring + 45, ga: gap, gs: 0.8, total: 900, dur: 450, dmg: Math.round(60 * (1 + (dm - 1) * 0.5)), look: 4, by }, now);
+            }
+            if (s.freeze) {
+                fxAt(m.x, m.y, { type: 'shFx', kind: 'void', x: Math.round(m.x), y: Math.round(m.y), r: s.freeze });
+                for (const q of near(m.x, m.y, s.freeze)) {
+                    if (!(q.aw && q.aw.has('geppo'))) q.jailUntil = now + 2000 / SPEED;
+                    if (!q.see) h.send(q.c, { type: 'shFlash', ms: 1000 });
+                }
+            }
+            if (s.purple) {
+                let tg = null, td = Infinity;
+                for (const q of players.values()) { const d = Math.hypot(q.x - m.x, q.y - m.y); if (!q.dead && d < td) { tg = q; td = d; } }
+                if (tg) {
+                    const a = Math.atan2(tg.y - m.y, tg.x - m.x);
+                    bullets.push({ id: ++seqId, owner: m.id, x: m.x + Math.cos(a) * (def.r + 30), y: m.y + Math.sin(a) * (def.r + 30), vx: Math.cos(a) * 420, vy: Math.sin(a) * 420, dies: now + 2800 / SPEED, pierce: 99, bounce: 0, hits: new Set(),
+                        w: { dmg: 220 * dm, how: 'boss', by, mob: true, big: true, hitR: 70, look: 'purple' }, fx: 1024, tier: 6 });
+                    for (const q of near(m.x, m.y, 1200)) h.send(q.c, { type: 'shEvent', text: '🟣 Hollow Purple!', kind: 'boss' });
+                }
+            }
+            if (s.lava) {
+                const safe = [];
+                const alive = [...players.values()].filter(q => !q.dead);
+                for (let i = 0; i < s.lava; i++) {
+                    const t = alive[i % Math.max(1, alive.length)] || m;
+                    safe.push([t.x + (Math.random() - 0.5) * 700, t.y + (Math.random() - 0.5) * 500, 170]);
+                }
+                hz.add({ sh: 's', x: m.x, y: m.y, lim: 1800, safe, total: 2000, dur: 900, dmg: Math.round(80 * (1 + (dm - 1) * 0.5)), look: 5, by }, now);
+            }
+        }
+    }
+
+    // Nach der Phase: was der Boss dauerhaft dazubekommt
+    function phasePost(m, now, dt) {
+        if (!m.phase) return;
+        const def = m.def, by = def.icon + ' ' + def.name, dm = m.dm || 1;
+        // Omega: Mini-Schwarzloch kreist um ihn, zieht an und schadet
+        if (m.orbA !== undefined) {
+            m.orbA += 1.1 * dt;
+            m.orbX = m.x + Math.cos(m.orbA) * 300;
+            m.orbY = m.y + Math.sin(m.orbA) * 300;
+            for (const q of near(m.orbX, m.orbY, 240)) {
+                const d = Math.hypot(q.x - m.orbX, q.y - m.orbY) || 1;
+                [q.x, q.y] = slide(q.x, q.y, (m.orbX - q.x) / d * 90 * dt, (m.orbY - q.y) / d * 90 * dt, R);
+                if (d < 85) damage(q, null, 35 * dm * dt, now, q.x, q.y, { how: 'boss', by, noDodge: true, dot: true });
+            }
+        }
+        // Kek Eye: alle 7 s ein Doppel-Laser auf den naechsten Spieler
+        if (m.phaseKey === 'watchers' && now >= (m.twinAt || 0)) {
+            m.twinAt = now + 7000 * (m.phaseCd || 1) / SPEED;
+            let tg = null, td = Infinity;
+            for (const q of players.values()) { const d = Math.hypot(q.x - m.x, q.y - m.y); if (!q.dead && d < td) { tg = q; td = d; } }
+            if (tg && td < 1800) {
+                const a = Math.atan2(tg.y - m.y, tg.x - m.x);
+                for (const off of [-0.3, 0.3]) hz.add({ sh: 'r', x: m.x, y: m.y, w: 4200, h: 110, a: a + off, total: 1100, dur: 500, dmg: Math.round(70 * (1 + (dm - 1) * 0.5)), look: 6, by }, now);
+            }
+        }
+        // Solaris: der Boden um ihn brennt dauerhaft
+        if (m.phaseKey === 'eclipse' && now >= (m.burnAt || 0)) {
+            m.burnAt = now + 450 / SPEED;
+            fires.push({ id: ++seqId, x: m.x, y: m.y, r: def.r + 110, until: now + 3000 / SPEED, owner: null, dps: 28 * dm });
+        }
+        // Titan: Raketensalve alle 6 s
+        if (m.phaseKey === 'reactor' && now >= (m.salvoAt || 0)) { m.salvoAt = now + 6000 * (m.phaseCd || 1) / SPEED; missileSalvo(m, now, 5); }
     }
 
     function mobDies(m, killer, now) {
@@ -4026,7 +4167,8 @@ module.exports = function createArena(h, opts = {}) {
             if (![...players.values()].some(p => !p.dead && Math.hypot(p.x - m.x, p.y - m.y) < half * 0.75)) return;
         }
         const names = Object.keys(P).filter(k => k !== m.patLast && (k !== 'supernova' || m.enraged));
-        const name = names[Math.floor(Math.random() * names.length)];
+        // Judge Bones nach „Judgement": jedes zweite Muster sind blaue Knochen
+        const name = m.phaseKey === 'karma' && names.includes('blue') && Math.random() < 0.5 ? 'blue' : names[Math.floor(Math.random() * names.length)];
         m.patLast = name;
         const by = def.icon + ' ' + def.name;
         const api = {
@@ -4050,7 +4192,9 @@ module.exports = function createArena(h, opts = {}) {
             m.nextTrail = now + def.trail.every / SPEED;
             m.trailX = m.x;
             m.trailY = m.y;
-            fires.push({ id: ++seqId, x: m.x, y: m.y, r: def.trail.r, until: now + def.trail.dur / SPEED, owner: null, dps: def.trail.dps * dm });
+            // Ignis nach „Molten Core": breitere, laengere Spur
+            const tm = m.phaseKey === 'molten' ? 1.7 : 1;
+            fires.push({ id: ++seqId, x: m.x, y: m.y, r: def.trail.r * tm, until: now + def.trail.dur * tm / SPEED, owner: null, dps: def.trail.dps * dm });
         }
         // Spirale: steht und dreht einen Kugelkranz
         if (now < (m.spiralUntil || 0)) {
@@ -4250,7 +4394,9 @@ module.exports = function createArena(h, opts = {}) {
         } else if (m.kind === 'gojo') {
             if (!m.nextPurple) { m.nextPurple = now + cd(6000); m.nextVoid = now + cd(12000); m.nextRed = now + cd(5000); }
             // hard: Red – Rueckstoss-Explosion um ihn herum
-            if (hard && now >= m.nextRed) {
+            // Six Eyes (nach Domain Expansion, 25.09.2026): Red auf jeder Stufe, Hollow Purple doppelt so oft
+            const six = m.phaseKey === 'void';
+            if ((hard || six) && now >= m.nextRed) {
                 m.nextRed = now + cd(7000);
                 fxAt(m.x, m.y, { type: 'shBoom', x: Math.round(m.x), y: Math.round(m.y), r: 320, nuke: false });
                 for (const q of near(m.x, m.y, 320)) {
@@ -4262,7 +4408,7 @@ module.exports = function createArena(h, opts = {}) {
             }
             // Hollow Purple: langsame Riesenkugel
             if (now >= m.nextPurple) {
-                m.nextPurple = now + cd(10000 * slow);
+                m.nextPurple = now + cd(10000 * slow * (six ? 0.5 : 1));
                 const a = Math.atan2(tgt.y - m.y, tgt.x - m.x);
                 bullets.push({ id: ++seqId, owner: m.id, x: m.x + Math.cos(a) * (def.r + 30), y: m.y + Math.sin(a) * (def.r + 30), vx: Math.cos(a) * 380, vy: Math.sin(a) * 380, dies: now + 2600 / SPEED, pierce: 99, bounce: 0, hits: new Set(),
                     w: { dmg: 180 * dm, how: 'boss', by, mob: true, big: true, hitR: 50, look: 'purple' }, fx: 1024, tier: 6 });
@@ -4331,7 +4477,8 @@ module.exports = function createArena(h, opts = {}) {
             }
         }
         // Boss-Phase: steht still, unverwundbar, feuert die Phasen-Angriffe
-        if (now < (m.shieldUntil || 0)) { phaseTick(m, now); return; }
+        if (now < (m.shieldUntil || 0)) { phaseTick(m, now, dt); return; }
+        if (m.phaseSeq && m.phaseSeq.length) phaseTick(m, now, dt);
         // Infinite Void (6.6): wer drin ist, steht still
         if (now < (m.stunUntil || 0)) return;
         // Za Warudo: alles steht
@@ -4349,6 +4496,7 @@ module.exports = function createArena(h, opts = {}) {
             for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `${def.icon} ${def.name} is ENRAGED!`, kind: 'boss' });
         }
         const cd = ms => ms / SPEED * (m.enraged ? 0.65 : 1) * (m.phaseCd || 1);
+        phasePost(m, now, dt);
         if (bossSkills(m, now, dt, cd)) return;
         if (def.boss && !def.zombie && now - m.born > BOSS_LIFE / SPEED && now - (m.hitAt || 0) > BOSS_CALM / SPEED
             && ![...players.values()].some(p => !p.dead && Math.hypot(p.x - m.x, p.y - m.y) < BOSS_NEAR)) {
@@ -5320,7 +5468,7 @@ module.exports = function createArena(h, opts = {}) {
                 strikes: strikes.filter(s => inView(s.x, s.y)).map(s => [s.id, Math.round(s.x), Math.round(s.y), s.r, Math.max(0, Math.round(s.at - now)), s.total, s.look || 0]),
                 mobs: mobs.filter(m => !m.def.boss && inView(m.x, m.y)).map(m => [m.id, m.kind, Math.round(m.x), Math.round(m.y), Math.max(0, Math.round(m.hp)), m.maxHp, Math.round(m.a * 100) / 100, m.aimAt ? Math.max(0, Math.round(m.aimAt - now)) : 0,
                     m.chargeAt ? Math.max(0, Math.round(m.chargeAt - now)) : 0, m.charging ? 1 : 0, Math.round(m.cx || 0), Math.round(m.cy || 0), m.charm ? 1 : 0, m.lv || 0,
-                    m.phase || 0, now < (m.shieldUntil || 0) ? Math.round(m.shieldUntil - now) : 0]),
+                    m.phase || 0, now < (m.shieldUntil || 0) ? Math.round(m.shieldUntil - now) : 0, m.parent || 0]),
                 portals: portals.size ? [...portals.values()].flatMap(prs => prs.pairs.flatMap(pr => [pr.a ? [Math.round(pr.a.x), Math.round(pr.a.y), 0, pr.b ? 1 : 0] : null, pr.b ? [Math.round(pr.b.x), Math.round(pr.b.y), 1, pr.a ? 1 : 0] : null])).filter(x => x && inView(x[0], x[1])) : undefined,
                 zones: zones.length ? zones.filter(z => inView(z.x, z.y)).map(z => [Math.round(z.x), Math.round(z.y), z.r]) : undefined,
                 turrets: turrets.length ? turrets.filter(t => inView(t.x, t.y)).map(t => [t.id, Math.round(t.x), Math.round(t.y), Math.round(t.a * 100) / 100, Math.max(0, Math.round(t.until - now))]) : undefined,

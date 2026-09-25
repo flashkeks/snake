@@ -2968,44 +2968,50 @@ zum Kill mit den DPS-Werten aus dem Test oben:
 
 Ohne Spieler-Skills gerechnet; Boss hunter, Headshots usw. machen es schneller.
 
-## 🎭 Boss-Phasen für alle Bosse (25.09.2026, Max)
+## 🎭 Boss-Phasen mit eigener Mechanik (25.09.2026, Max)
 
-Max: „Mach die Bosse mehr phasenbasiert – mehr Phasen, wo sie krasse Animationen
-machen und Sachen machen, wo sie invulnerable sind, und ggf. danach power uppen."
+Max: „Mach die Bosse mehr phasenbasiert – Phasen, wo sie krasse Animationen machen und
+unverwundbar sind, danach ggf. stärker." Erste Fassung galt für alle Bosse gleich – Max:
+„Nicht jeder Boss muss das haben und es soll nicht bei jedem gleich sein. Die Bosse, die
+das haben, sollen einen Unique-Effekt haben." Ausgewählt hat Max sieben:
 
-Gilt für **alle** Bosse: Raid-Bosse (King, Golem, Queen, Titan, Reaper), alle neun
-Zombie-Bosse und die Dungeon-Specials (Rick, Gojo, Tanya, Mustang, auch als Missionsboss).
+| Boss | Schwelle | Phase | Was passiert | Danach dauerhaft |
+|---|---|---|---|---|
+| 🌌 Omega (W40) | 60 % | Big Crunch | 3,5 s immun, zieht alle Spieler zur Mitte (Kern schadet), dann Implosion (380 px) | Mini-Schwarzloch kreist in 300 px um ihn, zieht an, schadet |
+| 🌌 Omega | 25 % | Last Light (Finale) | 3 s immun, drei Kugel-Novas | Arena dunkel, nur ein Lichtkreis um jeden Spieler |
+| 👁️ The Kek Eye (W45) | 50 % | The Watchers | Schild hält, bis 3 Wächter-Augen (je 3,5 % Boss-HP, schießen Salven und Ringe) tot sind | alle 7 s Doppel-Laser auf den nächsten Spieler |
+| ☀️ Solaris (W35) | 50 % | Eclipse | 6 s immun, fünf Feuerringe ziehen sich zusammen, je eine Lücke | Boden um ihn brennt ständig |
+| 🦴 Judge Bones (W30) | 50 % | Judgement | nicht immun, aber 3 s **Karma**: jeder Treffer geht (35 %, gedeckelt) an den Schützen zurück | jedes zweite Muster sind blaue Knochen (stillstehen) |
+| 🤖 Titan Mk-IV (Raid) | 50 % | Reactor Overload | Schild hält, bis 4 Reaktoren (je 3 % Boss-HP) zerstört sind; alle 1,5 s Raketensalve | Raketensalve alle 6 s |
+| 🕶️ Satoru Gojo (Special) | 40 % | Domain Expansion | 3,5 s immun, Kuppel, alle in 560 px erstarren 2 s, dann Hollow Purple auf den Nächsten | „Six Eyes": Red auf jeder Stufe, Hollow Purple doppelt so oft |
+| 🔥 Ignis (W20) | 50 % | Molten Core | 5 s immun, zweimal Lava überall außer auf Inseln nahe den Spielern | breitere, längere Feuerspur |
 
-**Ablauf** (`shooter.js`, `BOSS_PHASES`, `bossPhase`, `phaseTick`):
+Alle anderen Bosse haben keine Phasen.
 
-- Schwellen bei **75 / 50 / 25 % HP**. Der Treffer, der drüber hinausgehen würde, wird
-  auf die Schwelle gekappt – Burst-Waffen (Venuzdonoa, PaP) können keine Phase überspringen.
-- Dann **3,5 s unverwundbar** (`shieldUntil`): Treffer zeigen „IMMUNE", Brennen tickt
-  nicht, der Boss bleibt stehen und bricht Ansturm/Stampfer ab.
-- Währenddessen feuert er einen **Phasen-Angriff**: Kugel-Nova (14 + 6 × Phase Kugeln),
-  Einschlag-Regen auf jeden Spieler in 1.600 px, zweite versetzte Nova; ab Phase 2 eine
-  schnelle dritte Nova, in der letzten Phase noch ein Regen.
-- Danach **stärker** (`PHASE_UP`, multipliziert sich auf): Phase 2 ×1,12 Schaden,
-  ×1,06 Tempo, Abklingzeiten ×0,88 · Phase 3 ×1,15 / ×1,08 / ×0,8 · Finale ×1,2 / ×1,1 / ×0,7.
-  In der letzten Phase also ~×1,55 Schaden. Die bisherige Wut ab 50 % (`enrage`) bleibt
-  zusätzlich. Bullet-Hell-Muster starten erst nach dem Schild wieder und kommen mit
-  kürzerer Pause.
+**Gemeinsamer Rahmen** (`shooter.js` `bossPhase` / `phaseTick` / `phasePost`, Daten in
+`arena-mobs.js` → `phases: [{ at, key, name, shield, karma, up }]`):
 
-**Optik und Ton** (`public/zfx.js`): Beim Wechsel Sog (Funken fliegen in den Boss),
-Runenkreis am Boden mit zwei gegenläufigen Ringen und Stern, dann Blitz, vier Druckwellen,
-14 Blitze, Lichtsäule nach oben, große Schrift „PHASE 2 / PHASE 3 / FINAL PHASE" mit
-„IMMUNE · POWERING UP". Farbe je Phase gold → orange → blutrot. Aufladegeräusch, Knall mit
-Nachhall, aufsteigender Akkord, Bildschirmwackeln (im Finale stärker). Solange der Schild
-steht: pulsierende Sechseck-Blase, Lebensleiste gold. Danach eine Dauer-Aura mit mehr
-Flammenzungen je Phase. Die Lebensleiste hat Striche bei 75/50/25 %, erreichte Phasen hohl.
+- Der Treffer, der über eine Schwelle ginge, wird auf die Schwelle gekappt – kein
+  Überspringen per Burst.
+- `shield`: ms immun, oder `'adds'` = bis die Adds tot sind (mindestens 2,5 s, höchstens
+  `maxMs`). Immun: Treffer zeigen „IMMUNE", Brennen tickt nicht, der Boss steht.
+- `karma`: ms, in denen Treffer zurückgehen (Anzeige „KARMA").
+- `up`: Power-up danach (Schaden, Tempo, Abklingzeiten), z. B. Omega im Finale ×1,34 Schaden.
+- Adds sind `parent`-Mobs des Bosses (keine Drops, zählen nicht zum Umherlaufen).
 
-**Protokoll:** Boss-Array (`boss`) Index 18 = Phase, 19 = Schild-ms; Gegner-Array (`mobs`,
-für Specials) Index 14/15 dasselbe; `shHit` mit `immune: true`; `shFx` `bphase` mit `n`, `r`.
+**Optik** (`public/zfx.js`): Phasen-Name groß in der Farbe der Phase plus Hinweis, was zu tun
+ist („RESIST THE PULL", „KILL THE WATCHERS", „DON'T SHOOT · KARMA" …). Je Mechanik eigene
+Animation: Spiralarme nach innen (Crunch), schwarze Sonne mit Korona (Eclipse, Last Light),
+Sternenkuppel (Domain), Waage und Zackenkranz (Karma), Glutrisse (Molten), Schildringe
+(Reactor, Watchers), Energie-Blitze vom Boss zu seinen Adds. Dazu Schwarzloch-Orb,
+Dunkelheit mit Lichtkreisen, Aura in Phasenfarbe, Striche auf der Lebensleiste an den
+Schwellen des jeweiligen Bosses (`catalog().phases`).
 
-**Balance-Folge:** Jeder Boss-Kill dauert mindestens 3 × 3,5 s länger, egal wie stark die
-Waffe ist – das bremst genau die „Boss in 2 s weg"-Fälle aus dem DPS-Test.
+**Protokoll:** `boss` Index 18 Phase, 19 Schild-ms, 20 Schild-Art (1 immun, 2 Karma),
+21/22 Orb x/y, 23 dunkel, 24 Phasen-Key; `mobs` Index 14 Phase, 15 Schild-ms, 16 parent;
+`shHit` `immune`/`karma`; `shFx` `bphase` mit `key`, `label`, `rgb`, `ms`.
 
-Test (88/88): elf Boss-Arten plus drei Specials unter Dauerfeuer mit Venuzdonoa (Ultra,
-Lv 30, PaP 5) – alle drei Phasen erreicht, je ≥3,3 s auf der Schwelle gehalten, kein
-Schaden durch den Schild, Schaden hochgestuft, drei `bphase`-Effekte, „IMMUNE"-Treffer.
-Dazu Screenshot der Animation (vier Zeitpunkte, Phase 2 bis Final).
+Test (72/72): alle sieben Phasen-Bosse unter Dauerfeuer (Venuzdonoa Ultra, PaP 5) –
+richtige Zahl Phasen, auf jeder Zeit-Schwelle ≥1,5 s gehalten, kein Schaden durch
+Schild/Karma, Power-up, 3 Wächter / 4 Reaktoren, Karma-Treffer, Sog bei Omega, Orb aktiv;
+acht Bosse ohne Phasen bleiben ohne. Dazu Screenshot der sechs Animationen.

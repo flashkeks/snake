@@ -12348,6 +12348,7 @@ function onShKill(k) {
 function onShHit(d) {
     shMarks.push({ ...d, t: performance.now() });
     if (shMarks.length > 30) shMarks.shift();
+    if (d.karma) return sTone(180, { dur: .08, type: 'square', vol: .05, rev: .1 });
     if (d.immune) return sTone(3200, { dur: .04, type: 'triangle', vol: .025, rev: .1 });
     if (d.dodge) return;
     sTone(d.kill ? 1500 : d.crit ? 2600 : 2200, { dur: d.kill ? .18 : .05, type: 'square', vol: d.kill ? .07 : .04, rev: 0 });
@@ -12798,10 +12799,10 @@ function shMobsInterp() {
     }
     const k = b.recv > a.recv ? Math.max(0, Math.min(1, (t - a.recv) / (b.recv - a.recv))) : 1;
     const prev = new Map((a.mobs || []).map(x => [x[0], x]));
-    return (b.mobs || []).map(([id, kind, x, y, hp, mh, ang, aim, warn, charging, cx, cy, charm, lv, phase, shield]) => {
+    return (b.mobs || []).map(([id, kind, x, y, hp, mh, ang, aim, warn, charging, cx, cy, charm, lv, phase, shield, parent]) => {
         const q = prev.get(id);
-        if (!q || Math.hypot(x - q[2], y - q[3]) > 120) return { id, kind, x, y, hp, mh, a: ang, aim, warn, charging, cx, cy, charm, lv, phase, shield };
-        return { id, kind, x: q[2] + (x - q[2]) * k, y: q[3] + (y - q[3]) * k, hp, mh, a: ang, aim, warn, charging, cx, cy, charm, lv, phase, shield };
+        if (!q || Math.hypot(x - q[2], y - q[3]) > 120) return { id, kind, x, y, hp, mh, a: ang, aim, warn, charging, cx, cy, charm, lv, phase, shield, parent };
+        return { id, kind, x: q[2] + (x - q[2]) * k, y: q[3] + (y - q[3]) * k, hp, mh, a: ang, aim, warn, charging, cx, cy, charm, lv, phase, shield, parent };
     });
 }
 
@@ -12818,9 +12819,9 @@ function shBossPos() {
         }
     }
     if (!b.boss) return null;
-    const [x, y, hp, mh, ang, slam, kind, warn, cx, cy, charging, enraged, spiral, vortex, beamWarn, beamA, intro, , phase, shield] = b.boss;
+    const [x, y, hp, mh, ang, slam, kind, warn, cx, cy, charging, enraged, spiral, vortex, beamWarn, beamA, intro, , phase, shield, shieldKind, orbX, orbY, dark, pkey] = b.boss;
     const def = (sh && sh.map.mobs && sh.map.mobs[kind]) || { name: 'Raccoon King', icon: '🦝', r: 44, crown: true, color: '#ff3b3b', slamR: 250 };
-    const extra = { hp, mh, a: ang, slam, def, kind, warn, cx, cy, charging, enraged, spiral, vortex, beamWarn, beamA, intro, phase: phase || 0, shield: shield || 0 };
+    const extra = { hp, mh, a: ang, slam, def, kind, warn, cx, cy, charging, enraged, spiral, vortex, beamWarn, beamA, intro, phase: phase || 0, shield: shield || 0, shieldKind: shieldKind || 0, orbX, orbY, dark: !!dark, pkey: pkey || '' };
     if (!a || !a.boss) return { x, y, ...extra };
     const k = b.recv > a.recv ? Math.max(0, Math.min(1, (t - a.recv) / (b.recv - a.recv))) : 1;
     return { x: a.boss[0] + (x - a.boss[0]) * k, y: a.boss[1] + (y - a.boss[1]) * k, ...extra };
@@ -13361,7 +13362,7 @@ function shFrame() {
             c.fillRect(mb.x - bw / 2 - 2, by - 2, bw + 4, 12);
             c.fillStyle = mb.shield > 0 ? '#ffd23f' : '#ff4d6d';
             c.fillRect(mb.x - bw / 2, by, bw * Math.max(0, mb.hp / mb.mh), 8);
-            zPhaseTicks(c, mb.x - bw / 2, by, bw, 8, mb.phase);
+            zPhaseTicks(c, mb.x - bw / 2, by, bw, 8, mb.phase, def.phases);
             c.font = 'bold 13px system-ui';
             c.textAlign = 'center';
             c.fillStyle = '#ffd23f';
@@ -13378,9 +13379,9 @@ function shFrame() {
         }
         // 25.09.2026: Pixel-Sprites fuer alle Gegner (public/pfx.js, bfx.js)
         // (danach trotzdem Lebensleiste und Elite-Name)
-        if (def.special) zPhaseAura(c, mb.x, mb.y, def.r || 20, mb.phase, now);
+        if (def.phases) zPhaseAura(c, mb.x, mb.y, def.r || 20, mb.phase, 'void', now);
         const drawn = PX[mb.kind] ? bDrawSide(c, mb, def, now) : false;
-        if (def.special) zPhaseShield(c, mb.x, mb.y, def.r || 20, (mb.shield || 0) - (now - latest.recv), mb.phase, now);
+        if (def.phases) zPhaseShield(c, mb.x, mb.y, def.r || 20, (mb.shield || 0) - (now - latest.recv), 'void', mb.shield > 0 ? 1 : 0, now);
         // 6.5: Zombies mit eigener Figur (public/zfx.js)
         if (!drawn && zDrawMob(c, mb, def, now)) continue;
         // 6.12: eigene Figuren fuer Raid-Gegner (public/rfx.js), sonst Kreis mit Emoji
@@ -13562,15 +13563,25 @@ function shFrame() {
             c.restore();
         }
         // Boss-Phasen (25.09.2026): Aura je Phase unter, Schild ueber der Figur
-        zPhaseAura(c, bs.x, bs.y, BR, bs.phase, now);
+        zPhaseAura(c, bs.x, bs.y, BR, bs.phase, bs.pkey, now);
+        // Schild aus Adds: Energielinien vom Boss zu Waechtern/Reaktoren
+        if (bs.shield > 0) for (const mb of shMobsInterp()) {
+            if (!mb.parent) continue;
+            c.strokeStyle = `rgba(${PHASE_RGB[bs.pkey] || '255,210,63'},${.5 + .3 * Math.sin(now / 90)})`;
+            c.lineWidth = 4;
+            c.beginPath();
+            zBolt(c, bs.x, bs.y, mb.x, mb.y, 18, 8);
+            c.stroke();
+        }
+        if (bs.orbX != null) zPhaseOrb(c, bs.orbX, bs.orbY, now);
         drawBoss(c, bs, BR, now);
-        zPhaseShield(c, bs.x, bs.y, BR, bs.shield - (now - latest.recv), bs.phase, now);
+        zPhaseShield(c, bs.x, bs.y, BR, bs.shield - (now - latest.recv), bs.pkey, bs.shieldKind, now);
         const bw = 120;
         c.fillStyle = 'rgba(0,0,0,.7)';
         c.fillRect(bs.x - bw / 2, bs.y - BR - 34, bw, 9);
-        c.fillStyle = bs.shield > 0 ? '#ffd23f' : '#ff3b3b';
+        c.fillStyle = bs.shield > 0 ? (bs.shieldKind === 2 ? '#ff4dff' : '#ffd23f') : '#ff3b3b';
         c.fillRect(bs.x - bw / 2 + 1, bs.y - BR - 33, (bw - 2) * bs.hp / bs.mh, 7);
-        zPhaseTicks(c, bs.x - bw / 2 + 1, bs.y - BR - 33, bw - 2, 7, bs.phase);
+        zPhaseTicks(c, bs.x - bw / 2 + 1, bs.y - BR - 33, bw - 2, 7, bs.phase, bs.def.phases);
     }
     // Rauch
     for (const [, x, y, r, left] of latest.smokes || []) {
@@ -13858,6 +13869,19 @@ function shFrame() {
     }
 
     // Treffer
+    // Omega „Last Light" (25.09.2026): alles dunkel ausser einem Lichtkreis um jeden Spieler
+    const bsd = shBossPos();
+    if (bsd && bsd.dark) {
+        c.save();
+        c.fillStyle = 'rgba(0,0,0,.86)';
+        c.beginPath();
+        c.rect(-5000, -5000, 20000, 20000);
+        const lights = others.filter(p => !p.dead);
+        if (shPred) lights.push(shPred);
+        for (const p of lights) { c.moveTo(p.x + 230, p.y); c.arc(p.x, p.y, 230, 0, Math.PI * 2); }
+        c.fill('evenodd');
+        c.restore();
+    }
     shMarks = shMarks.filter(mk => now - mk.t < 700);
     c.textAlign = 'center';
     for (const mk of shMarks) {
@@ -13874,7 +13898,11 @@ function shFrame() {
             c.globalAlpha = 1;
             continue;
         }
-        if (mk.immune) {
+        if (mk.karma) {
+            c.fillStyle = '#ff4d4d';
+            c.font = '900 17px system-ui';
+            c.fillText('KARMA', mk.x, mk.y - 20 - k * 30);
+        } else if (mk.immune) {
             c.fillStyle = '#ffd23f';
             c.font = '900 17px system-ui';
             c.fillText('IMMUNE', mk.x, mk.y - 20 - k * 30);
