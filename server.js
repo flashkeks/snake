@@ -156,6 +156,16 @@ const server = http.createServer((req, res) => {
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
         return res.end(indexHtml());
     }
+    // Sound-Slots (25.09.2026): mp3 liegen nicht im Repo, sondern in DATA_DIR/sfx
+    // (tools/fetch-sfx.sh holt sie auf edge). Nur SLOT.mp3 mit einfachem Namen.
+    const sm = url.match(/^\/sfx\/([a-z0-9-]{1,40})\.mp3$/);
+    if (sm) {
+        return fs.readFile(path.join(DATA_DIR, 'sfx', sm[1] + '.mp3'), (err, data) => {
+            if (err) { res.writeHead(404); return res.end('404'); }
+            res.writeHead(200, { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'public, max-age=86400' });
+            res.end(data);
+        });
+    }
     let file = url === '/' ? '/index.html' : url;
     file = path.normalize(file).replace(/^(\.\.[\/\\])+/, '');
     const filePath = path.join(PUBLIC, file);

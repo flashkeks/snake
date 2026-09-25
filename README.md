@@ -2762,3 +2762,19 @@ Pro Konto im Admin-Panel schaltbar (Arena-Bereich, „Creative mode", `adminAren
   anlegen. Dazu Heilen und Rucksack leeren. Server: `crOpen`/`crGive`/`crHeal`/`crClear`,
   ohne Creative kommt nur ein Hinweis.
 - Was man rausbringt, landet wie normal im Lager – der Modus ist fuers Testen gedacht.
+
+## 🔊 Echte Voicelines und Sound-Effekte (25.09.2026, Max)
+- Slots in `public/sfx.json` (Slot -> Datei auf myinstants.com, `max` Sekunden, `cd`
+  Mindestabstand, `vol`). Die mp3 liegen **nicht im Repo**, sondern in `DATA_DIR/sfx/`
+  (edge: `/srv/snake-data/sfx`, ~6 MB). Holen/erneuern auf edge:
+  `/srv/snake/tools/fetch-sfx.sh` (vorhandene bleiben, `FORCE=1` laedt neu). Aus dem
+  Claude-Container gehen Soundboards nicht, von edge aus schon (User-Agent noetig).
+- Server liefert `/sfx/SLOT.mp3` aus `DATA_DIR/sfx` (nur `[a-z0-9-]`).
+- Client `public/voice.js`: `vox(slot)` laedt beim ersten Mal, dekodiert ueber den
+  gemeinsamen AudioContext (Lautstaerke/Mute wie alle Sounds), schneidet nach `max` mit
+  Ausblenden ab, Stimmen ueberlappen nicht. Fehlt eine Datei, bleibt der Synth-Sound.
+- Ausloeser: Schuss mit Unique-Waffe (Slot = Waffen-Basis), Taste R mit Unique-Ruestung,
+  Unique-Verbrauchsgut (Q/G), Effekte `zawarudo/shinra/genki/chidori/titan/gomu/void`,
+  Spezial-Charaktere: Auftritt (`KIND-spawn`), Tod unter 25 % HP (`KIND-death`),
+  gelegentlich `KIND-line`, Rick-Portal (`rick-attack`).
+- Neuer Slot: Eintrag in `sfx.json`, dann `fetch-sfx.sh` auf edge.

@@ -12380,6 +12380,9 @@ function onShFx(d) {
     shFx.push({ ...d, t: performance.now() });
     if (shFx.length > 30) shFx.shift();
     zFxSound(d);
+    // echte Sounds (public/voice.js) fuer Faehigkeiten und Spezial-Charaktere
+    if (d.type === 'shFx') vox(({ zawarudo: 'zawarudo', shinra: 'shinra', genki: 'genkidama', chidori: 'chidori', titan: 'titan', gomu: 'gomu', void: 'gojo-void', door: 'doordoor' })[d.kind] || '');
+    if (d.type === 'shFx' && d.kind === 'portal' && [...VOX_SEEN.values()].some(v => v.kind === 'rick')) vox('rick-attack');
     if (d.type === 'shBoom') sNoise({ dur: d.nuke ? 1.6 : .4, vol: d.nuke ? .4 : .22, type: 'lowpass', f: d.nuke ? 600 : 900, f2: 60, rev: .3, a: .002 });
     if (d.nuke) {
         // tiefes Grollen und Druckwelle
@@ -13277,7 +13280,9 @@ function shFrame() {
     }
 
     // Gegner (4.1): interpoliert, Lebensleiste, Sniper-Laser
-    for (const mb of shMobsInterp()) {
+    const mobsNow = shMobsInterp();
+    voxMobs(mobsNow, m);
+    for (const mb of mobsNow) {
         const def = m.mobs[mb.kind];
         if (!def || !vis(mb.x, mb.y, 80)) continue;
         if (mb.aim) {
@@ -14411,6 +14416,7 @@ function shLocalFire(now) {
     shLastLocalShot = now;
     shFlashAt = now;
     const b = (s.me.gear[s.me.slot] || s.me.gear.primary || {}).b;
+    vox(b); // Unique: Voiceline/Effekt (public/voice.js), Abstand regelt sfx.json
     // dumpf: Tiefpass statt Hochpass, schnelle Waffen leiser (Max: SMG tat in den Ohren weh)
     const fast = s.me.ms < 120;
     const heavy = ['sniper', 'launcher', 'railgun', 'nukelauncher', 'singularity', 'crossbow'].includes(b);
@@ -14482,7 +14488,11 @@ document.addEventListener('keydown', e => {
     if (k === 'q') shUse(0);
     if (k === 'f' || k === 'e') wsSend({ type: 'shInteract' });
     if (k === 'g') shUse(1);
-    if (k === 'r') wsSend({ type: 'shAbility' });
+    if (k === 'r') {
+        wsSend({ type: 'shAbility' });
+        const s = shSnaps[shSnaps.length - 1];
+        if (s && s.me) for (const sl of ['vest', 'helmet', 'pants', 'boots', 'primary', 'secondary']) { const it = s.me.gear[sl]; if (it && vox(it.b)) break; }
+    }
     if (k === 'c') { if (crOpen) crDraw(false); else wsSend({ type: 'crOpen' }); }
     if (e.key === 'Tab' || k === 'i') {
         e.preventDefault();
@@ -14494,6 +14504,8 @@ document.addEventListener('keydown', e => {
 // Mauszeiger (Touch: 300 in Blickrichtung)
 function shUse(i) {
     if (!shPred) return;
+    const su = shSnaps.length && shSnaps[shSnaps.length - 1].me;
+    if (su && su.util && su.util[i]) vox(su.util[i].base);
     let x = shPred.x + Math.cos(shIn.a) * 300, y = shPred.y + Math.sin(shIn.a) * 300;
     if (shMouse && !shTouch.aim) {
         const cv = $('sh-canvas');
@@ -16542,6 +16554,7 @@ function slotResult(d) {
 <script src="/zfx.js"></script>
 <svg width="0" height="0" style="position:absolute"><defs><linearGradient id="gi-ultra" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5bd6"/><stop offset=".5" stop-color="#3da5ff"/><stop offset="1" stop-color="#ffd23f"/></linearGradient></defs></svg>
 <script src="/unique-icons.js"></script>
+<script src="/voice.js"></script>
 <script src="/rfx.js"></script>
 <script src="/gfx.js"></script>
 <script src="/bfx.js"></script>
