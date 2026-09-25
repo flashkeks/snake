@@ -2632,7 +2632,7 @@ zufaelligen neuen Uniques ohne Absturz.
     wirkungslos; All Might alle 30 s, 300 Schaden; Killua +6 % Dodge, Konter
     springt auf 2 weitere; Geass 15 s, 1,5 s CD; Flash Step 1,5 s CD mit
     Nachbild; Kyoka 3,5 s unsichtbar, 8 s CD; Titan 25 s, +2500 HP.
-- **Bekannt, nicht geaendert:** Die schwarzen Loecher von Singularity und den
+- **Gewollt (Entscheidung Max, 25.09.2026: so lassen):** Die schwarzen Loecher von Singularity und den
   Venuzdonoa-Rissen treffen beim Zusammenfallen auch den eigenen Schuetzen
   (`blast()` wie bei Granaten) – im Test 921 Schaden am Schuetzen, wenn er
   neben dem getroffenen Gegner steht.
