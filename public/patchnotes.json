@@ -6,6 +6,7 @@
       "📉 Enemies drop items half as often",
       "🎚️ Enemies have levels now: surface 1–10, military base 20–30, lab 40–50 – higher level, tougher enemy, more XP",
       "💎 Enemy loot on the surface and in the military base rolls Epic and better half as often – the lab stays as it was",
+      "🔫 Weapon levels: kills level up the weapon you hold (1–30) – +1.5% damage per level, +5% fire rate at 10, 20 and 30. Fusing passes on half the XP",
       "🌩️ Fix: the Tesla effect now also jumps between raid enemies and zombies (it only worked against players)"
     ]
   },

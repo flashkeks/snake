@@ -10527,6 +10527,14 @@ const INNATE_TEXT = { homing: l => `bullets curve towards enemies${l > 1 ? ' (st
     multishot: l => `+${l} extra bullets` };
 
 // Alles zu einem Item (Tooltip, Detail)
+// Waffen-Level (25.09.2026) – gleiche Kurve wie arena-items.js weaponLevel
+function wLevel(it) {
+    const W = arenaCat.wlv, xp = it.wxp || 0, need = lv => Math.round(W.base * Math.pow(lv - 1, W.exp));
+    let lv = 1;
+    while (lv < W.max && xp >= need(lv + 1)) lv++;
+    return { lv, xp, from: need(lv), to: lv < W.max ? need(lv + 1) : null, dmg: 1 + W.dmg * (lv - 1), rate: 1 + W.rate * W.milestones.filter(m => lv >= m).length };
+}
+
 function itemDetail(it) {
     const k = itKind(it), def = itemDef(it);
     const bonus = arenaCat.tierBonus[tierIdx(itTier(it))] || 0;
@@ -10537,8 +10545,15 @@ function itemDetail(it) {
     let s = `<div class="tip-head tier-${itTier(it)}"><span class="it-ico">${itemIcon(it)}</span><div><b>${esc(it.name || it.n)}</b>` +
         `<small class="it-tier">${tierName(itTier(it))}${odds > 1 ? ` · 1 in ${odds.toLocaleString('en-US')}` : ''}${sc ? ` · ⚡ ${scoreText(sc)}` : ''}</small></div></div>`;
     if (k === 'weapon') {
-        const dmg = def.dmg * (1 + bonus) * (1 + L('sharp') * 0.12), rate = 1000 / (def.ms / (1 + L('rapid') * 0.1)), pel = def.pellets + L('multishot');
+        const wl = arenaCat.wlv ? wLevel(it) : { lv: 1, dmg: 1, rate: 1, to: null };
+        const dmg = def.dmg * (1 + bonus) * (1 + L('sharp') * 0.12) * wl.dmg, rate = 1000 / (def.ms / (1 + L('rapid') * 0.1) / wl.rate), pel = def.pellets + L('multishot');
         if (def.unique) s += `<div class="set-box unique-box"><b>✦ Unique</b><small>${esc(def.desc || '')}</small></div>`;
+        if (arenaCat.wlv && !it.starter && !it.s) {
+            const pct = wl.to ? Math.round((wl.xp - wl.from) / (wl.to - wl.from) * 100) : 100;
+            s += `<div class="set-box"><b>🔫 Weapon level ${wl.lv}${wl.to ? '' : ' (max)'}</b>` +
+                `<div style="height:6px;background:rgba(255,255,255,.12);border-radius:3px;margin:4px 0"><div style="height:6px;width:${pct}%;background:#ffd23f;border-radius:3px"></div></div>` +
+                `<small>${wl.to ? `${(wl.xp - wl.from).toLocaleString('en-US')} / ${(wl.to - wl.from).toLocaleString('en-US')} XP to level ${wl.lv + 1} · kills with this weapon level it` : 'Max level'}${wl.lv > 1 ? ` · +${Math.round((wl.dmg - 1) * 100)}% damage` : ''}${wl.rate > 1 ? `, +${Math.round((wl.rate - 1) * 100)}% fire rate` : ''}</small></div>`;
+        }
         s += `<div class="it-stats"><span>💥 ${Math.round(dmg)}${pel > 1 ? ' × ' + pel : ''}</span><span>⚡ ${rate.toFixed(1)}/s</span>` +
             `<span>📏 ${Math.round(def.speed * def.life * (1 + L('velocity') * 0.25) * (1 + L('velocity') * 0.15))}</span>` +
             (def.explode ? '<span>💣 explodes</span>' : '') + '</div>' +

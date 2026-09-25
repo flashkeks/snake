@@ -502,7 +502,8 @@ function cornerNudge(x, y, sx, sy, r, isBlocked) {
 function brief(it) {
     return it ? {
         uid: it.uid, n: it.name, b: it.base, k: it.kind, t: it.tier, s: !!it.starter,
-        sl: it.slot || null, o: it.odds, sc: it.score, m: it.mods && it.mods.length ? it.mods.map(m => [m.id, m.lvl]) : undefined
+        sl: it.slot || null, o: it.odds, sc: it.score, m: it.mods && it.mods.length ? it.mods.map(m => [m.id, m.lvl]) : undefined,
+        wxp: it.wxp || undefined
     } : null;
 }
 
@@ -634,6 +635,26 @@ module.exports = function createArena(h, opts = {}) {
         h.accounts.touch();
         h.send(p.c, { type: 'arXp', n: got, reason, level: after, up: after > before });
         if (after > before && after % 10 === 0) h.feed(`⭐ ${p.name} reached arena level ${after}!`, 'gold');
+    }
+
+    // Waffen-Level: XP an die gehaltene Waffe; in PvP/Zombies (Kopien) auch ans Original im Lager
+    function weaponXp(p, n) {
+        const it = p && (p.gear[p.slot] || p.gear.primary);
+        if (!it || it.starter || it.kind !== 'weapon' || !(n > 0) || !p.account) return;
+        const before = I.weaponLevel(it).level;
+        const got = Math.round(n);
+        it.wxp = (it.wxp || 0) + got;
+        if (mode !== 'extract') {
+            const orig = st(p.c).inv.find(x => x.uid === it.uid);
+            if (orig && orig !== it) orig.wxp = (orig.wxp || 0) + got;
+        }
+        h.accounts.touch();
+        const after = I.weaponLevel(it).level;
+        if (after > before) {
+            const ms = I.WLV.milestones.includes(after);
+            h.send(p.c, { type: 'shEvent', text: `🔫 ${it.name} reached level ${after}!${ms ? ' +5% fire rate' : ''}`, kind: 'self' });
+            if (after === I.WLV.max) h.feed(`🔫 ${p.name} maxed out a ${it.name} (level ${after})!`, 'gold');
+        }
     }
 
     function count(a, base) {
@@ -1185,6 +1206,7 @@ module.exports = function createArena(h, opts = {}) {
         if (killer && players.has(killer.id)) {
             onKill(killer, Date.now());
             award(killer, L.XP.kill + 10 * Math.max(0, (p.level || 1) - (killer.level || 1)), 'kill');
+            weaponXp(killer, L.XP.kill);
             if (killer.b.bloodlust) killer.hp = Math.min(killer.maxHp, killer.hp + killer.b.bloodlust);
             if (killer.b.rampage) killer.rampUntil = Date.now() + 4000 / SPEED;
             rest = pickUp(killer, loot);
@@ -2552,6 +2574,7 @@ module.exports = function createArena(h, opts = {}) {
         if (killer && killer !== p) {
             pvp.kills.set(killer.id, (pvp.kills.get(killer.id) || 0) + 1);
             award(killer, 60, 'pvp kill');
+            weaponXp(killer, 60);
             const ka = st(killer.c);
             ka.pvp = ka.pvp || { rating: 1000, wins: 0, losses: 0, draws: 0, kills: 0, deaths: 0 };
             ka.pvp.kills++;
@@ -3193,6 +3216,7 @@ module.exports = function createArena(h, opts = {}) {
                 zb.kills.set(killer.id, (zb.kills.get(killer.id) || 0) + 1);
                 zb.kc.set(killer.id, (zb.kc.get(killer.id) || 0) + (def.boss ? Z_COINS.boss * bi : m.kind === 'tank' ? Z_COINS.tank : def.coins || Z_COINS.kill));
                 award(killer, L.XP[def.xp || 'npc'] * (def.boss ? 20 * bi : def.xpMul || 1), def.name.toLowerCase());
+                weaponXp(killer, L.XP[def.xp || 'npc'] * (def.boss ? 20 * bi : def.xpMul || 1));
             }
             if (def.boss) {
                 // Alle, die mitgeschossen haben: Punkte und XP anteilig (Boss zaehlt fuer das Team)
@@ -3234,6 +3258,7 @@ module.exports = function createArena(h, opts = {}) {
             announce(`${def.icon} ${killer ? killer.name + ' killed' : 'Down goes'} the ${def.name}! ${nLoot} item${nLoot > 1 ? 's' : ''} dropped`, 'boss');
             if (killer && killer.account) h.accounts.stat(killer.account, s => { s.bossKills = (s.bossKills || 0) + 1; });
             if (killer) award(killer, L.XP.boss, 'boss');
+            if (killer) weaponXp(killer, L.XP.boss);
             const total = [...m.dmgBy.values()].reduce((s, n) => s + n, 0);
             for (const [id, n] of m.dmgBy) {
                 const q = players.get(id);
@@ -3245,7 +3270,9 @@ module.exports = function createArena(h, opts = {}) {
         }
         if (m.kind === 'enforcer') enforcerAt.push(now + ENFORCER_RESPAWN / SPEED);
         if (killer) {
-            award(killer, L.XP[def.xp] * (def.xpMul || 1) * (1 + MOB_LV_XP * ((m.lv || 1) - 1)), m.lv ? `${def.name.toLowerCase()} lv ${m.lv}` : def.name.toLowerCase());
+            const mxp = L.XP[def.xp] * (def.xpMul || 1) * (1 + MOB_LV_XP * ((m.lv || 1) - 1));
+            award(killer, mxp, m.lv ? `${def.name.toLowerCase()} lv ${m.lv}` : def.name.toLowerCase());
+            weaponXp(killer, mxp);
             if (killer.account) h.accounts.stat(killer.account, s => { s.npcKills = (s.npcKills || 0) + 1; });
             if (killer.b.bloodlust) killer.hp = Math.min(killer.maxHp, killer.hp + killer.b.bloodlust / 2);
         }

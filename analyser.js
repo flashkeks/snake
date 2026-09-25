@@ -113,6 +113,7 @@ function analyseItem(it, users) {
             ['Rarity', tierName],
             ['Effects', now.length ? now.map(m => `${mdefs[m.id].icon} ${mdefs[m.id].name} ${m.lvl}`).join(' · ') : 'none'],
             ...(fuseSection ? [['Dropped with', mods.length ? mods.map(m => `${mdefs[m.id].icon} ${mdefs[m.id].name} ${m.lvl}`).join(' · ') : 'none']] : []),
+            ...(kind === 'weapon' ? [['Weapon level', (() => { const w = I.weaponLevel(it); return `${w.level}${w.to ? ` (${(w.xp - w.from).toLocaleString('en-US')} / ${(w.to - w.from).toLocaleString('en-US')} XP)` : ' (max)'}`; })()]] : []),
             ['Shown in game', it.odds > 1 ? `1 in ${it.odds.toLocaleString('en-US')}` : '–'],
             ['Salvage value', `${I.salvageValue(it)} ⚙️`]
         ],

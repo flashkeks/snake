@@ -547,7 +547,9 @@ function fuse(main, others, rnd = Math.random) {
     const o = finish({ kind: main.kind, base: main.base, tier: main.tier, mods: drop });
     const f = finish({ kind: main.kind, base: main.base, tier: main.tier, mods });
     const score = Math.round(o.score + Math.max(0, f.score - o.score) / 2);
-    return { item: { ...main, mods, drop, fused: (main.fused || 0) + others.length, odds: o.odds, score }, log };
+    // Waffen-Level: das Haupt-Item bekommt die halbe XP der gefressenen
+    const wxp = main.kind === 'weapon' ? Math.round((main.wxp || 0) + others.reduce((a, x) => a + (x.wxp || 0), 0) / 2) : main.wxp;
+    return { item: { ...main, mods, drop, fused: (main.fused || 0) + others.length, odds: o.odds, score, ...(wxp ? { wxp } : {}) }, log };
 }
 
 // Vom Admin gebaut: beliebige Basis, Stufe und Mods
@@ -634,14 +636,32 @@ function lvlOf(item, id) {
     return m ? m.lvl : 0;
 }
 
+// ---------- Waffen-Level (25.09.2026, Max) ----------
+// Kills mit der Waffe geben ihr XP (item.wxp, gleiche Menge wie der Spieler
+// bekommt). Level 1–30; je Level +1,5 % Schaden, bei 10/20/30 je +5 % Feuerrate.
+// XP gesamt fuer Level L: WLV.base × (L−1)^WLV.exp (Lv 10 ~4,2k, 20 ~14,9k, 30 ~30,7k)
+const WLV = { max: 30, base: 100, exp: 1.7, dmg: 0.015, rate: 0.05, milestones: [10, 20, 30] };
+const wxpFor = lv => Math.round(WLV.base * Math.pow(lv - 1, WLV.exp));
+function weaponLevel(item) {
+    const xp = (item && item.wxp) || 0;
+    let lv = 1;
+    while (lv < WLV.max && xp >= wxpFor(lv + 1)) lv++;
+    return { level: lv, xp, from: wxpFor(lv), to: lv < WLV.max ? wxpFor(lv + 1) : null };
+}
+function weaponLevelMul(item) {
+    const lv = weaponLevel(item).level;
+    return { dmg: 1 + WLV.dmg * (lv - 1), rate: 1 + WLV.rate * WLV.milestones.filter(m => lv >= m).length };
+}
+
 function weaponStats(item) {
     const b = WEAPONS[item.base] || WEAPONS.pistol;
+    const lvm = weaponLevelMul(item);
     const inn = b.innate || {};
     const L = id => lvlOf(item, id) + (inn[id] || 0);
     const bonus = TIER_BONUS[TIER_IDX[item.tier] || 0];
     return {
-        ms: b.ms / (1 + L('rapid') * 0.1),
-        dmg: b.dmg * (1 + bonus) * (1 + L('sharp') * 0.12),
+        ms: b.ms / (1 + L('rapid') * 0.1) / lvm.rate,
+        dmg: b.dmg * (1 + bonus) * (1 + L('sharp') * 0.12) * lvm.dmg,
         speed: b.speed * (1 + L('velocity') * 0.25),
         life: b.life * (1 + L('velocity') * 0.15),
         spread: b.spread,
@@ -724,14 +744,14 @@ function catalog() {
     return {
         weapons: WEAPONS, armors: ARMORS, sets: SETS, slots: SLOTS, slotNames: SLOT_NAMES, utils: UTILS, packs: PACKS, basePack: BASE_PACK, tierBonus: TIER_BONUS,
         weaponMods: mods(WEAPON_MODS), armorMods: mods(ARMOR_MODS),
-        cases, shop: SHOP, tiers: TIERS, invMax: INV_MAX, fuse: { cost: FUSE_COST, add: FUSE_ADD, maxMods: FUSE_MAX_MODS },
+        cases, shop: SHOP, tiers: TIERS, invMax: INV_MAX, wlv: WLV, fuse: { cost: FUSE_COST, add: FUSE_ADD, maxMods: FUSE_MAX_MODS },
         maxTier: { weapon: Object.fromEntries(Object.entries(WEAPONS).map(([k, b]) => [k, maxTierOf(b)])), armor: Object.fromEntries(Object.entries(ARMORS).map(([k, b]) => [k, maxTierOf(b)])) }
     };
 }
 
 module.exports = {
     TIERS, TIER_IDX, TIER_ODDS, TIER_BONUS, WEAPONS, ARMORS, SETS, SLOTS, UTILS, PACKS, BASE_PACK, THROW_RANGE, WEAPON_MODS, ARMOR_MODS,
-    SOURCES, CASES, SHOP, INV_MAX, baseWeight, poolAt, fuse, fuseUseless, FUSE_COST, FUSE_ADD, FUSE_MAX_MODS, EFFECT_N, maxTierOf, generate, plain, craft, salvageValue, weaponStats, armorStats, catalog, migrate, effectFactor
+    SOURCES, CASES, SHOP, INV_MAX, baseWeight, poolAt, WLV, weaponLevel, fuse, fuseUseless, FUSE_COST, FUSE_ADD, FUSE_MAX_MODS, EFFECT_N, maxTierOf, generate, plain, craft, salvageValue, weaponStats, armorStats, catalog, migrate, effectFactor
 };
 
 // Nachrechnen: node arena-items.js [N] – Verteilung je Quelle
