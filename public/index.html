@@ -12154,7 +12154,13 @@ function shPredict(dt) {
         return;
     }
     const m = sh.map, sp = m.move * (s.me.spd || 1);
-    if (shIn.mx || shIn.my) [shPred.x, shPred.y] = shSlide(shPred.x, shPred.y, shIn.mx * sp * dt, shIn.my * sp * dt, m.r);
+    if (shIn.mx || shIn.my) {
+        // Door-Door (25.09.2026): Waende zaehlen nicht, nur der Kartenrand
+        if (s.me.phase) {
+            shPred.x = Math.max(m.r, Math.min(m.w - m.r, shPred.x + shIn.mx * sp * dt));
+            shPred.y = Math.max(m.r, Math.min(m.h - m.r, shPred.y + shIn.my * sp * dt));
+        } else [shPred.x, shPred.y] = shSlide(shPred.x, shPred.y, shIn.mx * sp * dt, shIn.my * sp * dt, m.r);
+    }
     const now = performance.now();
     shHist.push({ t: now, x: shPred.x, y: shPred.y });
     while (shHist.length && now - shHist[0].t > 1500) shHist.shift();
@@ -12442,10 +12448,10 @@ function shMobsInterp() {
     }
     const k = b.recv > a.recv ? Math.max(0, Math.min(1, (t - a.recv) / (b.recv - a.recv))) : 1;
     const prev = new Map((a.mobs || []).map(x => [x[0], x]));
-    return (b.mobs || []).map(([id, kind, x, y, hp, mh, ang, aim, warn, charging, cx, cy]) => {
+    return (b.mobs || []).map(([id, kind, x, y, hp, mh, ang, aim, warn, charging, cx, cy, charm]) => {
         const q = prev.get(id);
-        if (!q || Math.hypot(x - q[2], y - q[3]) > 120) return { id, kind, x, y, hp, mh, a: ang, aim, warn, charging, cx, cy };
-        return { id, kind, x: q[2] + (x - q[2]) * k, y: q[3] + (y - q[3]) * k, hp, mh, a: ang, aim, warn, charging, cx, cy };
+        if (!q || Math.hypot(x - q[2], y - q[3]) > 120) return { id, kind, x, y, hp, mh, a: ang, aim, warn, charging, cx, cy, charm };
+        return { id, kind, x: q[2] + (x - q[2]) * k, y: q[3] + (y - q[3]) * k, hp, mh, a: ang, aim, warn, charging, cx, cy, charm };
     });
 }
 
@@ -12893,6 +12899,15 @@ function shFrame() {
             c.lineTo(mb.x + Math.cos(mb.a) * 950, mb.y + Math.sin(mb.a) * 950);
             c.stroke();
         }
+        // Geass (25.09.2026): verzauberte Gegner mit rotem Ring und Auge
+        if (mb.charm) {
+            c.strokeStyle = `rgba(255,40,80,${.6 + .3 * Math.sin(now / 120)})`;
+            c.lineWidth = 3;
+            c.beginPath();
+            c.arc(mb.x, mb.y, (def.r || 20) + 8, 0, Math.PI * 2);
+            c.stroke();
+            drawEmojiC(c, '🔴', mb.x, mb.y - (def.r || 20) - 16, 14);
+        }
         // 6.5: Zombies mit eigener Figur (public/zfx.js)
         if (zDrawMob(c, mb, def, now)) continue;
         // 6.12: eigene Figuren fuer Raid-Gegner (public/rfx.js), sonst Kreis mit Emoji
@@ -13091,6 +13106,28 @@ function shFrame() {
         }
     }
 
+    // Hoi-Poi-Tuerme und eigene Killer-Queen-Bomben (25.09.2026)
+    for (const [, tx, ty, ta, left] of latest.turrets || []) {
+        c.fillStyle = 'rgba(0,0,0,.4)';
+        c.beginPath();
+        c.arc(tx, ty, 20, 0, Math.PI * 2);
+        c.fill();
+        c.strokeStyle = left < 3000 && Math.floor(now / 200) % 2 ? '#ff4d4d' : '#ffd23f';
+        c.lineWidth = 3;
+        c.beginPath();
+        c.moveTo(tx, ty);
+        c.lineTo(tx + Math.cos(ta) * 28, ty + Math.sin(ta) * 28);
+        c.stroke();
+        drawEmojiC(c, '💊', tx, ty, 22);
+    }
+    for (const [bx, by] of my.kq || []) {
+        c.fillStyle = `rgba(255,80,140,${.25 + .15 * Math.sin(now / 100)})`;
+        c.beginPath();
+        c.arc(bx, by, 16, 0, Math.PI * 2);
+        c.fill();
+        drawEmojiC(c, '💣', bx, by - 14, 14);
+    }
+
     // Hiraishin-Kunai (25.09.2026): eigene Marke, pulsiert
     if (my.kunai) {
         const [kx, ky] = my.kunai;
@@ -13236,10 +13273,23 @@ function shFrame() {
                 c.beginPath();
                 c.arc(f.x, f.y, f.r * (0.3 + k * 0.7), 0, Math.PI * 2);
                 c.stroke();
-            } else if (f.kind === 'doom' || f.kind === 'weights' || f.kind === 'dragon') {
+            } else if (f.kind === 'doom' || f.kind === 'weights' || f.kind === 'dragon' || f.kind === 'door' || f.kind === 'mirror' || f.kind === 'charm') {
                 c.globalAlpha = 1 - k;
-                drawEmojiC(c, f.kind === 'doom' ? '📓' : f.kind === 'weights' ? '🏋️' : '🐉', f.x, f.y - 40 - k * 40, 40 + k * 20);
+                drawEmojiC(c, { doom: '📓', weights: '🏋️', dragon: '🐉', door: '🚪', mirror: '🪞', charm: '🔴' }[f.kind], f.x, f.y - 40 - k * 40, 40 + k * 20);
                 c.globalAlpha = 1;
+            } else if (f.kind === 'gomu') {
+                c.strokeStyle = `rgba(255,190,150,${1 - k})`;
+                c.lineWidth = 8 * (1 - k) + 2;
+                c.beginPath();
+                c.moveTo(f.from[0], f.from[1]);
+                c.lineTo(f.x, f.y);
+                c.stroke();
+                drawEmojiC(c, '🤜', f.x, f.y, 26);
+            } else if (f.kind === 'shinra') {
+                c.fillStyle = `rgba(255,255,255,${.35 * (1 - k)})`;
+                c.beginPath();
+                c.arc(f.x, f.y, f.r * k, 0, Math.PI * 2);
+                c.fill();
             } else if (f.kind === 'blink') {
                 for (const [bx, by] of [f.from, [f.x, f.y]]) {
                     c.fillStyle = `rgba(184,132,255,${.6 * (1 - k)})`;
@@ -13396,7 +13446,13 @@ function shFrame() {
         const tags = [];
         if (my.combo) tags.push([`🌊 Combo ×${my.combo}${my.combo >= 10 ? ' – DRAGON' : ''}`, my.combo >= 10 ? '#5ad8ff' : '#fff']);
         for (const b of (my.buff || '').split(',').filter(Boolean)) tags.push(b === 'hollow' ? ['👹 Hollow', '#ff5b5b'] : b === 'stone' ? ["💎 Philosopher's Stone", '#ff5bd6'] : ['⛓️ CHAINED', '#ffb14d']);
-        if (my.abil === 'weights') tags.push(['R · 🏋️ drop weights', '#ffd23f']);
+        const ab = (my.abil || '').split(',');
+        if (ab.includes('weights')) tags.push(['R · 🏋️ drop weights', '#ffd23f']);
+        if (ab.includes('kq')) tags.push([`R · 💣 detonate ${(my.kq || []).length}`, '#ff5b8a']);
+        if (ab.includes('step')) tags.push(['R · 💨 flash step', '#8fe9ff']);
+        if (my.gaze) tags.push([`🔴 Geass ${Math.round(my.gaze * 100)}%`, '#ff4d6d']);
+        if (my.inv) tags.push(['🪞 invisible', '#b884ff']);
+        if (my.phase) tags.push(['🚪 walking through walls', '#ffd23f']);
         c.font = 'bold 14px system-ui';
         let ty = H - 130;
         for (const [t, col] of tags) {

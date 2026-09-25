@@ -94,6 +94,15 @@ const WEAPONS = {
     kagune: { name: 'Kagune', icon: '🩸', tier: 5, unique: true, ms: 420, dmg: 44, speed: 900, life: 0.38, spread: 0.7, pellets: 4, berserk: true, desc: 'The lower your HP, the harder it hits: up to ×2.5 damage and 28% lifesteal (Tokyo Ghoul)' },
     // pure: ignoriert Schadensreduktion und Ausweichen; pin: nagelt fest
     longinus: { name: 'Spear of Longinus', icon: '🔱', tier: 5, unique: true, ms: 1100, dmg: 240, speed: 1500, life: 0.9, spread: 0, pellets: 1, pure: true, pin: true, innate: { pierce: 2 }, desc: 'Pierces every defense – ignores armor, damage reduction and dodge, and pins whatever it hits in place (Evangelion)' },
+    // Welle 2
+    // grapple: Faust bis zur Wand oder zum Gegner, zieht einen hin
+    gomu: { name: 'Gum-Gum Pistol', icon: '🤜', tier: 4, unique: true, ms: 650, dmg: 75, speed: 1500, life: 0.42, spread: 0, pellets: 1, hitR: 18, grapple: true, desc: 'A stretching punch – hit a wall or an enemy and it slingshots you there (One Piece)' },
+    // rev: Dauerfeuer dreht hoch (bis x3 nach 3 s), heilt je Treffer
+    chainsaw: { name: 'Chainsaw', icon: '🪚', tier: 4, unique: true, ms: 90, dmg: 15, speed: 1000, life: 0.13, spread: 0.3, pellets: 1, hitR: 24, rev: true, desc: 'Point blank only – the longer you hold fire, the harder it rips (up to ×3 after 3 s), every hit heals you (Chainsaw Man)' },
+    // boomerang: fliegt hin und zurueck (zurueck durch Waende), trifft auf beiden Wegen, Blitz springt ueber
+    mjolnir: { name: 'Mjölnir', icon: '🔨', tier: 5, unique: true, ms: 1000, dmg: 135, speed: 950, life: 0.75, spread: 0, pellets: 1, hitR: 22, boomerang: true, chain: true, innate: { tesla: 1 }, desc: 'Thrown, it flies back to your hand – hitting everything on the way out and back, lightning jumps to nearby enemies (Marvel)' },
+    // stick: Treffer kleben als Bombe, Taste R sprengt alle
+    killerqueen: { name: 'Killer Queen', icon: '💣', tier: 5, unique: true, ms: 380, dmg: 14, speed: 1200, life: 0.9, spread: 0.02, pellets: 1, stick: true, desc: 'Every shot plants a bomb on whatever it hits (up to 8) – press R to detonate them all (JoJo)' },
 };
 // Obergrenze der Stufe je Basis (6.6, Max: keine legendaere Pistole). Grundware
 // (tier 0) hoechstens Epic, tier 1 hoechstens Legendary, sonst offen.
@@ -186,6 +195,9 @@ Object.assign(ARMORS, {
     geppo: { name: 'Geppo', icon: '🌙', slot: 'boots', tier: 4, unique: true, hp: 12, speed: 0.06, fx: { geppo: true }, desc: 'Walk on air: immune to fire, acid and every slow (One Piece)' },
     allmight: { name: "All Might's Suit", icon: '💪', slot: 'vest', tier: 5, unique: true, hp: 85, speed: 0.02, fx: { plusUltra: true }, desc: 'PLUS ULTRA: dropping below 25% HP (even from a killing blow) unleashes a shockwave and makes you invulnerable for 3 s – once a minute (My Hero Academia)' },
     killua: { name: "Killua's Godspeed", icon: '⚡', slot: 'pants', tier: 5, unique: true, hp: 18, speed: 0.08, fx: { dodge: 0.12, counter: true }, desc: '12% dodge – every dodge strikes the attacker with lightning (Hunter × Hunter)' },
+    geass: { name: 'Geass', icon: '🔴', slot: 'helmet', tier: 5, unique: true, hp: 28, speed: 0, fx: { geass: true }, desc: 'Look straight at an enemy (not a boss) for 1 s: it fights for you for 8 s (Code Geass)' },
+    flashstep: { name: 'Flash Step', icon: '💨', slot: 'boots', tier: 5, unique: true, hp: 15, speed: 0.1, fx: { flashstep: true }, desc: 'Press R to flash step 260 in your move direction – untouchable while stepping, every 3 s (Bleach)' },
+    kyoka: { name: 'Kyoka Suigetsu', icon: '🪞', slot: 'vest', tier: 6, unique: true, hp: 150, speed: 0.05, fx: { mirror: true }, desc: 'When hit, you leave an illusion behind and turn invisible for 2 s – enemies lose track of you (every 12 s) (Bleach)' },
 });
 
 // ---------- Verbrauchsgut: zwei Slots im Loadout (Q und G) ----------
@@ -220,6 +232,9 @@ const UTILS = {
     hollowmask: { name: 'Hollow Mask', icon: '👹', tier: 4, unique: true, use: 'self', stack: 2, ms: 10000, desc: '10 s berserk: +60% damage, +30% fire rate, 15% lifesteal – but you lose 5 HP/s (Bleach)' },
     deathnote: { name: 'Death Note', icon: '📓', tier: 5, unique: true, use: 'self', stack: 1, range: 900, ms: 40000, desc: 'Write the name of the enemy nearest your cursor: it dies in 40 s unless it kills you or extracts first – bosses lose 30% of their HP (Death Note)' },
     philosopher: { name: "Philosopher's Stone", icon: '💎', tier: 5, unique: true, use: 'self', stack: 1, ms: 60000, desc: 'For 60 s: a killing blow leaves you at 50% HP instead (Fullmetal Alchemist)' },
+    doordoor: { name: 'Door-Door Fruit', icon: '🚪', tier: 4, unique: true, use: 'self', stack: 2, ms: 3000, desc: 'For 3 s you walk through walls like they are doors (One Piece)' },
+    shinra: { name: 'Shinra Tensei', icon: '🌐', tier: 5, unique: true, use: 'self', stack: 1, r: 380, dmg: 60, desc: 'Almighty Push: blasts everything around you away and erases enemy bullets – slamming into a wall hurts extra (Naruto)' },
+    hoipoi: { name: 'Hoi-Poi Capsule', icon: '💊', tier: 5, unique: true, use: 'self', stack: 1, range: 320, ms: 20000, desc: 'Pops a Capsule Corp turret at your cursor that shoots your enemies for 20 s (Dragon Ball)' },
     worldender: { name: 'World Ender', icon: '☄️', tier: 6, tag: 'demo', use: 'throw', stack: 1, r: 99999, fuse: 4500, world: true, desc: '4.5 s countdown, then EVERYTHING on the map dies – except you and your team' }
 };
 // ---------- Rucksaecke: eigener Slot, bestimmen den Platz im Raid ----------
@@ -641,14 +656,15 @@ function weaponStats(item) {
         // 6.6 Uniques
         look: b.look || 0, wave: !!b.wave, erase: !!b.erase, hitR: b.hitR || 0, portals: !!b.portals, rift: !!b.rift, beamW: b.beamW || 0,
         // 25.09.2026 Uniques mit Mechanik
-        combo: !!b.combo, smart: !!b.smart, berserk: !!b.berserk, pure: !!b.pure, pin: !!b.pin
+        combo: !!b.combo, smart: !!b.smart, berserk: !!b.berserk, pure: !!b.pure, pin: !!b.pin,
+        grapple: !!b.grapple, rev: !!b.rev, boomerang: !!b.boomerang, chain: !!b.chain, stick: !!b.stick
     };
 }
 
 // Summe aller Ruestungsteile samt Set-Bonus; gear = { helmet, vest, pants, boots }
 function armorStats(gear) {
     const s = { hp: 0, speed: 1, regen: 0, thorns: 0, dodge: 0, dmg: 1, rate: 1, taken: 1, healMul: 1, homing: 0, crit: 0, phantom: false, sets: {},
-        see: false, killHeal: false, weights: false, geppo: false, plusUltra: false, counter: false };
+        see: false, killHeal: false, weights: false, geppo: false, plusUltra: false, counter: false, geass: false, flashstep: false, mirror: false };
     // Ganzkoerper-Ruestung (6.6): nur sie zaehlt
     const fullSlot = SLOTS.find(sl => gear && gear[sl] && ARMORS[gear[sl].base] && ARMORS[gear[sl].base].full);
     for (const slot of SLOTS) {
@@ -665,7 +681,7 @@ function armorStats(gear) {
             s.dodge += a.fx.dodge || 0;
             s.thorns += a.fx.thorns || 0;
             s.crit += a.fx.crit || 0;
-            for (const f of ['see', 'killHeal', 'weights', 'geppo', 'plusUltra', 'counter']) if (a.fx[f]) s[f] = true;
+            for (const f of ['see', 'killHeal', 'weights', 'geppo', 'plusUltra', 'counter', 'geass', 'flashstep', 'mirror']) if (a.fx[f]) s[f] = true;
         }
         const L = id => lvlOf(it, id);
         s.hp += a.hp * (1 + TIER_BONUS[TIER_IDX[it.tier] || 0]) + L('plating') * 8;

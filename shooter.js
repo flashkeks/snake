@@ -524,6 +524,10 @@ module.exports = function createArena(h, opts = {}) {
     const smokes = [];               // Rauchwolken { id, x, y, r, until }
     const fires = [];                // Feuerflaechen { id, x, y, r, until, owner, dps }
     const holes = [];                // Schwarze Loecher { id, x, y, r, until, owner, dmg }
+    // 25.09.2026 Uniques Welle 2
+    const kqBombs = [];              // Killer Queen { owner, mob, pid, x, y, until }
+    const turrets = [];              // Hoi-Poi { id, owner, x, y, until, next, a }
+    const decoys = [];               // Kyoka Suigetsu { id, pid, x, y, a, until }
     let seqId = 0;
     const mobs = [];                 // Gegner und Boss (4.1), siehe arena-mobs.js
     const strikes = [];              // angekuendigte Einschlaege der Bosse (4.6)
@@ -984,6 +988,9 @@ module.exports = function createArena(h, opts = {}) {
         p.plusUltra = s.plusUltra;
         p.counter = s.counter;
         p.weights = s.weights;
+        p.geass = s.geass;
+        p.flashstep = s.flashstep;
+        p.mirror = s.mirror;
         if (s.weights && p.weightsOff) {
             p.speedMul += 0.4;
             p.rateMul *= 1.25;
@@ -1482,6 +1489,142 @@ module.exports = function createArena(h, opts = {}) {
             fxAt(p.x, p.y, { type: 'shFx', kind: 'weights', x: Math.round(p.x), y: Math.round(p.y) });
             h.send(p.c, { type: 'shEvent', text: '🏋️ Weights off – full speed!', kind: 'self' });
         }
+        // Killer Queen: alle eigenen Bomben hochgehen lassen
+        const mine = kqBombs.filter(k => k.owner === p.id);
+        if (mine.length) {
+            for (const k of mine) {
+                kqBombs.splice(kqBombs.indexOf(k), 1);
+                const [bx, by] = kqPos(k);
+                kqBlast(p, bx, by, now);
+            }
+        }
+        // Flash Step: kurzer Sprung in Laufrichtung, dabei unantastbar
+        if (p.flashstep && now >= (p.stepCd || 0) && now >= (p.jailUntil || 0)) {
+            let dx = p.mx, dy = p.my;
+            if (!dx && !dy) { dx = Math.cos(p.a); dy = Math.sin(p.a); }
+            const d = Math.hypot(dx, dy) || 1;
+            dx /= d;
+            dy /= d;
+            let dist = 0;
+            while (dist < 260 && !blocked(p.x + dx * (dist + 15), p.y + dy * (dist + 15), R)) dist += 15;
+            if (dist >= 30) {
+                const from = [Math.round(p.x), Math.round(p.y)];
+                p.x += dx * dist;
+                p.y += dy * dist;
+                p.lastMove = now;
+                p.stepCd = now + 3000 / SPEED;
+                p.protect = Math.max(p.protect || 0, now + 300 / SPEED);
+                fxAt(p.x, p.y, { type: 'shFx', kind: 'blink', x: Math.round(p.x), y: Math.round(p.y), from });
+            }
+        }
+    }
+
+    // Killer Queen: Bombe an Gegner, Spieler oder Wand
+    function plantBomb(b, tgt, x, y, now) {
+        const own = kqBombs.filter(k => k.owner === b.owner);
+        if (own.length >= 8) kqBombs.splice(kqBombs.indexOf(own[0]), 1);
+        kqBombs.push({ owner: b.owner, mob: tgt && tgt.def ? tgt.id : null, pid: tgt && !tgt.def ? tgt.id : null, x, y, until: now + 20000 / SPEED });
+    }
+    function kqPos(k) {
+        const m = k.mob && mobs.find(o => o.id === k.mob);
+        if (m) return [m.x, m.y];
+        const q = k.pid && players.get(k.pid);
+        if (q && !q.dead) return [q.x, q.y];
+        return [k.x, k.y];
+    }
+    function kqBlast(p, x, y, now) {
+        const r = 110, dmg = 95 * p.dmgMul;
+        fxAt(x, y, { type: 'shBoom', x: Math.round(x), y: Math.round(y), r, nuke: false });
+        for (const q of near(x, y, r + R)) if (q !== p && !(p.team && p.team === q.team)) damage(q, p, dmg, now, q.x, q.y, { how: 'explosion', noDodge: true });
+        for (const m of mobsNear(x, y, r + 60)) if (Math.hypot(m.x - x, m.y - y) < r + m.def.r) hurtMob(m, p, dmg, now, m.x, m.y);
+    }
+
+    // Gum-Gum: Spieler wird zum Punkt gezogen (30 px davor)
+    function startGrapple(p, tx, ty, now) {
+        if (!p || p.dead) return;
+        const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
+        if (d < 50) return;
+        p.grap = { x: tx - dx / d * 30, y: ty - dy / d * 30, until: now + 700 / SPEED };
+        fxAt(p.x, p.y, { type: 'shFx', kind: 'gomu', x: Math.round(tx), y: Math.round(ty), from: [Math.round(p.x), Math.round(p.y)] });
+    }
+
+    // Kugel eines Spielers von beliebiger Stelle (Hoi-Poi-Turm)
+    const TURRET_W = { dmg: 30, ms: 330, speed: 1400, life: 0.5, spread: 0.04, pellets: 1, pierce: 0, bounce: 0, crit: 0, burn: 0, frost: 0, vamp: 0, explode: 0, homing: 0, tesla: 0, execute: 0, look: 0, hitR: 0 };
+    function turretTick(now) {
+        for (let i = turrets.length - 1; i >= 0; i--) {
+            const t = turrets[i];
+            const o = players.get(t.owner);
+            if (!o || o.dead || now >= t.until) {
+                turrets.splice(i, 1);
+                fxAt(t.x, t.y, { type: 'shFx', kind: 'mobdie', x: Math.round(t.x), y: Math.round(t.y), icon: '💊' });
+                continue;
+            }
+            if (now < t.next) continue;
+            let tgt = null, td = 620;
+            for (const m of mobs) {
+                const d = Math.hypot(m.x - t.x, m.y - t.y) - m.def.r;
+                if (m.hp > 0 && !m.charm && d < td && clear(t.x, t.y, m.x, m.y)) { tgt = m; td = d; }
+            }
+            for (const q of players.values()) {
+                if (q === o || q.dead || (o.team && o.team === q.team) || !canSee(o, q, now)) continue;
+                const d = Math.hypot(q.x - t.x, q.y - t.y);
+                if (d < td && clear(t.x, t.y, q.x, q.y)) { tgt = q; td = d; }
+            }
+            if (!tgt) continue;
+            t.next = now + TURRET_W.ms / SPEED;
+            t.a = Math.atan2(tgt.y - t.y, tgt.x - t.x) + (Math.random() - 0.5) * TURRET_W.spread;
+            const w = { ...TURRET_W, dmg: TURRET_W.dmg * o.dmgMul };
+            bullets.push({
+                id: ++seqId, owner: o.id, x: t.x + Math.cos(t.a) * 22, y: t.y + Math.sin(t.a) * 22,
+                vx: Math.cos(t.a) * w.speed, vy: Math.sin(t.a) * w.speed, dies: now + w.life * 1000 / SPEED, w, pierce: 0, bounce: 0, hits: new Set(), fx: 0, tier: 5
+            });
+        }
+    }
+
+    // Geass: 1 s auf einen Gegner schauen -> er kaempft 8 s fuer einen
+    function geassTick(p, now) {
+        if (!p.geass || now < (p.geassCd || 0)) { p.gaze = null; return; }
+        let best = null, bd = 650;
+        for (const m of mobs) {
+            if (m.def.boss || m.charm || !(m.hp > 0)) continue;
+            const d = Math.hypot(m.x - p.x, m.y - p.y);
+            if (d > bd) continue;
+            let da = Math.atan2(m.y - p.y, m.x - p.x) - p.a;
+            while (da > Math.PI) da -= Math.PI * 2;
+            while (da < -Math.PI) da += Math.PI * 2;
+            if (Math.abs(da) < 0.08 + m.def.r / Math.max(d, 1) && clear(p.x, p.y, m.x, m.y)) { best = m; bd = d; }
+        }
+        if (!best) { p.gaze = null; return; }
+        if (!p.gaze || p.gaze.id !== best.id) { p.gaze = { id: best.id, since: now }; return; }
+        if (now - p.gaze.since < 1000 / SPEED) return;
+        best.charm = { by: p.id, until: now + 8000 / SPEED };
+        best.tgt = null;
+        p.gaze = null;
+        p.geassCd = now + 3000 / SPEED;
+        fxAt(best.x, best.y, { type: 'shFx', kind: 'charm', x: Math.round(best.x), y: Math.round(best.y) });
+    }
+
+    // Verzauberter Gegner: greift andere Gegner an, sonst folgt er seinem Herrn
+    function charmTick(m, now, dt) {
+        const def = m.def, lord = players.get(m.charm.by);
+        let o = null, od = 700;
+        for (const x of mobs) {
+            if (x === m || x.charm || !(x.hp > 0)) continue;
+            const d = Math.hypot(x.x - m.x, x.y - m.y);
+            if (d < od) { o = x; od = d; }
+        }
+        const speed = def.chase || def.speed || 100;
+        if (o) {
+            m.a = Math.atan2(o.y - m.y, o.x - m.x);
+            if (od > 180) mobMove(m, o.x, o.y, speed, dt);
+            if (now >= (m.charmHit || 0) && od < 450 && clear(m.x, m.y, o.x, o.y)) {
+                m.charmHit = now + 700 / SPEED;
+                const g = def.gun;
+                const dmg = g ? g.dmg * (g.burst || 1) * 2.5 : (def.melee || def.contact || 20) * 1.5;
+                fxAt(m.x, m.y, { type: 'shZap', pts: [[Math.round(m.x), Math.round(m.y)], [Math.round(o.x), Math.round(o.y)]] });
+                hurtMob(o, lord, dmg, now, o.x, o.y);
+            }
+        } else if (lord && Math.hypot(lord.x - m.x, lord.y - m.y) > 160) mobMove(m, lord.x, lord.y, speed, dt);
     }
 
     // Gegner, der dem Mauszeiger am naechsten ist (Chain Jail, Death Note):
@@ -1643,6 +1786,51 @@ module.exports = function createArena(h, opts = {}) {
             fxAt(o.x, o.y, { type: 'shFx', kind: 'doom', x: Math.round(o.x), y: Math.round(o.y) });
             h.send(p.c, { type: 'shEvent', text: `📓 You wrote ${t.p ? t.p.name : 'the ' + o.def.name}'s name – 40 s`, kind: 'self' });
             if (t.p) h.send(t.p.c, { type: 'shEvent', text: `📓 ${p.name} wrote your name in the Death Note – you die in 40 s unless you kill them or extract!`, kind: 'boss' });
+        } else if (u.base === 'doordoor') {
+            p.phaseUntil = now + def.ms / SPEED;
+            p.phased = true;
+            fxAt(p.x, p.y, { type: 'shFx', kind: 'door', x: Math.round(p.x), y: Math.round(p.y) });
+        } else if (u.base === 'shinra') {
+            fxAt(p.x, p.y, { type: 'shFx', kind: 'nova', x: Math.round(p.x), y: Math.round(p.y), r: def.r });
+            fxAt(p.x, p.y, { type: 'shFx', kind: 'shinra', x: Math.round(p.x), y: Math.round(p.y), r: def.r });
+            const push = (x, y, r, far, isB) => {
+                const d = Math.hypot(x - p.x, y - p.y) || 1;
+                const [nx, ny] = slide(x, y, (x - p.x) / d * far, (y - p.y) / d * far, r, isB);
+                return [nx, ny, Math.hypot(nx - x, ny - y) < far * 0.75];
+            };
+            for (const q of near(p.x, p.y, def.r)) {
+                if (q === p || (p.team && p.team === q.team)) continue;
+                const [nx, ny, wall] = push(q.x, q.y, R, 320, blocked);
+                q.x = nx;
+                q.y = ny;
+                damage(q, p, def.dmg + (wall ? 120 : 0), now, q.x, q.y, { how: 'explosion', noDodge: true });
+            }
+            for (const m of [...mobs]) {
+                if (Math.hypot(m.x - p.x, m.y - p.y) > def.r + m.def.r) continue;
+                const [nx, ny, wall] = push(m.x, m.y, m.def.r, m.def.boss ? 80 : 320, mobBlocked);
+                m.x = nx;
+                m.y = ny;
+                hurtMob(m, p, def.dmg + (wall ? 120 : 0), now, m.x, m.y);
+            }
+            // gegnerische Kugeln im Umkreis loeschen
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const b = bullets[i];
+                if (b.owner === p.id || Math.hypot(b.x - p.x, b.y - p.y) > def.r) continue;
+                const o = players.get(b.owner);
+                if (o && p.team && o.team === p.team) continue;
+                bullets.splice(i, 1);
+            }
+        } else if (u.base === 'hoipoi') {
+            if (!Number.isFinite(tx) || !Number.isFinite(ty)) return;
+            let dx = tx - p.x, dy = ty - p.y;
+            const d = Math.hypot(dx, dy) || 1;
+            dx /= d;
+            dy /= d;
+            let dist = Math.min(def.range, d);
+            while (dist > 30 && blocked(p.x + dx * dist, p.y + dy * dist, 20)) dist -= 15;
+            const x = dist > 30 ? p.x + dx * dist : p.x, y = dist > 30 ? p.y + dy * dist : p.y;
+            turrets.push({ id: ++seqId, owner: p.id, x, y, until: now + def.ms / SPEED, next: now + 400 / SPEED, a: p.a });
+            fxAt(x, y, { type: 'shBoom', x: Math.round(x), y: Math.round(y), r: 60, nuke: false });
         } else if (u.base === 'philosopher') {
             p.stoneUntil = now + def.ms / SPEED;
             fxAt(p.x, p.y, { type: 'shFx', kind: 'phoenix', x: Math.round(p.x), y: Math.round(p.y) });
@@ -1825,6 +2013,7 @@ module.exports = function createArena(h, opts = {}) {
         if (t.dead) return false;
         if (v.team && v.team === t.team) return true;
         if (v.see) return true;
+        if (now < (t.invisUntil || 0)) return false;
         if (Math.hypot(v.x - t.x, v.y - t.y) < SEE_NEAR) return true;
         if (now - t.lastShot < REVEAL_MS * t.b.reveal) return true;
         if (stillHidden(t, now)) return false;
@@ -1863,6 +2052,13 @@ module.exports = function createArena(h, opts = {}) {
         }
         if (now < (p.jailUntil || 0)) return;
         if (now - p.lastShot < w.ms / SPEED) return;
+        // Kettensaege: Dauerfeuer dreht hoch, heilt
+        if (w.rev) {
+            if (now - (p.revLast || 0) > 400 / SPEED) p.revStart = now;
+            p.revLast = now;
+            w.dmg *= 1 + 2 * Math.min(1, (now - p.revStart) / (3000 / SPEED));
+            w.vamp = (w.vamp || 0) + 0.25;
+        }
         p.lastShot = now;
         // Nichirin Blade: Combo, bei 10 Stacks ein Wasserdrache
         if (w.combo) {
@@ -1899,6 +2095,12 @@ module.exports = function createArena(h, opts = {}) {
                     (w.rocket ? 256 : 0) | (w.magic ? 512 : 0),
                 tier: I.TIER_IDX[item.tier] || 0
             };
+            // Mjoelnir: fliegt hin, kehrt um, kommt zurueck
+            if (w.boomerang) {
+                b.pierce = 999;
+                b.turnAt = now + w.life * 1000 / SPEED;
+                b.dies = now + w.life * 4000 / SPEED;
+            }
             // 6.12.1 (Max: Stalker kann man nicht treffen, wenn er an einem dran ist):
             // Kugeln starten vor dem Lauf – wer schon am Spieler klebt, steht dahinter
             // und wurde nie getroffen. Solche Gegner trifft der Schuss sofort.
@@ -1910,7 +2112,9 @@ module.exports = function createArena(h, opts = {}) {
                     const crit = w.crit && Math.random() < w.crit;
                     hurtMob(close, p, w.dmg * (crit ? p.b.critMul : 1), now, close.x, close.y, crit, w);
                     if (w.explode) explode({ ...b, x: close.x, y: close.y }, now, null);
-                    if (!(w.wave || w.erase)) {
+                    if (w.grapple) startGrapple(p, close.x, close.y, now);
+                    if (w.stick) plantBomb(b, close, close.x, close.y, now);
+                    if (!(w.wave || w.erase || w.boomerang)) {
                         if (b.pierce > 0) b.pierce--;
                         else continue;
                     }
@@ -2036,6 +2240,14 @@ module.exports = function createArena(h, opts = {}) {
             v.adrenCd = now + 15000 / SPEED;
             v.stim = Math.max(now < v.stimUntil ? v.stim : 0, 0.3);
             v.stimUntil = now + 3000 / SPEED;
+        }
+        // Kyoka Suigetsu: Trugbild bleibt stehen, man selbst verschwindet
+        if (!killed && v.mirror && !opts.dot && dmg >= 1 && now >= (v.mirrorCd || 0)) {
+            v.mirrorCd = now + 12000 / SPEED;
+            v.invisUntil = now + 2000 / SPEED;
+            decoys.push({ id: 'dc' + v.id + '_' + now, pid: v.id, x: v.x, y: v.y, a: v.a, until: now + 3000 / SPEED });
+            for (const m of mobs) if (m.tgt === v.id) { m.tgt = null; m.seen = 0; }
+            fxAt(v.x, v.y, { type: 'shFx', kind: 'mirror', x: Math.round(v.x), y: Math.round(v.y) });
         }
         // Schaden ueber Zeit (Brennen, Feuer) meldet sich nur beim Getroffenen als Rand
         if (attacker && (!opts.dot || killed)) h.send(attacker.c, { type: 'shHit', x: Math.round(x), y: Math.round(y), dmg: Math.round(dmg), kill: killed, crit: !!opts.crit });
@@ -2890,7 +3102,7 @@ module.exports = function createArena(h, opts = {}) {
     // Sieht der Gegner den Spieler? Versteckte nur aus der Naehe
     function mobSees(m, q, now, range) {
         const d = Math.hypot(q.x - m.x, q.y - m.y);
-        if (d > range || now < q.protect) return false;
+        if (d > range || now < q.protect || now < (q.invisUntil || 0)) return false;
         const hidden = d > SEE_NEAR && now - q.lastShot >= REVEAL_MS * q.b.reveal && (q.zone || q.smoke !== null || stillHidden(q, now));
         return !hidden && clear(m.x, m.y, q.x, q.y);
     }
@@ -3166,6 +3378,11 @@ module.exports = function createArena(h, opts = {}) {
         }
         // Infinite Void (6.6): wer drin ist, steht still
         if (now < (m.stunUntil || 0)) return;
+        // Geass: verzauberte Gegner kaempfen fuer den Spieler
+        if (m.charm) {
+            if (now >= m.charm.until || !players.has(m.charm.by)) { m.charm = null; m.tgt = null; }
+            else { charmTick(m, now, dt); return; }
+        }
         // Zombie-Boss (6.5): Auftritt abwarten, ab halber HP Wut
         if (m.introUntil && now < m.introUntil) return;
         if (def.enrage && !m.enraged && m.hp < m.maxHp * def.enrage) {
@@ -3191,7 +3408,7 @@ module.exports = function createArena(h, opts = {}) {
                 m.nextThink = now + 300 + Math.random() * 200;
                 let best = null, bd = Infinity;
                 for (const q of players.values()) {
-                    if (q.dead) continue;
+                    if (q.dead || now < (q.invisUntil || 0)) continue;
                     const d = Math.hypot(q.x - m.x, q.y - m.y);
                     if (d < bd) { best = q; bd = d; }
                 }
@@ -3640,6 +3857,9 @@ module.exports = function createArena(h, opts = {}) {
             smokes.length = 0;
             fires.length = 0;
             holes.length = 0;
+            kqBombs.length = 0;
+            turrets.length = 0;
+            decoys.length = 0;
             // leerer Raid: Events und Gegner weg, Uhr startet mit dem naechsten Spieler neu
             mobs.length = 0;
             strikes.length = 0;
@@ -3654,6 +3874,9 @@ module.exports = function createArena(h, opts = {}) {
             return;
         }
         if (hz.list.length) hz.tick(now, dt);
+        turretTick(now);
+        for (let i = kqBombs.length - 1; i >= 0; i--) if (now > kqBombs[i].until || !players.has(kqBombs[i].owner)) kqBombs.splice(i, 1);
+        for (let i = decoys.length - 1; i >= 0; i--) if (now > decoys[i].until) decoys.splice(i, 1);
         // Death Note an Gegnern: normale sterben, Bosse verlieren 30 %
         for (const m of [...mobs]) {
             if (!m.doom || now < m.doom.at) continue;
@@ -3710,7 +3933,32 @@ module.exports = function createArena(h, opts = {}) {
             }
             const sp = now < (p.jailUntil || 0) ? 0 : MOVE * p.speedMul * (now < p.slowUntil && !p.geppo ? 1 - p.slow : 1) * (now < p.stimUntil ? 1 + p.stim : 1);
             const ox = p.x, oy = p.y;
-            if (p.mx || p.my) [p.x, p.y] = slide(p.x, p.y, p.mx * sp * dt, p.my * sp * dt, R);
+            const phase = now < (p.phaseUntil || 0);
+            if (p.grap) {
+                // Gum-Gum: schnell zum Punkt, bricht an Hindernissen ab
+                const gx = p.grap.x - p.x, gy = p.grap.y - p.y, gd = Math.hypot(gx, gy), st = Math.min(gd, 1700 * dt);
+                if (gd < 20 || now > p.grap.until) p.grap = null;
+                else {
+                    const [nx, ny] = slide(p.x, p.y, gx / gd * st, gy / gd * st, R);
+                    if (Math.hypot(nx - p.x, ny - p.y) < st * 0.3) p.grap = null;
+                    p.x = nx;
+                    p.y = ny;
+                }
+            } else if (phase) {
+                // Door-Door: Waende zaehlen nicht, nur der Kartenrand
+                if (p.mx || p.my) [p.x, p.y] = slide(p.x, p.y, p.mx * sp * dt, p.my * sp * dt, R, (x, y, r) => world.outside(x, y, r));
+            } else if (p.mx || p.my) [p.x, p.y] = slide(p.x, p.y, p.mx * sp * dt, p.my * sp * dt, R);
+            // Door-Door vorbei, aber in einer Wand: zur naechsten freien Stelle
+            if (!phase && p.phased) {
+                p.phased = false;
+                if (blocked(p.x, p.y, R)) {
+                    search: for (let d = 10; d <= 600; d += 10) for (let k = 0; k < 16; k++) {
+                        const a = k / 16 * Math.PI * 2, nx = p.x + Math.cos(a) * d, ny = p.y + Math.sin(a) * d;
+                        if (!blocked(nx, ny, R)) { p.x = nx; p.y = ny; break search; }
+                    }
+                }
+            }
+            geassTick(p, now);
             if (p.x !== ox || p.y !== oy) p.lastMove = now;
             p.zone = zoneOf(p.x, p.y);
             const sm = smokes.find(s => Math.hypot(s.x - p.x, s.y - p.y) < s.r);
@@ -3731,6 +3979,20 @@ module.exports = function createArena(h, opts = {}) {
             const b = bullets[i];
             let gone = now >= b.dies;
             const steps = Math.max(2, Math.ceil(Math.hypot(b.vx, b.vy) * dt / 12));
+            // Mjoelnir: nach der halben Zeit (oder an der Wand) zurueck zur Hand, dann durch Waende
+            if (b.w.boomerang && !gone) {
+                const bo = players.get(b.owner);
+                if (!bo || bo.dead) gone = true;
+                else {
+                    if (!b.back && now >= b.turnAt) { b.back = true; b.hits.clear(); }
+                    if (b.back) {
+                        const dx = bo.x - b.x, dy = bo.y - b.y, d = Math.hypot(dx, dy) || 1, sp = Math.hypot(b.vx, b.vy);
+                        b.vx = dx / d * sp;
+                        b.vy = dy / d * sp;
+                        if (d < R + 24) gone = true;
+                    }
+                }
+            }
             // Zielsuchend: Richtung langsam zum naechsten Gegner drehen
             if (b.w.homing && !gone) {
                 let tgt = null, td = 380;
@@ -3763,7 +4025,14 @@ module.exports = function createArena(h, opts = {}) {
                 b.x += b.vx * dt / steps;
                 b.y += b.vy * dt / steps;
                 if (b.w.erase && world.outside(b.x, b.y)) { gone = true; break; }
-                if (!b.w.erase && blocked(b.x, b.y, 3)) {
+                if (!b.w.erase && !b.back && blocked(b.x, b.y, 3)) {
+                    if (b.w.boomerang) {
+                        b.back = true;
+                        b.hits.clear();
+                        b.x = px;
+                        b.y = py;
+                        continue;
+                    }
                     if (b.bounce > 0) {
                         b.bounce--;
                         const hx = blocked(b.x, py, 3), hy = blocked(px, b.y, 3);
@@ -3795,6 +4064,8 @@ module.exports = function createArena(h, opts = {}) {
                         }
                         continue;
                     }
+                    if (b.w.grapple) startGrapple(players.get(b.owner), px, py, now);
+                    if (b.w.stick) plantBomb(b, null, px, py, now);
                     if (b.w.explode) explode(b, now, null);
                     if (b.w.hole) bulletHole(b, now);
                     if (b.w.mobBoom) mobBoom(b, now);
@@ -3808,7 +4079,9 @@ module.exports = function createArena(h, opts = {}) {
                         b.hits.add(q.id);
                         if (b.w.mobBoom) mobBoom(b, now);
                         else hitPlayer(b, q, now);
-                        if (b.w.wave || b.w.erase) continue;
+                        if (b.w.grapple) startGrapple(bowner, q.x, q.y, now);
+                        if (b.w.stick) plantBomb(b, q, q.x, q.y, now);
+                        if (b.w.wave || b.w.erase || b.w.boomerang) continue;
                         if (b.pierce > 0) b.pierce--;
                         else gone = true;
                         break;
@@ -3822,11 +4095,19 @@ module.exports = function createArena(h, opts = {}) {
                         const shooter = players.get(b.owner) || null;
                         const crit = b.w.crit && Math.random() < b.w.crit;
                         // jeder durchschlagene Gegner vorher kostet 20 % Schaden (6.5.1)
-                        const sweep = b.w.wave || b.w.erase;
+                        const sweep = b.w.wave || b.w.erase || b.w.boomerang;
                         const fall = sweep ? 1 : Math.pow(0.8, b.hits.size - 1);
                         hurtMob(m, shooter, b.w.dmg * fall * (crit ? (shooter ? shooter.b.critMul : 2) : 1), now, b.x, b.y, crit, b.w);
                         if (b.w.hole) bulletHole(b, now);
                         if (b.w.explode) explode(b, now, null);
+                        if (b.w.grapple) startGrapple(shooter, m.x, m.y, now);
+                        if (b.w.stick) plantBomb(b, m, m.x, m.y, now);
+                        // Mjoelnir: Blitz springt auf zwei Gegner in der Naehe
+                        if (b.w.chain) {
+                            const others = mobs.filter(o => o !== m && o.hp > 0 && Math.hypot(o.x - m.x, o.y - m.y) < 260).sort((x, y) => Math.hypot(x.x - m.x, x.y - m.y) - Math.hypot(y.x - m.x, y.y - m.y)).slice(0, 2);
+                            if (others.length) fxAt(m.x, m.y, { type: 'shZap', pts: [[Math.round(m.x), Math.round(m.y)], ...others.map(o => [Math.round(o.x), Math.round(o.y)])] });
+                            for (const o of others) hurtMob(o, shooter, b.w.dmg * 0.5, now, o.x, o.y);
+                        }
                         // Getsuga / Hollow Purple: schneiden durch alles, ohne Grenze
                         if (sweep) continue;
                         if (b.pierce > 0) b.pierce--;
@@ -3858,7 +4139,11 @@ module.exports = function createArena(h, opts = {}) {
                     kunai: p.kunai && now < p.kunai.until ? [Math.round(p.kunai.x), Math.round(p.kunai.y)] : undefined,
                     combo: p.combo && now - (p.comboAt || 0) < 1500 / SPEED ? p.combo : undefined,
                     doom: p.doom ? Math.max(0, Math.round(p.doom.at - now)) : undefined,
-                    abil: p.weights && !p.weightsOff ? 'weights' : undefined,
+                    abil: [p.weights && !p.weightsOff ? 'weights' : '', p.flashstep ? (now >= (p.stepCd || 0) ? 'step' : 'step-cd') : '', kqBombs.some(k => k.owner === p.id) ? 'kq' : ''].filter(Boolean).join(',') || undefined,
+                    kq: kqBombs.some(k => k.owner === p.id) ? kqBombs.filter(k => k.owner === p.id).map(k => kqPos(k).map(Math.round)) : undefined,
+                    phase: now < (p.phaseUntil || 0) ? 1 : undefined,
+                    gaze: p.gaze ? Math.min(1, Math.round((now - p.gaze.since) / (1000 / SPEED) * 100) / 100) : undefined,
+                    inv: now < (p.invisUntil || 0) ? 1 : undefined,
                     buff: [now < (p.hollowUntil || 0) ? 'hollow' : '', now < (p.stoneUntil || 0) ? 'stone' : '', now < (p.jailUntil || 0) ? 'jail' : ''].filter(Boolean).join(',') || undefined,
                     ex: p.extractAt ? Math.max(0, p.extractAt - now) : null,
                     burn: !!p.burn || !!p.inFire, heal: now < p.healUntil, pr: now < p.protect, dead: !!p.dead, fz: !!(pvp && pvp.phase !== 'fight'),
@@ -3870,7 +4155,7 @@ module.exports = function createArena(h, opts = {}) {
                     fx: Object.fromEntries(Object.entries(zb.fx).filter(([, t]) => t > now).map(([k, t]) => [k, Math.round(t - now)])),
                     pap: zPapPrice((p.gear[p.slot] && p.gear[p.slot].pap) || 0), box: zBoxPrice(p.boxN || 0), heal: zHealPrice(zb.wave, p.healN || 0), ubox: zUboxPrice(p.uboxN || 0), shrine: zShrinePrice(zb.shrineN), armor: p.armorN || 0,
                     team: plist.map(q => [q.name, Math.floor(q.pts), zb.kills.get(q.id) || 0, q.dead ? 1 : 0]) } : undefined,
-                players: plist.filter(q => q === p || (inView(q.x, q.y) && canSee(p, q, now))).map(q => {
+                players: [...plist.filter(q => q === p || (inView(q.x, q.y) && canSee(p, q, now))), ...decoys.filter(d => d.pid !== p.id && inView(d.x, d.y) && players.has(d.pid)).map(d => ({ ...players.get(d.pid), id: d.id, x: d.x, y: d.y, a: d.a }))].map(q => {
                     const qw = q.gear[q.slot] || q.gear.primary;
                     return {
                         id: q.id, n: q.name, c: q.color, lv: q.level, tm: q.team, dead: q.dead || undefined,
@@ -3891,7 +4176,8 @@ module.exports = function createArena(h, opts = {}) {
                 hz: hz.list.length ? hz.view(now) : undefined,
                 strikes: strikes.filter(s => inView(s.x, s.y)).map(s => [s.id, Math.round(s.x), Math.round(s.y), s.r, Math.max(0, Math.round(s.at - now)), s.total, s.look || 0]),
                 mobs: mobs.filter(m => !m.def.boss && inView(m.x, m.y)).map(m => [m.id, m.kind, Math.round(m.x), Math.round(m.y), Math.max(0, Math.round(m.hp)), m.maxHp, Math.round(m.a * 100) / 100, m.aimAt ? Math.max(0, Math.round(m.aimAt - now)) : 0,
-                    m.chargeAt ? Math.max(0, Math.round(m.chargeAt - now)) : 0, m.charging ? 1 : 0, Math.round(m.cx || 0), Math.round(m.cy || 0)]),
+                    m.chargeAt ? Math.max(0, Math.round(m.chargeAt - now)) : 0, m.charging ? 1 : 0, Math.round(m.cx || 0), Math.round(m.cy || 0), m.charm ? 1 : 0]),
+                turrets: turrets.length ? turrets.filter(t => inView(t.x, t.y)).map(t => [t.id, Math.round(t.x), Math.round(t.y), Math.round(t.a * 100) / 100, Math.max(0, Math.round(t.until - now))]) : undefined,
                 drop: drop ? [Math.round(drop.x), Math.round(drop.y), Math.max(0, Math.round(drop.at - now)), drop.landed ? 1 : 0] : null,
                 // Capture the Flag (6.9): [Flagge x, y, Traeger-Id|0, Ziel x, y, ms uebrig]
                 ctf: ctf ? [Math.round(ctf.x), Math.round(ctf.y), ctf.carrier || 0, Math.round(ctf.bx), Math.round(ctf.by), Math.max(0, Math.round(ctf.until - now))] : undefined,
