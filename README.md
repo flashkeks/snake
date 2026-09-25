@@ -3058,3 +3058,18 @@ Opfer geschützt → Fehler). Keine Codeänderung.
 Test (11/11): solo Knopf → Welle nach ≤1,5 s, Welle vorbei → Box-Preis zurück, bereit
 gelöscht; Autoplay startet die nächste Welle selbst; zu zweit reicht einer nicht, beide
 schon; Radar mit beiden Spielern, `readyN`.
+
+## 🛡️ Guild House als echte Safe Zone (25.09.2026, Max: „ich werd komplett vom Boss belagert")
+
+Schaden im Guild House war schon gesperrt, aber ein Boss behielt einen bis zu 9 s als Ziel,
+wurde durch Schüsse von drinnen neu provoziert und campte vor dem Tor. Jetzt gilt drinnen
+und im Tor (40 px Rand, `GUILD_SAFE`, `safeIn`):
+
+- Gegner sehen niemanden drinnen (`mobSees`), wer reingeht, wird sofort als Ziel fallen
+  gelassen, Boss-Provokation gelöscht – der Boss zieht ab.
+- Kein Schaden und keine Treffer-Effekte (Brennen, Frost, Festnageln) für Leute drinnen.
+- Wer von drinnen schießt, macht keinen Schaden an Gegnern und provoziert niemanden – kein
+  Farmen aus der Safe Zone.
+
+Test (5/5, Oberflächen-Karte mit Titan): Ziel verloren nach Betreten, 8 s kein Schaden,
+kein Brennen, Schüsse von drinnen ohne Wirkung, Boss nicht provoziert.

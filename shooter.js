@@ -2783,7 +2783,7 @@ module.exports = function createArena(h, opts = {}) {
         if (attacker && attacker !== v && attacker.team && attacker.team === v.team) return false;
         // Guild House (25.09.2026): kein Schaden unter Spielern drinnen oder von drinnen
         // drinnen ist man ganz sicher (auch vor Mob-Schuessen durchs Tor), wer drinnen steht, trifft keine Spieler draussen
-        if (attacker !== v && inGuild(v.x, v.y)) return false;
+        if (attacker !== v && safeIn(v)) return false;
         if (attacker && attacker !== v && players.has(attacker.id) && inGuild(attacker.x, attacker.y)) return false;
         // Geppo: Feuer und Saeure (beides 'fire') tun nichts
         if (v.geppo && opts.how === 'fire') return false;
@@ -2903,6 +2903,7 @@ module.exports = function createArena(h, opts = {}) {
     function hitPlayer(b, v, now) {
         const shooter = players.get(b.owner);
         const w = b.w;
+        if (shooter !== v && safeIn(v)) return;
         let dmg = w.dmg;
         const crit = w.crit && Math.random() < w.crit;
         if (crit) dmg *= shooter ? shooter.b.critMul : 2;
@@ -3581,6 +3582,10 @@ module.exports = function createArena(h, opts = {}) {
         return { x: g[0] + g[2] / 2, y: g[1] + g[3] * 0.7 };
     }
     const inGuild = (x, y, m = 0) => (MAP.guilds || []).some(g => inZone(x, y, g, m));
+    // Safe Zone (25.09.2026, Max: „ich werd komplett vom Boss belagert"): wer im Guild House
+    // oder im Tor steht, ist fuer Gegner unsichtbar und unangreifbar – und greift selbst nicht an
+    const GUILD_SAFE = 40;
+    const safeIn = q => !!q && inGuild(q.x, q.y, GUILD_SAFE);
     const mobBlocked = (x, y, r) => blocked(x, y, r) || inZone(x, y, MAP.town, r) || inZone(x, y, MAP.outpost, r) || inGuild(x, y, r + 120);
 
     function spawnBoss(now, kind) {
@@ -3623,6 +3628,7 @@ module.exports = function createArena(h, opts = {}) {
 
     function hurtMob(m, attacker, dmg, now, x, y, crit, w) {
         if (!(m.hp > 0) || dmg <= 0) return;
+        if (attacker && players.has(attacker.id) && safeIn(attacker)) return;
         // Boss-Phase: unverwundbar, Treffer zeigen „IMMUNE" (hoechstens alle 250 ms je Schuetze)
         if (now < (m.shieldUntil || 0)) {
             if (attacker && players.has(attacker.id) && !(w && w.dot) && now >= (attacker.immuneAt || 0)) {
@@ -4040,7 +4046,7 @@ module.exports = function createArena(h, opts = {}) {
     // Sieht der Gegner den Spieler? Versteckte nur aus der Naehe
     function mobSees(m, q, now, range) {
         const d = Math.hypot(q.x - m.x, q.y - m.y);
-        if (d > range || now < q.protect || now < (q.invisUntil || 0)) return false;
+        if (d > range || now < q.protect || now < (q.invisUntil || 0) || safeIn(q)) return false;
         const hidden = d > SEE_NEAR && now - q.lastShot >= REVEAL_MS * q.b.reveal && (q.zone || q.smoke !== null || stillHidden(q, now));
         return !hidden && clear(m.x, m.y, q.x, q.y);
     }
@@ -4545,6 +4551,7 @@ module.exports = function createArena(h, opts = {}) {
             }
         } else if (now >= m.nextThink) {
             m.nextThink = now + 250 + Math.random() * 150;
+            if (tgt && safeIn(tgt)) { tgt = m.tgt = null; m.provoked = 0; }
             if (tgt && mobSees(m, tgt, now, def.aggro * 1.5)) m.seen = now;
             // Bosse (6.6) verfolgen laenger und laufen per Wegfeld um Ecken statt aufzugeben
             else if (tgt && now - m.seen > (def.boss ? 9000 : 3500)) tgt = m.tgt = null;
