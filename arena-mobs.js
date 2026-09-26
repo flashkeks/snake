@@ -67,8 +67,9 @@ const MOBS = {
         xp: 'npc', xpMul: 2, drop: { chance: 0.45, src: 'npcdrop', n: 1 }
     },
     trooper: {
-        name: 'Riot Trooper', icon: '🛡️', color: '#4a5a78', r: 22, hp: 420, speed: 110, chase: 170, aggro: 520, shield: true,
-        melee: 45, gun: { dmg: 12, speed: 700, ms: 1400, burst: 2, spread: 0.2, life: 0.5 },
+        // 26.09.2026 (Max: zu stark): HP 420 -> 340, Nahkampf 45 -> 32, Schuss 12 -> 9, Schild siehe shooter.js
+        name: 'Riot Trooper', icon: '🛡️', color: '#4a5a78', r: 22, hp: 340, speed: 110, chase: 170, aggro: 520, shield: true,
+        melee: 32, gun: { dmg: 9, speed: 700, ms: 1400, burst: 2, spread: 0.2, life: 0.5 },
         xp: 'npc', xpMul: 2.5, drop: { chance: 0.5, src: 'npcdrop', n: 1 }
     },
     k9: {

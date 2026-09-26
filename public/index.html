@@ -3339,6 +3339,8 @@ body.world-arena h1 {
 .gd-it.off { opacity: .45; cursor: not-allowed; }
 .gd-rc { font-size: 13px; padding: 2px 5px; border-radius: 6px; background: rgba(120,220,140,.15); cursor: pointer; margin-left: 4px; }
 .gd-rc:hover { background: rgba(120,220,140,.35); }
+.gd-fav { font-size: 13px; padding: 2px 5px; border-radius: 6px; cursor: pointer; margin-left: 4px; opacity: .55; }
+.gd-fav:hover, .gd-fav.on { opacity: 1; background: rgba(255,210,63,.18); }
 .gd-it:hover:not(:disabled):not(.off) { background: rgba(255,255,255,.12); transform: translateY(-1px); }
 .gd-it { border-color: var(--tc, rgba(255,255,255,.12)); }
 .gd-it.tier-common { border-color: rgba(255,255,255,.14); }
@@ -3745,6 +3747,10 @@ body.world-arena h1 {
 .drop-hover {
     outline: 3px solid #00ff88;
     background: rgba(0,255,136,.12);
+}
+/* Raid-Rucksack (26.09.2026): beim Verschieben leuchtet nur das Feld unter der Maus, nicht das ganze Raster */
+#sh-inv .ri-cell.drop-ok:not(.drop-hover) {
+    outline: none;
 }
 .stash {
     margin-top: 12px;
@@ -12722,14 +12728,15 @@ function guildNear() {
 // Zwei Spalten (Rucksack | Lager), Filter mit Zaehlern, Suche, Sortierung, Kacheln mit
 // Seltenheit, Level, Effekten und Score, Verbrauchsgut gestapelt, Sammel-Aktionen.
 let gdLast = null, gdFilter = 'all', gdSort = 'rarity', gdQ = '';
-const GD_FILTERS = [['all', 'All'], ['weapon', '🔫 Weapons'], ['helmet', '🪖 Helmets'], ['vest', '🦺 Vests'], ['pants', '👖 Pants'], ['boots', '🥾 Boots'], ['util', '💣 Consumables'], ['pack', '🎒 Backpacks']];
-const gdOk = (it, f) => f === 'all' || itKind(it) === f || (itKind(it) === 'armor' && (it.sl || it.slot || itemDef(it).slot) === f);
+const GD_FILTERS = [['all', 'All'], ['fav', '⭐ Favorites'], ['weapon', '🔫 Weapons'], ['helmet', '🪖 Helmets'], ['vest', '🦺 Vests'], ['pants', '👖 Pants'], ['boots', '🥾 Boots'], ['util', '💣 Consumables'], ['pack', '🎒 Backpacks']];
+const gdOk = (it, f) => f === 'all' || (f === 'fav' && !!it.fav) || itKind(it) === f || (itKind(it) === 'armor' && (it.sl || it.slot || itemDef(it).slot) === f);
 // Stapel (26.09.2026): hoechstens `max` je Feld (Lager 50, Rucksack 10)
 function gdStacks(list, max = 50) {
     const out = [], by = {};
     for (const it of list) {
         if (itKind(it) === 'util') {
-            const b = itBase(it);
+            // ⭐ und normale gleicher Sorte getrennt, sonst haengt der Stern am falschen Stapel
+            const b = itBase(it) + (it.fav ? '*' : '');
             if (!by[b] || by[b].uids.length >= max) out.push(by[b] = { it, uids: [] });
             by[b].uids.push(it.uid);
         } else out.push({ it, uids: [it.uid] });
@@ -12749,6 +12756,8 @@ function gdTile(st, dir, blocked) {
         `<span class="gd-ic">${itemIcon(it)}${lv > 1 ? `<i class="gd-lv">${lv}</i>` : ''}${n > 1 ? `<i class="gd-n">×${n}</i>` : ''}</span>` +
         `<span class="gd-tx"><b>${esc(it.n || it.name)}</b><small class="gd-tier">${esc(tierName)}${mods ? ' · ' + mods : ''}</small><small>${esc(sub)}</small></span>` +
         (n > 1 ? `<span class="gd-all" ${attr}="${esc(st.uids.join(','))}" title="Move the whole stack">all</span>` : '') +
+        // Favorit (26.09.2026, Max): Stern schaltet fuer das ganze Feld, schuetzt wie „Protect" im Hub
+        `<span class="gd-fav${it.fav ? ' on' : ''}" data-gfav="${esc(st.uids.join(','))}" data-on="${it.fav ? 0 : 1}" title="${it.fav ? 'Remove from favorites' : 'Add to favorites (protected from recycling)'}">${it.fav ? '⭐' : '☆'}</span>` +
         // Recyceln (26.09.2026): ganzes Feld zu Scrap, ⭐ geschuetzte nicht
         (it.fav ? '' : `<span class="gd-rc" data-gsv="${esc(st.uids.join(','))}" data-gsvn="${esc(it.n || it.name)}" data-gsvx="${n}" data-gsvs="${(it.sv || 0) * n}" title="Recycle${n > 1 ? ` all ${n}` : ''} for scrap">♻️</span>`) + '</button>';
 }
@@ -12764,7 +12773,9 @@ function gdRedraw() {
         level: (a, b) => (b.it.wxp || 0) - (a.it.wxp || 0) || tierIdx(itTier(b.it)) - tierIdx(itTier(a.it)),
         name: (a, b) => String(a.it.n).localeCompare(String(b.it.n))
     };
-    const invSt = gdStacks(inv, d.invStack || 50).sort(sorters[gdSort] || sorters.rarity), packSt = gdStacks(pack, d.packStack || 10).sort(sorters.rarity);
+    // Favoriten zuerst, dann die gewaehlte Sortierung
+    const favFirst = f => (a, b) => (b.it.fav ? 1 : 0) - (a.it.fav ? 1 : 0) || f(a, b);
+    const invSt = gdStacks(inv, d.invStack || 50).sort(favFirst(sorters[gdSort] || sorters.rarity)), packSt = gdStacks(pack, d.packStack || 10).sort(favFirst(sorters.rarity));
     const invUsed = d.invUsed ?? d.inv.length, packUsed = d.packUsed ?? d.pack.length;
     const stashFull = invUsed >= d.invMax, packFull = packUsed >= d.packMax;
     const bar = (n, m) => `<span class="gd-bar"><i style="width:${Math.min(100, n / m * 100)}%"></i></span>`;
@@ -12799,8 +12810,9 @@ function onGuildRaw(d) {
         document.querySelector('#shooter .card').appendChild(el);
         el.addEventListener('click', e => {
             // 26.09.2026: Knoepfe im Feld („all", ♻️) haben eigene Daten – vorher griff „all" die ganze Kachel
-            const b = e.target.closest('[data-gsv], .gd-all, button');
+            const b = e.target.closest('[data-gsv], [data-gfav], .gd-all, button');
             if (!b || b.disabled) return;
+            if (b.dataset.gfav) return wsSend({ type: 'gFav', uids: b.dataset.gfav.split(','), on: b.dataset.on === '1' });
             if (!b.dataset.gsv && (b.closest('button') || b).dataset.off) return;
             const ds = b.dataset;
             if (ds.close) return onGuild({ close: true });
@@ -13709,7 +13721,7 @@ function shInvDrawRaw() {
             `<span>${def ? defIcon('util', u.base) : '<span class="dim">➕</span>'}</span>${u ? `<i>${u.n}</i>` : ''}<small>${UTIL_KEYS[i]}</small></div>`;
     };
     // Aktionen zur Auswahl
-    let actions = '<span class="hint">Hover an item for details · click to select · shift-click to equip / take off · drag it out of this window to drop it</span>';
+    let actions = '<span class="hint">Hover an item for details · click to select · shift-click to equip / take off · drag onto another slot to move it · drag it out of this window to drop it</span>';
     const s = shInvSel;
     if (s && s.where === 'pack') {
         const it = d.pack.find(x => x.uid === s.key);
@@ -13732,7 +13744,7 @@ function shInvDrawRaw() {
         `<div class="ri-pack"><div class="ri-grid">${grid}</div></div>` +
         `<div class="ri-bottom">${['helmet', 'vest', 'pants', 'boots', 'backpack'].map(gearSlot).join('')}<span class="ri-gap"></span>${utilSlot(0)}${utilSlot(1)}</div>` +
         (bonus ? `<div class="set-active">🧩 ${bonus}</div>` : '') +
-        `<div class="ri-actions">${actions}<button type="button" class="ghost" data-inv-close="1">Close (Tab)</button></div>`;
+        `<div class="ri-actions">${actions}<button type="button" class="ghost" data-inv-sort="1" ${d.pack.length > 1 ? '' : 'disabled'} title="Weapons, armor, backpacks, consumables – rarest first">⇅ Sort</button><button type="button" class="ghost" data-inv-close="1">Close (Tab)</button></div>`;
     // Rucksack-Items und belegte Slots lassen sich ziehen (Starter-Pistole nicht)
     $('sh-inv').querySelectorAll('.ri-cell[data-ri="pack"]').forEach(x => { x.draggable = true; });
     for (const s of ['primary', 'secondary', 'helmet', 'vest', 'pants', 'boots', 'backpack']) {
@@ -13761,6 +13773,8 @@ $('sh-inv').addEventListener('dragstart', e => {
     if (shDrag.where === 'pack') {
         const it = shInvState.pack.find(x => x.uid === shDrag.key);
         if (it) root.querySelectorAll('[data-ri="gear"], [data-ri="util"]').forEach(s => { if (shFits(it, s.dataset.ri, s.dataset.key)) s.classList.add('drop-ok'); });
+        // 26.09.2026 (Max): im Rucksack verschieben – auf ein anderes Feld (tauschen) oder ein leeres
+        root.querySelectorAll('.ri-cell[data-ri="pack"], .ri-cell.empty').forEach(x => { if (x.dataset.key !== shDrag.key) x.classList.add('drop-ok'); });
     } else {
         const g = root.querySelector('.ri-pack');
         if (g) g.classList.add('drop-ok');
@@ -13783,6 +13797,7 @@ $('sh-inv').addEventListener('drop', e => {
     shInvSel = null;
     dndClear($('sh-inv'));
     if (tgt.classList.contains('ri-pack')) return wsSend({ type: 'shInv', op: 'unequip', slot: d.key });
+    if (d.where === 'pack' && tgt.classList.contains('ri-cell')) return wsSend({ type: 'shInv', op: 'move', uid: d.key, with: tgt.dataset.key || undefined });
     const key = tgt.dataset.key;
     const slot = tgt.dataset.ri === 'util' ? key.slice(4) : key === 'primary' || key === 'secondary' ? key : undefined;
     wsSend({ type: 'shInv', op: 'equip', uid: d.key, slot });
@@ -13821,6 +13836,7 @@ $('sh-inv').addEventListener('click', e => {
         const d = b.dataset;
         if (d.invClose) return shInvToggle(false);
         shInvSel = null;
+        if (d.invSort) return wsSend({ type: 'shInv', op: 'sort' });
         if (d.invEquip) return wsSend({ type: 'shInv', op: 'equip', uid: d.invEquip, slot: d.slot });
         if (d.invUnequip) return wsSend({ type: 'shInv', op: 'unequip', slot: d.invUnequip });
         if (d.invDrop) return wsSend({ type: 'shInv', op: 'drop', uid: d.invDrop });

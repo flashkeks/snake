@@ -47,6 +47,10 @@ const EXTRACT_MS = 6000;
 const EXTRACT_R = 95;
 const CRATE_RESPAWN = 150000;
 const BAG_LIFE = 5 * 60e3;
+// Judge Bones, Phase „Judgement": so lange nach Beginn wirft er noch keinen Schaden zurueck
+const KARMA_GRACE = 900;
+// Eigener Todesort im Raid (26.09.2026): 3 min sichtbar, weg sobald man naeher als 150 ist
+const DEATH_MARK_MS = 3 * 60e3, DEATH_MARK_NEAR = 150;
 const INTERACT_R = 75;
 const MED_MS = 2000;
 // Events: Boss laeuft ueber die Map, Versorgungsabwurf mit Ausruestung
@@ -709,7 +713,7 @@ module.exports = function createArena(h, opts = {}) {
         return {
             xp: pr.xp, level: lv.level, into: lv.into, need: lv.need, stats: pr.stats, resets: pr.resets || 0,
             // 6.5: je Modus ein Baum (Level und Stats geteilt)
-            trees: Object.fromEntries(L.MODES.map(m => [m, { skills: L.treeOf(pr, m).skills, resets: L.treeOf(pr, m).resets || 0, resetCost: L.resetCost(L.treeOf(pr, m).resets) }])),
+            trees: Object.fromEntries(L.MODES.map(m => [m, { skills: L.treeOf(pr, m).skills, resets: L.treeOf(pr, m).resets || 0, resetCost: L.resetCost(L.treeOf(pr, m).resets, true) }])),
             statFree: pts.statFree, skillFree: pts.skillFree, resetCost: L.resetCost(pr.resets),
             record: {
                 raids: s.raids || 0, extracts: s.arenaExtracts || 0, kills: s.shooterKills || 0, deaths: s.shooterDeaths || 0,
@@ -951,7 +955,7 @@ module.exports = function createArena(h, opts = {}) {
             if (d.op === 'reset') {
                 // what: 'stats' = nur Stats (alle Modi), sonst nur der Baum dieses Modus
                 const stats = d.what === 'stats';
-                const cost = L.resetCost(stats ? pr.resets : tree.resets);
+                const cost = stats ? L.resetCost(pr.resets) : L.resetCost(tree.resets, true);
                 const u = h.accounts.get(c.account);
                 if (u.coins < cost.coins) return h.send(c, { type: 'arError', error: `A reset costs ${cost.coins.toLocaleString('en-US')} coins` });
                 if (a.scrap < cost.scrap) return h.send(c, { type: 'arError', error: `A reset costs ${cost.scrap.toLocaleString('en-US')} scrap` });
@@ -1333,6 +1337,9 @@ module.exports = function createArena(h, opts = {}) {
         if (zb) return how === 'left' ? zLeave(p) : zDown(p);
         if (!players.has(p.id)) return;
         players.delete(p.id);
+        // 26.09.2026 (Max: „lose boss aggro on respawn"): die Spieler-Id ist die Verbindung und
+        // bleibt beim Wiedereinstieg gleich – ohne das jagte der Boss den Neuen gleich weiter
+        for (const m of mobs) if (m.tgt === p.id) { m.tgt = null; m.provoked = 0; }
         // Mission (25.09.2026): versicherte Ausruestung geht zurueck ins Lager
         const saved = [];
         if (opts.mission && p.account) {
@@ -1376,7 +1383,7 @@ module.exports = function createArena(h, opts = {}) {
         dropBag(p.x, p.y, rest);
         if (mode === 'extract' && !opts.mission && p.account && how !== 'left') {
             const bag = bags.length && bags[bags.length - 1].items === rest ? bags[bags.length - 1] : null;
-            deathMarks.set(p.account, { x: Math.round(p.x), y: Math.round(p.y), until: Date.now() + BAG_LIFE, bag: bag ? bag.id : null });
+            deathMarks.set(p.account, { x: Math.round(p.x), y: Math.round(p.y), until: Date.now() + DEATH_MARK_MS, bag: bag ? bag.id : null });
         }
         if (how === 'left' && bags.length && bags[bags.length - 1].items === rest) bags[bags.length - 1].expires = Date.now() + BAG_LIFE_LEFT;
         if (p.account) {
@@ -1444,7 +1451,7 @@ module.exports = function createArena(h, opts = {}) {
         for (let i = clones.length - 1; i >= 0; i--) if (clones[i].owner === p.id) clones.splice(i, 1);
         portals.delete(p.id);
         if (zw && zw.by === p.id) zw = null;
-        for (const m of mobs) if (m.tgt === p.id) m.tgt = null;
+        for (const m of mobs) if (m.tgt === p.id) { m.tgt = null; m.provoked = 0; }
         h.changed();
         return p;
     }
@@ -1506,7 +1513,7 @@ module.exports = function createArena(h, opts = {}) {
             ability(p, now);
         } else if (d.type && d.type.startsWith('ms')) {
             missionAction(p, d, now);
-        } else if (d.type === 'gDeposit' || d.type === 'gWithdraw' || d.type === 'gInsure' || d.type === 'gSalvage') {
+        } else if (d.type === 'gDeposit' || d.type === 'gWithdraw' || d.type === 'gInsure' || d.type === 'gSalvage' || d.type === 'gFav') {
             guildAction(p, d);
         } else if (d.type === 'crOpen' || d.type === 'crGive' || d.type === 'crHeal' || d.type === 'crClear') {
             creativeAction(p, d);
@@ -1638,6 +1645,30 @@ module.exports = function createArena(h, opts = {}) {
                     dropBag(at[0], at[1], out);
                 } else dropBag(at[0], at[1], p.pack.splice(i, 1));
             }
+        } else if (d.op === 'sort') {
+            // 26.09.2026 (Max: „sort inventory button in raid"): Waffen, Ruestung, Rucksaecke,
+            // Verbrauchsgut, Rest; innerhalb nach Seltenheit (hoch zuerst), dann Name
+            const KIND = { weapon: 0, armor: 1, pack: 2, util: 3 };
+            const rank = x => KIND[x.kind] !== undefined ? KIND[x.kind] : 4;
+            p.pack.sort((x, y) => rank(x) - rank(y) || (I.TIER_IDX[y.tier] || 0) - (I.TIER_IDX[x.tier] || 0) || String(x.name || x.base).localeCompare(String(y.name || y.base)));
+        } else if (d.op === 'move') {
+            // 26.09.2026 (Max: „inventory items einzeln verschieben"): Item auf ein anderes Feld
+            // ziehen tauscht die beiden, auf ein leeres Feld ans Ende
+            // Felder wie im Browser: Verbrauchsgut gleicher Sorte als Stapel (bis PACK_STACK) in einem
+            // Feld – getauscht werden ganze Felder, sonst zerfiele ein Stapel beim Verschieben
+            const cells = [];
+            for (const it of p.pack) {
+                const c = it.kind === 'util' && cells.find(x => x[0].kind === 'util' && x[0].base === it.base && x.length < I.PACK_STACK);
+                if (c) c.push(it);
+                else cells.push([it]);
+            }
+            const i = cells.findIndex(c => c.some(x => x.uid === d.uid));
+            if (i < 0) return;
+            const j = d.with ? cells.findIndex(c => c.some(x => x.uid === d.with)) : -1;
+            if (j === i) return;
+            if (j >= 0) [cells[i], cells[j]] = [cells[j], cells[i]];
+            else cells.push(cells.splice(i, 1)[0]);
+            p.pack = cells.flat();
         } else return;
         gearStats(p);
         sendInv(p);
@@ -1872,6 +1903,20 @@ module.exports = function createArena(h, opts = {}) {
     }
     function guildAction(p, d) {
         const a = st(p.c);
+        // Favoriten am Guild Stash (26.09.2026, Max): ⭐ wie „Protect" im Hub – gleiches Feld it.fav,
+        // also auch vor Recyceln, Fuse und Verkauf geschuetzt. Lager und Rucksack, ganze Stapel
+        if (d.type === 'gFav') {
+            if (!nearStationKind(p, 'stash')) return;
+            const uids = new Set((Array.isArray(d.uids) ? d.uids : [d.uid]).slice(0, 60).map(String));
+            for (const it of [...a.inv, ...p.pack]) {
+                if (!uids.has(it.uid)) continue;
+                if (d.on) it.fav = true;
+                else delete it.fav;
+            }
+            h.accounts.touch();
+            sendInv(p);
+            return sendGuildStash(p);
+        }
         // Recyceln am Guild Stash (26.09.2026, Max): Items aus Lager oder Rucksack zu Scrap,
         // gleicher Wert wie im Hub (Salvage, samt Skill-Bonus); geschuetzte (⭐) bleiben
         if (d.type === 'gSalvage') {
@@ -3919,7 +3964,7 @@ module.exports = function createArena(h, opts = {}) {
         }
         // Judge Bones (Phase „Judgement"): Karma – der Schaden geht an den Schuetzen zurueck
         if (now < (m.karmaUntil || 0)) {
-            if (attacker && players.has(attacker.id) && !(w && w.dot)) {
+            if (attacker && players.has(attacker.id) && !(w && w.dot) && now >= (m.karmaFrom || 0)) {
                 damage(attacker, null, Math.min(dmg * 0.35, 45 * (m.dm || 1)), now, attacker.x, attacker.y, { how: 'boss', by: m.def.icon + ' ' + m.def.name, noDodge: true });
                 if (now >= (attacker.immuneAt || 0)) {
                     attacker.immuneAt = now + 250 / SPEED;
@@ -3944,12 +3989,14 @@ module.exports = function createArena(h, opts = {}) {
         if (!(w && w.pure)) dmg *= m.def.taken || 1;
         // Gojo (25.09.2026): Infinity – aus der Ferne kommt kaum etwas an
         if (m.def.infinity && attacker && attacker.x !== undefined && Math.hypot(attacker.x - m.x, attacker.y - m.y) > 300) dmg *= m.diff === 'easy' ? 0.4 : m.diff === 'hard' ? 0.08 : 0.15;
-        // Riot Trooper (25.09.2026): Schild vorne haelt 80 % ab – flankieren!
+        // Riot Trooper (25.09.2026): Schild vorne haelt ab – flankieren!
+        // 26.09.2026 (Max: „Shield mob zu stark"): er dreht sich immer zum Ziel, der Schild
+        // stand also fast immer – statt 80 % nur noch 50 % und ein schmalerer Bogen (±0,8 statt ±1,0)
         if (m.def.shield && attacker && attacker.x !== undefined && !(w && (w.pure || w.dot))) {
             let da = Math.atan2(attacker.y - m.y, attacker.x - m.x) - m.a;
             while (da > Math.PI) da -= Math.PI * 2;
             while (da < -Math.PI) da += Math.PI * 2;
-            if (Math.abs(da) < 1.0) dmg *= 0.2;
+            if (Math.abs(da) < 0.8) dmg *= 0.5;
         }
         if (!(w && w.dot)) dmg *= awakeHitMul(attacker && players.has(attacker.id) ? attacker : null, m, now);
         else if (now < (m.exposeUntil || 0)) dmg *= 1.5;
@@ -4015,7 +4062,15 @@ module.exports = function createArena(h, opts = {}) {
         m.shieldKind = 0;
         if (ph.shield === 'adds') { m.shieldUntil = now + (ph.maxMs || 30000) / SPEED; m.shieldMin = now + 2500 / SPEED; m.shieldKind = 1; }
         else if (ph.shield) { m.shieldUntil = now + ph.shield / SPEED; m.shieldKind = 1; }
-        if (ph.karma) { m.karmaUntil = now + ph.karma / SPEED; m.shieldKind = 2; }
+        if (ph.karma) {
+            m.karmaUntil = now + ph.karma / SPEED;
+            m.shieldKind = 2;
+            // 26.09.2026 (Max: Welle 30 „don't shoot" zu schwer, weil Kugeln noch fliegen): alle
+            // Spieler-Kugeln in der Luft verschwinden, und die erste Zeit (KARMA_GRACE) schluckt
+            // der Boss Treffer nur, statt sie zurueckzuwerfen – Reaktionszeit plus Laufzeit
+            for (let i = bullets.length - 1; i >= 0; i--) if (players.has(bullets[i].owner)) bullets.splice(i, 1);
+            m.karmaFrom = now + KARMA_GRACE / SPEED;
+        }
         const busy = Math.max(m.shieldUntil || 0, m.karmaUntil || 0);
         if (m.patNext) m.patNext = Math.max(m.patNext, busy + 500 / SPEED);
         m.phaseSeq = [];
@@ -4487,7 +4542,8 @@ module.exports = function createArena(h, opts = {}) {
         if (!def.zombie) {
             const half = RAID_HZ_BOX / 2;
             box = { x0: Math.max(0, m.x - half), y0: Math.max(0, m.y - half), x1: Math.min(W, m.x + half), y1: Math.min(H, m.y + half) };
-            if (![...players.values()].some(p => !p.dead && Math.hypot(p.x - m.x, p.y - m.y) < half * 0.75)) return;
+            // 26.09.2026 (Max: „keine Boss-Aggro im Gildenhaus"): wer im Guild House steht, zaehlt nicht
+            if (![...players.values()].some(p => !p.dead && !safeIn(p) && Math.hypot(p.x - m.x, p.y - m.y) < half * 0.75)) return;
         }
         const names = Object.keys(P).filter(k => k !== m.patLast && (k !== 'supernova' || m.enraged));
         // Judge Bones nach „Judgement": jedes zweite Muster sind blaue Knochen
@@ -4496,9 +4552,10 @@ module.exports = function createArena(h, opts = {}) {
         const by = def.icon + ' ' + def.name;
         const api = {
             hz: { add: z => hz.add({ ...z, by }, now) }, W, H, m, now, enraged: !!m.enraged, box,
-            players: () => [...players.values()].filter(p => !box || (p.x > box.x0 && p.x < box.x1 && p.y > box.y0 && p.y < box.y1)),
+            // Guild House (26.09.2026): kein Ziel fuer Angriffe, keine Ansagen hinein
+            players: () => [...players.values()].filter(p => !safeIn(p) && (!box || (p.x > box.x0 && p.x < box.x1 && p.y > box.y0 && p.y < box.y1))),
             dmg: base => Math.round(base * (1 + ((m.dm || 1) - 1) * 0.5)),
-            say: text => { for (const q of players.values()) h.send(q.c, { type: 'shEvent', text, kind: 'boss' }); }
+            say: text => { for (const q of players.values()) if (!safeIn(q)) h.send(q.c, { type: 'shEvent', text, kind: 'boss' }); }
         };
         const dur = P[name](api);
         m.patNext = now + (dur + (def.gap || 700) * (m.enraged ? 0.6 : 1) * (m.phaseCd || 1)) / SPEED;
@@ -4841,7 +4898,7 @@ module.exports = function createArena(h, opts = {}) {
         phasePost(m, now, dt);
         if (bossSkills(m, now, dt, cd)) return;
         if (def.boss && !def.zombie && now - m.born > BOSS_LIFE / SPEED && now - (m.hitAt || 0) > BOSS_CALM / SPEED
-            && ![...players.values()].some(p => !p.dead && Math.hypot(p.x - m.x, p.y - m.y) < BOSS_NEAR)) {
+            && ![...players.values()].some(p => !p.dead && !safeIn(p) && Math.hypot(p.x - m.x, p.y - m.y) < BOSS_NEAR)) {
             mobs.splice(mobs.indexOf(m), 1);
             bossId = null;
             if (def.pattern) hz.clear();
@@ -5786,17 +5843,21 @@ module.exports = function createArena(h, opts = {}) {
         return true;
     }
 
+    // 26.09.2026 (Max: „death marker geht nicht weg"): verschwindet nach 3 min oder sobald man
+    // hinkommt (DEATH_MARK_NEAR). Die Zeit im Browser ist die des Beutels, solange er liegt.
     function deathMark(p, now) {
         const d = p.account && deathMarks.get(p.account);
         if (!d) return undefined;
-        if (now >= d.until) { deathMarks.delete(p.account); return undefined; }
-        return [d.x, d.y, Math.round(d.until - now), d.bag !== null && bags.some(b => b.id === d.bag) ? 1 : 0];
+        if (now >= d.until || (!p.dead && Math.hypot(p.x - d.x, p.y - d.y) < DEATH_MARK_NEAR)) { deathMarks.delete(p.account); return undefined; }
+        const bag = d.bag !== null ? bags.find(b => b.id === d.bag) : null;
+        return [d.x, d.y, Math.max(0, Math.round((bag ? bag.expires : d.until) - now)), bag ? 1 : 0];
     }
 
     function push(now) {
         lastSend = now;
         const plist = [...players.values()];
         for (const p of plist) {
+            const safeHere = safeIn(p);
             const inView = losT ? (x, y) => Math.abs(x - p.x) < VIEW && Math.abs(y - p.y) < VIEW * 0.75 && los(p.x, p.y, x, y)
                 : (x, y) => Math.abs(x - p.x) < VIEW && Math.abs(y - p.y) < VIEW * 0.75;
             const w = p.gear[p.slot] || p.gear.primary;
@@ -5861,8 +5922,10 @@ module.exports = function createArena(h, opts = {}) {
                 // Events sieht jeder, egal wo (Karte und Pfeil am Rand)
                 boss: bossView(now),
                 // Gefahrenzonen (6.9): alle, sie sind riesig und gehen ueber den Bildschirm hinaus
-                hz: hz.list.length ? hz.view(now) : undefined,
-                strikes: strikes.filter(s => inView(s.x, s.y)).map(s => [s.id, Math.round(s.x), Math.round(s.y), s.r, Math.max(0, Math.round(s.at - now)), s.total, s.look || 0]),
+                // 26.09.2026 (Max: „keine Boss-Effekte im Gildenhaus"): wer drin steht, sieht keine
+                // Boss-Flaechen und keine Boss-Einschlaege – sie treffen dort ohnehin nicht
+                hz: hz.list.length && !safeHere ? hz.view(now) : undefined,
+                strikes: strikes.filter(s => inView(s.x, s.y) && !(safeHere && s.how === 'boss')).map(s => [s.id, Math.round(s.x), Math.round(s.y), s.r, Math.max(0, Math.round(s.at - now)), s.total, s.look || 0]),
                 mobs: mobs.filter(m => !m.def.boss && inView(m.x, m.y) && !mobHidden(m, p, now)).map(m => [m.id, m.kind, Math.round(m.x), Math.round(m.y), Math.max(0, Math.round(m.hp)), m.maxHp, Math.round(m.a * 100) / 100, m.aimAt ? Math.max(0, Math.round(m.aimAt - now)) : 0,
                     m.chargeAt ? Math.max(0, Math.round(m.chargeAt - now)) : 0, m.charging ? 1 : 0, Math.round(m.cx || 0), Math.round(m.cy || 0), m.charm ? 1 : 0, m.lv || 0,
                     m.phase || 0, now < (m.shieldUntil || 0) ? Math.round(m.shieldUntil - now) : 0, m.parent || 0,

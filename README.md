@@ -3832,3 +3832,23 @@ Form (`wins`) wird beim ersten Aufruf verworfen, heute fangen also alle je Gebie
 Jede Kachel zeigt „Full rewards: X of 8 wins left today".
 
 Geprüft: Meadow mit 8 Siegen → 63 Coins / 30 % Teile, Canyon/Summit voll; mit 7 noch voll.
+
+## ⚔️ Arena-Feinschliff: Riot Trooper, Reaper, Guild House, Todesort, Inventar (26.09.2026, Max)
+
+Neun Wünsche aus einer Runde, alle in `shooter.js` außer wo genannt.
+
+| Wunsch | Umsetzung |
+|---|---|
+| Shield-Mob zu stark | Riot Trooper (`arena-mobs.js`): HP 420 → 340, Nahkampf 45 → 32, Schuss 12 → 9. Schild hält vorn nur noch 50 % statt 80 % ab, Bogen ±0,8 statt ±1,0 rad. Er dreht sich immer zum Ziel, der Schild stand also fast immer. |
+| Todesort geht nicht weg | Marker (`deathMarks`) jetzt 3 min (`DEATH_MARK_MS`) statt 5 und weg, sobald man näher als 150 px kommt (`DEATH_MARK_NEAR`). Die Uhr im Browser zeigt die Restzeit des Beutels, solange er liegt. Der Beutel selbst bleibt 5 min. |
+| Boss-Aggro nach Respawn | Die Spieler-Id ist die Verbindungs-Id und bleibt beim Wiedereinstieg gleich – `m.tgt` zeigte danach auf den Neuen. `die()` und `detach()` setzen `tgt` und `provoked` aller Gegner zurück, die den Toten jagten. |
+| Keine Boss-Aggro im Guild House | Boss-Muster (`patternTick`) zählen nur Spieler außerhalb (`safeIn`): kein Ziel, keine Ansage, keine Muster, solange nur Leute drin sitzen. Der Boss kann auch wieder „gelangweilt gehen“, wenn nur Spieler im Haus in der Nähe sind. |
+| Keine Boss-Effekte im Guild House | Wer drin steht, bekommt im Snapshot keine Gefahrenzonen (`hz`) und keine Boss-Einschläge (`strikes` mit `how: 'boss'`). Sie trafen dort ohnehin nicht. |
+| Reaper-AOE nicht dodgebar | Gemeint war Soul Harvest (`arena-hazards.js`): die sichere Insel lag bis ~570 px weg, bei 280 px/s und 1,8 s kaum zu schaffen. Jetzt drei Inseln mit r 260 statt zwei mit r 200, die erste höchstens ~270 px vom Ziel (`islands(..., near)`), 2,6 s Vorwarnung, Schaden 70 → 60. |
+| Sortieren im Raid | Knopf „⇅ Sort“ im Raid-Inventar (`shInv` `op: 'sort'`): Waffen, Rüstung, Rucksäcke, Verbrauchsgut, Rest; darin nach Seltenheit, dann Name. |
+| Items einzeln verschieben | Rucksack-Feld auf ein anderes ziehen tauscht die beiden, auf ein leeres ans Ende (`op: 'move'`, `uid` + `with`). Getauscht werden ganze Felder wie im Browser – ein Verbrauchsgut-Stapel wandert als Ganzes. |
+| Skill-Baum-Reset zu teuer | `L.resetCost(resets, true)` für Bäume: ein Viertel (12.500 Coins + 625 Scrap, je Reset ×1,5). Stats-Reset bleibt voll. |
+| Welle 30 „don't shoot“ | Judge Bones, Phase Judgement: beim Start verschwinden alle Spieler-Kugeln in der Luft, und die ersten 900 ms (`KARMA_GRACE`) schluckt er Treffer, statt sie zurückzuwerfen. |
+| Favoriten im Guild Stash | ☆/⭐ auf jeder Kachel (`gFav`), gleiches Feld `it.fav` wie „Protect“ im Hub – also auch vor Recyceln, Fuse und Verkauf geschützt. Favoriten stehen oben, eigener Filter „⭐ Favorites“. Stapel mit und ohne Stern werden getrennt gezeigt. |
+
+Geprüft per WebSocket gegen einen Testserver (`PORT=3999 SNAKE_TEST=1`): Sortier-Reihenfolge, Tausch, Stapel-Tausch, leeres Feld; Reaper-Flächen kommen beim Spieler am Boss an, beim Spieler im Guild House nicht; Tod am Reaper → Todesort nach Wiedereinstieg da (180 s) → in der Nähe weg; Favorit setzen/entfernen, bleibt beim Einlagern, blockt Recyceln, wirkt nur am Stash. Nicht automatisch geprüft: Karma-Gnadenzeit, Aggro-Reset (nur Code-Review), die Optik im Browser.

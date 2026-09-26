@@ -169,12 +169,14 @@ function checker(api, size, look, dmg, circles) {
 }
 
 // Ueberall Schaden ausser auf sicheren Inseln
-function islands(api, n, r, look, dmg, warn) {
+// near: wie weit die erste Insel hoechstens vom Ziel weg liegt (Standard 450 × 350)
+function islands(api, n, r, look, dmg, warn, near) {
     const B = boxOf(api);
     const safe = [];
+    const nx = near || 450, ny = near ? near * 0.8 : 350;
     for (let k = 0; k < n; k++) {
         const t = k === 0 ? target(api) : { x: rnd(B.x0 + 300, B.x1 - 300), y: rnd(B.y0 + 300, B.y1 - 300) };
-        const [x, y] = clampIn(api, t.x + rnd(-450, 450), t.y + rnd(-350, 350), 260);
+        const [x, y] = clampIn(api, t.x + rnd(-nx, nx), t.y + rnd(-ny, ny), 260);
         safe.push([x, y, r]);
     }
     // Raid: nur im Umkreis des Bosses (lim), Zombies: ganze Karte
@@ -349,9 +351,12 @@ PATTERNS.reaper = {
         api.say('☠️ You are marked');
         return 1000 + 3 * 700 + 300;
     },
+    // 26.09.2026 (Max: „die eine AOE nicht dodgebar"): die sichere Insel lag bis ~570 px weg,
+    // bei 280 px/s Laufen und 1,8 s Vorwarnung kaum zu schaffen (Waende noch nicht mitgerechnet).
+    // Jetzt drei groessere Inseln, die erste hoechstens ~270 px vom Ziel, 2,6 s Vorwarnung
     harvest(api) {
         api.say('☠️ SOUL HARVEST – find a safe spot!');
-        return islands(api, 2, 200, LOOK.karma, api.dmg(70), 1800);
+        return islands(api, 3, 260, LOOK.karma, api.dmg(60), 2600, 220);
     },
     whirl(api) {
         const m = api.m, a = rnd(0, Math.PI), va = (Math.random() < 0.5 ? -1 : 1) * (api.enraged ? 0.85 : 0.6);

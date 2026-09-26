@@ -153,8 +153,10 @@ function ensureTrees(pr) {
 const treeOf = (pr, mode) => ensureTrees(pr)[TREE_OF(mode)];
 
 // Zuruecksetzen: 50k Coins + 2.500 Scrap, jedes weitere Mal +50 %
-function resetCost(resets) {
-    const k = Math.pow(1.5, resets || 0);
+// Skill-Baum (26.09.2026, Max: „reset skilltree preise drastisch runter, geteilt durch 4"):
+// ein Viertel davon, die Stats bleiben beim vollen Preis
+function resetCost(resets, tree) {
+    const k = Math.pow(1.5, resets || 0) / (tree ? 4 : 1);
     return { coins: Math.round(50000 * k), scrap: Math.round(2500 * k) };
 }
 
