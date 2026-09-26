@@ -2515,3 +2515,16 @@ body.world-cards #kekemon > .card {
 .km-selbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 10px; padding: 8px 10px; border: 1px solid rgba(77,255,136,.45); border-radius: 10px; background: rgba(77,255,136,.07); }
 .km-selbar .hint { flex-basis: 100%; opacity: .75; }
 #km-selmode.on { background: rgba(77,255,136,.25); border-color: #4dff88; }
+
+/* Verdeckte Karten im Aufdeck-Stapel (26.09.2026): alle gleich, keine Seltenheits-Raender */
+.km-sc-back {
+    width: 250px;
+    height: 350px;
+    border-radius: 15px;
+    box-sizing: border-box;
+    background:
+        radial-gradient(circle at 50% 50%, #ffb13d 0 16%, #1b1030 17% 21%, transparent 22%),
+        repeating-linear-gradient(45deg, #2b1a55 0 10px, #24164a 10px 20px);
+    border: 6px solid #ffd23f;
+    box-shadow: 0 6px 16px rgba(0,0,0,.6);
+}

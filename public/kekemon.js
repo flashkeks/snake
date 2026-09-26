@@ -98,9 +98,24 @@ function kmValue(c, v) {
 }
 
 // Sammlung je Karte: { total, vars: {v: n}, best }
+// Karten aus einem Pack, die noch verdeckt sind (26.09.2026): zaehlen noch nicht fuers Album
+let kmPending = {};
+function kmUnpend(g) {
+    const k = kmKeyOf(g.id, g.v);
+    if (kmPending[k] > 0 && !--kmPending[k]) delete kmPending[k];
+    if (typeof kmHead === 'function') kmHead();
+}
+function kmRevealDone() {
+    if (!Object.keys(kmPending).length && !(kmOpening && !kmOpening.told)) return;
+    kmPending = {};
+    if (kmOpening) kmOpening.told = true;
+    wsSend({ type: 'kmRevealed' });
+    if (typeof kmHead === 'function') kmHead();
+}
 function kmOwn() {
     const out = {};
-    for (const [k, n] of Object.entries((km && km.have) || {})) {
+    for (const [k, n0] of Object.entries((km && km.have) || {})) {
+        const n = n0 - (kmPending[k] || 0);
         if (!(n > 0)) continue;
         const { id, v } = kmParse(k);
         const o = out[id] = out[id] || { total: 0, vars: {}, best: '' };
@@ -153,6 +168,11 @@ function kmOpen(tab) {
 
 function onKmState(d) {
     km = d;
+    // Frisch gezogene Karten zaehlen erst, wenn sie aufgedeckt sind (26.09.2026)
+    if (d.opened) {
+        kmPending = {};
+        for (const g of d.opened.cards || []) { const k = typeof g === 'string' ? g : kmKeyOf(g.id, g.v); kmPending[k] = (kmPending[k] || 0) + 1; }
+    }
     if (kb && d.frag !== undefined) kb.frag = d.frag;
     kmLoadCat(d.v).then(() => {
         if (d.opened) {
@@ -648,10 +668,9 @@ function kmStack() {
     const o = kmOpening;
     o.busy = false;
     const box = $('km-open');
-    const cards = o.order.map((ci, pos) => {
-        const g = o.cards[ci];
-        return `<div class="km-sc" data-pos="${pos}" style="z-index:${100 - pos};--d:${Math.min(pos, 4)}">${kmCard(kmCat.byId[g.id], { v: g.v })}${o.fresh[ci] ? '<span class="km-new">NEW</span>' : ''}</div>`;
-    }).join('');
+    // 26.09.2026 (Max: „man sieht an den Raendern, ob eine krasse Karte dabei ist"): alle
+    // Karten unter der obersten liegen verdeckt (gleiche Rueckseite), das Gesicht kommt erst in kmReveal
+    const cards = o.order.map((ci, pos) => `<div class="km-sc" data-pos="${pos}" style="z-index:${100 - pos};--d:${Math.min(pos, 4)}"><div class="km-sc-back"></div></div>`).join('');
     box.innerHTML = `<div class="km-count" id="km-count2"></div>
         <div class="km-reveal"><div class="km-stack" id="km-stack">${cards}</div><div class="km-rinfo" id="km-rinfo"></div></div>
         <div class="km-note" style="padding:0">Swipe or tap the card · → / Space</div>
@@ -682,7 +701,10 @@ function kmReveal() {
     document.querySelectorAll('#km-stack .km-sc').forEach(el => el.style.setProperty('--d', Math.max(0, Math.min(Number(el.dataset.pos) - o.idx, 4))));
     const r = kmCat.ridx[c.rarity];
     const top = document.querySelector(`#km-stack .km-sc[data-pos="${o.idx}"]`);
+    top.innerHTML = kmCard(c, { v: g.v }) + (o.fresh[o.order[o.idx]] ? '<span class="km-new">NEW</span>' : '');
     top.classList.add('top');
+    // erst jetzt zaehlt die Karte fuers Album
+    kmUnpend(g);
     const big = r >= 4 || /[ms]/.test(g.v);
     if (big || r >= 3) {
         top.classList.add(big ? 'burst-big' : 'burst');
@@ -720,6 +742,7 @@ function kmSummary() {
     const o = kmOpening;
     o.busy = false;
     o.done = true;
+    kmRevealDone();
     const row = o.order.map(ci => {
         const g = o.cards[ci];
         return `<div class="km-sum-c">${kmCard(kmCat.byId[g.id], { mini: true, v: g.v })}${o.fresh[ci] ? '<span class="km-new2">NEW</span>' : ''}${g.v ? `<small>${kmVName(g.v)}</small>` : ''}</div>`;
@@ -731,6 +754,7 @@ function kmSummary() {
 }
 
 function kmCloseOpen() {
+    kmRevealDone();
     $('km-open').hidden = true;
     $('km-open').innerHTML = '';
     kmOpening = null;

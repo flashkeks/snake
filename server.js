@@ -65,15 +65,32 @@ const cardHash = crypto.createHash('sha1').update(cardJson).digest('hex').slice(
 const cardGz = zlib.gzipSync(cardJson);
 console.log(`Kekemon: ${cardDb.cards.length} Karten aus ${cardDb.source || 'nichts'}`);
 
-// Achievement erreicht (#3): allen Fenstern des Kontos zeigen, Feed-Zeile
+// Achievement erreicht (#3): allen Fenstern des Kontos zeigen. Feed-Zeile seit 26.09.2026 weg
+// (Feed nur Snake/Gamba). Waehrend ein Kekemon-Pack aufgedeckt wird, warten die Meldungen,
+// bis der Browser 'kmRevealed' schickt (sonst verraet das Achievement die Karte vorab)
+const kmHold = new Map();       // Konto -> { timer, queue: [Achievement] }
+const KM_HOLD_MS = 90e3;
+function kmHoldStart(key) {
+    const h = kmHold.get(key) || { queue: [] };
+    clearTimeout(h.timer);
+    h.timer = setTimeout(() => kmHoldEnd(key), KM_HOLD_MS);
+    kmHold.set(key, h);
+}
+function kmHoldEnd(key) {
+    const h = kmHold.get(key);
+    if (!h) return;
+    clearTimeout(h.timer);
+    kmHold.delete(key);
+    for (const a of h.queue) accounts.onUnlock(key, a);
+}
 accounts.onUnlock = (key, a) => {
+    const h = kmHold.get(key);
+    if (h) return void h.queue.push(a);
     for (const c of clients.values()) {
         if (c.account !== key) continue;
         send(c, { type: 'achievement', id: a.id, icon: a.icon, name: a.name, desc: a.desc, title: a.title || null });
         sendAccount(c);
     }
-    const u = accounts.get(key);
-    if (u) feed(`🏆 ${u.name} unlocked ${a.icon} ${a.name}`, 'good');
 };
 
 // Umzug snake.flashkeks.com -> game.flashkeks.com (23.09.2026): steht
@@ -640,9 +657,23 @@ function broadcast(obj) {
 
 // who: Spieler-ID, fuer den der Eintrag gilt (nur der hoert den Sound).
 // big: laut fuer alle (ab ×10 an der Muenze).
-function feed(text, kind, who, big) {
-    broadcast({ type: 'feed', text, kind: kind || 'info', who: who || null, big: !!big });
+// Feed (26.09.2026, Max: „zeigt zu viel Scheisse an – man sieht beim Snake spielen, was Leute im
+// Zombie-Modus bekommen"): nur noch Zeilen aus Snake ('snake') und Gamba ('casino'), und nur an
+// Browser in der Snake-Welt. Alles andere (Arena, Zombies, Kekemon, Markt, Achievements, Shop,
+// Anmeldungen) faellt weg. Wer in die Snake-Welt wechselt, bekommt die letzten Zeilen (feedLog).
+const FEED_SRC = new Set(['snake', 'casino']);
+const FEED_KEEP = 14;
+const feedRing = [];
+const inSnakeWorld = c => !c.ui || !c.ui.world || c.ui.world === 'snake';
+function feed(text, kind, who, big, src) {
+    if (!FEED_SRC.has(src)) return;
+    const msg = { type: 'feed', text, kind: kind || 'info', who: who || null, big: !!big };
+    feedRing.push(msg);
+    if (feedRing.length > FEED_KEEP) feedRing.shift();
+    for (const c of clients.values()) if (inSnakeWorld(c)) send(c, msg);
 }
+const feedS = (text, kind, who, big) => feed(text, kind, who, big, 'snake');
+const feedC = (text, kind, who, big) => feed(text, kind, who, big, 'casino');
 
 // Nur fuer bestimmte Spieler (6.4, Max: nicht jede Box und jede Kirsche von
 // allen im Feed). ids: der Ausloeser und wen es trifft.
@@ -717,7 +748,6 @@ function kmState(c, extra) {
 }
 
 const KM_TEAM_SLOTS = 6;
-const KM_VNAME = { p: 'Pokeball', m: 'Masterball', s: 'Shiny' };
 
 function kmHandle(c, d) {
     if (!c.account) return send(c, { type: 'kmError', error: 'Log in to collect cards' });
@@ -808,6 +838,8 @@ function kmHandle(c, d) {
         if (process.env.SNAKE_TEST === '1' && Array.isArray(d.testV)) got.forEach((g, i) => { if (typeof d.testV[i] === 'string') g.v = d.testV[i]; });
         u.packs[d.pack]--;
         if (!u.packs[d.pack]) delete u.packs[d.pack];
+        // 26.09.2026 (Max): Achievements erst nach dem Aufdecken (kmRevealed)
+        kmHoldStart(c.account);
         // Neu = diese Karte (egal welche Variante) noch gar nicht im Album
         const ownsBase = id => Object.keys(u.cards).some(k => cards.parseKey(k).id === id && u.cards[k] > 0);
         const fresh = [];
@@ -818,18 +850,13 @@ function kmHandle(c, d) {
         }
         accounts.stat(c.account, st => { st.packs = (st.packs || 0) + 1; });
         accounts.touch();
-        // Grosse Zuege in den Feed: ab Legendary, jeder Masterball, jedes Shiny
-        for (const g of got) {
-            const card = cardDb.byId[g.id];
-            const r = cards.RIDX[card.rarity];
-            if (r < cards.RIDX.legendary && !/[ms]/.test(g.v)) continue;
-            const tags = [...g.v].map(ch => KM_VNAME[ch]).join(' ');
-            const mega = card.rarity === 'secret' && g.v.includes('m') && g.v.includes('s');
-            feed(`🃏 ${u.name} pulled ${mega ? '🌈 SUPER MEGA ' : ''}${tags ? tags + ' ' : ''}${cards.RARITIES[r].name} ${card.name}!`, 'gold', c.id, mega || card.rarity === 'secret');
-        }
+        // Grosse Zuege standen hier im Feed – seit 26.09.2026 nicht mehr (Feed nur Snake/Gamba,
+        // und die Zeile kam, bevor der Spieler die Karte selbst gesehen hatte)
         sendAccount(c);
         return kmState(c, { opened: { pack: d.pack, cards: got, fresh } });
     }
+    // Pack fertig aufgedeckt (26.09.2026): zurueckgehaltene Achievements jetzt melden
+    if (d.type === 'kmRevealed') return kmHoldEnd(c.account);
     if (d.type === 'kmSell' || d.type === 'kmSellDupes' || d.type === 'kmSellMany') {
         // „Doppelte verkaufen" laesst eins je Karte da. Einzeln und per Auswahl (26.09.2026,
         // SINTHSBen/Max) darf auch das letzte Exemplar weg
@@ -897,7 +924,7 @@ function revealWin(key) {
     clearTimeout(w.timer);
     pendingWins.delete(key);
     if (w.onReveal) w.onReveal();
-    if (w.feed) feed(...w.feed);
+    if (w.feed) feedC(...w.feed);
     pushTop(false);
 }
 
@@ -957,10 +984,10 @@ function kill(id, killerId, how, cause) {
             accounts.period(killer.account, x => { x.kills++; });
         }
 
-        feed(`${killer.name} 🗡️ ${victim.name}`, 'kill');
-        if (STREAKS[killer.streak]) feed(`${killer.name}: ${STREAKS[killer.streak]}!`, 'streak', killerId);
+        feedS(`${killer.name} 🗡️ ${victim.name}`, 'kill');
+        if (STREAKS[killer.streak]) feedS(`${killer.name}: ${STREAKS[killer.streak]}!`, 'streak', killerId);
     } else {
-        feed(`${victim.name} ${how || '☠️'}`, 'kill');
+        feedS(`${victim.name} ${how || '☠️'}`, 'kill');
     }
 
     recordScore(victim);
@@ -1002,7 +1029,7 @@ function finishCashout(id, p) {
         s.bestCashout = Math.max(s.bestCashout, coins);
     });
 
-    feed(`💰 ${p.name} cashed out ${coins.toLocaleString('en-US')} coins${coins < score ? ` (score ${score.toLocaleString('en-US')})` : ''}`, coins >= 200 ? 'gold' : 'good', id);
+    feedS(`💰 ${p.name} cashed out ${coins.toLocaleString('en-US')} coins${coins < score ? ` (score ${score.toLocaleString('en-US')})` : ''}`, coins >= 200 ? 'gold' : 'good', id);
     send(p, { type: 'cashedout', coins, score, balance });
     removeFromField(id);
     sendAccount(p);
@@ -1035,7 +1062,7 @@ function startDuel(ids) {
         ms: DUEL_MS
     };
     ids.forEach(id => send(players.get(id), msg));
-    feed(`⚔️ Head to head: ${ids.map(id => players.get(id).name).join(' vs ')}`, 'info');
+    feedS(`⚔️ Head to head: ${ids.map(id => players.get(id).name).join(' vs ')}`, 'info');
 }
 
 function startGamble(id) {
@@ -1125,7 +1152,7 @@ function resolveFreezes() {
 
             const kind = o.rarity === 'gold' || o.rarity === 'mythic' ? 'gold' : o.good ? 'good' : 'bad';
             // Ab ×10 fuer alle, sonst nur fuer einen selbst
-            if (o.mul >= 10) feed(`${p.name} 🪙 ${o.icon} → length ${p.len}`, kind, id, true);
+            if (o.mul >= 10) feedS(`${p.name} 🪙 ${o.icon} → length ${p.len}`, kind, id, true);
             else feedTo([id], `${p.name} 🪙 ${o.icon} → length ${p.len}`, kind, id);
         }
     }
@@ -1430,7 +1457,7 @@ async function handle(c, data) {
             spawn(c);
             players.set(c.id, c);
             send(c, { type: 'joined', name: c.name, guest: c.guest });
-            feed(`${c.name}${c.guest ? ' (guest)' : ''} joined`);
+            feedS(`${c.name}${c.guest ? ' (guest)' : ''} joined`);
             return;
         }
 
@@ -1438,7 +1465,7 @@ async function handle(c, data) {
             const p = players.get(c.id);
             if (!p) return;
             recordScore(p);
-            feed(`${p.name} left`);
+            feedS(`${p.name} left`);
             events.leave(c.id);
             removeFromField(c.id);
             send(c, { type: 'left' });
@@ -1682,7 +1709,10 @@ async function handle(c, data) {
         // Bildschirm und Tabs (6.3, fuer Admin-Liste und Zuschauer)
         case 'ui': {
             const str = v => typeof v === 'string' ? v.slice(0, 20) : null;
+            const wasSnake = c.ui ? inSnakeWorld(c) : false;
             c.ui = { world: str(data.world), screen: str(data.screen), joined: !!data.joined, kmTab: str(data.kmTab), hubTab: str(data.hubTab), mkTab: str(data.mkTab), mkSub: str(data.mkSub), csTab: str(data.csTab) };
+            // Feed (26.09.2026): zurueck in der Snake-Welt -> die letzten Zeilen nachliefern
+            if (!wasSnake && inSnakeWorld(c)) send(c, { type: 'feedLog', list: feedRing });
             if (c.watchers && c.watchers.size) for (const w of c.watchers) send(w, { type: 'watchUi', ui: c.ui });
             return;
         }
@@ -1699,6 +1729,7 @@ async function handle(c, data) {
         case 'kmSell':
         case 'kmSellDupes':
         case 'kmSellMany':
+        case 'kmRevealed':
             kmHandle(c, data);
             return;
 
@@ -2157,7 +2188,7 @@ wss.on('connection', (ws, req) => {
         const p = players.get(id);
         if (p) {
             recordScore(p);
-            feed(`${p.name} disconnected`);
+            feedS(`${p.name} disconnected`);
             events.leave(id);
             removeFromField(id);
         }
@@ -2243,7 +2274,7 @@ function refillItems(now) {
         if (!items.some(it => it.kind === kind)) {
             spawnItem('fruit', { kind, bonus: true, legend: true });
             const f = FRUIT[kind];
-            feed(`${f.icon} A ${f.name} (+${f.value}) appeared! Check the minimap`, 'gold');
+            feedS(`${f.icon} A ${f.name} (+${f.value}) appeared! Check the minimap`, 'gold');
         }
         nextLegendAt = now + rand(60000, 150000);
     }
@@ -2252,7 +2283,7 @@ function refillItems(now) {
     if (now >= nextEventAt && players.size && !events.active() && !paused && !items.some(it => it.type === 'event')) {
         const pos = freePos(8);
         items.push({ type: 'event', x: pos.x - 1, y: pos.y - 1 });
-        feed('🎪 An EVENT box appeared! Grab it to start a mini event for everyone', 'gold');
+        feedS('🎪 An EVENT box appeared! Grab it to start a mini event for everyone', 'gold');
         nextEventAt = Infinity;
     }
 }
@@ -2285,7 +2316,7 @@ const events = createEvents({
     broadcast,
     send,
     grow,
-    feed,
+    feed: feedS,
     onEnd(done) {
         // 3 s Countdown, dann geht es weiter
         const now = Date.now();
@@ -2316,7 +2347,7 @@ const OFFER_MS = 10000;   // 6.5.1: 15 -> 10 s
 const tables = createTables({
     accounts,
     send,
-    feed,
+    feed: feedC,
     onChange: () => broadcast({ type: 'lobby', lobby: tables.lobby() })
 });
 
@@ -2485,7 +2516,7 @@ function crossCash(c, auto) {
     send(c, { type: 'cross', state: 'cashed', auto, step: g.step, bet: g.bet, diff: g.diff, mult, win, balance });
     if (mult >= 20 && win >= 1000) {
         const u = accounts.get(c.account);
-        feed(`🐔 ${u.name} crossed ${g.step} lanes on ${casino.DIFFS[g.diff].label}: ${win} coins (${mult}x)`, 'gold', c.id);
+        feedC(`🐔 ${u.name} crossed ${g.step} lanes on ${casino.DIFFS[g.diff].label}: ${win} coins (${mult}x)`, 'gold', c.id);
     }
 }
 
@@ -2681,7 +2712,7 @@ function gameTick() {
         // Schild faengt genau einen Treffer ab
         if (active(p, 'shield')) {
             p.fx.shield = 0;
-            feed(`🛡️ ${p.name}'s shield broke`, 'info');
+            feedS(`🛡️ ${p.name}'s shield broke`, 'info');
             continue;
         }
         dead.set(id, owner === id ? null : owner);
@@ -2750,7 +2781,7 @@ function gameTick() {
             if (it.type === 'fruit') {
                 const f = FRUIT[it.kind];
                 grow(p, f.value);
-                if (f.legend) feed(`${f.icon} ${p.name} ate the ${f.name}! +${f.value}`, 'gold', id);
+                if (f.legend) feedS(`${f.icon} ${p.name} ate the ${f.name}! +${f.value}`, 'gold', id);
                 else if (f.value >= 10) feedTo([id], `${p.name} ${f.icon} +${f.value}`, 'gold', id);
             }
             if (it.type === 'box') openBox(id);
@@ -2759,7 +2790,7 @@ function gameTick() {
                 break;
             }
             if (it.type === 'event') {
-                feed(`🎪 ${p.name} opened the EVENT box!`, 'gold');
+                feedS(`🎪 ${p.name} opened the EVENT box!`, 'gold');
                 eventGrab = true;
                 break;
             }

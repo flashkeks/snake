@@ -3637,3 +3637,33 @@ Aus dem Discord (SINTHSBen), entschieden von Max.
 Geprüft gegen einen echten Server (Admin gibt Karten, 6/6): fremde Karte verfüttert, letzte
 Kopie verkauft, `keepOne` lässt eine, „alles" verkauft alles. Screenshots von Auswahl-Leiste und
 „Feed selected".
+
+## 🙈 Pack-Öffnen ohne Spoiler, Feed nur Snake + Gamba (26.09.2026, Max)
+
+Max (Discord): „Beim Karten-Pack-Öffnen sieht man an den Rändern, ob eine krasse Karte dabei
+ist. Die Karten dürfen erst, wenn sie tatsächlich sichtbar sind, ‚gerendert' werden / ins Inv
+kommen – momentan spoilern die Achievements und der Feed. Der Feed zeigt zu viel an … er soll
+NUR Sachen von Snake und Gamba anzeigen und auch nur da rendern und laden."
+
+**Pack-Öffnen** (`public/kekemon.js`):
+- Im Aufdeck-Stapel liegt nur die oberste Karte offen. Alle darunter sind dieselbe Rückseite
+  (`.km-sc-back`, wie beim Mischen) – keine Holo-/Seltenheitsränder, kein „NEW" mehr, die
+  zwischen den Karten hervorschauen. Das Gesicht wird erst in `kmReveal` gezeichnet.
+- Frisch gezogene Karten stehen in `kmPending` und zählen nicht fürs Album (Zähler oben,
+  Sammlung), bis sie aufgedeckt sind; „Skip to summary" oder Schließen deckt alles auf.
+- Danach schickt der Browser `kmRevealed`. Der Server hält solange alle Achievement-Meldungen
+  des Kontos zurück (`kmHold`, Notbremse nach 90 s) und schickt sie erst dann – „Booster",
+  „Pack rat", Sammel-Achievements verraten so nichts mehr vorab.
+- Die Feed-Zeile „X pulled Legendary …" ist weg.
+
+**Feed** (`server.js` `feed(text, kind, who, big, src)`):
+- Nur noch `src` `'snake'` (Kills, Streaks, Cashout, Boxen, Events, Join/Leave …) und
+  `'casino'` (Tische, Poker, Slots, Starlight, Plinko, Crossy Road, Daily Wheel) – über
+  `feedS`/`feedC`. Alles andere fällt weg: Arena, Zombies, Raids, Kekemon, Markt, Shop,
+  Achievements, Anmeldungen.
+- Gesendet wird nur an Browser in der Snake-Welt (`c.ui.world`). Wer aus Arena/Kekemon/Markt
+  zurückkommt, bekommt die letzten 14 Zeilen als `feedLog` (ohne Klang).
+
+Geprüft gegen einen echten Server (8/8): Anmeldung nicht im Feed, Snake-Join nur an die
+Snake-Welt, Verlauf beim Wechsel, Pack geöffnet ohne Achievement, „Booster" erst nach
+`kmRevealed`. Screenshot vom verdeckten Stapel; Album-Zähler 0 → 1 → 5 beim Aufdecken.
