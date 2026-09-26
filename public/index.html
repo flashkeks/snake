@@ -12611,14 +12611,14 @@ function hubProfile() {
         }
         html += '</div>';
     }
-    const cost = pr.resetCost, tcost = (pr.trees && pr.trees[skillTree] && pr.trees[skillTree].resetCost) || cost;
+    const tcost = (pr.trees && pr.trees[skillTree] && pr.trees[skillTree].resetCost) || pr.resetCost;
     const money = c => `🪙 ${c.coins.toLocaleString('en-US')} + ⚙️ ${c.scrap.toLocaleString('en-US')}`;
     html += '</div></div></div><div class="prof-actions">' +
         `<button type="button" class="gold" data-prof="apply" ${changed ? '' : 'disabled'}>✔ Save points</button>` +
         `<button type="button" class="ghost" data-prof="discard" ${changed ? '' : 'disabled'}>Discard</button>` +
         `<span style="flex:1"></span><span class="hint">Resets get 50% pricier each time</span>` +
-        `<button type="button" class="danger" data-prof="reset" data-what="tree">↺ Reset ${TREE_NAMES[skillTree]} tree · ${money(tcost)}</button>` +
-        `<button type="button" class="danger" data-prof="reset" data-what="stats">↺ Reset stats (all trees) · ${money(cost)}</button></div>`;
+        // 26.09.2026 (Max): gemeinsamer Stats-Reset (alle Baeume) entfernt, nur noch der Baum-Reset
+        `<button type="button" class="danger" data-prof="reset" data-what="tree">↺ Reset ${TREE_NAMES[skillTree]} tree · ${money(tcost)}</button></div>`;
     return html;
 }
 
@@ -12646,9 +12646,8 @@ function profClick(t, ds, e) {
         return hubDraw();
     }
     if (ds.prof === 'reset') {
-        const stats = ds.what === 'stats';
-        const c = stats ? pr.resetCost : pr.trees[skillTree].resetCost;
-        uiConfirm(`Reset ${stats ? 'ALL stat points (they count for every mode)' : `your ${TREE_NAMES[skillTree]} skill tree`}?\nCosts ${c.coins.toLocaleString('en-US')} coins and ${c.scrap.toLocaleString('en-US')} scrap. You get the points back to spend again.`, { title: 'Reset points', ok: 'Reset', danger: true }).then(ok => ok && wsSend({ type: 'arProg', op: 'reset', mode: skillTree, what: stats ? 'stats' : 'tree' }));
+        const c = pr.trees[skillTree].resetCost;
+        uiConfirm(`Reset your ${TREE_NAMES[skillTree]} skill tree?\nCosts ${c.coins.toLocaleString('en-US')} coins and ${c.scrap.toLocaleString('en-US')} scrap. You get the points back to spend again.`, { title: 'Reset points', ok: 'Reset', danger: true }).then(ok => ok && wsSend({ type: 'arProg', op: 'reset', mode: skillTree, what: 'tree' }));
     }
 }
 

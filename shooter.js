@@ -953,23 +953,18 @@ module.exports = function createArena(h, opts = {}) {
                 return sendHub(c, { progSaved: true });
             }
             if (d.op === 'reset') {
-                // what: 'stats' = nur Stats (alle Modi), sonst nur der Baum dieses Modus
-                const stats = d.what === 'stats';
-                const cost = stats ? L.resetCost(pr.resets) : L.resetCost(tree.resets, true);
+                // 26.09.2026 (Max): der gemeinsame Stats-Reset ist raus, nur noch der Baum dieses Modus
+                if (d.what === 'stats') return h.send(c, { type: 'arError', error: 'Stat resets are gone – reset a skill tree instead' });
+                const cost = L.resetCost(tree.resets, true);
                 const u = h.accounts.get(c.account);
                 if (u.coins < cost.coins) return h.send(c, { type: 'arError', error: `A reset costs ${cost.coins.toLocaleString('en-US')} coins` });
                 if (a.scrap < cost.scrap) return h.send(c, { type: 'arError', error: `A reset costs ${cost.scrap.toLocaleString('en-US')} scrap` });
-                if (stats ? !Object.keys(pr.stats).length : !Object.keys(tree.skills).length) return h.send(c, { type: 'arError', error: 'Nothing to reset' });
+                if (!Object.keys(tree.skills).length) return h.send(c, { type: 'arError', error: 'Nothing to reset' });
                 h.accounts.addCoins(c.account, -cost.coins);
                 h.accounts.earn(c.account, 'shooter', -cost.coins);
                 a.scrap -= cost.scrap;
-                if (stats) {
-                    pr.stats = {};
-                    pr.resets = (pr.resets || 0) + 1;
-                } else {
-                    tree.skills = {};
-                    tree.resets = (tree.resets || 0) + 1;
-                }
+                tree.skills = {};
+                tree.resets = (tree.resets || 0) + 1;
                 h.accounts.touch();
                 h.refresh(c);
                 return sendHub(c, { progReset: true });
