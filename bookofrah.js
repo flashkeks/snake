@@ -1,4 +1,4 @@
-// "Book of Rah" – Linien-Slot im Stil von Book of Ra Deluxe.
+// "Book of Nasus" – Linien-Slot im Stil von Book of Ra Deluxe.
 //
 // 5 Walzen x 3 Reihen, 10 feste Gewinnlinien, Einsatz = Gesamteinsatz
 // (Linieneinsatz = Einsatz / 10). Gezahlt wird von links nach rechts.

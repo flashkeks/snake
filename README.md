@@ -5,7 +5,7 @@
 - **🐍 Snake:** Multiplayer-Snake im Browser, mit Kopf-an-Kopf-Duellen im
   CS:GO-Case-Opening-Stil, Mystery-Boxen, Double or Nothing, Cashout und
   Quiz-Events (Flaggen, Trivia, Weltkarte, Schaetzen).
-- **🎰 Gamba (Casino):** Daily Wheel, Slots, Budget Starlight, Book of Rah, Crossy Road, Plinko
+- **🎰 Gamba (Casino):** Daily Wheel, Slots, Budget Starlight, Book of Nasus, Crossy Road, Plinko
   und dauerhafte Tische fuer Blackjack, Roulette und Poker (Spieler gegen
   Spieler), an denen man sieht, wer gerade mitspielt.
 - **🔫 Arena:** Extraction-Shooter mit Loadout, Cases, Waffen mit Effekten, Salvage und Extraction-Zonen (seit 23.09.2026).
@@ -24,7 +24,7 @@ Live: **`snake.flashkeks.com`** auf `edge` (Netcup).
 | `server.js` | HTTP + WebSocket, Spiel-Tick, Items, Duelle, Cashout |
 | `accounts.js` | Konten, Sessions, Coins, Statistik (JSON-Datei im Datenordner) |
 | `slots.js` | Slot-Automat „Slots“ (frueher „Kek Slots“); `node slots.js` rechnet die Rueckzahlungsquote aus |
-| `bookofrah.js` | Linien-Slot „Book of Rah“ (5 × 3, 10 Linien, Buch = Wild/Scatter, Freispiele mit aufklappendem Spezialsymbol); `node bookofrah.js N` simuliert die Rueckzahlung |
+| `bookofrah.js` | Linien-Slot „Book of Nasus“ (5 × 3, 10 Linien, Buch = Wild/Scatter, Freispiele mit aufklappendem Spezialsymbol); `node bookofrah.js N` simuliert die Rueckzahlung |
 | `slots2.js` | Tumble-Slot „Budget Starlight“ (frueher „Sweet Kek“, intern weiter `s2`/`spin2`); `node slots2.js N` simuliert grob Rueckzahlung, Bonus-Quote, Bonus-Kauf (zum Abstimmen siehe unten) |
 | `events.js` | Events im Snake (Flag Quiz, Trivia, Where is it?, Guess the number und die Map-Events): Ablauf, Punkte, Belohnung |
 | `achievements.js` | Achievements (#3): Katalog, Pruefungen, Titel |
@@ -362,9 +362,9 @@ wirklich draufsitzt.
 **Schild** faengt einen Koerpertreffer ab, und seit 23.09.2026 auch den 💀
 aus Muenze oder Box.
 
-## Book of Rah (Linien-Slot, 26.09.2026)
+## Book of Nasus (Linien-Slot, 26.09.2026, erst „Book of Rah“)
 
-Casino → Slots & more → „📖 Book of Rah", nur mit Konto. Nach dem Vorbild
+Casino → Slots & more → „📖 Book of Nasus", nur mit Konto. Nach dem Vorbild
 von Book of Ra Deluxe; Logik in `bookofrah.js` (Server wuerfelt die ganze
 Runde samt Freispielen), Anzeige in `public/index.html` (`bor*`).
 

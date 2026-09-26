@@ -5771,7 +5771,7 @@ span.tier-common, span.tier-uncommon, span.tier-rare, span.tier-epic, span.tier-
     .s2g, .s2g * { animation: none !important; }
 }
 
-/* ---------- Book of Rah (Linien-Slot, 5 × 3, 10 Linien) ----------
+/* ---------- Book of Nasus (Linien-Slot, 5 × 3, 10 Linien) ----------
    Zellgroesse (--c) rechnet borFit() aus, wie bei Starlight. */
 
 #bookofrah-btn .ico {
@@ -7245,7 +7245,7 @@ body.watch-mode #world-switch {
                     <div class="cs-grid" data-pane="slots" hidden>
                         <button type="button" class="cs-tile" id="slots-btn"><span class="ico">🎰</span><b>Slots</b><small>Classic three reels</small></button>
                         <button type="button" class="cs-tile" id="slots2-btn"><span class="ico">🌟</span><b>Budget Starlight</b><small>Tumbles · multipliers · free spins</small></button>
-                        <button type="button" class="cs-tile" id="bookofrah-btn"><span class="ico">📖</span><b>Book of Rah</b><small>10 lines · expanding symbol · gamble</small></button>
+                        <button type="button" class="cs-tile" id="bookofrah-btn"><span class="ico">📖</span><b>Book of Nasus</b><small>10 lines · expanding symbol · gamble</small></button>
                         <button type="button" class="cs-tile" id="cross-btn"><span class="ico">🐔</span><b>Crossy Road</b><small>Cross lanes, cash out in time</small></button>
                         <button type="button" class="cs-tile" id="plinko-btn"><span class="ico">🔻</span><b>Plinko</b><small>Drop balls, up to ×1000</small></button>
                     </div>
@@ -7524,11 +7524,11 @@ body.watch-mode #world-switch {
                 </div>
             </div>
 
-            <!-- Book of Rah: Linien-Slot 5 × 3 -->
+            <!-- Book of Nasus: Linien-Slot 5 × 3 -->
             <div id="bookofrah" class="overlay hidden">
                 <div class="card">
                     <div class="s2-head">
-                        <div class="bor-title">📖 Book of Rah</div>
+                        <div class="bor-title">📖 Book of Nasus</div>
                         <span class="bor-maxwin" id="bor-maxwin">MAX WIN 50,000×</span>
                         <span class="coins">🪙 <span id="bor-coins">0</span></span>
                         <button type="button" class="s2-icon" id="bor-sound" title="Sound on/off">🔊</button>
@@ -7691,7 +7691,7 @@ body.watch-mode #world-switch {
                 </select>
                 <select id="hall-game" title="Game" hidden>
                     <option value="starlight">🌟 Starlight</option>
-                    <option value="bookofrah">📖 Book of Rah</option>
+                    <option value="bookofrah">📖 Book of Nasus</option>
                     <option value="slots">🎰 Slots</option>
                     <option value="plinko">🔻 Plinko</option>
                     <option value="crossy">🐔 Crossy</option>
@@ -8481,7 +8481,7 @@ $('del-form').addEventListener('submit', e => {
 
 // Konto-Seite: Ueberblick plus Tabelle je Spiel (#5)
 const GAME_LABELS = {
-    slots: '🎰 Slots', starlight: '🌟 Budget Starlight', bookofrah: '📖 Book of Rah', crossy: '🐔 Crossy Road', plinko: '🔻 Plinko',
+    slots: '🎰 Slots', starlight: '🌟 Budget Starlight', bookofrah: '📖 Book of Nasus', crossy: '🐔 Crossy Road', plinko: '🔻 Plinko',
     daily: '🎁 Daily Wheel', blackjack: '🃏 Blackjack', roulette: '🎡 Roulette', poker: '♠️ Poker', don: '🪙 Double or Nothing', arena: '🔫 Arena (stakes)'
 };
 
@@ -11380,7 +11380,7 @@ const sfx = {
     }
 };
 
-// ---------- Book of Rah: Linien-Slot 5 × 3 ----------
+// ---------- Book of Nasus: Linien-Slot 5 × 3 ----------
 // Der Server wuerfelt die ganze Runde (inkl. Freispiele) und schickt alle
 // Raster; hier laufen nur Walzen, Linien, Buch und Risikospiel ab.
 // Zeitsteuerung ueber s2Sleep/s2Count (laufen mit s2Speed = 1).

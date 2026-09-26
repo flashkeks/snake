@@ -15,7 +15,7 @@
 const GAMES = {
     slots: { name: '🎰 Slots', mins: [2, 6, 10, 20, 40, 80, 200, 1000], unit: '×' },
     starlight: { name: '🌟 Budget Starlight (spins + bonus buy)', mins: [5, 20, 50, 100, 250, 500, 1000, 5000], unit: '×', bonus: true },
-    bookofrah: { name: '📖 Book of Rah (spins)', mins: [5, 20, 50, 100, 250, 500, 1000, 5000], unit: '×', bonus: true },
+    bookofrah: { name: '📖 Book of Nasus (spins)', mins: [5, 20, 50, 100, 250, 500, 1000, 5000], unit: '×', bonus: true },
     plinko: { name: '🔻 Plinko', mins: [2, 9, 26, 41, 110, 130, 1000], unit: '×' },
     daily: { name: '🎡 Daily wheel', mins: [500, 1000, 2500, 5000, 10000, 25000], unit: 'coins' },
     crossy: { name: '🐔 Crossy Road (no crash)', mins: null }
@@ -36,7 +36,7 @@ function slotsSpin(slots, bet, min) {
     return { reels: [pick.s, pick.s, pick.s], mult: pick.three, win: Math.floor(bet * pick.three) };
 }
 
-// Starlight und Book of Rah: neu wuerfeln, bis es passt; bester Versuch als Rueckfall
+// Starlight und Book of Nasus: neu wuerfeln, bis es passt; bester Versuch als Rueckfall
 function starlightSpin(slots2, bet, buy, rig) {
     const t0 = Date.now();
     let best = null;

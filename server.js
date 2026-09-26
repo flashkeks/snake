@@ -584,7 +584,7 @@ function activityOf(key) {
     const ui = c.ui || {};
     if (!what) {
         const tab = { kekemon: ui.kmTab, arenahub: ui.hubTab, market: ui.mkTab }[ui.screen];
-        const SCREEN = { menu: '🏠 Menu', casino: '🎰 Casino', daily: '🎡 Daily Wheel', cross: '🐔 Crossy Road', plinko: '🔻 Plinko', slots: '🎰 Slots', slots2: '🌟 Starlight', bookofrah: '📖 Book of Rah', kekemon: '🃏 Kekémon', arenahub: '🔫 Arena', market: '🏛️ Market', shop: '🎨 Shop', support: '💬 Support', konto: '👤 Account', pokerlobby: '♠️ Poker lobby', event: '🎪 Event', offer: '🎲 Offer' };
+        const SCREEN = { menu: '🏠 Menu', casino: '🎰 Casino', daily: '🎡 Daily Wheel', cross: '🐔 Crossy Road', plinko: '🔻 Plinko', slots: '🎰 Slots', slots2: '🌟 Starlight', bookofrah: '📖 Book of Nasus', kekemon: '🃏 Kekémon', arenahub: '🔫 Arena', market: '🏛️ Market', shop: '🎨 Shop', support: '💬 Support', konto: '👤 Account', pokerlobby: '♠️ Poker lobby', event: '🎪 Event', offer: '🎲 Offer' };
         what = (SCREEN[ui.screen] || ui.screen || '…') + (tab ? ' · ' + tab : '');
     }
     return { what, tabs: conns.length, idle: Math.round((Date.now() - (c.lastActive || Date.now())) / 1000), watchers: c.watchers ? c.watchers.size : 0 };
@@ -693,7 +693,7 @@ let achRatesCache = null;
 // Schirm -> Anzeige. Menue, Konto, Support usw. zaehlen nicht als "spielt".
 const WHERE = {
     casino: '🎰 Casino', daily: '🎁 Daily Wheel', cross: '🐔 Crossy Road', plinko: '🔻 Plinko',
-    pokerlobby: '♠️ Poker', slots: '🎰 Slots', slots2: '🌟 Starlight', bookofrah: '📖 Book of Rah', arenahub: '🔫 Arena',
+    pokerlobby: '♠️ Poker', slots: '🎰 Slots', slots2: '🌟 Starlight', bookofrah: '📖 Book of Nasus', arenahub: '🔫 Arena',
     shooter: '🔫 Arena', kekemon: '🃏 Kekémon', shop: '🎨 Shop', event: '🎪 Event', market: '🏛️ Market'
 };
 const TABLE_WHERE = { blackjack: '🃏 Blackjack', roulette: '🎡 Roulette', poker: '♠️ Poker' };
@@ -2077,7 +2077,7 @@ async function handle(c, data) {
             if (c.account) revealWin(c.account);
             return;
 
-        // --- Dritter Automat: Book of Rah (Linien, Buch = Wild/Scatter, Freispiele mit Spezialsymbol) ---
+        // --- Dritter Automat: Book of Nasus (Linien, Buch = Wild/Scatter, Freispiele mit Spezialsymbol) ---
 
         case 'borSpin': {
             if (!c.account) return send(c, { type: 'borError', error: 'Accounts only' });
@@ -2085,7 +2085,7 @@ async function handle(c, data) {
             if (now - (c.lastBor || 0) < 600) return;
             const bet = Number(data.bet);
             if (!validBet(bet)) return send(c, { type: 'borError', error: 'Invalid bet' });
-            // Kein Bonus-Kauf bei Book of Rah (Max, 26.09.2026): Freispiele nur ueber 3+ Buecher
+            // Kein Bonus-Kauf bei Book of Nasus (Max, 26.09.2026): Freispiele nur ueber 3+ Buecher
             const buy = false;
             const cost = bet;
             const u = accounts.get(c.account);
@@ -2117,7 +2117,7 @@ async function handle(c, data) {
             });
             // Grob so lang wie die Animation im Browser, grosszuegig
             const ms = Math.min(15 * 60e3, 15e3 + r.spins.length * 7e3);
-            const line = r.win >= bet * 100 ? [`📖 ${u.name} won ${r.win} coins (${Math.round(r.win / bet)}x) on Book of Rah`, 'gold', c.id] : null;
+            const line = r.win >= bet * 100 ? [`📖 ${u.name} won ${r.win} coins (${Math.round(r.win / bet)}x) on Book of Nasus`, 'gold', c.id] : null;
             hideWin(c.account, r.win, line, ms, () => accounts.game(c.account, 'bookofrah', { wager: cost, win: r.win, x: r.win / bet }));
             return;
         }
@@ -2153,7 +2153,7 @@ async function handle(c, data) {
                 g.amount *= 2;
                 g.left--;
                 accounts.stat(c.account, s => { s.biggestWin = Math.max(s.biggestWin, g.amount); });
-                if (g.amount >= 100000) feedC(`📖 ${u.name} gambled up to ${g.amount} coins on Book of Rah`, 'gold', c.id);
+                if (g.amount >= 100000) feedC(`📖 ${u.name} gambled up to ${g.amount} coins on Book of Nasus`, 'gold', c.id);
             }
             if (!won || g.left <= 0) c.borGamble = null;
             send(c, { type: 'borGamble', suit, won, amount: won ? g.amount : 0, left: won ? g.left : 0, balance });
