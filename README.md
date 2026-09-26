@@ -442,7 +442,11 @@ Princess / Gates of Olympus:
   Inline-SVG (`#s2-girl`), kein fremdes Artwork. Seit 26.09. abends als
   Goth (Wunsch Max): lange schwarze Haare mit geradem Pony, dunkler
   Lippenstift und Eyeliner, schwarzes Mesh-Oberteil, Choker, Kettenguertel,
-  Plateau-Boots, dunkle Fluegel, Mondstab; Schein und Funken in Lila. Im Leerlauf schwebt sie, blinzelt, Zoepfe, Rock und Fluegel
+  Plateau-Boots, dunkle Fluegel, Mondstab; Schein und Funken in Lila.
+  Danach (Max: „sieht aus wie ein Kind“) auf erwachsene, realistischere
+  Proportionen umgezeichnet: ~7,5 Kopflaengen statt Chibi, mandelfoermige
+  Augen mit Lidstrich, Nase, volle Lippen, Wangenknochen, Taille/Huefte und
+  fuelligere Oberweite (nur ueber Licht und Schatten, eng anliegendes Mesh). Im Leerlauf schwebt sie, blinzelt, Zoepfe, Rock und Fluegel
   wippen, der Stern am Stab pulsiert. Posen per `s2Girl(pose, ms)`: `cast`
   (Stab schwingen) beim Spin und wenn der Multiplikator greift, `happy`
   (Augen zu, Mund auf, Hopser) bei jedem Tumble-Gewinn, `zap` (Stab hoch,
