@@ -1682,6 +1682,8 @@ async function handle(c, data) {
         case 'crOpen': case 'crGive': case 'crHeal': case 'crClear':
         case 'shInv':
         case 'shTrade':
+        // Zombies (26.09.2026): fehlten hier – Start-/Autoplay-Knopf kamen nie an
+        case 'zReady': case 'zAuto': case 'zPause':
             (rooms.arenaOf(c) || dungeons.arenaOf(c) || shooter).action(c, data);
             return;
 

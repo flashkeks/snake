@@ -3295,3 +3295,65 @@ außen über dem Haus versteckt, im selben Haus sichtbar, mit Durchblick sichtba
 - **Level-Werte getrennt:** In den Item-Details (Tooltip, Detailspalte) steht der Grundwert und der
   Anteil aus dem Item-Level in Grün dahinter – Rüstung `❤️ +30 HP (+40)`, Waffen `💥 26 (+7)` und
   `⚡ 6.7 (+0.7)/s`. Vorher war beides verrechnet.
+
+## 🎁 Zombies: Drops wie in CoD, Pause, Knöpfe repariert (26.09.2026, Max)
+
+Max (Discord): „Im Zombie Modus wie in COD Items droppen lassen. Dafür weg: Power-Up-Altar,
+Healing Shops, Utility Shop. Autostart-Knopf kann man nicht drücken, Runde-schneller-Knopf
+geht nur einmal. + Pause-Knopf (zählt von 5 runter und pausiert dann)."
+
+**Knöpfe kaputt – Ursache:** `server.js` leitete `zReady` und `zAuto` nie an die Arena
+weiter. Die Weiche für Raid-Nachrichten (`case 'shSlot': … case 'shTrade':`) kannte die
+beiden Typen nicht, und ohne `default` verpufften sie. Die Tests vom 25.09. riefen
+`arena.action()` direkt auf und sahen das deshalb nicht. Jetzt stehen `zReady`, `zAuto`
+und `zPause` in der Weiche; geprüft über einen echten Server per WebSocket.
+
+**Drops** (`zDropRoll`, `zDropTick`, `zPowerUp` in `shooter.js`):
+
+| Drop | Gewicht | Wirkung |
+|---|---:|---|
+| ✖️2 Double Points | 13 | 30 s doppelte Punkte, ganzes Team |
+| 💀 Insta-Kill | 13 | 15 s stirbt jeder Zombie auf einen Treffer (nicht Bosse) |
+| ☢️ Nuke | 8 | alle Zombies auf der Karte tot (nicht Bosse), +160 Punkte für den Finder |
+| 🏷️ Fire Sale | 8 | 30 s Mystery Box und Wandwaffen zum halben Preis |
+| 💉 Med Kit | 22 | ganzes Team voll geheilt, Brennen weg (ersetzt die Heil-Stationen) |
+| 🧪 Supply Drop | 22 | Verbrauchsgut für den Finder, Stufen-Chancen wie früher die Utility-Kiste (`zubox`/`zubox_s`, Lucky Box zählt) |
+| 💰 Bonus Points | 14 | +200 Punkte für jeden |
+
+- Chance 3,5 % je normalem Kill, höchstens 4 + (Spieler − 1) Drops je Welle (`zb.dropN`,
+  zurückgesetzt in `zWave`). Bosse lassen immer zwei fallen: ein Power-up und ein Med Kit,
+  ohne gegen die Grenze zu zählen.
+- Nie dasselbe Power-up zweimal hintereinander (`zb.lastDrop`), wie in CoD.
+- Aufheben durch Drüberlaufen (Radius 42 + Spielerradius). Supply Drop bleibt liegen, wenn
+  beide Verbrauchsgut-Slots belegt sind – dann kann ihn ein anderer nehmen.
+- Liegt 25 s; im Client blinkt er die letzten 6 s, die letzten 2,5 s schneller.
+- Snapshot `zmb.drops = [[id, x, y, Art, ms bis weg], …]`; Client `zDrawDrops()` zeichnet
+  Ring, Leuchten, schwebendes Symbol und Namen; auf der Minimap als Punkt in seiner Farbe.
+  Neuer Drop spielt einen kurzen Klang (`shFx` `zdrop`).
+
+**Weg:** Stationen `shrine` (Power-up-Altar), zweimal `heal`, `ubox` (Utility-Kiste) samt
+Preisen (`ZMB_SHRINE*`, `ZMB_HEAL*`, `ZMB_UBOX*`), Kauf-Code und Snapshot-Feldern
+(`zmb.heal/ubox/shrine`). Die Zeichnungen in `zfx.js` bleiben liegen, werden aber nicht mehr
+erreicht. Die Grenade-Station (`nades`) bleibt – Max meinte mit „Utility Shop" die Kiste.
+
+**Pause** (`zPauseToggle`, `zPauseTick`, `zShift`):
+- Knopf `⏸ Pause` oben in der Leiste oder Taste **P**. Danach 5 s Countdown (große Zahl in
+  der Mitte), dann steht die Welt: `tick()` kehrt sofort zurück und schickt nur noch den
+  Stand. Nochmal drücken bricht den Countdown ab bzw. setzt fort. Jeder im Team darf.
+- Während der Pause: `me.fz` ist gesetzt (Client sagt nichts voraus), Kaufen, Werfen,
+  Fähigkeiten und „Start wave" werden ignoriert; Inventar, Waffe wechseln und Autoplay gehen.
+- Beim Fortsetzen schiebt `zShift` jeden Zeitstempel (ms seit 1970, ±1 Tag um den
+  Pausenbeginn) der Spieler, Gegner, Kugeln, Granaten, Feuer, Einschläge, Drops usw. um die
+  Pausendauer – eine Ebene tief (z. B. `burn.until`), nie in Items, Konto, Verbindung oder
+  Gegner-Definition. Abklingzeiten, Wellenpause, Power-ups und Drop-Ablauf laufen damit
+  genau da weiter, wo sie standen. Anzeigen (Wellenpause, Power-up-Sekunden, Drops) frieren
+  schon während der Pause ein.
+- Bullet-Hell-Muster (`arena-hazards.js`) haben eine eigene Uhr und werden beim Pausieren
+  geleert, damit sie nicht direkt nach dem Fortsetzen treffen. Nach dem Fortsetzen 1,5 s
+  Schutz für alle Lebenden.
+
+**Geprüft:** Arena-Test 25/25 (keine alten Stationen, kein Drop ohne Glück, Grenze 4 solo,
+kein Power-up doppelt, Snapshot, Med Kit, Double Points, Supply Drop bei vollen Slots,
+Nuke, Ablauf, Boss-Drops, Pause-Countdown, Welt und Spieler stehen, kein Kauf, Timer um 20 s
+geschoben, Abbrechen), alte Zombie-Tests 11/11, dazu echter Server per WebSocket
+(`zReady`, `zAuto`, `zPause` kommen an) und Screenshots von Drops, Countdown und Pause.

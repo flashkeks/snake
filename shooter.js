@@ -394,29 +394,30 @@ const ZMB_ARMOR = 1200, ZMB_ARMOR_MAX = 4, ZMB_NADES = 800, ZMB_REVIVE = 1500;
 // 6.10 (Max, schmoggi Welle 11 Waffe voll + Box-Spam): Altar und Box werden
 // mit jedem Kauf teurer. Altar zaehlt je Runde (Effekt gilt fuers Team),
 // Box je Spieler. Altar 6000, 9000, 12000 ... · Box 2000, 2500, 3000 ...
-const ZMB_SHRINE = 6000, ZMB_SHRINE_STEP = 3000;
 const ZMB_BOX_STEP = 500;
-// Utility-Kiste (6.10, Max): wie die Box, aber Verbrauchsgut. 1500 + 400 je eigenem Kauf
-const ZMB_UBOX = 1500, ZMB_UBOX_STEP = 400;
-const zUboxPrice = n => ZMB_UBOX + ZMB_UBOX_STEP * n;
-const zShrinePrice = n => ZMB_SHRINE + ZMB_SHRINE_STEP * n;
 const zBoxPrice = n => ZMB_BOX + ZMB_BOX_STEP * n;
+// Drops wie in CoD (26.09.2026, Max): tote Zombies lassen manchmal etwas fallen,
+// wer drueberlaeuft, hebt es auf. Ersetzt Power-up-Altar, Heil-Stationen und
+// Utility-Kiste. w = Gewicht beim Wuerfeln, team = wirkt fuer alle
 const ZMB_POWERUPS = {
-    double: { name: 'Double Points', icon: '✖️2', ms: 30000, desc: 'double points for the whole team' },
-    insta: { name: 'Insta-Kill', icon: '💀', ms: 15000, desc: 'every zombie dies in one hit (not bosses)' },
-    nuke: { name: 'Nuke', icon: '☢️', ms: 0, desc: 'all zombies on the map die (not bosses)' },
-    sale: { name: 'Fire Sale', icon: '🏷️', ms: 30000, desc: 'mystery box and wall weapons half price' }
+    double: { name: 'Double Points', icon: '✖️2', ms: 30000, w: 13, desc: 'double points for the whole team' },
+    insta: { name: 'Insta-Kill', icon: '💀', ms: 15000, w: 13, desc: 'every zombie dies in one hit (not bosses)' },
+    nuke: { name: 'Nuke', icon: '☢️', ms: 0, w: 8, desc: 'all zombies on the map die (not bosses)' },
+    sale: { name: 'Fire Sale', icon: '🏷️', ms: 30000, w: 8, desc: 'mystery box and wall weapons half price' },
+    med: { name: 'Med Kit', icon: '💉', ms: 0, w: 22, desc: 'the whole team is fully healed' },
+    util: { name: 'Supply Drop', icon: '🧪', ms: 0, w: 22, desc: 'a random consumable for you' },
+    cash: { name: 'Bonus Points', icon: '💰', ms: 0, w: 14, desc: '+200 points for everyone' }
 };
+// Chance je normalem Kill, hoechstens (4 + Spieler - 1) Drops je Welle; Bosse lassen
+// immer zwei fallen. Liegt 25 s, die letzten 6 s blinkt es
+const Z_DROP_CHANCE = 0.035, Z_DROP_MAX = 4, Z_DROP_MS = 25000, Z_DROP_R = 42;
+// Pause (26.09.2026, Max): 5 s Countdown, dann steht alles
+const Z_PAUSE_CD = 5000;
 const ZMB_WALL = { smg: 750, shotgun: 1000, rifle: 1400, sniper: 1500 };
 // Pack-a-Punch seit 6.5.1 bis Stufe 5. 6.10: jede Stufe +5000 (5k..25k,
 // voll 75k statt 50k); Box 950 -> 2000 plus Aufschlag je Kauf (oben)
 const ZMB_BOX = 2000, ZMB_PAP = 5000, ZMB_PAP_MAX = 5;
 const zPapPrice = lvl => Math.round(ZMB_PAP * (1 + lvl));
-const ZMB_HEAL = 600, ZMB_HEAL_CD = 25000;
-// 6.12.2 (Max: Heilen pro Runde und pro Kauf teurer): +60 je Welle, +300 je eigenem Kauf
-// Welle 1 erster Kauf 660, Welle 10 erster 1200, dritter 1800, Welle 20 fuenfter 3000
-const ZMB_HEAL_WAVE = 60, ZMB_HEAL_STEP = 300;
-const zHealPrice = (wave, n) => ZMB_HEAL + ZMB_HEAL_WAVE * wave + ZMB_HEAL_STEP * n;
 function buildZombieMap() {
     const rand = rng(777);
     const walls = [];
@@ -438,20 +439,17 @@ function buildZombieMap() {
         st('wall', ZMB_W - 90, ZMB_H * 0.7, { base: 'sniper', price: ZMB_WALL.sniper }),
         st('box', ZMB_W / 2, ZMB_H - 110, { price: ZMB_BOX }),
         st('pap', ZMB_W / 2, 110, { price: ZMB_PAP }),
-        st('ubox', ZMB_W / 2 + 220, ZMB_H - 110, { price: ZMB_UBOX }),
         st('perk', 150, 150, { perk: 'jug', price: ZMB_PERKS.jug.price }),
         st('perk', ZMB_W - 150, 150, { perk: 'speed', price: ZMB_PERKS.speed.price }),
         st('perk', 150, ZMB_H - 150, { perk: 'stamina', price: ZMB_PERKS.stamina.price }),
         st('perk', ZMB_W - 150, ZMB_H - 150, { perk: 'quick', price: ZMB_PERKS.quick.price }),
-        // 4.6: Heilen fuer Punkte (Max: sonst keine Chance auf Leben)
-        st('heal', ZMB_W / 2 - 360, ZMB_H / 2, { price: ZMB_HEAL }),
-        st('heal', ZMB_W / 2 + 360, ZMB_H / 2, { price: ZMB_HEAL }),
+        // 26.09.2026 (Max): Heil-Stationen, Utility-Kiste und Power-up-Altar sind weg –
+        // das bringen jetzt Drops von toten Zombies (zDropRoll)
         // 6.5.1: mehr zum Ausgeben
         st('perk', ZMB_W * 0.3, 110, { perk: 'deadshot', price: ZMB_PERKS.deadshot.price }),
         st('perk', ZMB_W * 0.7, 110, { perk: 'vulture', price: ZMB_PERKS.vulture.price }),
         st('armor', ZMB_W / 2 - 200, ZMB_H / 2 + 170, { price: ZMB_ARMOR }),
         st('nades', ZMB_W / 2 + 200, ZMB_H / 2 + 170, { price: ZMB_NADES }),
-        st('shrine', ZMB_W / 2, ZMB_H / 2 - 170, { price: ZMB_SHRINE }),
         st('revive', ZMB_W / 2, ZMB_H / 2 + 170, { price: ZMB_REVIVE })
     ];
     const zspawns = [];
@@ -1464,6 +1462,11 @@ module.exports = function createArena(h, opts = {}) {
             useUtil(p, d.slot === 1 ? 1 : 0, Number(d.x), Number(d.y), now);
         } else if (d.type === 'shInteract') {
             interact(p);
+        } else if (d.type === 'zPause' && zb) {
+            zPauseToggle(p, now);
+        } else if (zb && zb.paused && d.type !== 'shInv' && d.type !== 'shSlot' && d.type !== 'zAuto') {
+            // Waehrend der Pause wird nichts gekauft, geworfen oder benutzt
+            return;
         } else if ((d.type === 'zReady' || d.type === 'zAuto') && zb) {
             // Zombies (25.09.2026, Max): Welle selbst starten / Autoplay
             if (d.type === 'zAuto') p.zAuto = !!d.on;
@@ -3196,7 +3199,7 @@ module.exports = function createArena(h, opts = {}) {
     // Coins (5.9): am Ende je Spieler Kill-Coins + Wellenbonus -> zCoins().
     const zd = Z_DIFF[opts.diff] || Z_DIFF.normal;
     const zdId = Z_DIFF[opts.diff] ? opts.diff : 'normal';
-    const zb = mode === 'zombies' ? { wave: 0, phase: 'wait', until: 0, toSpawn: 0, spawnAt: 0, over: false, kills: new Map(), kc: new Map(), dt: 0, fx: {}, shrineN: 0 } : null;
+    const zb = mode === 'zombies' ? { wave: 0, phase: 'wait', until: 0, toSpawn: 0, spawnAt: 0, over: false, kills: new Map(), kc: new Map(), dt: 0, fx: {}, drops: [], dropN: 0, lastDrop: '', pauseAt: 0, paused: 0 } : null;
     const zfx = (k, now) => zb && now < (zb.fx[k] || 0);
 
     function joinZombies(c, name) {
@@ -3216,7 +3219,6 @@ module.exports = function createArena(h, opts = {}) {
         p.pts = 500 + p.b.zStart;
         p.perks = [];
         p.boxN = 0;
-        p.uboxN = 0;
         gearStats(p);
         players.set(c.id, p);
         zb.kills.set(c.id, 0);
@@ -3238,6 +3240,143 @@ module.exports = function createArena(h, opts = {}) {
         }
     }
 
+    // Drops (26.09.2026, Max: „wie in CoD"). Kein Power-up zweimal hintereinander
+    function zDropRoll(m, now) {
+        const boss = !!m.def.boss;
+        if (!boss && (zb.dropN >= Z_DROP_MAX + players.size - 1 || Math.random() >= Z_DROP_CHANCE)) return;
+        const roll = skip => {
+            const keys = Object.keys(ZMB_POWERUPS).filter(k => k !== skip);
+            let r = Math.random() * keys.reduce((a, k) => a + ZMB_POWERUPS[k].w, 0);
+            for (const k of keys) if ((r -= ZMB_POWERUPS[k].w) < 0) return k;
+            return keys[0];
+        };
+        const put = (k, dx, dy) => {
+            const x = Math.max(60, Math.min(W - 60, m.x + dx)), y = Math.max(60, Math.min(H - 60, m.y + dy));
+            zb.drops.push({ id: ++seqId, k, x, y, until: now + Z_DROP_MS / SPEED });
+            zb.lastDrop = k;
+            fxAt(x, y, { type: 'shFx', kind: 'zdrop', x: Math.round(x), y: Math.round(y), k });
+        };
+        if (boss) {
+            // Boss: ein Power-up und ein Med Kit, zaehlt nicht gegen die Grenze
+            put(roll('med'), -40, 0);
+            put('med', 40, 0);
+            return;
+        }
+        zb.dropN++;
+        put(roll(zb.lastDrop), 0, 0);
+    }
+
+    // Aufheben: wer lebt und drueberlaeuft. Supply Drop bleibt liegen, wenn beide
+    // Verbrauchsgut-Slots belegt sind (dann kann ihn ein anderer nehmen)
+    function zDropTick(now) {
+        for (let i = zb.drops.length - 1; i >= 0; i--) {
+            const d = zb.drops[i];
+            if (now >= d.until) { zb.drops.splice(i, 1); continue; }
+            for (const p of players.values()) {
+                if (p.dead || Math.hypot(p.x - d.x, p.y - d.y) > Z_DROP_R + R) continue;
+                if (!zPowerUp(d.k, p, now)) {
+                    if (now > (p.dropFullAt || 0)) h.send(p.c, { type: 'shEvent', text: '🧪 Both consumable slots are full', kind: 'self' });
+                    p.dropFullAt = now + 3000 / SPEED;
+                    continue;
+                }
+                zb.drops.splice(i, 1);
+                fxAt(d.x, d.y, { type: 'shFx', kind: 'nova', x: Math.round(d.x), y: Math.round(d.y), r: 160 });
+                break;
+            }
+        }
+    }
+
+    // Wirkung eines Drops. false = konnte nicht aufgehoben werden
+    function zPowerUp(k, p, now) {
+        const d = ZMB_POWERUPS[k];
+        const all = text => { for (const q of players.values()) h.send(q.c, { type: 'shEvent', text, kind: 'drop' }); };
+        if (k === 'util') {
+            if (!p.util.some(u => !u)) return false;
+            const it = I.generate(Math.random() < p.b.zBox ? 'zubox_s' : 'zubox');
+            const u = I.UTILS[it.base];
+            const n = Math.max(1, Math.ceil(u.stack / 2));
+            const have = p.util.findIndex(x => x && x.base === it.base && x.n < u.stack);
+            if (have >= 0) p.util[have].n = Math.min(u.stack, p.util[have].n + n);
+            else p.util[p.util.findIndex(x => !x)] = { base: it.base, n };
+            sendInv(p);
+            h.send(p.c, { type: 'shEvent', text: `🧪 Supply Drop: ${n}× ${u.icon || ''} ${u.name} (${it.tier})`, kind: 'drop' });
+            return true;
+        }
+        if (k === 'med') {
+            for (const q of players.values()) if (!q.dead) {
+                q.hp = q.maxHp;
+                q.burn = null;
+                fxAt(q.x, q.y, { type: 'shFx', kind: 'phoenix', x: Math.round(q.x), y: Math.round(q.y) });
+            }
+        } else if (k === 'cash') {
+            for (const q of players.values()) q.pts += 500 * Z_PTS_MUL;
+        } else if (k === 'nuke') {
+            for (const m of [...mobs]) if (!m.def.boss) {
+                fxAt(m.x, m.y, { type: 'shFx', kind: 'mobdie', x: Math.round(m.x), y: Math.round(m.y), icon: m.def.icon, col: m.def.color });
+                mobs.splice(mobs.indexOf(m), 1);
+            }
+            p.pts += 400 * Z_PTS_MUL;
+            fxAt(p.x, p.y, { type: 'shBoom', x: Math.round(p.x), y: Math.round(p.y), r: 900, nuke: true });
+        } else zb.fx[k] = now + d.ms / SPEED;
+        all(`${d.icon} ${d.name}! ${d.desc}${players.size > 1 ? ` (${p.name})` : ''}`);
+        return true;
+    }
+
+    // Pause (26.09.2026, Max): Knopf -> 5 s Countdown, dann steht die Welt. Nochmal
+    // druecken bricht den Countdown ab bzw. geht weiter. Jeder im Team darf.
+    function zPauseToggle(p, now) {
+        if (zb.over) return;
+        const all = text => { for (const q of players.values()) h.send(q.c, { type: 'shEvent', text, kind: 'boss' }); };
+        if (zb.paused) {
+            // Alles, was waehrend der Pause haette ablaufen sollen, um die Pause schieben
+            zShift(now - zb.paused);
+            zb.paused = 0;
+            zb.pauseBy = '';
+            for (const q of players.values()) if (!q.dead) q.protect = Math.max(q.protect || 0, now + 1500 / SPEED);
+            return all(`▶ ${p.name} resumed the game`);
+        }
+        if (zb.pauseAt) {
+            zb.pauseAt = 0;
+            zb.pauseBy = '';
+            return all(`✖ ${p.name} cancelled the pause`);
+        }
+        zb.pauseAt = now + Z_PAUSE_CD / SPEED;
+        zb.pauseBy = p.name;
+        all(`⏸ ${p.name}: pausing in 5 s`);
+    }
+
+    function zPauseTick(now) {
+        if (!zb.pauseAt || now < zb.pauseAt) return;
+        zb.pauseAt = 0;
+        zb.paused = now;
+        for (const q of players.values()) { q.fire = false; q.mx = 0; q.my = 0; }
+        // Bullet-Hell-Muster laufen in arena-hazards.js mit eigener Uhr: lieber weg als nach der Pause sofort treffen
+        hz.clear();
+        for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: '⏸ Paused', kind: 'boss' });
+    }
+
+    // Nach der Pause: jeden Zeitstempel (in ms seit 1970) um die Pausendauer schieben –
+    // Abklingzeiten, Brennen, Spawn-Takt, Power-ups, Drops, Wellenpause. Nur die eigenen
+    // Felder der Spielobjekte und eine Ebene tiefer (burn, fx ...), nie Items oder Konten.
+    const Z_SHIFT_SKIP = new Set(['c', 'gear', 'def', 'b', 'util', 'perks', 'dmgBy', 'inv', 'acc', 'account']);
+    function zShift(dt) {
+        const lo = zb.paused - 864e5, hi = zb.paused + 864e5;
+        const bump = (o, deep) => {
+            if (!o || typeof o !== 'object') return;
+            for (const k of Object.keys(o)) {
+                const v = o[k];
+                if (typeof v === 'number' && v > lo && v < hi) o[k] = v + dt;
+                else if (deep && v && typeof v === 'object' && !Array.isArray(v) && !(v instanceof Map) && !(v instanceof Set) && !Z_SHIFT_SKIP.has(k)) bump(v, false);
+            }
+        };
+        for (const p of players.values()) bump(p, true);
+        for (const m of mobs) bump(m, true);
+        for (const list of [bullets, nades, smokes, fires, holes, kqBombs, turrets, decoys, clones, zones, blasts, strikes, zb.drops, [...portals.values()]]) for (const o of list) bump(o, true);
+        bump(zw, false);
+        bump(zb, false);
+        bump(zb.fx, false);
+    }
+
     function zStart() {
         zb.phase = 'break';
         zb.until = Date.now() + 4000 / SPEED;
@@ -3247,6 +3386,7 @@ module.exports = function createArena(h, opts = {}) {
     function zWave(now) {
         zb.wave++;
         zb.phase = 'wave';
+        zb.dropN = 0;
         for (const p of players.values()) p.zReady = false;
         const bossWave = zb.wave % 5 === 0;
         // Bosswellen: weniger Fussvolk, der Boss ist die Welle
@@ -3313,6 +3453,7 @@ module.exports = function createArena(h, opts = {}) {
                 h.send(p.c, { type: 'shEvent', text: '💖 Back on your feet!', kind: 'drop' });
             }
         }
+        zDropTick(now);
         if (zb.phase === 'break') zReadyCheck(now);
         if (zb.phase === 'break' && now >= zb.until) zWave(now);
         else if (zb.phase === 'wave') {
@@ -3424,6 +3565,7 @@ module.exports = function createArena(h, opts = {}) {
         for (const p of [...players.values()]) zResult(p);
         players.clear();
         mobs.length = 0;
+        zb.drops.length = 0;
         if (opts.onDone) opts.onDone({ wave: zb.wave });
     }
 
@@ -3464,22 +3606,6 @@ module.exports = function createArena(h, opts = {}) {
             fxAt(s.x, s.y, { type: 'shFx', kind: 'phoenix', x: s.x, y: s.y });
             return say(`🎁 Mystery box: ${it.name}`);
         }
-        if (s.kind === 'ubox') {
-            // Erst Platz pruefen, dann zahlen: einen der zwei Verbrauchsgut-Slots
-            // braucht es frei (oder denselben Gegenstand mit Luft im Stapel)
-            if (!p.util.some(u => !u)) return say('🧪 Free one of your two consumable slots first');
-            if (!pay(zUboxPrice(p.uboxN || 0))) return;
-            p.uboxN = (p.uboxN || 0) + 1;
-            const it = I.generate(Math.random() < p.b.zBox ? 'zubox_s' : 'zubox');
-            const d = I.UTILS[it.base];
-            const n = Math.max(1, Math.ceil(d.stack / 2));
-            const have = p.util.findIndex(u => u && u.base === it.base && u.n < d.stack);
-            if (have >= 0) p.util[have].n = Math.min(d.stack, p.util[have].n + n);
-            else p.util[p.util.findIndex(u => !u)] = { base: it.base, n };
-            sendInv(p);
-            fxAt(s.x, s.y, { type: 'shFx', kind: 'phoenix', x: s.x, y: s.y });
-            return say(`🧪 Utility box: ${n}× ${d.icon || ''} ${d.name} (${it.tier})`);
-        }
         if (s.kind === 'pap') {
             const it = p.gear[p.slot];
             if (!it || it.starter && false) return;
@@ -3490,18 +3616,6 @@ module.exports = function createArena(h, opts = {}) {
             sendInv(p);
             fxAt(s.x, s.y, { type: 'shFx', kind: 'nova', x: s.x, y: s.y, r: 160 });
             return say(`⚡ Pack-a-Punch level ${it.pap}: ×${Math.pow(1.6, it.pap).toFixed(1)} damage`);
-        }
-        if (s.kind === 'heal') {
-            const now = Date.now();
-            if (now < (p.healAt || 0)) return say(`💉 Again in ${Math.ceil((p.healAt - now) / 1000)} s`);
-            if (p.hp >= p.maxHp) return say('💉 You are at full health');
-            if (!pay(zHealPrice(zb.wave, p.healN || 0))) return;
-            p.healN = (p.healN || 0) + 1;
-            p.hp = p.maxHp;
-            p.burn = null;
-            p.healAt = now + ZMB_HEAL_CD / SPEED;
-            fxAt(p.x, p.y, { type: 'shFx', kind: 'phoenix', x: Math.round(p.x), y: Math.round(p.y) });
-            return say('💉 Fully healed');
         }
         if (s.kind === 'armor') {
             if ((p.armorN || 0) >= ZMB_ARMOR_MAX) return say('🛡️ You already wear all armor plates');
@@ -3520,25 +3634,6 @@ module.exports = function createArena(h, opts = {}) {
             p.util[slot] = { base: 'frag', n: Math.min(I.UTILS.frag.stack, (have >= 0 ? p.util[have].n : 0) + 2) };
             sendInv(p);
             return say('💣 +2 frag grenades');
-        }
-        if (s.kind === 'shrine') {
-            if (!pay(zShrinePrice(zb.shrineN))) return;
-            zb.shrineN++;
-            const keys = Object.keys(ZMB_POWERUPS);
-            const k = keys[Math.floor(Math.random() * keys.length)];
-            const d = ZMB_POWERUPS[k];
-            const now = Date.now();
-            if (k === 'nuke') {
-                for (const m of [...mobs]) if (!m.def.boss) {
-                    fxAt(m.x, m.y, { type: 'shFx', kind: 'mobdie', x: Math.round(m.x), y: Math.round(m.y), icon: m.def.icon, col: m.def.color });
-                    mobs.splice(mobs.indexOf(m), 1);
-                }
-                p.pts += 400 * Z_PTS_MUL;
-                fxAt(p.x, p.y, { type: 'shBoom', x: Math.round(p.x), y: Math.round(p.y), r: 900, nuke: true });
-            } else zb.fx[k] = now + d.ms / SPEED;
-            fxAt(s.x, s.y, { type: 'shFx', kind: 'nova', x: s.x, y: s.y, r: 220 });
-            for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `${d.icon} ${d.name}! ${d.desc}`, kind: 'drop' });
-            return;
         }
         if (s.kind === 'revive') {
             const down = [...players.values()].filter(q => q.dead);
@@ -4024,6 +4119,7 @@ module.exports = function createArena(h, opts = {}) {
                     for (const o of [...mobs]) if (o !== m && o.hp > 0 && Math.hypot(o.x - m.x, o.y - m.y) < 90 + o.def.r) hurtMob(o, killer, 80 * killer.b.expl, now, o.x, o.y, false, { dot: true });
                 }
                 zb.kills.set(killer.id, (zb.kills.get(killer.id) || 0) + 1);
+                zDropRoll(m, now);
                 zb.kc.set(killer.id, (zb.kc.get(killer.id) || 0) + (def.boss ? Z_COINS.boss * bi : m.kind === 'tank' ? Z_COINS.tank : def.coins || Z_COINS.kill));
                 award(killer, L.XP[def.xp || 'npc'] * (def.boss ? 20 * bi : def.xpMul || 1), def.name.toLowerCase());
                 weaponXp(killer, L.XP[def.xp || 'npc'] * (def.boss ? 20 * bi : def.xpMul || 1));
@@ -5174,6 +5270,14 @@ module.exports = function createArena(h, opts = {}) {
         if (now - lastTick < TICK_MS / SPEED) return;
         const dt = Math.min(0.1, (now - lastTick) / 1000) * SPEED;
         lastTick = now;
+        // Zombie-Pause (26.09.2026): Welt steht, nur der Stand geht weiter raus
+        if (zb && !zb.over) {
+            zPauseTick(now);
+            if (zb.paused) {
+                if (now - lastSend >= SEND_MS / SPEED) push(now);
+                return;
+            }
+        }
 
         // Beutel laufen ab
         for (let i = bags.length - 1; i >= 0; i--) if (now > bags[i].expires) bags.splice(i, 1);
@@ -5591,14 +5695,18 @@ module.exports = function createArena(h, opts = {}) {
                     titan: now < (p.titanUntil || 0) ? Math.round(p.titanUntil - now) : undefined,
                     buff: [now < (p.hollowUntil || 0) ? 'hollow' : '', now < (p.stoneUntil || 0) ? 'stone' : '', now < (p.jailUntil || 0) ? 'jail' : ''].filter(Boolean).join(',') || undefined,
                     ex: p.extractAt ? Math.max(0, p.extractAt - now) : null,
-                    burn: !!p.burn || !!p.inFire, heal: now < p.healUntil, pr: now < p.protect, dead: !!p.dead, fz: !!(pvp && pvp.phase !== 'fight'),
+                    burn: !!p.burn || !!p.inFire, heal: now < p.healUntil, pr: now < p.protect, dead: !!p.dead, fz: !!(pvp && pvp.phase !== 'fight') || !!(zb && zb.paused),
                     hid: (!!(p.zone || p.smoke !== null) && now - p.lastShot >= REVEAL_MS * p.b.reveal) || stillHidden(p, now)
                 },
                 pvp: pvp ? { round: pvp.round, score: pvp.score, phase: pvp.phase, left: Math.max(0, Math.round(pvp.until - now)), last: pvp.last, team: p.team } : undefined,
-                zmb: zb ? { diff: zdId, wave: zb.wave, phase: zb.phase, left: Math.max(0, Math.round(zb.until - now)), zombies: mobs.length + zb.toSpawn, pts: Math.floor(p.pts), perks: p.perks,
+                zmb: zb ? { diff: zdId, wave: zb.wave, phase: zb.phase, left: Math.max(0, Math.round(zb.until - (zb.paused || now))), zombies: mobs.length + zb.toSpawn, pts: Math.floor(p.pts), perks: p.perks,
                     disc: p.b.zDisc, perkDisc: p.b.zDisc * p.b.zPerk,
-                    fx: Object.fromEntries(Object.entries(zb.fx).filter(([, t]) => t > now).map(([k, t]) => [k, Math.round(t - now)])),
-                    pap: zPapPrice((p.gear[p.slot] && p.gear[p.slot].pap) || 0), box: zBoxPrice(p.boxN || 0), heal: zHealPrice(zb.wave, p.healN || 0), ubox: zUboxPrice(p.uboxN || 0), shrine: zShrinePrice(zb.shrineN), armor: p.armorN || 0,
+                    fx: Object.fromEntries(Object.entries(zb.fx).filter(([, t]) => t > (zb.paused || now)).map(([k, t]) => [k, Math.round(t - (zb.paused || now))])),
+                    pap: zPapPrice((p.gear[p.slot] && p.gear[p.slot].pap) || 0), box: zBoxPrice(p.boxN || 0), armor: p.armorN || 0,
+                    // Drops am Boden: [id, x, y, Art, ms bis weg]
+                    drops: zb.drops.map(d => [d.id, Math.round(d.x), Math.round(d.y), d.k, Math.max(0, Math.round(d.until - (zb.paused || now)))]),
+                    // Pause: Countdown in ms, 1 = steht, wer sie wollte
+                    pause: zb.paused ? 1 : zb.pauseAt ? Math.max(1, Math.round(zb.pauseAt - now)) : 0, pauseBy: zb.pauseBy || undefined,
                     team: plist.map(q => [q.name, Math.floor(q.pts), zb.kills.get(q.id) || 0, q.dead ? 1 : 0]),
                     // Welle starten / Autoplay (25.09.2026): ich bereit, ich auto, wie viele bereit
                     ready: p.zReady ? 1 : 0, auto: p.zAuto ? 1 : 0, readyN: plist.filter(q => q.zReady || q.zAuto).length,
@@ -5657,6 +5765,7 @@ module.exports = function createArena(h, opts = {}) {
         _players: players, _bags: bags, _crates: crates, _damage: damage, _canSee: canSee,
         _spawnBoss: kind => spawnBoss(Date.now(), kind), _spawnDrop: () => spawnDrop(Date.now()), _boss: boss, _mobs: mobs, _strikes: strikes,
         _spawnMob: (kind, x, y) => spawnMob(kind, x, y, Date.now()),
+        _hurtMob: (m, p, dmg) => hurtMob(m, p, dmg, Date.now(), m.x, m.y, false, {}),
         _ctf: () => ctf, _startCtf: () => { nextCtfAt = 1; ctfTick(Date.now()); return ctf; }
     };
 };
