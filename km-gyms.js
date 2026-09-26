@@ -36,11 +36,16 @@ const GYMS = [
     { id: 'ace6', series: 'ace', lv: 33, name: 'Elite Spire', icon: '💫', leader: 'Elite Nova', type: null, rar: ['legendary', 'secret'], mul: 0.63, smart: 4, coins: 16500, pack: 'mixed' },
     { id: 'ace7', series: 'ace', lv: 41, name: 'Grandmaster Throne', icon: '🏆', leader: 'Grandmaster Zed', type: null, rar: ['secret', 'legendary'], mul: 0.88, smart: 4, coins: 22500, pack: 'mixed' }
 ];
-// 26.09.2026 (Max): Gym-Karten mindestens so stark wie ihr angezeigtes Level (mul >= 1).
-// Die mul-Werte oben stammen aus der Simulation vom 24.09. mit Spielern auf Gym-Level; seit
-// man Karten verfuettern kann, sind Spieler weit darueber – War Room (Lv 26, mul 0,62) hatte
-// Werte wie Lv 7 und fiel gegen Lv-16-Teams. Werte ueber 1 (Iron Dojo, Mind Tower) bleiben.
-for (const g of GYMS) g.mul = Math.max(1, g.mul);
+// 26.09.2026 (Max): Gym-Staerke gestaffelt statt der mul-Werte oben. Die stammen aus der
+// Simulation vom 24.09. mit Spielern auf Gym-Level; seit man Karten verfuettern kann, sind
+// Spieler weit darueber – War Room (Lv 26, mul 0,62) hatte Werte wie Lv 7 und fiel gegen
+// Lv-16-Teams. mul 1 = Karten so stark wie ihr angezeigtes Level. Erst mul >= 1 fuer alle
+// ausprobiert: Sprout nur noch 20 %, Ace-Anfang 0 % – darum leichter Einstieg, harter Schluss.
+const MUL_STAFFEL = {
+    sprout: 0.8, tide: 0.85, blaze: 0.9, volt: 0.95, dojo: 1.0, mind: 1.05, shadow: 1.05, champ: 1.1,
+    ace1: 0.8, ace2: 0.85, ace3: 0.9, ace4: 0.95, ace5: 1.0, ace6: 1.05, ace7: 1.1
+};
+for (const g of GYMS) if (MUL_STAFFEL[g.id]) g.mul = MUL_STAFFEL[g.id];
 // Vorgaenger: sonst das vorige Gym derselben Reihe
 GYMS.forEach((g, i) => {
     if (g.after !== undefined) return;
