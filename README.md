@@ -3386,3 +3386,37 @@ hinaus.** Ein Deckel für PvP-Schaden wollte Max nicht.
 Gilt gegen Spieler und Gegner gleich. Velocity verlängert die Reichweite weiter wie bisher
 (+25 % Tempo, +15 % Lebensdauer je Stufe). Die Tabellen weiter oben (DPS-Test, Zombie-Bosse)
 zeigen die alten Railgun-Werte.
+
+## 🐦‍🔥 Phoenix Elixir halb so oft, Kisten mit allen Legendaries (26.09.2026, Max)
+
+Max: „Ist die Chance auf Phoenix Elixir irgendwie höher als alles andere? Davon existieren
+jetzt schon 6." Live waren es 7 (Schmoggi 3, Avalon_Gold 3, SINTHSBen 1).
+
+Befund (100.000 simulierte Drops je Quelle): nicht häufiger als andere Items gleicher Stufe –
+0,07 % der Verbrauchsgüter aus normalen Kisten, 0,1–0,4 % aus besseren Quellen, gleichauf mit
+Chidori. **Aber:** `crate` und `crate2` lassen nur Heil- und Wurf-Items zu (`uses`). Dort war
+Phoenix das **einzige** legendäre Verbrauchsgut, jeder legendäre Stufenwurf in einer normalen
+Kiste wurde also ein Phoenix. Und Kisten sind die häufigste Beutequelle.
+
+Max' Entscheidung: Phoenix −50 %, und in den Kisten sollen auch die anderen legendären Items
+kommen können, jedes mit 1/10 der neuen Phoenix-Chance.
+
+Umsetzung `phoenixSwap()` in `arena-items.js` (greift in `generate()`, wenn die Wahl auf
+Phoenix fällt):
+- mit 50 % bleibt es Phoenix,
+- nur in Quellen mit `uses`-Filter: mit je 5 % (= 1/10 von 50 %) eines der anderen
+  legendären Verbrauchsgüter, die der Filter sonst ausschließt (Chidori, Hiraishin Kunai,
+  Chain Jail, Hollow Mask, Door-Door Fruit),
+- sonst wird ohne Phoenix neu gezogen (`pickBase` mit `skip`).
+
+Simuliert, pro 10.000 Verbrauchsgüter:
+
+| Quelle | Phoenix vorher | Phoenix jetzt | andere Legendaries je Item |
+|---|---:|---:|---:|
+| `crate` | 7 | 3,3 | 0,3–0,5 (vorher 0) |
+| `crate2` | 20 | 9,8 | 0,6–1,0 (vorher 0) |
+| `crate3` | 12 | 6,2 | wie gehabt |
+| `sovereign` | 42 | 24,7 | wie gehabt |
+
+Die Odds-Anzeige eines Items hängt an Stufe und Effekten, nicht an der Basis – sie ändert
+sich dadurch nicht.

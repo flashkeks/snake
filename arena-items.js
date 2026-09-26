@@ -428,6 +428,8 @@ function defsOf(kind) {
 function pickBase(kind, tier, src) {
     let all = Object.entries(defsOf(kind)).filter(([, b]) => b.tier <= tier && (kind === 'util' || kind === 'pack' || maxTierOf(b) >= tier));
     if (src.uses) all = all.filter(([, b]) => src.uses.includes(b.use));
+    if (src.skip) all = all.filter(([k]) => k !== src.skip);
+    if (!all.length) return null;
     if (src.exact && all.some(([, b]) => b.tier === tier)) all = all.filter(([, b]) => b.tier === tier);
     let pool = all;
     if (src.tag) {
@@ -462,6 +464,24 @@ function rollLevel(m) {
     return pickWeighted(Array.from({ length: m.max }, (_, i) => [i + 1, Math.pow(m.decay, i)]));
 }
 
+// Phoenix Elixir (26.09.2026, Max: „davon existieren schon 6"): halb so oft wie vorher.
+// In Kisten, die nur Heil- und Wurf-Items kennen (crate, crate2), war es das einzige
+// legendaere Verbrauchsgut – jeder legendaere Wurf dort wurde ein Phoenix. Jetzt kann
+// dort auch jedes andere legendaere Verbrauchsgut kommen, jedes mit 1/10 der (neuen)
+// Phoenix-Chance. Umsetzung: Faellt die Wahl auf Phoenix, bleibt es mit 50 %; mit je
+// 5 % wird es eines der anderen legendaeren (nur in solchen Kisten), sonst wird ohne
+// Phoenix neu gezogen.
+const PHOENIX_KEEP = 0.5, PHOENIX_OTHER = 0.1;
+function phoenixSwap(src, tier) {
+    const r = Math.random();
+    if (r < PHOENIX_KEEP) return 'phoenix';
+    const lt = UTILS.phoenix.tier;
+    const others = src.uses ? Object.entries(UTILS).filter(([k, b]) => b.tier === lt && k !== 'phoenix' && !src.uses.includes(b.use)).map(([k]) => k) : [];
+    const i = Math.floor((r - PHOENIX_KEEP) / (PHOENIX_KEEP * PHOENIX_OTHER));
+    if (i < others.length) return others[i];
+    return pickBase('util', tier, { ...src, skip: 'phoenix' }) || 'phoenix';
+}
+
 // Ein neues Item aus einer Quelle
 // epicMul (25.09.2026): Gegner-Beute an der Oberflaeche und im Keller wuerfelt
 // Epic und hoeher seltener (Gewichte ab Stufe 3 mal epicMul, der Rest verteilt sich)
@@ -470,7 +490,8 @@ function generate(sourceId, epicMul = 1, legMul = 1) {
     const src = SOURCES[sourceId];
     const kind = pickWeighted(Object.entries(src.kinds));
     const tier = pickWeighted(src.t.map((w, i) => [i, (i >= 3 ? w * epicMul : w) * (i >= 4 ? legMul : 1)]).filter(([, w]) => w > 0));
-    const base = pickBase(kind, tier, src);
+    let base = pickBase(kind, tier, src);
+    if (kind === 'util' && base === 'phoenix') base = phoenixSwap(src, tier);
     const mods = [];
     if (kind === 'weapon' || kind === 'armor') {
         const n = pickWeighted((src.effects || EFFECT_N).map((w, i) => [i, w]).filter(([, w]) => w > 0));
