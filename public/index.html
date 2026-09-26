@@ -7254,7 +7254,15 @@ ws.onmessage = event => {
         case 'restart':
             rsSet(data.restart);
             break;
+        // Modus-Sperren (26.09.2026): Admin hat einen Modus gesperrt
+        case 'modeLocks':
+            modeLocks = data.locks || {};
+            break;
+        case 'modeLocked':
+            uiDialog(data.msg || 'This mode is closed for now. Try again later.', { title: `🔒 ${data.name || 'Closed'}`, ok: 'OK' }, false);
+            break;
         case 'welcome':
+            modeLocks = data.locks || {};
             rsSet(data.restart, true);
             if (!WATCH) myId = data.id;
             arena = data.arena;
@@ -7504,6 +7512,7 @@ function esc(s) {
 // uiPrompt(text, value, { title, ok }) -> Promise<string|null>
 // Enter bestaetigt, Esc bricht ab; Tasten gehen nicht ans Spiel durch.
 let uiDlgDone = null;
+let modeLocks = {};             // gesperrte Modi -> Meldung (26.09.2026)
 function uiDialog(text, o, input) {
     if (uiDlgDone) uiDlgDone(null);
     return new Promise(res => {

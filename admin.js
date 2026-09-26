@@ -260,6 +260,18 @@ module.exports = function startAdmin(h) {
                 });
             }
 
+            // Modus-Sperren (26.09.2026): GET Liste, POST { mode, on, msg }
+            if (p === '/api/locks' && h.locks) {
+                if (m === 'GET') return json(res, 200, { locks: h.locks.get() });
+                if (m === 'POST') {
+                    const b = await body(req);
+                    const err = h.locks.set(String(b.mode), !!b.on, b.msg, email);
+                    if (err) return json(res, 400, { error: err });
+                    log(email, b.on ? 'mode-lock' : 'mode-unlock', String(b.mode), b.on && b.msg ? { msg: String(b.msg).slice(0, 300) } : undefined);
+                    return json(res, 200, { locks: h.locks.get() });
+                }
+            }
+
             // Neustart-Warnung (6.7): GET Stand, POST { minutes, msg } starten, DELETE aufheben
             if (p === '/api/restart' && h.restart) {
                 if (m === 'GET') return json(res, 200, { restart: h.restart.get() });

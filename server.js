@@ -572,6 +572,42 @@ function activityOf(key) {
     return { what, tabs: conns.length, idle: Math.round((Date.now() - (c.lastActive || Date.now())) / 1000), watchers: c.watchers ? c.watchers.size : 0 };
 }
 
+// Modus-Sperren (26.09.2026, Max): im Admin-Panel einzelne Spielmodi sperren, mit Meldung.
+// Gesperrt wird nur der Einstieg – wer schon drin ist, spielt zu Ende. Liegt in
+// DATA_DIR/locks.json, ueberlebt also Neustarts.
+const MODE_LOCKS = {
+    snake: '🐍 Snake', extract: '🔫 Extraction raids', missions: '📜 Missions', zombies: '🧟 Zombies', pvp: '⚔️ PvP',
+    casino: '🎰 Casino', crossy: '🐔 Crossy Road', kekemon: '🃏 Kekemon battles', market: '🏪 Market', trade: '🤝 Trading'
+};
+const LOCKS_FILE = path.join(DATA_DIR, 'locks.json');
+let modeLocks = {};
+try { modeLocks = JSON.parse(fs.readFileSync(LOCKS_FILE, 'utf8')) || {}; } catch { modeLocks = {}; }
+for (const k of Object.keys(modeLocks)) if (!MODE_LOCKS[k]) delete modeLocks[k];
+const ENTRY_MODE = {
+    join: 'snake', shJoin: 'extract', msCreate: 'missions', msJoin: 'missions', msStart: 'missions',
+    tableJoin: 'casino', pokerCreate: 'casino', spin: 'casino', plinko: 'casino', crossStart: 'crossy',
+    kbStart: 'kekemon', kdCreate: 'kekemon', kdJoin: 'kekemon', mkBuy: 'market', mkBid: 'market', mkList: 'market', trReq: 'trade'
+};
+function modeOfEntry(d) {
+    if (!d || typeof d.type !== 'string') return null;
+    if (d.type === 'pvpCreate') return d.kind === 'zombies' ? 'zombies' : 'pvp';
+    if (d.type === 'pvpJoin') {
+        const l = rooms.list().find(x => x.id === Number(d.id));
+        return l && l.kind === 'zombies' ? 'zombies' : 'pvp';
+    }
+    return Object.prototype.hasOwnProperty.call(ENTRY_MODE, d.type) ? ENTRY_MODE[d.type] : null;
+}
+const locksView = () => Object.entries(MODE_LOCKS).map(([id, name]) => ({ id, name, on: !!modeLocks[id], msg: modeLocks[id] ? modeLocks[id].msg : '', by: modeLocks[id] ? modeLocks[id].by : null, at: modeLocks[id] ? modeLocks[id].at : null }));
+function setModeLock(id, on, msg, by) {
+    if (!MODE_LOCKS[id]) return 'unknown mode';
+    if (on) modeLocks[id] = { msg: String(msg || '').slice(0, 300), by, at: new Date().toISOString() };
+    else delete modeLocks[id];
+    try { fs.writeFileSync(LOCKS_FILE, JSON.stringify(modeLocks, null, 1), { mode: 0o600 }); } catch (e) { console.error('locks', e.message); }
+    broadcast({ type: 'modeLocks', locks: Object.fromEntries(Object.entries(modeLocks).map(([k, v]) => [k, v.msg])) });
+    console.log(`lock: ${id} ${on ? 'gesperrt' : 'frei'} (${by})`);
+    return null;
+}
+
 // Neustart-Warnung (6.7): der Admin startet einen Countdown, alle Spieler
 // sehen ein Banner. In den letzten RESTART_LOCK_MS starten keine neuen
 // Kekemon-Kaempfe mehr. Neugestartet wird weiter von Hand (deploy.sh) – die
@@ -1269,6 +1305,12 @@ async function handle(c, data) {
     // Zuschauer (6.3): nur lesen
     if (data.type === 'watch') return c.watching ? null : watchStart(c, data.token);
     if (c.watching) return;
+    // Modus-Sperre (26.09.2026): gesperrter Modus -> Meldung statt Einstieg
+    const lockedMode = modeOfEntry(data);
+    if (lockedMode && modeLocks[lockedMode]) {
+        const L = modeLocks[lockedMode];
+        return send(c, { type: 'modeLocked', mode: lockedMode, name: MODE_LOCKS[lockedMode], msg: L.msg || '' });
+    }
     switch (data.type) {
         // --- Konto ---
 
@@ -2030,6 +2072,7 @@ wss.on('connection', (ws, req) => {
         type: 'welcome',
         id,
         restart: restartView(),
+        locks: Object.fromEntries(Object.entries(modeLocks).map(([k, v]) => [k, v.msg])),
         world: WORLD,
         arena,
         view: VIEW,
@@ -2358,6 +2401,7 @@ function clientsOf(key) {
 startAdmin({
     // Neustart-Warnung (6.7)
     restart: { get: restartView, set: setRestart },
+    locks: { get: locksView, set: setModeLock },
     // Zuschauen (6.3)
     watchUrl: key => {
         if (!clientsOf(key).some(x => !x.watching)) return null;

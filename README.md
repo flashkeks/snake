@@ -3579,3 +3579,35 @@ Tokens, dort gibt es die Boss-Cases. Statistik `bossTokens` je Konto.
 Geprüft (`tok.js`, 6/6): King/Golem/Reaper geben 1/2/3 an beide Schützen, nicht an den dritten
 Spieler; Recyceln aus Lager und Rucksack, ⭐ bleibt, weg vom Stash geht nichts. Screenshot der
 Stash-Ansicht mit Rückfrage.
+
+## 🔒 Spielmodi im Admin-Panel sperren (26.09.2026, Max)
+
+Max: „Gib mir im Admin-Menü die Fähigkeit, die Game-Modes (Snake, Extraction, Zombie usw.)
+zu blockieren, dass man sie spielen kann, + Meldungseingabe."
+
+Admin-Panel, oben unter der Neustart-Warnung: „🔒 Game modes" – je Modus ein Feld für die
+Meldung und „🔒 Block" / „🔓 Open". Gesperrt wird **nur der Einstieg**; wer schon drin ist,
+spielt zu Ende. Wer es versucht, bekommt ein Fenster „🔒 Extraction raids" mit der Meldung
+(ohne Meldung: „This mode is closed for now. Try again later.").
+
+| Modus | gesperrte Nachrichten |
+|---|---|
+| 🐍 Snake | `join` |
+| 🔫 Extraction raids | `shJoin` |
+| 📜 Missions | `msCreate`, `msJoin`, `msStart` (Quest Board ansehen geht) |
+| 🧟 Zombies / ⚔️ PvP | `pvpCreate` (nach `kind`), `pvpJoin` (nach Art der Lobby) |
+| 🎰 Casino | `tableJoin`, `pokerCreate`, `spin`, `plinko` |
+| 🐔 Crossy Road | `crossStart` |
+| 🃏 Kekemon battles | `kbStart`, `kdCreate`, `kdJoin` |
+| 🏪 Market | `mkBuy`, `mkBid`, `mkList` (ansehen geht) |
+| 🤝 Trading | `trReq` |
+
+- Server: `modeOfEntry()` vor dem großen `switch` in `handle()`, Antwort `modeLocked`.
+  Stand in `DATA_DIR/locks.json` (überlebt Neustarts), Änderungen gehen per `modeLocks` an
+  alle Browser, `welcome` trägt den Stand mit.
+- Admin-API: `GET /api/locks`, `POST /api/locks { mode, on, msg }` (X-Admin-Header),
+  im Admin-Log als `mode-lock` / `mode-unlock` samt Meldung.
+- Das Panel lädt alle 5 s neu; getippte Meldungen bleiben dabei stehen.
+
+Geprüft gegen einen echten Server: Raid gesperrt → `modeLocked` mit Meldung, Zombies-Lobby
+geht weiter, `locks.json` geschrieben und beim Öffnen wieder geleert; Screenshot des Panels.

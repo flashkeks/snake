@@ -106,6 +106,12 @@ dialog h2 { margin: 0 0 10px; }
 .reply textarea { flex: 1; min-height: 70px; resize: vertical; }
 .rs-admin { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 20px 0; padding: 8px 12px; border: 1px dashed rgba(255,210,63,.4); border-radius: 9px; }
 .rs-admin input { flex: 1; min-width: 200px; }
+.lk-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 6px; width: 100%; }
+.lk-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 7px; background: rgba(255,255,255,.03); }
+.lk-row.on { background: rgba(255,80,80,.12); }
+.lk-row b { flex: 1; font-weight: 600; }
+.lk-row button { white-space: nowrap; }
+.lk-row input { order: 3; flex: 1 1 100%; }
 .rs-admin.on { border-style: solid; border-color: var(--gold); background: rgba(255,210,63,.07); }
 .rs-admin.on #rs-state { color: var(--gold); font-weight: 700; }
 @media (max-width: 860px) { .tk { grid-template-columns: 1fr; } }
@@ -129,6 +135,11 @@ dialog h2 { margin: 0 0 10px; }
     <button type="button" class="gold" id="rs-go">Warn players</button>
     <span id="rs-state" class="muted">no warning active</span>
     <button type="button" class="danger" id="rs-cancel" hidden>Call off</button>
+</div>
+<div class="rs-admin lk-admin" id="lk-admin">
+    <b>🔒 Game modes</b>
+    <span class="muted">Blocks starting a mode (players already inside finish their game). The message is shown to anyone who tries.</span>
+    <div id="lk-list" class="lk-list"></div>
 </div>
 <main>
     <section id="tab-users">
@@ -817,6 +828,29 @@ $('rs-go').onclick = async () => {
 $('rs-cancel').onclick = async () => {
     try { rsShow((await api('/api/restart', { method: 'DELETE', body: {} })).restart); } catch (e) { alert(e.message); }
 };
+// ---------- Modus-Sperren (26.09.2026) ----------
+let locks = [];
+const lkDraft = {};             // getippte Meldungen ueberleben das Neuzeichnen alle 5 s
+function lkDraw() {
+    $('lk-list').innerHTML = locks.map(l => `<div class="lk-row ${l.on ? 'on' : ''}"><b>${esc(l.name)}</b>` +
+        `<input data-lkmsg="${esc(l.id)}" maxlength="300" placeholder="Message, e.g. back after the update" value="${esc(lkDraft[l.id] ?? l.msg ?? '')}">` +
+        `<button type="button" class="${l.on ? 'primary' : 'danger'}" data-lk="${esc(l.id)}" data-on="${l.on ? 0 : 1}">${l.on ? '🔓 Open' : '🔒 Block'}</button>` +
+        (l.on ? `<span class="muted" title="${esc(l.by || '')} · ${esc(l.at || '')}">since ${esc(String(l.at || '').slice(11, 16))}</span>` : '') + '</div>').join('');
+}
+$('lk-list').onclick = async e => {
+    const b = e.target.closest('[data-lk]');
+    if (!b) return;
+    const id = b.dataset.lk, on = b.dataset.on === '1';
+    const msg = (document.querySelector(`[data-lkmsg="${id}"]`) || {}).value || '';
+    if (on && !confirm(`Block ${locks.find(l => l.id === id).name} for everyone?`)) return;
+    try { locks = (await api('/api/locks', { method: 'POST', body: { mode: id, on, msg: msg.trim() } })).locks; delete lkDraft[id]; lkDraw(); } catch (err) { alert(err.message); }
+};
+$('lk-list').oninput = e => { if (e.target.dataset.lkmsg) lkDraft[e.target.dataset.lkmsg] = e.target.value; };
+async function lkLoad() {
+    // nicht neu zeichnen, waehrend jemand eine Meldung tippt
+    try { locks = (await api("/api/locks")).locks; if (!$("lk-list").contains(document.activeElement)) lkDraw(); } catch (e) { /* aelterer Server */ }
+}
+
 async function rsLoad() {
     try { rsShow((await api('/api/restart')).restart); } catch (e) { /* aelterer Server */ }
 }
@@ -825,6 +859,7 @@ async function refresh() {
     try {
         await loadOverview();
         await rsLoad();
+        await lkLoad();
         if (tab === 'users' && !$('dlg').open) await loadUsers();
         if (tab === 'tickets') await loadTickets();
         if (tab === 'log') await loadLog();
