@@ -3468,20 +3468,22 @@ geht, behält, was er bis dahin verdient hat. Staffel je Schwierigkeit (Max; `zB
 
 | Boss-Welle | 🔴 Hard | 🟡 Normal | 🟢 Easy |
 |---:|---|---|---|
-| 5 | 📦 Standard | – | – |
-| 10 | 🧨 Demolition | 🧰 Scrap | 🧰 Scrap |
-| 15 | 🛡️ Elite Armor | 🧨 Demolition | – |
-| 20 | 🔫 Elite Weapons | – | 🧨 Demolition |
-| 25 | 💎 Elite General | 🛡️ Elite Armor | – |
-| 30 | 🏰 Elite+ Armor | 🔫 Elite Weapons | 🛡️ Elite Armor |
-| 35 | 🎯 Elite+ Weapons | – | – |
-| 40 | 💠 Elite+ General | 💎 Elite General | 🔫 Elite Weapons |
-| 45 | 👑 Sovereign | 🏰 Elite+ Armor | – |
-| 50+ | 👑 Sovereign | – / weiter die Leiter hoch | … |
+| 5 | 📦 Standard | 🧰 Scrap | 🧰 Scrap |
+| 10 | 🧨 Demolition | 🧨 Demolition | – |
+| 15 | 🛡️ Elite Armor | – | 🧨 Demolition |
+| 20 | 🔫 Elite Weapons | 🛡️ Elite Armor | – |
+| 25 | 💎 Elite General | 🔫 Elite Weapons | 🛡️ Elite Armor |
+| 30 | 🏰 Elite+ Armor | – | – |
+| 35 | 🎯 Elite+ Weapons | 💎 Elite General | 🔫 Elite Weapons |
+| 40 | 💠 Elite+ General | 🏰 Elite+ Armor | – |
+| 45 | 👑 Sovereign | – | 💎 Elite General |
+| 50+ | 👑 Sovereign | weiter die Leiter hoch | … |
 
-Hard: jeder Boss, Leiter ab Standard. Normal (−25 %, Max' Beispiel): jeder 3. Boss ab W5
-gibt nichts, die übrigen gehen die Leiter ab Scrap hoch. Easy (−50 %): jeder 2. Boss ab W5
-gibt nichts, sonst dieselbe Leiter. Am Ende der Leiter bleibt es beim Sovereign.
+Hard: jeder Boss, Leiter ab Standard. Normal (−25 %): jeder 3. Boss gibt nichts (W15, W30,
+W45 …), die übrigen gehen die Leiter ab Scrap hoch. Easy (−50 %): jeder 2. Boss gibt nichts
+(W10, W20 …), sonst dieselbe Leiter. Am Ende der Leiter bleibt es beim Sovereign.
+Nachtrag (Max): auf allen Stufen gibt schon der erste Boss (W5, Abomination) einen Case –
+vorher fiel W5 auf Normal und Easy weg.
 
 Ergebnis-Screen und Hub-Zeile listen die Cases (`shLeft.cases`).
 

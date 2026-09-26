@@ -416,9 +416,10 @@ const Z_PAUSE_CD = 5000;
 // Boss-Cases (26.09.2026, Max: „Zombies lohnenswerter"): jeder im Spiel bekommt fuer jeden
 // getoeteten Boss am Spielende einen Case, nach Welle gestaffelt. Je Schwierigkeit (Max):
 //   Hard   – jeder Boss, Leiter ab Standard (W5 Standard, W10 Demolition ... W45+ Sovereign)
-//   Normal – jeder 3. Boss ab W5 gibt nichts (W5, W20, W35 ...), sonst Leiter ab Scrap
-//            (W10 Scrap, W15 Demolition, W25 Elite Armor, W30 Elite Weapons ...)
-//   Easy   – jeder 2. Boss ab W5 gibt nichts (W5, W15, W25 ...), sonst Leiter ab Scrap
+//   Normal – jeder 3. Boss gibt nichts (W15, W30, W45 ...), sonst Leiter ab Scrap
+//            (W5 Scrap, W10 Demolition, W20 Elite Armor, W25 Elite Weapons ...)
+//   Easy   – jeder 2. Boss gibt nichts (W10, W20, W30 ...), sonst Leiter ab Scrap
+//   26.09.2026 (Max): auch auf Normal/Easy schon ab W5 (Abomination) – vorher fiel W5 weg
 const Z_BOSS_CASES = {
     hard: ['standard', 'demo', 'elite_a', 'elite_w', 'elite', 'elite_a50', 'elite_w50', 'elite50', 'sovereign'],
     normal: ['scrap', 'demo', 'elite_a', 'elite_w', 'elite', 'elite_a50', 'elite_w50', 'elite50', 'sovereign'],
@@ -430,8 +431,8 @@ function zBossCase(wave, diff) {
     const n = Math.max(1, Math.round(wave / 5));
     let k = n;
     if (skip) {
-        if ((n - 1) % skip === 0) return null;
-        k = n - Math.floor((n - 1) / skip) - 1;
+        if (n % skip === 0) return null;
+        k = n - Math.floor(n / skip);
     }
     return ladder[Math.min(ladder.length - 1, k - 1)];
 }
