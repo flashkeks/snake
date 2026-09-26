@@ -64,6 +64,10 @@ module.exports = function createTrade(h) {
         if (!h.clientsOf(to).length) return `${nameOf(to)} is not online`;
         if (tradeOf(from)) return 'Finish your current trade first';
         if (tradeOf(to)) return `${nameOf(to)} is already trading`;
+        // 26.09.2026 (Max): beide druecken F aufeinander -> Handel geht direkt auf
+        for (const inv of invites.values()) {
+            if (inv.from === to && inv.to === from && Date.now() - inv.at <= INVITE_MS) return accept(c, inv.id);
+        }
         for (const [id, inv] of invites) if (inv.from === from && inv.to === to) invites.delete(id);
         const id = ++seq;
         invites.set(id, { id, from, to, at: Date.now() });

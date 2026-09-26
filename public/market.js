@@ -16,6 +16,26 @@ let mkSellSrc = 'item';      // item | card | cos
 let trState = null;          // laufender Handel
 let trInvites = [];          // Anfragen an mich
 let trSrc = 'item';          // Quelle im Handelsfenster
+let trSort = 'rarity';        // Sortierung im Handelsfenster (26.09.2026, Max)
+// Sortierschluessel je Eintrag aus mkMine: Seltenheit, Wert, Level, Anzahl, Name
+function trKey(x, how) {
+    const a = x.asset;
+    if (a.k === 'item') {
+        const it = a.item;
+        return how === 'rarity' ? tierIdx(it.tier) * 1e12 + (it.score || 0) : how === 'value' ? it.score || 0 : how === 'level' ? it.wxp || 0 : how === 'count' ? 1 : it.name || '';
+    }
+    if (a.k === 'card') {
+        const p = kmParse(a.key), c = kmCat && kmCat.byId[p.id];
+        if (how === 'name') return c ? c.name : a.key;
+        if (how === 'rarity') return kmCat ? kmRank({ id: p.id, v: p.v }) : 0;
+        if (how === 'value') return c ? kmValue(c, p.v) : 0;
+        if (how === 'level') return (a.xp || [])[0] || 0;
+        return x.max || 1;
+    }
+    if (how === 'name') return a.name || a.id || '';
+    if (how === 'count') return x.max || a.n || 1;
+    return a.price || 0;
+}
 
 const MK_KIND = { item: '⚔️ Arena items', card: '🃏 Cards', pack: '📦 Packs', case: '🧰 Cases', cos: '🎨 Cosmetics' };
 // Arten mit Stueckzahl (6.1: Packs und Cases wie Karten)
@@ -401,8 +421,15 @@ function trDrawRaw() {
     const offered = S.me.refs;
     const has = r => offered.find(x => x.k === r.k && (r.k === 'item' ? x.uid === r.uid : r.k === 'card' ? x.key === r.key && (x.xp || 0) === (r.xp || 0) : x.id === r.id));
     const srcs = Object.entries(MK_KIND).map(([k, n]) => `<button type="button" class="${trSrc === k ? 'on' : ''}" data-trsrc="${k}">${n}</button>`).join('');
-    const list = mkMine(trSrc);
-    const pick = list.map((x, i) => {
+    // Sortiert wird eine Kopie, der Klick behaelt den Index aus mkMine (trPick)
+    const list = mkMine(trSrc).map((x, i) => ({ ...x, _i: i }));
+    list.sort((p, q) => {
+        const a = trKey(p, trSort), b = trKey(q, trSort);
+        return typeof a === 'string' ? a.localeCompare(b) : b - a;
+    });
+    const sorts = [['rarity', 'Rarity'], ['value', 'Value'], ['level', 'Level'], ['count', 'Count'], ['name', 'A–Z']];
+    const pick = list.map(x => {
+        const i = x._i;
         const o = has(x.ref);
         return `<div class="mk-pick ${o ? 'sel' : ''}" data-trpick="${i}">${mkAsset(x.asset)}${o && MK_COUNTED.has(o.k) ? `<span class="tr-n">${o.n}/${x.max}</span>` : ''}</div>`;
     }).join('');
@@ -413,6 +440,7 @@ function trDrawRaw() {
         <div class="hint">Both press Ready to swap. Any change takes Ready away again. Items in your arena loadout are locked.</div>
         <div class="tr-sides">${side(S.me, true)}<span class="tr-arrows">⇄</span>${side(S.them, false)}</div>
         <div class="cr-diffs mk-sub2">${srcs}</div>
+        <div class="tr-sort">Sort: ${sorts.map(([k, n]) => `<button type="button" class="${trSort === k ? 'on' : ''}" data-trsort="${k}">${n}</button>`).join('')}</div>
         <div class="mk-pickgrid">${pick || '<div class="hint">Nothing here.</div>'}</div>
         <div class="hint">Click to add · cards: every click adds one more · click an offered thing above to take it back.</div>
     </div>`;
@@ -944,7 +972,7 @@ $('mk-body').addEventListener('input', e => {
 
 // Handel: Fenster und Einladungen liegen am Body, also ueberall klickbar
 document.addEventListener('click', e => {
-    const b = e.target.closest('[data-tr],[data-trsrc],[data-trpick],[data-trrm]');
+    const b = e.target.closest('[data-tr],[data-trsrc],[data-trsort],[data-trpick],[data-trrm]');
     if (!b || !b.closest('#tr-window, #tr-invites')) return;
     const ds = b.dataset;
     if (ds.tr === 'accept') {
@@ -958,6 +986,7 @@ document.addEventListener('click', e => {
     } else if (ds.tr === 'ready') wsSend({ type: 'trReady', on: !trState.me.ready });
     else if (ds.tr === 'cancel') wsSend({ type: 'trCancel' });
     else if (ds.trsrc) { trSrc = ds.trsrc; trDraw(); }
+    else if (ds.trsort) { trSort = ds.trsort; trDraw(); }
     else if (ds.trpick !== undefined) trPick(Number(ds.trpick));
     else if (ds.trrm !== undefined) {
         const refs = trState.me.refs.filter((r, i) => i !== Number(ds.trrm));

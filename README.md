@@ -3716,3 +3716,15 @@ Ein Treffer der Railgun (Legendary, Lv 30) an Schmoggi: 267 → ~107, also 4 sta
 Geprüft: 50 Schaden Spieler→Spieler = 20, Gegner→Spieler = 50; alle älteren Tests grün.
 - Nachtrag (Max): „Only duplicates" startet immer aus und bleibt aus, bis man ihn selbst
   anhakt – die Schnellauswahl lässt mit „keep one of each" ohnehin eine Kopie je Karte übrig.
+
+## 🤝 Handel: Sortierung, gegenseitiges F (26.09.2026, Max)
+
+- **Sortierung im Handelsfenster:** Rarity (Standard), Value, Level, Count, A–Z – für alle
+  Quellen (Arena-Items, Karten, Packs, Cases, Cosmetics). Sortiert wird eine Kopie der Liste,
+  der Klick behält den Index aus `mkMine` (`data-trpick`), wählt also das richtige Stück.
+- **Beide drücken F aufeinander → Handel geht direkt auf.** Liegt schon eine Anfrage des
+  anderen an mich (unter 60 s alt), nimmt `request()` sie an, statt eine Gegenanfrage zu
+  schicken (`trade.js`).
+
+Geprüft gegen einen echten Server: beide Seiten bekommen `trState`; Reihenfolge nach Rarity
+und A–Z; Klick nach dem Umsortieren bietet genau das angeklickte Item an.

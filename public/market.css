@@ -541,3 +541,8 @@ body.touch .lb-f {
         transform: rotate(90deg);
     }
 }
+
+/* Sortierung im Handelsfenster (26.09.2026) */
+.tr-sort { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; margin: 4px 0 8px; font-size: 13px; opacity: .9; }
+.tr-sort button { padding: 3px 10px; font-size: 12px; }
+.tr-sort button.on { background: rgba(90,170,255,.3); border-color: #5aaaff; }
