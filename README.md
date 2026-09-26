@@ -3454,3 +3454,57 @@ Effekt mit 100 % aufs krassere Item fusen könnte. Momentan geht das Fuse-Menü 
 Geprüft: Legendary-Juggernaut-Weste ohne Effekt + epische mit Regen 3 → legendär mit Regen 3;
 zweiter Effekt 8,9 % in 4000 Würfen; leer in leer wird abgelehnt; zwei Kopien mit Regen 1 in
 ein leeres Item → Regen 2.
+
+## 🎁 Discord-Runde 26.09.: Boss-Cases, Morvath, Todesort, Kamin, Kampf-Sperre
+
+Aus dem Discord (Schmoggi, Flashkeks/Max, Mincow).
+
+**Boss-Cases im Zombie-Modus** (Max: „Wave-/Boss-Kisten … Zombies lohnenswerter machen.
+Man soll, sobald es vorbei ist, für jeden Boss, den man gemacht hat, einen Case bekommen").
+Stirbt ein Boss, bekommt **jeder, der gerade im Spiel ist** (auch wer down ist), einen Case
+gutgeschrieben (`p.zCases`, Ansage „🎁 +1 … – yours when the game ends"). Ins Lager
+(`a.cases`) wandern sie in `zResult` – also am Spielende oder beim Verlassen. Wer vorher
+geht, behält, was er bis dahin verdient hat. Staffel (Max), gilt für alle Schwierigkeiten:
+
+| Boss-Welle | Case |
+|---:|---|
+| 5 | 📦 Standard |
+| 10 | 🧨 Demolition |
+| 15 | 🛡️ Elite Armor |
+| 20 | 🔫 Elite Weapons |
+| 25 | 💎 Elite General |
+| 30 | 🏰 Elite+ Armor |
+| 35 | 🎯 Elite+ Weapons |
+| 40 | 💠 Elite+ General |
+| 45 und jede weitere | 👑 Sovereign |
+
+Ergebnis-Screen und Hub-Zeile listen die Cases (`shLeft.cases`).
+
+**Lord Morvath zu stark** (Schmoggi: „Runde 10 zu stark, Homing Missiles"): Seine drei
+Kugeln drehten mit `homing 1.1` (Wenderadius ~115 px bei 380 px/s) – praktisch nicht
+auszuweichen, 3 s Flugzeit. Jetzt `homing 0.45` (Wenderadius ~280 px, seitlich laufen
+reicht), Flugzeit 2,2 s, Schaden 18 → 14 je Kugel.
+
+**Todesort im Extraction-Raid** (Max: „Mark Death Spots on extraction"): Stirbt man im
+Raid (nicht in Missionen, nicht beim Verlassen), merkt sich die Arena Ort und Beutel je
+Konto (`deathMarks`). Beim nächsten Raid zeigt der Client einen 💀 mit gestricheltem Kreis
+und „Your loot · 3:19" (Restzeit bis der Beutel verschwindet, `BAG_LIFE` 5 min), dazu 💀
+auf der Minimap und einen Pfeil am Bildrand, solange der Beutel noch liegt. Ist er
+geplündert, steht da „You died here", bis die 5 min um sind. Snapshot `me.dm = [x, y, ms, Beutel da]`.
+
+**Kamin im Guild House** (Mincow: „Gilden-Lagerfeuer = HP-Reg"): Wer bis 200 px am Kamin
+steht (Mitte des Rundteppichs, wie `gGuildFloor` in `gfx.js`), heilt 8 % der Max-HP je
+Sekunde. Der Client zeigt dabei den normalen Heil-Look (`me.heal`).
+
+**Kampf-Sperre** (Max: „Nachdem man einen Mob gedamaged hat, kann man für 3 Sekunden nicht
+in das Gilden-Gebäude"): Jeder Treffer an einem Gegner setzt `p.combatUntil = jetzt + 3 s`.
+Solange prallt man von draußen am Guild House ab: die Bewegung behandelt das Haus als
+Wand (`slide` mit eigenem `isBlocked`), Sprünge/Enterhaken/Door-Door werden vor die Tür
+zurückgesetzt. Wer schon drin ist, bleibt drin. Hinweis unten im Bild „⚔️ In combat ·
+Guild House locked 2 s" und einmal als Meldung am Tor; der Client sagt die Sperre in der
+Bewegungsvorhersage voraus (`shCombatLock`), damit nichts ruckelt. Snapshot `me.cb` (ms).
+
+Geprüft (`five.js`, 16/16): Morvath-Werte; ausgesperrt während der Sperre, nach 3 s rein;
+Kamin heilt; Todesort nach Neustart des Raids sichtbar und nach 5 min weg; Boss-Cases für
+Welle 5/10/15/45/60 bei beiden Spielern, Spielende legt 5 Cases ins Lager. Dazu alle
+älteren Tests grün und ein Screenshot von Todesort und Sperr-Hinweis.

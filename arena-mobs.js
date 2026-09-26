@@ -184,7 +184,9 @@ const MOBS = {
     necro: {
         zombie: true, boss: true, name: 'Lord Morvath', title: 'The Necromancer', icon: '💀', color: '#7cffb2', r: 40, hpBase: 5000, hpPer: 2200,
         speed: 85, aggro: 99999, range: 650, keep: 280, contact: 40,
-        gun: { dmg: 18, speed: 380, ms: 1600, burst: 3, spread: 0.5, life: 3, homing: 1.1 },
+        // 26.09.2026 (Schmoggi: „Lord Morvath Runde 10 zu stark, Homing Missiles"): Lenkung 1,1 -> 0,45
+        // (Wenderadius ~115 -> ~280 px, seitlich laufen weicht aus), Flugzeit 3 -> 2,2 s, Schaden 18 -> 14
+        gun: { dmg: 14, speed: 380, ms: 1600, burst: 3, spread: 0.5, life: 2.2, homing: 0.45 },
         summon: { kind: 'zombie', n: 5, ms: 11000, max: 12, ring: true }, blink: { ms: 7000 },
         strikes: { n: 5, r: 90, dmg: 50, warn: 1100, ms: 9000, spread: 240 },
         spiral: { ms: 16000, dur: 3200, every: 110, arms: 3, turn: 0.33 }, enrage: 0.5

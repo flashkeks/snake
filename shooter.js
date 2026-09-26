@@ -413,6 +413,10 @@ const ZMB_POWERUPS = {
 const Z_DROP_CHANCE = 0.035, Z_DROP_MAX = 4, Z_DROP_MS = 25000, Z_DROP_R = 42;
 // Pause (26.09.2026, Max): 5 s Countdown, dann steht alles
 const Z_PAUSE_CD = 5000;
+// Boss-Cases (26.09.2026, Max: „Zombies lohnenswerter"): jeder im Spiel bekommt fuer jeden
+// getoeteten Boss am Spielende einen Case, nach Welle gestaffelt (Welle 5, 10, ... 45+)
+const Z_BOSS_CASES = ['standard', 'demo', 'elite_a', 'elite_w', 'elite', 'elite_a50', 'elite_w50', 'elite50', 'sovereign'];
+const zBossCase = wave => Z_BOSS_CASES[Math.max(0, Math.min(Z_BOSS_CASES.length - 1, Math.round(wave / 5) - 1))];
 const ZMB_WALL = { smg: 750, shotgun: 1000, rifle: 1400, sniper: 1500 };
 // Pack-a-Punch seit 6.5.1 bis Stufe 5. 6.10: jede Stufe +5000 (5k..25k,
 // voll 75k statt 50k); Box 950 -> 2000 plus Aufschlag je Kauf (oben)
@@ -1347,6 +1351,10 @@ module.exports = function createArena(h, opts = {}) {
             sendInv(killer);
         }
         dropBag(p.x, p.y, rest);
+        if (mode === 'extract' && !opts.mission && p.account && how !== 'left') {
+            const bag = bags.length && bags[bags.length - 1].items === rest ? bags[bags.length - 1] : null;
+            deathMarks.set(p.account, { x: Math.round(p.x), y: Math.round(p.y), until: Date.now() + BAG_LIFE, bag: bag ? bag.id : null });
+        }
         if (how === 'left' && bags.length && bags[bags.length - 1].items === rest) bags[bags.length - 1].expires = Date.now() + BAG_LIFE_LEFT;
         if (p.account) {
             h.accounts.stat(p.account, s => { s.shooterDeaths = (s.shooterDeaths || 0) + 1; });
@@ -3545,6 +3553,14 @@ module.exports = function createArena(h, opts = {}) {
         a.zombies.kills += zb.kills.get(p.id) || 0;
         const xp = Math.round(40 * Math.pow(reached, 1.35) * zd.reward);
         award(p, xp, `survived ${reached} wave${reached === 1 ? '' : 's'}`);
+        // Boss-Cases (26.09.2026) ins Lager
+        const cases = p.zCases || [];
+        if (cases.length && a) {
+            a.cases = a.cases || {};
+            for (const cid of cases) a.cases[cid] = (a.cases[cid] || 0) + 1;
+            h.refresh(p.c);
+        }
+        p.zCases = [];
         // Coins (5.9): erst jetzt, am Ende des Spiels (alle tot oder verlassen)
         const coins = Math.floor(zCoins(reached, zb.kc.get(p.id) || 0) * (p.b ? p.b.zCoins : 1) * zd.reward);
         if (coins > 0 && p.account) {
@@ -3555,7 +3571,8 @@ module.exports = function createArena(h, opts = {}) {
             h.refresh(p.c);
         }
         h.accounts.touch();
-        h.send(p.c, { type: 'shLeft', result: 'zombies', wave: reached, kills: zb.kills.get(p.id) || 0, best: a.zombies.bestWave, xp, coins, diff: zdId });
+        h.send(p.c, { type: 'shLeft', result: 'zombies', wave: reached, kills: zb.kills.get(p.id) || 0, best: a.zombies.bestWave, xp, coins, diff: zdId,
+            cases: cases.map(cid => ({ id: cid, icon: I.CASES[cid].icon, name: I.CASES[cid].name })) });
     }
 
     function zFinish() {
@@ -3761,6 +3778,16 @@ module.exports = function createArena(h, opts = {}) {
     // und in den Toren; wer drin steht, kann nicht schiessen oder werfen
     const GUILD_SAFE = 0;
     const safeIn = q => !!q && inGuild(q.x, q.y, GUILD_SAFE);
+    // Kampf-Sperre (26.09.2026, Max: „nachdem man einen Mob gedamaged hat, 3 s nicht ins
+    // Gilden-Gebaeude"): wer draussen steht und kuerzlich getroffen hat, prallt am Haus ab
+    const COMBAT_MS = 3000;
+    const combatLocked = (p, now) => now < (p.combatUntil || 0) && (MAP.guilds || []).length > 0;
+    // Kamin im Guild House (26.09.2026, Mincow: „Gilden-Lagerfeuer = HP-Reg"): wer nah dran
+    // steht, heilt 8 % der Max-HP je Sekunde. Mitte wie in gfx.js (gGuildFloor: Rundteppich)
+    const HEARTH_R = 200, HEARTH_REGEN = 0.08;
+    const atHearth = p => (MAP.guilds || []).some(g => Math.hypot(p.x - (g[0] + g[2] / 2), p.y - (g[1] + g[3] / 2 + 40)) < HEARTH_R);
+    // Todesort im Extraction-Raid (26.09.2026, Max: „Mark death spots"): Konto -> { x, y, until, bag }
+    const deathMarks = new Map();
     const mobBlocked = (x, y, r) => blocked(x, y, r) || inZone(x, y, MAP.town, r) || inZone(x, y, MAP.outpost, r) || inGuild(x, y, r + 120);
 
     function spawnBoss(now, kind) {
@@ -3815,6 +3842,8 @@ module.exports = function createArena(h, opts = {}) {
     function hurtMob(m, attacker, dmg, now, x, y, crit, w) {
         if (!(m.hp > 0) || dmg <= 0) return;
         if (attacker && players.has(attacker.id) && safeIn(attacker)) return;
+        // Kampf-Sperre (26.09.2026, Max): wer einen Gegner trifft, kommt 3 s nicht ins Guild House
+        if (attacker && players.has(attacker.id)) attacker.combatUntil = now + COMBAT_MS / SPEED;
         // Boss-Phase: unverwundbar, Treffer zeigen „IMMUNE" (hoechstens alle 250 ms je Schuetze)
         if (now < (m.shieldUntil || 0)) {
             if (attacker && players.has(attacker.id) && !(w && w.dot) && now >= (attacker.immuneAt || 0)) {
@@ -4132,6 +4161,12 @@ module.exports = function createArena(h, opts = {}) {
                 }
                 fxAt(m.x, m.y, { type: 'shFx', kind: 'bossdie', x: Math.round(m.x), y: Math.round(m.y), boss: m.kind });
                 for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `${def.icon} ${killer ? killer.name + ' killed' : 'Down goes'} ${def.name}!`, kind: 'drop' });
+                // Boss-Case fuer alle, die gerade im Spiel sind – gutgeschrieben am Spielende (zResult)
+                const cid = zBossCase(zb.wave), cs = I.CASES[cid];
+                for (const q of players.values()) {
+                    (q.zCases = q.zCases || []).push(cid);
+                    h.send(q.c, { type: 'shEvent', text: `🎁 +1 ${cs.icon} ${cs.name} – yours when the game ends`, kind: 'drop' });
+                }
             }
             for (const o of [...mobs]) if (o.parent === m.id) mobs.splice(mobs.indexOf(o), 1);
             fxAt(m.x, m.y, { type: 'shFx', kind: 'mobdie', x: Math.round(m.x), y: Math.round(m.y), icon: def.icon, col: def.color });
@@ -5397,6 +5432,8 @@ module.exports = function createArena(h, opts = {}) {
                 if (damage(p, owner && owner !== p ? owner : null, fire.dps * dt, now, p.x, p.y, { how: 'fire', noDodge: true, dot: true })) continue;
             }
             if (now < p.healUntil) p.hp = Math.min(p.maxHp, p.hp + p.healRate * dt);
+            p.hearth = atHearth(p);
+            if (p.hearth) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * HEARTH_REGEN * dt);
             // Alle regenerieren langsam; Ruestung (Mod, Medic-Set) legt drauf
             if (now - p.lastHurt > p.b.regenDelay / SPEED) p.hp = Math.min(p.maxHp, p.hp + (REGEN_BASE + p.regen) * dt);
             else if (p.regen && now - p.lastHurt > 3000 / SPEED) p.hp = Math.min(p.maxHp, p.hp + p.regen * dt);
@@ -5433,7 +5470,20 @@ module.exports = function createArena(h, opts = {}) {
             } else if (phase) {
                 // Door-Door: Waende zaehlen nicht, nur der Kartenrand
                 if (p.mx || p.my) [p.x, p.y] = slide(p.x, p.y, p.mx * sp * dt, p.my * sp * dt, R, (x, y, r) => world.outside(x, y, r));
-            } else if (p.mx || p.my) [p.x, p.y] = slide(p.x, p.y, p.mx * sp * dt, p.my * sp * dt, R);
+            } else if (p.mx || p.my) {
+                const lock = combatLocked(p, now) && !inGuild(p.x, p.y);
+                [p.x, p.y] = slide(p.x, p.y, p.mx * sp * dt, p.my * sp * dt, R, lock ? (x, y, r) => blocked(x, y, r) || inGuild(x, y) : blocked);
+            }
+            // Kampf-Sperre auch gegen Sprung, Enterhaken, Door-Door: zurueck vor die Tuer
+            if (combatLocked(p, now) && inGuild(p.x, p.y) && !inGuild(ox, oy)) {
+                p.x = ox;
+                p.y = oy;
+                p.grap = null;
+            }
+            if (combatLocked(p, now) && !inGuild(p.x, p.y) && inGuild(p.x, p.y, 60) && now >= (p.combatMsgAt || 0)) {
+                p.combatMsgAt = now + 2500 / SPEED;
+                h.send(p.c, { type: 'shEvent', text: `⚔️ In combat – the Guild House opens in ${Math.ceil((p.combatUntil - now) / 1000 * SPEED)} s`, kind: 'self' });
+            }
             // Door-Door vorbei, aber in einer Wand: zur naechsten freien Stelle
             if (!phase && p.phased) {
                 p.phased = false;
@@ -5666,6 +5716,13 @@ module.exports = function createArena(h, opts = {}) {
         return true;
     }
 
+    function deathMark(p, now) {
+        const d = p.account && deathMarks.get(p.account);
+        if (!d) return undefined;
+        if (now >= d.until) { deathMarks.delete(p.account); return undefined; }
+        return [d.x, d.y, Math.round(d.until - now), d.bag !== null && bags.some(b => b.id === d.bag) ? 1 : 0];
+    }
+
     function push(now) {
         lastSend = now;
         const plist = [...players.values()];
@@ -5694,7 +5751,10 @@ module.exports = function createArena(h, opts = {}) {
                     titan: now < (p.titanUntil || 0) ? Math.round(p.titanUntil - now) : undefined,
                     buff: [now < (p.hollowUntil || 0) ? 'hollow' : '', now < (p.stoneUntil || 0) ? 'stone' : '', now < (p.jailUntil || 0) ? 'jail' : ''].filter(Boolean).join(',') || undefined,
                     ex: p.extractAt ? Math.max(0, p.extractAt - now) : null,
-                    burn: !!p.burn || !!p.inFire, heal: now < p.healUntil, pr: now < p.protect, dead: !!p.dead, fz: !!(pvp && pvp.phase !== 'fight') || !!(zb && zb.paused),
+                    burn: !!p.burn || !!p.inFire, heal: now < p.healUntil || !!p.hearth, pr: now < p.protect,
+                    // Kampf-Sperre (ms) und eigener Todesort [x, y, ms, Beutel noch da]
+                    cb: combatLocked(p, now) ? Math.round(p.combatUntil - now) : undefined,
+                    dm: deathMark(p, now), dead: !!p.dead, fz: !!(pvp && pvp.phase !== 'fight') || !!(zb && zb.paused),
                     hid: (!!(p.zone || p.smoke !== null) && now - p.lastShot >= REVEAL_MS * p.b.reveal) || stillHidden(p, now)
                 },
                 pvp: pvp ? { round: pvp.round, score: pvp.score, phase: pvp.phase, left: Math.max(0, Math.round(pvp.until - now)), last: pvp.last, team: p.team } : undefined,
