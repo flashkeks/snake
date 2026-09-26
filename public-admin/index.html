@@ -547,7 +547,11 @@ function drawArena() {
         `<div class="row"><b>🛠️ Creative mode</b> <button type="button" id="a-creative" class="${a.creative ? 'danger' : ''}">${a.creative ? 'ON – turn off' : 'OFF – turn on'}</button>` +
         `<span class="muted">Unlimited HP in raids and missions, press C in the raid for a menu with every item. Only for testing.</span></div>` +
         `<div class="row"><b>Arena XP</b> <input type="number" id="a-xp" value="${(a.prog && a.prog.xp) || 0}" style="width:140px"><button type="button" id="a-xp-set">Set</button>` +
-        `<span class="muted">Level ${a.level || 1}${a.prog ? ` · ${Object.values(a.prog.stats || {}).reduce((s, n) => s + n, 0)} stat / ${Object.values(a.prog.skills || {}).reduce((s, n) => s + n, 0)} skill points spent · ${a.prog.resets || 0} resets` : ''} · spent points above the new level are reset</span></div>` +
+        `<span class="muted">Level ${a.level || 1} · spent points above the new level are reset</span></div>` +
+        // 26.09.2026 (Max): Skill-Baum zuruecksetzen, kostenlos
+        `<div class="row"><b>🌳 Skill tree reset</b>` +
+        [['extract', '⚔️ Raid tree'], ['zombies', '🧟 Zombie tree'], ['stats', '📊 Stats'], ['all', 'Everything']].map(([k, n]) => `<button type="button" class="danger" data-askill="${k}">${n} (${spentOf(a, k)})</button>`).join('') +
+        `<span class="muted">Points spent in brackets. Free, the player gets all points back; does not count as one of their own resets.</span></div>` +
         `<div class="panel"><div class="row"><b>Create item</b>` +
         `<select id="a-kind">${[['weapon', 'Weapon'], ['armor', 'Armor'], ['util', 'Consumable'], ['pack', 'Backpack']].map(([k, n]) => `<option value="${k}" ${k === aKind ? 'selected' : ''}>${n}</option>`).join('')}</select>` +
         `<select id="a-base">${bases.map(([k, n]) => `<option value="${k}">${esc(n)}</option>`).join('')}</select>` +
@@ -561,6 +565,13 @@ function drawArena() {
         `<span class="muted">What the player took into each raid and lost there. Restore gives exactly those items back (once per raid).</span></div>` +
         `<div id="a-raids">${raidsHtml()}</div>`;
     if (raidsFor !== cur.key) loadRaids();
+}
+
+// Ausgegebene Punkte je Baum (Skill-Reset, 26.09.2026)
+function spentOf(a, k) {
+    const pr = a.prog || {}, sum = o => Object.values(o || {}).reduce((s, n) => s + n, 0);
+    const t = m => sum(pr.trees && pr.trees[m] ? pr.trees[m].skills : m === 'extract' ? pr.skills : null);
+    return k === 'stats' ? sum(pr.stats) : k === 'all' ? t('extract') + t('zombies') + sum(pr.stats) : t(k);
 }
 
 // Raid-Log (25.09.2026): verlorene Items eines Raids zurueckgeben
@@ -598,6 +609,11 @@ $('dp-arena').onclick = e => {
     if (!b) return;
     if (b.id === 'a-scrap-set') return post('arena', { op: 'scrap', set: Number($('a-scrap').value) }, 'Scrap set');
     if (b.id === 'a-creative') return post('arena', { op: 'creative', on: !b.classList.contains('danger') }, 'Creative mode switched');
+    if (b.dataset.askill) {
+        const n = b.textContent.replace(/ \(\d+\)$/, '');
+        if (!confirm(`Reset ${n} of ${cur.name}? The points go back to the player.`)) return;
+        return post('arena', { op: 'skillreset', tree: b.dataset.askill }, `${n} reset`);
+    }
     if (b.id === 'a-xp-set') return post('arena', { op: 'xp', set: Number($('a-xp').value) }, 'XP set');
     if (b.id === 'a-give') {
         const mods = [0, 1, 2].map(i => ({ id: $('dp-arena').querySelector(`[data-am="${i}"]`), lvl: $('dp-arena').querySelector(`[data-al="${i}"]`) }))

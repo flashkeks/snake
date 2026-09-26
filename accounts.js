@@ -651,6 +651,16 @@ module.exports = function createAccounts(dataDir) {
             } else if (op === 'creative') {
                 // 25.09.2026 (Max): Creative Mode – im Raid unverwundbar, Item-Menue (Taste C)
                 a.creative = !!d.on;
+            } else if (op === 'skillreset') {
+                // 26.09.2026 (Max): Skill-Baum im Admin-Panel zuruecksetzen – kostenlos, zaehlt
+                // nicht als Reset (Preis des naechsten eigenen Resets bleibt). tree: extract, zombies,
+                // stats oder all
+                a.prog = a.prog || arenaLevel.fresh();
+                const which = String(d.tree);
+                if (!['extract', 'zombies', 'stats', 'all'].includes(which)) return 'unknown tree';
+                if (which === 'extract' || which === 'all') arenaLevel.treeOf(a.prog, 'extract').skills = {};
+                if (which === 'zombies' || which === 'all') arenaLevel.treeOf(a.prog, 'zombies').skills = {};
+                if (which === 'stats' || which === 'all') a.prog.stats = {};
             } else if (op === 'xp') {
                 // Arena-Level (4.0): Gesamt-XP setzen; Punkte ueber dem neuen Level verfallen
                 const v = Math.floor(Number(d.set));

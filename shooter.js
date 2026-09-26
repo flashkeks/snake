@@ -414,9 +414,27 @@ const Z_DROP_CHANCE = 0.035, Z_DROP_MAX = 4, Z_DROP_MS = 25000, Z_DROP_R = 42;
 // Pause (26.09.2026, Max): 5 s Countdown, dann steht alles
 const Z_PAUSE_CD = 5000;
 // Boss-Cases (26.09.2026, Max: „Zombies lohnenswerter"): jeder im Spiel bekommt fuer jeden
-// getoeteten Boss am Spielende einen Case, nach Welle gestaffelt (Welle 5, 10, ... 45+)
-const Z_BOSS_CASES = ['standard', 'demo', 'elite_a', 'elite_w', 'elite', 'elite_a50', 'elite_w50', 'elite50', 'sovereign'];
-const zBossCase = wave => Z_BOSS_CASES[Math.max(0, Math.min(Z_BOSS_CASES.length - 1, Math.round(wave / 5) - 1))];
+// getoeteten Boss am Spielende einen Case, nach Welle gestaffelt. Je Schwierigkeit (Max):
+//   Hard   – jeder Boss, Leiter ab Standard (W5 Standard, W10 Demolition ... W45+ Sovereign)
+//   Normal – jeder 3. Boss ab W5 gibt nichts (W5, W20, W35 ...), sonst Leiter ab Scrap
+//            (W10 Scrap, W15 Demolition, W25 Elite Armor, W30 Elite Weapons ...)
+//   Easy   – jeder 2. Boss ab W5 gibt nichts (W5, W15, W25 ...), sonst Leiter ab Scrap
+const Z_BOSS_CASES = {
+    hard: ['standard', 'demo', 'elite_a', 'elite_w', 'elite', 'elite_a50', 'elite_w50', 'elite50', 'sovereign'],
+    normal: ['scrap', 'demo', 'elite_a', 'elite_w', 'elite', 'elite_a50', 'elite_w50', 'elite50', 'sovereign'],
+    easy: ['scrap', 'demo', 'elite_a', 'elite_w', 'elite', 'elite_a50', 'elite_w50', 'elite50', 'sovereign']
+};
+const Z_BOSS_SKIP = { hard: 0, normal: 3, easy: 2 };
+function zBossCase(wave, diff) {
+    const ladder = Z_BOSS_CASES[diff] || Z_BOSS_CASES.normal, skip = Z_BOSS_SKIP[diff] || 0;
+    const n = Math.max(1, Math.round(wave / 5));
+    let k = n;
+    if (skip) {
+        if ((n - 1) % skip === 0) return null;
+        k = n - Math.floor((n - 1) / skip) - 1;
+    }
+    return ladder[Math.min(ladder.length - 1, k - 1)];
+}
 const ZMB_WALL = { smg: 750, shotgun: 1000, rifle: 1400, sniper: 1500 };
 // Pack-a-Punch seit 6.5.1 bis Stufe 5. 6.10: jede Stufe +5000 (5k..25k,
 // voll 75k statt 50k); Box 950 -> 2000 plus Aufschlag je Kauf (oben)
@@ -4162,8 +4180,8 @@ module.exports = function createArena(h, opts = {}) {
                 fxAt(m.x, m.y, { type: 'shFx', kind: 'bossdie', x: Math.round(m.x), y: Math.round(m.y), boss: m.kind });
                 for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `${def.icon} ${killer ? killer.name + ' killed' : 'Down goes'} ${def.name}!`, kind: 'drop' });
                 // Boss-Case fuer alle, die gerade im Spiel sind – gutgeschrieben am Spielende (zResult)
-                const cid = zBossCase(zb.wave), cs = I.CASES[cid];
-                for (const q of players.values()) {
+                const cid = zBossCase(zb.wave, zdId), cs = cid && I.CASES[cid];
+                if (cs) for (const q of players.values()) {
                     (q.zCases = q.zCases || []).push(cid);
                     h.send(q.c, { type: 'shEvent', text: `🎁 +1 ${cs.icon} ${cs.name} – yours when the game ends`, kind: 'drop' });
                 }
@@ -5839,3 +5857,4 @@ module.exports.ZOMBIE_WORLD = ZOMBIE_WORLD;
 module.exports.zCoins = zCoins;
 module.exports.W = W;
 module.exports.H = H;
+module.exports.zBossCase = zBossCase;

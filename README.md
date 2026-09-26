@@ -3464,19 +3464,24 @@ Man soll, sobald es vorbei ist, für jeden Boss, den man gemacht hat, einen Case
 Stirbt ein Boss, bekommt **jeder, der gerade im Spiel ist** (auch wer down ist), einen Case
 gutgeschrieben (`p.zCases`, Ansage „🎁 +1 … – yours when the game ends"). Ins Lager
 (`a.cases`) wandern sie in `zResult` – also am Spielende oder beim Verlassen. Wer vorher
-geht, behält, was er bis dahin verdient hat. Staffel (Max), gilt für alle Schwierigkeiten:
+geht, behält, was er bis dahin verdient hat. Staffel je Schwierigkeit (Max; `zBossCase`):
 
-| Boss-Welle | Case |
-|---:|---|
-| 5 | 📦 Standard |
-| 10 | 🧨 Demolition |
-| 15 | 🛡️ Elite Armor |
-| 20 | 🔫 Elite Weapons |
-| 25 | 💎 Elite General |
-| 30 | 🏰 Elite+ Armor |
-| 35 | 🎯 Elite+ Weapons |
-| 40 | 💠 Elite+ General |
-| 45 und jede weitere | 👑 Sovereign |
+| Boss-Welle | 🔴 Hard | 🟡 Normal | 🟢 Easy |
+|---:|---|---|---|
+| 5 | 📦 Standard | – | – |
+| 10 | 🧨 Demolition | 🧰 Scrap | 🧰 Scrap |
+| 15 | 🛡️ Elite Armor | 🧨 Demolition | – |
+| 20 | 🔫 Elite Weapons | – | 🧨 Demolition |
+| 25 | 💎 Elite General | 🛡️ Elite Armor | – |
+| 30 | 🏰 Elite+ Armor | 🔫 Elite Weapons | 🛡️ Elite Armor |
+| 35 | 🎯 Elite+ Weapons | – | – |
+| 40 | 💠 Elite+ General | 💎 Elite General | 🔫 Elite Weapons |
+| 45 | 👑 Sovereign | 🏰 Elite+ Armor | – |
+| 50+ | 👑 Sovereign | – / weiter die Leiter hoch | … |
+
+Hard: jeder Boss, Leiter ab Standard. Normal (−25 %, Max' Beispiel): jeder 3. Boss ab W5
+gibt nichts, die übrigen gehen die Leiter ab Scrap hoch. Easy (−50 %): jeder 2. Boss ab W5
+gibt nichts, sonst dieselbe Leiter. Am Ende der Leiter bleibt es beim Sovereign.
 
 Ergebnis-Screen und Hub-Zeile listen die Cases (`shLeft.cases`).
 
@@ -3508,3 +3513,13 @@ Geprüft (`five.js`, 16/16): Morvath-Werte; ausgesperrt während der Sperre, nac
 Kamin heilt; Todesort nach Neustart des Raids sichtbar und nach 5 min weg; Boss-Cases für
 Welle 5/10/15/45/60 bei beiden Spielern, Spielende legt 5 Cases ins Lager. Dazu alle
 älteren Tests grün und ein Screenshot von Todesort und Sperr-Hinweis.
+
+### Nachtrag: Skill-Baum im Admin-Panel zurücksetzen (Max)
+
+Admin-Panel → Konto → Arena → „🌳 Skill tree reset": Knöpfe für ⚔️ Raid-Baum, 🧟 Zombie-Baum,
+📊 Stats und alles zusammen, in Klammern die ausgegebenen Punkte. Kostenlos, der Spieler
+bekommt alle Punkte zurück; zählt nicht als einer seiner eigenen Resets (deren Preis bleibt).
+Server: `accounts.adminArena(key, 'skillreset', { tree })`, im Admin-Log als `arena-skillreset`.
+Die bisherige Anzeige „x skill points spent" las noch das alte Feld `prog.skills` (vor den
+getrennten Bäumen) und zeigte deshalb meist 0 – ersetzt durch die Zahlen an den Knöpfen.
+Wer gerade im Hub ist, sieht die freien Punkte nach dem nächsten Neuladen.
