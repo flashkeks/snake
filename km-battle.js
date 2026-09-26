@@ -470,6 +470,7 @@ function greedy(b, s, smart) {
 // selbst buffen, wenn es sicher ist; sonst der staerkste Treffer. Wird auch in der
 // Vorausschau fuer beide Seiten gespielt (TACT), damit die KI Buff-Sweeps kommen sieht.
 const TACT = 1.5;
+let EVAL_FOE_BOOST = true;
 function tactical(b, s) {
     if (b.phase === 'switch') return { a: 'switch', to: bestSwitch(b, s, -1) };
     const me = act(b, s), foe = act(b, 1 - s), side = b.sides[s];
@@ -510,9 +511,10 @@ function tactical(b, s) {
 function evalSide(b, s) {
     const score = side => side.cards.reduce((a, c) => a + (c.hp > 0 ? 0.45 + 0.55 * c.hp / c.maxHp - (c.status ? 0.08 : 0) : 0), 0);
     if (b.over) return b.winner === s ? 100 : -100;
-    const me = act(b, s);
-    const boost = Math.max(0, me.boosts.atk, me.boosts.spa) * 0.06 + Math.max(0, me.boosts.spe) * 0.04;
-    return score(b.sides[s]) - score(b.sides[1 - s]) + (me.hp > 0 ? boost : 0);
+    // 26.09.2026: Buffs beider Seiten zaehlen – ein hochgebuffter Gegner ist eine Gefahr
+    // (vorher nur die eigenen, darum liess die Vorausschau Buff-Sweeps einfach zu)
+    const boostOf = c => c && c.hp > 0 ? Math.max(0, c.boosts.atk, c.boosts.spa) * 0.06 + Math.max(0, c.boosts.spe) * 0.04 + Math.max(0, c.boosts.def, c.boosts.spd) * 0.02 : 0;
+    return score(b.sides[s]) - score(b.sides[1 - s]) + (EVAL_FOE_BOOST ? boostOf(act(b, s)) - boostOf(act(b, 1 - s)) : boostOf(act(b, s)));
 }
 
 function cloneBattle(b, roll = 1) {
@@ -532,10 +534,10 @@ const LOOK_BUDGET_MS = 10;
 // per Vorausschau. 26.09.2026 (Max: „alle KIs schlauer, die dann nochmal staerker"):
 // spielt jede eigene Option gegen jede Antwort des Gegners durch (replies) und wertet
 // vorsichtig (mix: Anteil des schlechtesten Falls), statt nur gegen eine gierige Antwort
-const LOOK3 = { samples: 20, turns: 5, replies: true, mix: 0.35, budget: 16 };
+const LOOK3 = { samples: 20, turns: 5, replies: true, mix: 0.35, budget: 16, roll: TACT };
 // Stufe 4 (26.09.2026, neu, Ace-Reihe): noch tiefer, mehr Stichproben, rechnet mit dem
 // besten Gegenzug (mix hoch) und plant Wechsel nach einem K.o. genauso
-const LOOK4 = { samples: 32, turns: 6, replies: true, mix: 0.6, budget: 28 };
+const LOOK4 = { samples: 32, turns: 6, replies: true, mix: 0.6, budget: 28, roll: TACT };
 
 function lookahead(b, s, opt = { samples: LOOK_SAMPLES, turns: LOOK_TURNS }) {
     const me = act(b, s);
@@ -595,12 +597,14 @@ function lookahead(b, s, opt = { samples: LOOK_SAMPLES, turns: LOOK_TURNS }) {
 function aiChoose(b, s, level) {
     const lv = b.sides[s].level;
     const smart = level !== undefined ? level : lv !== undefined ? lv : b.smart;
+    if (b.phase === 'switch' && smart && typeof smart === 'object') return lookahead(b, s, smart);
     if (b.phase === 'switch') return smart >= 4 ? lookahead(b, s, LOOK4) : smart >= 3 ? lookahead(b, s, LOOK3) : { a: 'switch', to: bestSwitch(b, s, -1) };
     if (smart < 0) {
         // nur fuer Tests: rein zufaellig
         const ok = act(b, s).moves.map((m, i) => i).filter(i => act(b, s).moves[i].ppLeft > 0);
         return { a: 'move', i: ok.length ? ok[Math.floor(b.rnd() * ok.length)] : -1 };
     }
+    if (smart && typeof smart === 'object') return lookahead(b, s, smart);
     if (smart === TACT) return tactical(b, s);
     if (smart >= 4) return lookahead(b, s, LOOK4);
     if (smart >= 3) return lookahead(b, s, LOOK3);
