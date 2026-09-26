@@ -3357,3 +3357,32 @@ kein Power-up doppelt, Snapshot, Med Kit, Double Points, Supply Drop bei vollen 
 Nuke, Ablauf, Boss-Drops, Pause-Countdown, Welt und Spieler stehen, kein Kauf, Timer um 20 s
 geschoben, Abbrechen), alte Zombie-Tests 11/11, dazu echter Server per WebSocket
 (`zReady`, `zAuto`, `zPause` kommen an) und Screenshots von Drops, Countdown und Pause.
+
+## ⚡ Railgun: Reichweite und Schaden runter (26.09.2026, Max)
+
+Max: „Die Railgun ist immer noch zu stark. Zwei Spieler haben die und oneshotten Schmoggi,
+der die beste Rüstung hat" – und: „auch zu stark bei Bossen, wegen Range und Dmg".
+
+Befund (live-Daten vom 26.09.): Schmoggi trägt Juggernaut Epic, 313 HP, 15 % weniger Schaden.
+MADDYs Railgun (Legendary, Lv 30, ohne Effekte) machte 445 pro Schuss – **schon ein**
+Treffer tötete. Vergleich mit allen Waffen auf höchster Stufe (Lv 30, ohne Effekte): Elf
+Waffen oneshotten so einen Spieler (Dragonslayer, Venuzdonoa, Hollow Purple, Fat Boy,
+Kamehameha, Rasengan, Gate of Babylon, Spirit Gun, Railgun, Spear of Longinus, Kagune), aber
+alle anderen bezahlen dafür: Nahkampf-Reichweite, langsame Kugeln zum Ausweichen oder
+2 s Nachladen; die zwei anderen Strahlen sind seltene Uniques und reichen nur bis zum
+Bildrand. **Nur die Railgun trifft sofort und mit 3040 px weit über die Sichtweite (1400)
+hinaus.** Ein Deckel für PvP-Schaden wollte Max nicht.
+
+Änderung in `arena-items.js`:
+
+| | vorher | jetzt |
+|---|---:|---:|
+| Grundschaden | 250 | 150 (−40 %) |
+| Reichweite (`speed × life`) | 3040 | 1300 (`life` 0,95 → 0,40625) |
+| Legendary Lv 30 | 445 | 267 |
+| Ultra rare Lv 30 | 538 | 323 |
+| Treffer bis Schmoggi tot | 1 | 2 |
+
+Gilt gegen Spieler und Gegner gleich. Velocity verlängert die Reichweite weiter wie bisher
+(+25 % Tempo, +15 % Lebensdauer je Stufe). Die Tabellen weiter oben (DPS-Test, Zombie-Bosse)
+zeigen die alten Railgun-Werte.

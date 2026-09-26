@@ -55,7 +55,9 @@ const WEAPONS = {
     // Railgun: Strahl sofort ueber 3000 durch alle Gegner. 25.09.2026 (Max: „wirklich zu op",
     // Game-Breaker nur ab Mythic): stoppt an der ersten Wand – durch Waende gehen nur
     // Strahlen mit thruWalls (Kamehameha, Venuzdonoa)
-    railgun: { name: 'Railgun', icon: '⚡', tier: 4, ms: 1300, dmg: 250, speed: 3200, life: 0.95, spread: 0, pellets: 1, beam: true },
+    // 26.09.2026 (Max: zwei Railguns oneshotten Schmoggi, auch bei Bossen zu stark): Schaden 250 -> 150 (−40 %),
+    // Reichweite 3040 -> 1300 (life 0.95 -> 0.40625), also knapp unter der Sichtweite (VIEW 1400)
+    railgun: { name: 'Railgun', icon: '⚡', tier: 4, ms: 1300, dmg: 150, speed: 3200, life: 0.40625, spread: 0, pellets: 1, beam: true },
     arcaneorb: { name: 'Arcane orb', icon: '🔮', tier: 4, tag: 'mage', ms: 300, dmg: 36, speed: 900, life: 1.4, spread: 0.02, pellets: 1, innate: { homing: 2, pierce: 1 } },
     // Fat Boy: Mini-Nuke, 300 Radius, trifft auch den direkt Getroffenen voll
     nukelauncher: { name: 'Fat Boy', icon: '☢️', tier: 5, tag: 'demo', ms: 2500, dmg: 120, speed: 650, life: 1.6, spread: 0, pellets: 1, explode: 4, nukeShell: true },
