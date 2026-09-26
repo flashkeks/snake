@@ -1777,7 +1777,8 @@ document.addEventListener('change', e => {
 // ---------- Feed-Menue (26.09.2026, Max) ----------
 // Links die Karte, die levelt; rechts alle eigenen Karten als Futter. Klick = +1 Kopie,
 // Rechtsklick = −1. Feste XP nach Seltenheit der Geopferten, gleiche Karte doppelt.
-const kmFd = { open: false, target: null, pick: new Map(), q: '', rar: '', dupes: true, shown: 120 };
+// 26.09.2026 (Max): Filter nach Set/Typ/Seltenheit, Sortierung, Standard hoechstes Level zuerst
+const kmFd = { open: false, target: null, pick: new Map(), q: '', rar: '', set: '', type: '', sort: 'level', dupes: true, shown: 120 };
 function kmFdEl() {
     let el = $('km-fd');
     if (!el) {
@@ -1792,6 +1793,9 @@ function kmFdEl() {
         });
         el.addEventListener('change', e => {
             if (e.target.id === 'km-fd-rar') { kmFd.rar = e.target.value; kmFd.shown = 120; kmFdGrid(); }
+            if (e.target.id === 'km-fd-set') { kmFd.set = e.target.value; kmFd.shown = 120; kmFdGrid(); }
+            if (e.target.id === 'km-fd-type') { kmFd.type = e.target.value; kmFd.shown = 120; kmFdGrid(); }
+            if (e.target.id === 'km-fd-sort') { kmFd.sort = e.target.value; kmFd.shown = 120; kmFdGrid(); }
             if (e.target.id === 'km-fd-dup') { kmFd.dupes = e.target.checked; kmFd.shown = 120; kmFdGrid(); }
         });
     }
@@ -1857,6 +1861,9 @@ function kmFdDraw() {
             <button type="button" data-fdclose="1">✕</button></div>
         <div class="km-fd-main"><div class="km-fd-side">${side}</div>
         <div class="km-fd-right"><div class="km-fd-tools"><input id="km-fd-q" placeholder="Search…" value="${esc(kmFd.q)}">
+            <select id="km-fd-sort">${[['level', 'Sort: highest level'], ['rarity', 'Sort: rarity ↓'], ['rarityup', 'Sort: rarity ↑'], ['copies', 'Sort: most copies'], ['name', 'Sort: name']].map(([k, n]) => `<option value="${k}" ${kmFd.sort === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
+            <select id="km-fd-set"><option value="">All sets</option>${Object.entries(kmCat.sets).map(([k, x]) => `<option value="${k}" ${kmFd.set === k ? 'selected' : ''}>${x.icon} ${esc(x.name)}</option>`).join('')}</select>
+            <select id="km-fd-type"><option value="">All types</option>${Object.entries(kmCat.types).map(([k, x]) => `<option value="${k}" ${kmFd.type === k ? 'selected' : ''}>${x.icon} ${esc(x.name)}</option>`).join('')}</select>
             <select id="km-fd-rar"><option value="">All rarities</option>${rar}</select>
             <label><input type="checkbox" id="km-fd-dup" ${kmFd.dupes ? 'checked' : ''}> Only duplicates</label>
             ${tc ? '<small>Click = +1 · right-click = −1</small>' : ''}</div>
@@ -1873,13 +1880,23 @@ function kmFdGrid() {
         const p = kmParse(k), c = kmCat.byId[p.id];
         if (!c) continue;
         if (kmFd.rar && c.rarity !== kmFd.rar) continue;
+        if (kmFd.set && c.set !== kmFd.set) continue;
+        if (kmFd.type && c.type !== kmFd.type) continue;
         if (q && !c.name.toLowerCase().includes(q) && !c.from.toLowerCase().includes(q)) continue;
         // Ziel waehlen: nur Karten; Futter: mit Duplikat-Filter nur, was mehr als einmal da ist
         if (kmFd.target && kmFd.dupes && own[p.id].total < 2) continue;
         if (!kmFd.target && k !== kmKeyOf(p.id, own[p.id].best)) continue;
         keys.push([k, p, c, n]);
     }
-    keys.sort((a, b) => kmCat.ridx[a[2].rarity] - kmCat.ridx[b[2].rarity] || a[2].name.localeCompare(b[2].name));
+    const lvOf = k => kmLvOf(kmXpList(k)[0] || 0).lv, rOf = c => kmCat.ridx[c.rarity];
+    const S = {
+        level: (a, b) => lvOf(b[0]) - lvOf(a[0]) || rOf(b[2]) - rOf(a[2]),
+        rarity: (a, b) => rOf(b[2]) - rOf(a[2]) || lvOf(b[0]) - lvOf(a[0]),
+        rarityup: (a, b) => rOf(a[2]) - rOf(b[2]) || lvOf(a[0]) - lvOf(b[0]),
+        copies: (a, b) => b[3] - a[3] || rOf(a[2]) - rOf(b[2]),
+        name: () => 0
+    };
+    keys.sort((a, b) => (S[kmFd.sort] || S.level)(a, b) || a[2].name.localeCompare(b[2].name));
     g.innerHTML = keys.slice(0, kmFd.shown).map(([k, p, c, n]) => {
         const picked = kmFd.pick.get(k) || 0, lv = kmLvOf(kmXpList(k)[0] || 0).lv;
         const h = kmCard(c, { mini: true, v: p.v, count: n, lv });

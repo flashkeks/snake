@@ -3695,3 +3695,5 @@ Karte hat. Sonst könnte man eine Lv-3-Rare einer anderen Lv-3-Rare opfern und d
 
 Geprüft im Browser gegen einen echten Server: Usopp Lv 1 + 1 Common + 2 Common → +540 XP,
 Lv 5; Screenshots von Knopf und Menü.
+- Nachtrag (Max): Feed-Menü mit Sortierung – **Standard: höchstes Level zuerst**, außerdem
+  Seltenheit ↓/↑, meiste Kopien, Name – und Filtern nach Set, Typ und Seltenheit.
