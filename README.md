@@ -3756,3 +3756,6 @@ Kampfsystem kaum etwas; Werte (Level, `mul`) und Zufall entscheiden.
 Warum Schmoggi mit Lv-16-Karten War Room (Lv 26, Legendary) schafft: `mul` 0,62 macht die
 Gym-Karten HP/Angriff ×1,24, seine Lv-16-Karten haben ×1,60. Die `mul`-Werte waren auf
 „Spieler auf Gym-Level" eingestellt – durch Verfüttern sind Spieler heute weit darüber.
+- Nachtrag (Max): **Analyser** sortiert jetzt auch Karten (Rarest, Value, Level, Count, A–Z),
+  Packs/Cases/Cosmetics (Value, Count, A–Z) – gleiche Schlüssel wie das Handelsfenster
+  (`trKey`). Vorher gab es die Knöpfe nur bei Arena-Items.

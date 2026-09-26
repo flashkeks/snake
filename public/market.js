@@ -237,7 +237,14 @@ function anaList() {
         level: (a, b) => anaLv(it(b)) - anaLv(it(a)) || (it(b).odds || 1) - (it(a).odds || 1),
         name: (a, b) => mkAssetName(a.asset).localeCompare(mkAssetName(b.asset))
     };
-    return list.sort(anaSrc === 'item' ? (S[anaSort] || S.rare) : S.name);
+    if (anaSrc === 'item') return list.sort(S[anaSort] || S.rare);
+    // 26.09.2026 (Max: „im Karten-Menue kann man nicht sortieren"): Karten, Packs, Cases,
+    // Cosmetics ueber dieselben Schluessel wie das Handelsfenster (trKey)
+    const how = { rare: 'rarity', score: 'value', level: 'level', count: 'count', name: 'name' }[anaSort] || 'rarity';
+    return list.sort((a, b) => {
+        const x = trKey(a, how), y = trKey(b, how);
+        return typeof x === 'string' ? x.localeCompare(y) : y - x;
+    });
 }
 function anaView() {
     if (anaSrc === 'item' && !anaInv) wsSend({ type: 'mkAnaInv' });
@@ -250,7 +257,10 @@ function anaView() {
         const c = all.filter(x => anaFilterOk(x, k, dupKeys)).length;
         return c || k === 'all' ? `<button type="button" class="${anaF === k ? 'on' : ''}" data-anaf="${k}">${n} <small>${c}</small></button>` : '';
     }).join('');
-    const sorts = anaSrc === 'item' ? [['rare', 'Rarest'], ['score', 'Score'], ['level', 'Level'], ['name', 'A–Z']].map(([k, n]) => `<button type="button" class="${anaSort === k ? 'on' : ''}" data-anasort="${k}">${n}</button>`).join('') : '';
+    const sortOpts = anaSrc === 'item' ? [['rare', 'Rarest'], ['score', 'Score'], ['level', 'Level'], ['name', 'A–Z']]
+        : anaSrc === 'card' ? [['rare', 'Rarest'], ['score', 'Value'], ['level', 'Level'], ['count', 'Count'], ['name', 'A–Z']]
+        : [['score', 'Value'], ['count', 'Count'], ['name', 'A–Z']];
+    const sorts = sortOpts.map(([k, n]) => `<button type="button" class="${anaSort === k ? 'on' : ''}" data-anasort="${k}">${n}</button>`).join('');
     const tools = `<div class="ana-tools"><input id="ana-q" placeholder="🔎 Search…" value="${esc(anaQ)}">${sorts ? `<span>Sort</span>${sorts}` : ''}<span class="ana-count">${list.length} of ${all.length}</span></div><div class="ana-filters">${fl}</div>`;
     let res = '<div class="hint">Pick something on the left to analyse it.</div>';
     if (anaSel && anaRes === 'wait') res = '<div class="hint">Analysing…</div>';
