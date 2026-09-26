@@ -391,6 +391,20 @@ Princess / Gates of Olympus:
   per `welcome` an den Browser).
 - **Leertaste = Spin**, bei Budget Starlight und bei Slots (nicht waehrend
   einer Animation und nicht beim Tippen im Einsatzfeld).
+- **Magierin links neben der Maschine** (Wunsch Max, 26.09.2026, nach dem
+  Vorbild der Prinzessin in Starlight Princess). Eigene Zeichnung als
+  Inline-SVG (`#s2-girl`, pinke Zoepfe, Fluegel, Sternenstab), kein fremdes
+  Artwork. Im Leerlauf schwebt sie, blinzelt, Zoepfe, Rock und Fluegel
+  wippen, der Stern am Stab pulsiert. Posen per `s2Girl(pose, ms)`: `cast`
+  (Stab schwingen) beim Spin und wenn der Multiplikator greift, `happy`
+  (Augen zu, Mund auf, Hopser) bei jedem Tumble-Gewinn, `zap` (Stab hoch,
+  Stern dreht sich) solange Kugeln in den Multiplikator fliegen, `big`
+  (Sprung, goldene Funken) bei Bonusstart und Big Win. Im Bonus leuchtet ein
+  Schein hinter ihr (`s2GirlBonus`). Sie haengt am `body`, nicht im Overlay
+  (dessen `backdrop-filter`/`overflow` wuerde sie abschneiden); `s2GirlPlace`
+  setzt sie buendig unten links neben die Karte, hoechstens so hoch wie die
+  Maschine, und blendet sie aus, wenn links weniger als 140 px frei sind
+  (Handy). `prefers-reduced-motion` schaltet die Animationen ab.
 
 | Symbol | 8–9 | 10–11 | 12+ |
 |---|---|---|---|

@@ -5706,6 +5706,71 @@ span.tier-common, span.tier-uncommon, span.tier-rare, span.tier-epic, span.tier-
     font-weight: 800;
 }
 
+/* ---------- Budget Starlight: Magierin links neben der Maschine ---------- */
+.s2-girl {
+    position: fixed;
+    z-index: 6;
+    width: 260px;
+    pointer-events: none;
+    display: none;
+}
+.s2-girl.on { display: block; }
+.s2g { width: 100%; height: auto; display: block; overflow: visible; filter: drop-shadow(0 6px 18px rgba(255, 91, 214, .35)); }
+.s2g * { transform-box: view-box; }
+.s2g .g-all { animation: s2gFloat 4.2s ease-in-out infinite; }
+.s2g .g-wingL { transform-origin: 150px 270px; animation: s2gWingL 2.4s ease-in-out infinite; }
+.s2g .g-wingR { transform-origin: 170px 270px; animation: s2gWingR 2.4s ease-in-out infinite; }
+.s2g .g-tailL { transform-origin: 112px 96px; animation: s2gSway 3.4s ease-in-out infinite; }
+.s2g .g-tailR { transform-origin: 208px 96px; animation: s2gSway 3.4s ease-in-out -1.1s infinite reverse; }
+.s2g .g-skirt { transform-origin: 160px 298px; animation: s2gSkirt 4.2s ease-in-out infinite; }
+.s2g .g-legs { transform-origin: 160px 400px; animation: s2gSkirt 4.2s ease-in-out -.4s infinite; }
+.s2g .g-head { transform-origin: 160px 206px; animation: s2gHead 6s ease-in-out infinite; }
+.s2g .g-eye { transform-origin: 160px 155px; animation: s2gBlink 5s infinite; }
+.s2g .g-joy, .s2g .g-mouthO { display: none; }
+.s2g .g-arm { transform-origin: 204px 246px; animation: s2gArm 4.2s ease-in-out infinite; }
+.s2g .g-star { transform-origin: 274px 62px; animation: s2gStar 2.6s ease-in-out infinite; }
+.s2g .g-starGlow { transform-origin: 274px 62px; animation: s2gGlow 2.6s ease-in-out infinite; }
+.s2g .g-aura { opacity: 0; transform-origin: 160px 300px; transition: opacity .6s; }
+.s2g .g-sparks path { transform-box: fill-box; transform-origin: center; animation: s2gTwinkle 2.2s ease-in-out infinite; }
+.s2g .g-sparks path:nth-child(2n) { animation-delay: -.7s; animation-duration: 2.8s; }
+.s2g .g-sparks path:nth-child(3n) { animation-delay: -1.5s; animation-duration: 1.9s; }
+
+/* Zustaende, gesetzt von s2Girl() */
+.s2g.happy .g-eye, .s2g.big .g-eye { display: none; }
+.s2g.happy .g-joy, .s2g.big .g-joy, .s2g.happy .g-mouthO, .s2g.big .g-mouthO { display: inline; }
+.s2g.happy .g-mouth, .s2g.big .g-mouth { display: none; }
+.s2g.happy .g-all { animation: s2gHop .5s ease-out 2; }
+.s2g.cast .g-arm { animation: s2gCast .7s cubic-bezier(.3,1.4,.5,1); }
+.s2g.cast .g-starGlow, .s2g.zap .g-starGlow { animation: s2gFlash .7s ease-out; }
+.s2g.zap .g-arm { animation: s2gZap 1.6s ease-in-out; }
+.s2g.zap .g-star { animation: s2gSpin 1.6s ease-in-out; }
+.s2g.big .g-all { animation: s2gTwirl 1.3s ease-in-out 2; }
+.s2g.big .g-sparks path, .s2g.bonus .g-sparks path { fill: #ffe98a; animation-duration: .9s; }
+.s2g.bonus .g-aura { opacity: 1; animation: s2gAura 2s ease-in-out infinite; }
+
+@keyframes s2gFloat { 50% { transform: translateY(-12px); } }
+@keyframes s2gWingL { 50% { transform: rotate(9deg); } }
+@keyframes s2gWingR { 50% { transform: rotate(-9deg); } }
+@keyframes s2gSway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+@keyframes s2gSkirt { 0%, 100% { transform: skewX(-2deg); } 50% { transform: skewX(2deg); } }
+@keyframes s2gHead { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(3deg); } }
+@keyframes s2gBlink { 0%, 93%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } 97% { transform: scaleY(1); } }
+@keyframes s2gArm { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-4deg); } }
+@keyframes s2gStar { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.08) rotate(8deg); } }
+@keyframes s2gGlow { 0%, 100% { transform: scale(.85); opacity: .7; } 50% { transform: scale(1.15); opacity: 1; } }
+@keyframes s2gTwinkle { 0%, 100% { transform: scale(.2); opacity: .2; } 50% { transform: scale(1.1); opacity: 1; } }
+@keyframes s2gHop { 40% { transform: translateY(-22px); } }
+@keyframes s2gCast { 0% { transform: rotate(0); } 35% { transform: rotate(-22deg); } 70% { transform: rotate(14deg); } 100% { transform: rotate(0); } }
+@keyframes s2gFlash { 0% { transform: scale(.8); opacity: 1; } 40% { transform: scale(2.4); opacity: 1; } 100% { transform: scale(1); opacity: .8; } }
+@keyframes s2gZap { 0%, 100% { transform: rotate(0); } 20%, 80% { transform: rotate(-16deg); } 50% { transform: rotate(-12deg); } }
+@keyframes s2gSpin { 0% { transform: scale(1) rotate(0); } 50% { transform: scale(1.5) rotate(360deg); } 100% { transform: scale(1) rotate(720deg); } }
+@keyframes s2gTwirl { 0% { transform: translateY(0) scale(1); } 30% { transform: translateY(-30px) scale(1.05) rotate(-4deg); } 60% { transform: translateY(-10px) scale(1.03) rotate(4deg); } 100% { transform: translateY(0) scale(1); } }
+@keyframes s2gAura { 50% { transform: scale(1.06); opacity: .75; } }
+
+@media (prefers-reduced-motion: reduce) {
+    .s2g, .s2g * { animation: none !important; }
+}
+
 /* ---------- Budget Starlight: Max-Win-Hinweis ---------- */
 
 .s2-maxwin {
@@ -7141,6 +7206,171 @@ body.watch-mode #world-switch {
     </div>
 </div>
 
+                    <!-- Budget Starlight: Magierin links neben der Maschine, eigene Zeichnung (s2Fit/s2Girl).
+                         Liegt ausserhalb von #slots2, weil das Overlay (backdrop-filter, overflow) sie sonst abschneidet -->
+                    <div class="s2-girl" id="s2-girl">
+                    <svg class="s2g" viewBox="0 0 320 600" aria-hidden="true">
+                      <defs>
+                        <linearGradient id="s2gHair" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0" stop-color="#ffb3dd"/><stop offset=".45" stop-color="#ff72c2"/><stop offset="1" stop-color="#b8409a"/>
+                        </linearGradient>
+                        <linearGradient id="s2gHairD" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0" stop-color="#e05aae"/><stop offset="1" stop-color="#8a2c7c"/>
+                        </linearGradient>
+                        <linearGradient id="s2gIris" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0" stop-color="#4b1fb8"/><stop offset=".55" stop-color="#8c5cff"/><stop offset="1" stop-color="#5ee6ff"/>
+                        </linearGradient>
+                        <linearGradient id="s2gGold" x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0" stop-color="#fff2a8"/><stop offset=".5" stop-color="#ffd23f"/><stop offset="1" stop-color="#d08a12"/>
+                        </linearGradient>
+                        <linearGradient id="s2gSkirt" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0" stop-color="#ff9ad5"/><stop offset="1" stop-color="#e0529f"/>
+                        </linearGradient>
+                        <linearGradient id="s2gWing" x1="1" y1="0" x2="0" y2="1">
+                          <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e6dcff"/>
+                        </linearGradient>
+                        <radialGradient id="s2gAura">
+                          <stop offset="0" stop-color="#ffd23f" stop-opacity=".55"/><stop offset=".5" stop-color="#ff5bd6" stop-opacity=".25"/><stop offset="1" stop-color="#ff5bd6" stop-opacity="0"/>
+                        </radialGradient>
+                        <radialGradient id="s2gGlow">
+                          <stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".35" stop-color="#ffe98a" stop-opacity=".7"/><stop offset="1" stop-color="#ffd23f" stop-opacity="0"/>
+                        </radialGradient>
+                      </defs>
+                    
+                      <ellipse class="g-aura" cx="160" cy="300" rx="170" ry="290" fill="url(#s2gAura)"/>
+                    
+                      <g class="g-all">
+                        <!-- Fluegel -->
+                        <g class="g-wingL">
+                          <path d="M150,262 C118,222 62,176 14,184 C34,196 30,210 20,222 C44,226 38,244 26,258 C52,258 50,276 38,292 C64,290 66,306 58,320 C88,306 122,290 150,284 Z" fill="url(#s2gWing)" stroke="#c9b6ff" stroke-width="2" stroke-linejoin="round"/>
+                          <path d="M140,266 C110,240 70,214 40,206 M136,274 C106,260 72,248 46,248 M134,282 C108,280 82,282 62,290" fill="none" stroke="#d6c8ff" stroke-width="2" stroke-linecap="round"/>
+                        </g>
+                        <g class="g-wingR">
+                          <path d="M170,262 C202,222 258,176 306,184 C286,196 290,210 300,222 C276,226 282,244 294,258 C268,258 270,276 282,292 C256,290 254,306 262,320 C232,306 198,290 170,284 Z" fill="url(#s2gWing)" stroke="#c9b6ff" stroke-width="2" stroke-linejoin="round"/>
+                          <path d="M180,266 C210,240 250,214 280,206 M184,274 C214,260 248,248 274,248 M186,282 C212,280 238,282 258,290" fill="none" stroke="#d6c8ff" stroke-width="2" stroke-linecap="round"/>
+                        </g>
+                    
+                        <!-- Zoepfe -->
+                        <g class="g-tailL">
+                          <path d="M112,86 C62,104 34,190 48,290 C56,356 36,420 20,470 C64,446 92,384 88,312 C84,236 96,150 128,108 Z" fill="url(#s2gHair)"/>
+                          <path d="M100,110 C70,160 62,240 70,320 C74,380 60,420 50,448" fill="none" stroke="#c44d9f" stroke-width="3" stroke-linecap="round" opacity=".6"/>
+                        </g>
+                        <g class="g-tailR">
+                          <path d="M208,86 C258,104 286,190 272,290 C264,356 284,420 300,470 C256,446 228,384 232,312 C236,236 224,150 192,108 Z" fill="url(#s2gHair)"/>
+                          <path d="M220,110 C250,160 258,240 250,320 C246,380 260,420 270,448" fill="none" stroke="#c44d9f" stroke-width="3" stroke-linecap="round" opacity=".6"/>
+                        </g>
+                    
+                        <!-- Haare hinten -->
+                        <path d="M100,124 C92,64 228,64 220,124 C230,190 226,240 212,272 L108,272 C94,240 90,190 100,124 Z" fill="url(#s2gHairD)"/>
+                    
+                        <!-- Beine -->
+                        <g class="g-legs">
+                          <path d="M140,396 L134,496 L152,496 L156,396 Z" fill="#fff6fb" stroke="#e7cde0" stroke-width="1.5"/>
+                          <path d="M131,488 L154,488 L156,538 Q144,550 124,546 Q122,538 132,530 Z" fill="url(#s2gGold)" stroke="#b57410" stroke-width="1.5" stroke-linejoin="round"/>
+                          <path d="M132,492 L154,492" stroke="#fff" stroke-width="3"/>
+                          <path d="M166,396 L184,476 L200,472 L184,396 Z" fill="#fff6fb" stroke="#e7cde0" stroke-width="1.5"/>
+                          <path d="M182,466 L201,460 L214,512 Q206,524 190,522 Q188,514 194,508 Z" fill="url(#s2gGold)" stroke="#b57410" stroke-width="1.5" stroke-linejoin="round"/>
+                          <path d="M183,470 L201,464" stroke="#fff" stroke-width="3"/>
+                        </g>
+                    
+                        <!-- Rock -->
+                        <g class="g-skirt">
+                          <path d="M130,296 L190,296 C216,338 240,378 248,406 Q234,398 222,412 Q206,400 192,414 Q176,402 160,416 Q144,402 128,414 Q114,400 98,412 Q86,398 72,406 C80,378 104,338 130,296 Z" fill="#fff6fb" stroke="#f0c8e4" stroke-width="2" stroke-linejoin="round"/>
+                          <path d="M132,296 L188,296 C206,330 222,360 230,388 Q216,380 204,392 Q190,382 176,394 Q160,384 144,394 Q130,382 116,392 Q104,380 90,388 C98,360 114,330 132,296 Z" fill="url(#s2gSkirt)"/>
+                          <path d="M92,384 Q104,376 116,388 Q130,378 144,390 Q160,380 176,390 Q190,378 204,388 Q216,376 228,384" fill="none" stroke="url(#s2gGold)" stroke-width="3" stroke-linecap="round"/>
+                          <path d="M150,300 L140,380 M170,300 L180,380 M130,304 L112,372 M190,304 L208,372" stroke="#c9458f" stroke-width="2" opacity=".45"/>
+                        </g>
+                    
+                        <!-- Oberteil -->
+                        <path d="M122,232 C136,220 184,220 198,232 L190,300 L130,300 Z" fill="#fff6fb" stroke="#f0c8e4" stroke-width="2" stroke-linejoin="round"/>
+                        <path d="M136,232 L160,262 L184,232" fill="none" stroke="url(#s2gGold)" stroke-width="3.5" stroke-linejoin="round"/>
+                        <rect x="128" y="290" width="64" height="12" rx="4" fill="url(#s2gGold)" stroke="#b57410" stroke-width="1"/>
+                        <path d="M160,250 l5,9 10,1 -8,6 3,10 -10,-6 -10,6 3,-10 -8,-6 10,-1 Z" fill="#ff5bd6" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/>
+                    
+                        <!-- linker Arm (haengt) -->
+                        <path d="M114,246 C104,276 102,300 108,322 L120,322 C118,300 122,278 130,254 Z" fill="#ffe3d3" stroke="#eab9a4" stroke-width="1.5"/>
+                        <path d="M104,312 L124,312 L122,324 L106,324 Z" fill="#fff" stroke="#f0c8e4" stroke-width="1.5"/>
+                        <circle cx="114" cy="330" r="8" fill="#ffe3d3" stroke="#eab9a4" stroke-width="1.5"/>
+                        <circle cx="120" cy="240" r="17" fill="#fff" stroke="#f0c8e4" stroke-width="2"/>
+                    
+                        <!-- Hals -->
+                        <path d="M150,198 L170,198 L170,226 Q160,232 150,226 Z" fill="#f6c9b6"/>
+                    
+                        <!-- Kopf -->
+                        <g class="g-head">
+                          <path d="M104,118 C104,172 130,200 160,208 C190,200 216,172 216,118 C216,78 104,78 104,118 Z" fill="#ffe3d3" stroke="#eab9a4" stroke-width="1.5"/>
+                          <ellipse cx="124" cy="176" rx="10" ry="4.5" fill="#ff8fb0" opacity=".55"/>
+                          <ellipse cx="196" cy="176" rx="10" ry="4.5" fill="#ff8fb0" opacity=".55"/>
+                    
+                          <g class="g-eyes">
+                            <g class="g-eye">
+                              <ellipse cx="136" cy="155" rx="14.5" ry="17.5" fill="#fff"/>
+                              <ellipse cx="136" cy="157" rx="12" ry="15.5" fill="url(#s2gIris)"/>
+                              <ellipse cx="136" cy="158" rx="5.5" ry="8" fill="#240d4a"/>
+                              <circle cx="131" cy="149" r="4.5" fill="#fff"/>
+                              <circle cx="141" cy="164" r="2.2" fill="#fff" opacity=".9"/>
+                              <path d="M119,153 C119,137 132,132 139,133 C148,134 153,140 154,147 C149,141 145,138 138,138 C128,138 122,144 119,153 Z M121,144 L111,139 L119,150 Z" fill="#3a1638"/>
+                              <path d="M127,172 Q135,175 143,172.5" fill="none" stroke="#7a3a5a" stroke-width="1.5" stroke-linecap="round"/>
+                              <ellipse cx="184" cy="155" rx="14.5" ry="17.5" fill="#fff"/>
+                              <ellipse cx="184" cy="157" rx="12" ry="15.5" fill="url(#s2gIris)"/>
+                              <ellipse cx="184" cy="158" rx="5.5" ry="8" fill="#240d4a"/>
+                              <circle cx="189" cy="149" r="4.5" fill="#fff"/>
+                              <circle cx="179" cy="164" r="2.2" fill="#fff" opacity=".9"/>
+                              <path d="M201,153 C201,137 188,132 181,133 C172,134 167,140 166,147 C171,141 175,138 182,138 C192,138 198,144 201,153 Z M199,144 L209,139 L201,150 Z" fill="#3a1638"/>
+                              <path d="M193,172 Q185,175 177,172.5" fill="none" stroke="#7a3a5a" stroke-width="1.5" stroke-linecap="round"/>
+                              </g>
+                            <g class="g-joy" fill="none" stroke="#3a1638" stroke-width="4" stroke-linecap="round">
+                              <path d="M124,158 Q136,142 148,158"/>
+                              <path d="M172,158 Q184,142 196,158"/>
+                            </g>
+                          </g>
+                          <path d="M126,128 Q136,123 146,127 M174,127 Q184,123 194,128" fill="none" stroke="#b8409a" stroke-width="2.5" stroke-linecap="round"/>
+                          <path class="g-mouth" d="M153,186 Q160,191 167,186" fill="none" stroke="#b0405e" stroke-width="2.5" stroke-linecap="round"/>
+                          <path class="g-mouthO" d="M150,184 Q160,200 170,184 Q160,188 150,184 Z" fill="#d2446e" stroke="#9c2c4a" stroke-width="1.5" stroke-linejoin="round"/>
+                    
+                          <!-- Pony und Seitenstraehnen -->
+                          <path d="M104,112 C94,150 96,196 110,232 C114,200 112,162 118,124 Z" fill="url(#s2gHair)"/>
+                          <path d="M216,112 C226,150 224,196 210,232 C206,200 208,162 202,124 Z" fill="url(#s2gHair)"/>
+                          <path d="M98,126 C88,52 232,52 222,126 Q214,114 210,132 Q204,112 192,134 Q186,106 172,126 Q166,100 156,124 Q146,102 138,128 Q128,108 122,134 Q114,114 110,130 Q104,116 98,126 Z" fill="url(#s2gHair)"/>
+                          <path d="M114,104 Q120,90 134,84" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".55"/>
+                    
+                          <!-- Diadem -->
+                          <path d="M130,84 Q160,70 190,84 L184,92 Q160,82 136,92 Z" fill="url(#s2gGold)" stroke="#b57410" stroke-width="1"/>
+                          <path d="M160,58 l4,10 11,1 -8,7 3,11 -10,-6 -10,6 3,-11 -8,-7 11,-1 Z" fill="url(#s2gGold)" stroke="#b57410" stroke-width="1.2" stroke-linejoin="round"/>
+                          <circle cx="160" cy="72" r="3" fill="#5ee6ff"/>
+                          <!-- Zopfhalter -->
+                          <circle cx="108" cy="96" r="9" fill="#ff5bd6" stroke="#fff" stroke-width="2"/>
+                          <circle cx="212" cy="96" r="9" fill="#ff5bd6" stroke="#fff" stroke-width="2"/>
+                        </g>
+                    
+                        <!-- rechter Arm mit Zauberstab -->
+                        <g class="g-arm">
+                          <circle cx="200" cy="240" r="17" fill="#fff" stroke="#f0c8e4" stroke-width="2"/>
+                          <path d="M204,248 L234,226 L248,188" fill="none" stroke="#eab9a4" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+                          <path d="M204,248 L234,226 L248,188" fill="none" stroke="#ffe3d3" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+                          <path d="M236,232 L230,216" stroke="#fff" stroke-width="10" stroke-linecap="butt"/>
+                          <line x1="238" y1="232" x2="272" y2="78" stroke="url(#s2gGold)" stroke-width="6" stroke-linecap="round"/>
+                          <circle cx="250" cy="182" r="8.5" fill="#ffe3d3" stroke="#eab9a4" stroke-width="1.5"/>
+                          <g class="g-star">
+                            <circle class="g-starGlow" cx="274" cy="62" r="40" fill="url(#s2gGlow)"/>
+                            <path d="M252,74 Q238,56 248,44 Q256,58 264,62 Z M296,74 Q310,56 300,44 Q292,58 284,62 Z" fill="#fff" stroke="#c9b6ff" stroke-width="1.5"/>
+                            <path d="M274,38 l7,15 16,2 -12,11 3,16 -14,-8 -14,8 3,-16 -12,-11 16,-2 Z" fill="url(#s2gGold)" stroke="#b57410" stroke-width="1.5" stroke-linejoin="round"/>
+                            <circle cx="274" cy="61" r="5" fill="#5ee6ff" stroke="#fff" stroke-width="1.5"/>
+                          </g>
+                        </g>
+                      </g>
+                    
+                      <g class="g-sparks" fill="#fff">
+                        <path d="M40,90 l3,9 9,3 -9,3 -3,9 -3,-9 -9,-3 9,-3 Z"/>
+                        <path d="M290,150 l2,6 6,2 -6,2 -2,6 -2,-6 -6,-2 6,-2 Z"/>
+                        <path d="M30,370 l2.5,7 7,2.5 -7,2.5 -2.5,7 -2.5,-7 -7,-2.5 7,-2.5 Z"/>
+                        <path d="M280,330 l3,9 9,3 -9,3 -3,9 -3,-9 -9,-3 9,-3 Z"/>
+                        <path d="M200,40 l2,6 6,2 -6,2 -2,6 -2,-6 -6,-2 6,-2 Z"/>
+                        <path d="M70,520 l2,6 6,2 -6,2 -2,6 -2,-6 -6,-2 6,-2 Z"/>
+                        <path d="M250,560 l2.5,7 7,2.5 -7,2.5 -2.5,7 -2.5,-7 -7,-2.5 7,-2.5 Z"/>
+                      </g>
+                    </svg>
+                    </div>
 <script>
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -9938,7 +10168,7 @@ function s2Bump(el) {
 // Cell size so that the whole machine fits without scrolling
 function s2Fit() {
     const ov = $('slots2');
-    if (ov.classList.contains('hidden')) return;
+    if (ov.classList.contains('hidden')) return s2GirlPlace();
     const card = ov.querySelector('.card');
     const grid = $('s2-grid');
     const cur = parseFloat(card.style.getPropertyValue('--c')) || 64;
@@ -9949,8 +10179,39 @@ function s2Fit() {
     const cellW = (ov.clientWidth - 32 - 28 - padW - 20) / 6;
     const c = Math.floor(Math.max(34, Math.min(92, cellH, cellW)));
     card.style.setProperty('--c', c + 'px');
+    s2GirlPlace();
 }
+
+// Magierin nur, wenn links neben der Maschine Platz ist; hoechstens so hoch wie die Maschine,
+// unten buendig mit ihr
+function s2GirlPlace() {
+    const girl = $('s2-girl');
+    const ov = $('slots2');
+    if (ov.classList.contains('hidden')) return girl.classList.remove('on');
+    const r = ov.querySelector('.card').getBoundingClientRect();
+    const w = Math.floor(Math.min(r.left - 12, r.height * 320 / 600));
+    girl.classList.toggle('on', w >= 140);
+    girl.style.width = w + 'px';
+    girl.style.left = (r.left - 6 - w) + 'px';
+    girl.style.top = (r.bottom - w * 600 / 320) + 'px';
+}
+new MutationObserver(() => requestAnimationFrame(s2GirlPlace)).observe($('slots2'), { attributes: true, attributeFilter: ['class'] });
+$('slots2').addEventListener('scroll', s2GirlPlace);
 window.addEventListener('resize', s2Fit);
+
+// Magierin: kurze Posen (cast, happy, zap, big) und der Bonus-Schein
+const s2GirlT = {};
+function s2Girl(pose, ms) {
+    const g = $('s2-girl').firstElementChild;
+    clearTimeout(s2GirlT[pose]);
+    g.classList.remove(pose);
+    void g.getBoundingClientRect();
+    g.classList.add(pose);
+    s2GirlT[pose] = setTimeout(() => g.classList.remove(pose), ms / s2Speed);
+}
+function s2GirlBonus(on) {
+    $('s2-girl').firstElementChild.classList.toggle('bonus', on);
+}
 
 function buildSlots2(info) {
     s2Info = info;
@@ -10126,6 +10387,7 @@ async function s2FlyOrbs(sp) {
 
     orbs.forEach(o => cols[o.c].children[o.r].classList.add('charge'));
     sfx.charge();
+    s2Girl('zap', 700 + orbs.length * 380 + 800);
     await s2Sleep(700);
 
     const target = $('s2-mult');
@@ -10176,6 +10438,7 @@ async function s2PlaySpin(sp, bet) {
     const steps = sp.steps;
     const winEl = $('s2-spinwin');
     winEl.textContent = '0';
+    s2Girl('cast', 700);
     await s2DropIn(steps[0].grid, sp.free);
 
     let tw = 0;
@@ -10187,6 +10450,7 @@ async function s2PlaySpin(sp, bet) {
         const gain = st.wins.reduce((s, w) => s + w.pay, 0) * bet;
         $('s2-log').textContent = st.wins.map(w => `${w.n}× ${w.sym} = ${s2Fmt(w.pay * bet)}`).join(' · ');
         sfx.win(i);
+        s2Girl('happy', 1100);
         s2Float('+' + s2Fmt(gain));
         s2Count(winEl, tw, tw + gain, 600, false);
         tw += gain;
@@ -10212,6 +10476,7 @@ async function s2PlaySpin(sp, bet) {
         winEl.textContent = `${s2Fmt(sp.tw)} × ${sp.mult}`;
         s2Bump(winEl);
         sfx.multApply();
+        s2Girl('cast', 700);
         s2Float('×' + sp.mult);
         await s2Sleep(900);
         await s2Count(winEl, sp.tw, sp.tw * sp.mult, 1100, true);
@@ -10247,6 +10512,8 @@ async function s2Run(d) {
     const startBonus = async (label) => {
         inBonus = true;
         sfx.fanfare('bonus');
+        s2GirlBonus(true);
+        s2Girl('big', 2600);
         await s2Banner(`⭐ ${s2Info.freeSpins} FREE SPINS ⭐<small>${label}</small>`, 2600);
         s2HudMode(true);
         $('s2-free').textContent = s2Info.freeSpins;
@@ -10298,14 +10565,17 @@ async function s2Run(d) {
     const x = d.win / d.bet;
     if (inBonus) {
         sfx.fanfare(x >= 20 ? 'big' : 'end');
+        s2Girl(x >= 20 ? 'big' : 'happy', 2600);
         await s2Banner(`BONUS WIN<small>${s2Fmt(d.win)} coins · ${s2Fmt(x)}×${d.capped ? ' · MAX WIN' : ''}</small>`, 3000);
     } else if (d.win > 0 && x >= 20) {
         sfx.fanfare('big');
+        s2Girl('big', 2600);
         const label = x >= 100 ? '🍪 SWEET WIN 🍪' : x >= 50 ? 'MEGA WIN' : 'BIG WIN';
         await s2Banner(`${label}<small>${s2Fmt(d.win)} coins · ${s2Fmt(x)}×${d.capped ? ' · MAX WIN' : ''}</small>`, 2600);
     }
 
     s2HudMode(false);
+    s2GirlBonus(false);
     $('s2-spinwin').textContent = s2Fmt(d.win);
     $('s2-log').textContent = d.bonus ? `Bonus paid ${s2Fmt(d.win)} coins` : d.win > 0 ? `Won ${s2Fmt(d.win)} coins` : 'No win';
     if (me) {
@@ -10319,6 +10589,7 @@ async function s2Run(d) {
 
 function s2Done() {
     s2Busy = false;
+    s2GirlBonus(false);
     s2SetSpeed(1);
     $('s2-spin').textContent = 'SPIN';
     $('s2-spin').disabled = false;
