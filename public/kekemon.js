@@ -1778,7 +1778,7 @@ document.addEventListener('change', e => {
 // Links die Karte, die levelt; rechts alle eigenen Karten als Futter. Klick = +1 Kopie,
 // Rechtsklick = −1. Feste XP nach Seltenheit der Geopferten, gleiche Karte doppelt.
 // 26.09.2026 (Max): Filter nach Set/Typ/Seltenheit, Sortierung, Standard hoechstes Level zuerst
-const kmFd = { open: false, target: null, pick: new Map(), q: '', rar: '', set: '', type: '', sort: 'level', dupes: true, shown: 120, protect: true, keepOne: true };
+const kmFd = { open: false, target: null, pick: new Map(), q: '', rar: '', set: '', type: '', sort: 'level', dupes: false, shown: 120, protect: true, keepOne: true };
 function kmFdEl() {
     let el = $('km-fd');
     if (!el) {
@@ -1806,6 +1806,8 @@ function kmFdEl() {
 function kmFdOpen(id) {
     kmFd.open = true;
     kmFd.target = id || null;
+    // 26.09.2026 (Max): Zielwahl zeigt alles, sobald eine Karte links steht, nur Duplikate
+    kmFd.dupes = !!kmFd.target;
     kmFd.pick.clear();
     kmFdEl().hidden = false;
     kmFdDraw();
@@ -1945,7 +1947,7 @@ function kmFdClick(e) {
     if (ds.fdq) return kmFdQuick(ds.fdq);
     if (ds.fdclear) { kmFd.pick.clear(); return kmFdDraw(); }
     if (ds.fdmore) { kmFd.shown += 120; return kmFdGrid(); }
-    if (ds.fdchange) { kmFd.target = null; kmFd.pick.clear(); return kmFdDraw(); }
+    if (ds.fdchange) { kmFd.target = null; kmFd.dupes = false; kmFd.pick.clear(); kmFd.shown = 120; return kmFdDraw(); }
     if (ds.fdm) return kmFdAdd(ds.fdm, -1);
     if (ds.fdp) return kmFdAdd(ds.fdp, 1);
     if (ds.fdx) { kmFd.pick.delete(ds.fdx); return kmFdDraw(); }
@@ -1958,7 +1960,7 @@ function kmFdClick(e) {
             .then(ok => ok && wsSend({ type: 'kmFeedMany', target: kmFdTKey(), items }));
     }
     if (ds.fdk) {
-        if (!kmFd.target) { kmFd.target = kmParse(ds.fdk).id; kmFd.pick.clear(); return kmFdDraw(); }
+        if (!kmFd.target) { kmFd.target = kmParse(ds.fdk).id; kmFd.dupes = true; kmFd.pick.clear(); kmFd.shown = 120; return kmFdDraw(); }
         return kmFdAdd(ds.fdk, 1);
     }
 }
