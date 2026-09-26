@@ -12617,8 +12617,8 @@ function hubProfile() {
         `<button type="button" class="gold" data-prof="apply" ${changed ? '' : 'disabled'}>✔ Save points</button>` +
         `<button type="button" class="ghost" data-prof="discard" ${changed ? '' : 'disabled'}>Discard</button>` +
         `<span style="flex:1"></span><span class="hint">Resets get 50% pricier each time</span>` +
-        // 26.09.2026 (Max): gemeinsamer Stats-Reset (alle Baeume) entfernt, nur noch der Baum-Reset
-        `<button type="button" class="danger" data-prof="reset" data-what="tree">↺ Reset ${TREE_NAMES[skillTree]} tree · ${money(tcost)}</button></div>`;
+        // 26.09.2026 (Max): eigener Stats-Knopf entfernt – der Baum-Reset nimmt die Stats mit
+        `<button type="button" class="danger" data-prof="reset" data-what="tree">↺ Reset ${TREE_NAMES[skillTree]} tree + stats · ${money(tcost)}</button></div>`;
     return html;
 }
 
@@ -12647,7 +12647,7 @@ function profClick(t, ds, e) {
     }
     if (ds.prof === 'reset') {
         const c = pr.trees[skillTree].resetCost;
-        uiConfirm(`Reset your ${TREE_NAMES[skillTree]} skill tree?\nCosts ${c.coins.toLocaleString('en-US')} coins and ${c.scrap.toLocaleString('en-US')} scrap. You get the points back to spend again.`, { title: 'Reset points', ok: 'Reset', danger: true }).then(ok => ok && wsSend({ type: 'arProg', op: 'reset', mode: skillTree, what: 'tree' }));
+        uiConfirm(`Reset your ${TREE_NAMES[skillTree]} skill tree and your stat points (stats count for every mode)?\nCosts ${c.coins.toLocaleString('en-US')} coins and ${c.scrap.toLocaleString('en-US')} scrap. You get the points back to spend again.`, { title: 'Reset points', ok: 'Reset', danger: true }).then(ok => ok && wsSend({ type: 'arProg', op: 'reset', mode: skillTree, what: 'tree' }));
     }
 }
 
