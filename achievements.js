@@ -21,7 +21,7 @@ const ownedKeys = u => Object.keys(u.cards || {}).filter(k => u.cards[k] > 0);
 const distinctCards = u => new Set(ownedKeys(u).map(k => K.parseKey(k).id)).size;
 const hasVariant = (u, ch) => ownedKeys(u).some(k => (K.parseKey(k).v || '').includes(ch));
 const gymsCleared = u => GYM_IDS.filter(id => ((u.kmGyms || {})[id] || {}).cleared).length;
-const casinoPlays = s => ['slots', 'starlight', 'crossy', 'plinko', 'blackjack', 'roulette', 'poker']
+const casinoPlays = s => ['slots', 'starlight', 'bookofrah', 'crossy', 'plinko', 'blackjack', 'roulette', 'poker']
     .reduce((n, k) => n + (g(s, k).plays || 0), 0);
 
 const LIST = [
@@ -53,6 +53,7 @@ const LIST = [
     { id: 'daily_7', icon: '🎁', name: 'Regular', desc: 'Spin the Daily Wheel 7 days in a row', title: 'Regular', check: (u, s) => (s.dailyBestStreak || 0) >= 7 },
     { id: 'starlight_1000x', icon: '🌟', name: 'Lucky star', desc: 'Win 1,000× on Budget Starlight', title: 'Lucky Star', check: (u, s) => (g(s, 'starlight').bestX || 0) >= 1000 },
     { id: 'starlight_max', icon: '🌠', name: 'Max win', desc: 'Hit the 100,000× max win on Budget Starlight', title: 'Starlight Legend', check: (u, s) => (g(s, 'starlight').bestX || 0) >= 100000 },
+    { id: 'rah_1000x', icon: '📖', name: 'Tomb raider', desc: 'Win 1,000× on Book of Rah', title: 'Tomb Raider', check: (u, s) => (g(s, 'bookofrah').bestX || 0) >= 1000 },
     { id: 'plinko_1000x', icon: '🔻', name: 'Plinko god', desc: 'Land the ×1000 on Plinko', title: 'Plinko God', check: (u, s) => (g(s, 'plinko').bestX || 0) >= 1000 },
     { id: 'crossy_hardcore', icon: '🐔', name: 'Chicken legend', desc: 'Cross all lanes on Hardcore', title: 'Chicken Legend', check: (u, s) => (s.crossyHardcoreWins || 0) >= 1 },
     { id: 'poker_pot_10k', icon: '♠️', name: 'High roller', desc: 'Win a 10,000 pot at poker', title: 'High Roller', check: (u, s) => (g(s, 'poker').bestWin || 0) >= 10000 },

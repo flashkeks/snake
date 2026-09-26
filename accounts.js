@@ -38,7 +38,7 @@ const EARN_SOURCES = ['snake', 'events', 'daily', 'don', 'admin', 'shooter', 'sh
 // Einsatz), bestWin (groesste Auszahlung), bestX (hoechster Multi). Beim
 // Poker ist won der gewonnene Pot, beim Daily Wheel gibt es keinen Einsatz.
 // arena = ein Leben in einer Einsatz-Arena (#12): Einsatz, erbeutete Kopfgelder
-const GAMES = ['slots', 'starlight', 'crossy', 'plinko', 'daily', 'blackjack', 'roulette', 'poker', 'don', 'arena'];
+const GAMES = ['slots', 'starlight', 'bookofrah', 'crossy', 'plinko', 'daily', 'blackjack', 'roulette', 'poker', 'don', 'arena'];
 // Zaehlen nicht zur Casino-Bilanz (kein Einsatz bzw. kein Casino-Spiel)
 const NOT_CASINO = new Set(['daily', 'don', 'arena']);
 
@@ -482,10 +482,11 @@ module.exports = function createAccounts(dataDir) {
 
         // Eine Runde eines Spiels verbuchen (#5): wager = Einsatz, win = Auszahlung,
         // x = Multi (Auszahlung / Grundeinsatz), falls sinnvoll
-        game(key, name, { wager = 0, win = 0, x = 0 } = {}) {
+        // play: false = keine eigene Runde (z. B. Risikospiel nach einem Spin)
+        game(key, name, { wager = 0, win = 0, x = 0, play = true } = {}) {
             this.stat(key, s => {
                 const g = s.games[name] = { ...newGame(), ...s.games[name] };
-                g.plays++;
+                if (play) g.plays++;
                 g.wagered += wager;
                 g.won += win;
                 // Beste 10 Runden fuers Leaderboard (jede Runde ein eigener

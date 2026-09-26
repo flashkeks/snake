@@ -5,7 +5,7 @@
 - **🐍 Snake:** Multiplayer-Snake im Browser, mit Kopf-an-Kopf-Duellen im
   CS:GO-Case-Opening-Stil, Mystery-Boxen, Double or Nothing, Cashout und
   Quiz-Events (Flaggen, Trivia, Weltkarte, Schaetzen).
-- **🎰 Gamba (Casino):** Daily Wheel, Slots, Budget Starlight, Crossy Road, Plinko
+- **🎰 Gamba (Casino):** Daily Wheel, Slots, Budget Starlight, Book of Rah, Crossy Road, Plinko
   und dauerhafte Tische fuer Blackjack, Roulette und Poker (Spieler gegen
   Spieler), an denen man sieht, wer gerade mitspielt.
 - **🔫 Arena:** Extraction-Shooter mit Loadout, Cases, Waffen mit Effekten, Salvage und Extraction-Zonen (seit 23.09.2026).
@@ -24,6 +24,7 @@ Live: **`snake.flashkeks.com`** auf `edge` (Netcup).
 | `server.js` | HTTP + WebSocket, Spiel-Tick, Items, Duelle, Cashout |
 | `accounts.js` | Konten, Sessions, Coins, Statistik (JSON-Datei im Datenordner) |
 | `slots.js` | Slot-Automat „Slots“ (frueher „Kek Slots“); `node slots.js` rechnet die Rueckzahlungsquote aus |
+| `bookofrah.js` | Linien-Slot „Book of Rah“ (5 × 3, 10 Linien, Buch = Wild/Scatter, Freispiele mit aufklappendem Spezialsymbol); `node bookofrah.js N` simuliert die Rueckzahlung |
 | `slots2.js` | Tumble-Slot „Budget Starlight“ (frueher „Sweet Kek“, intern weiter `s2`/`spin2`); `node slots2.js N` simuliert grob Rueckzahlung, Bonus-Quote, Bonus-Kauf (zum Abstimmen siehe unten) |
 | `events.js` | Events im Snake (Flag Quiz, Trivia, Where is it?, Guess the number und die Map-Events): Ablauf, Punkte, Belohnung |
 | `achievements.js` | Achievements (#3): Katalog, Pruefungen, Titel |
@@ -360,6 +361,49 @@ wirklich draufsitzt.
 
 **Schild** faengt einen Koerpertreffer ab, und seit 23.09.2026 auch den 💀
 aus Muenze oder Box.
+
+## Book of Rah (Linien-Slot, 26.09.2026)
+
+Casino → Slots & more → „📖 Book of Rah", nur mit Konto. Nach dem Vorbild
+von Book of Ra Deluxe; Logik in `bookofrah.js` (Server wuerfelt die ganze
+Runde samt Freispielen), Anzeige in `public/index.html` (`bor*`).
+
+- **5 Walzen × 3 Reihen, 10 feste Linien**, Einsatz = Gesamteinsatz
+  (Linieneinsatz = Einsatz / 10), gezahlt von links nach rechts.
+- **Symbole** (× Linieneinsatz fuer 2/3/4/5): 🤠 Explorer 10/100/1000/5000,
+  🦅 Horus 5/40/400/2000, 🏺 Urne und 🪲 Skarabaeus 5/30/100/750, A/K
+  –/5/40/150, Q/J/10 –/5/25/100.
+- **📖 Buch = Wild und Scatter:** ersetzt auf jeder Linie jedes Symbol und
+  zahlt irgendwo 3/4/5 = 2/20/200 × Einsatz. Hoechstens ein Buch je Walze
+  (wie auf den echten Walzenstreifen).
+- **3+ Buecher = 10 Freispiele** mit zufaelligem Spezialsymbol (das Buch
+  klappt auf und blaettert durch die Symbole). Landet das Spezialsymbol in
+  einem Freispiel auf genug Walzen (2 bei Explorer/Horus/Urne/Skarabaeus,
+  sonst 3), klappt es ueber die ganzen Walzen auf und zahlt auf allen 10
+  Linien, auch wenn die Walzen nicht nebeneinander liegen. 3+ Buecher im
+  Bonus = +10 Freispiele.
+- **Kein Bonus-Kauf** (Max). `play({ buy: true })` gibt es nur fuer die
+  Simulation.
+- **Bonus-Tease:** liegen zwei Buecher, laufen die restlichen Walzen weiter
+  und halten einzeln an, jede kriecht die letzten 5 Felder langsam durch und
+  leuchtet, dazu steigender Spannungston und pulsierender Rahmen. Das 3./4./5.
+  Buch kommt mit Donner, Blech, Blitz und Wackeln (`borSpinReels`).
+- **Risikospiel (Gamble):** nach jedem Gewinn Rot oder Schwarz, bis zu 5 Mal
+  verdoppeln, fair 50/50. Der Gewinn liegt schon auf dem Konto, der Server
+  merkt sich den offenen Betrag (`c.borGamble`) und prueft, dass die Coins
+  noch da sind; ein neuer Spin oder Verlassen sammelt ein. Wird in der
+  Statistik als Einsatz/Gewinn von `bookofrah` gebucht, aber nicht als
+  eigene Runde (`accounts.game(..., { play: false })`).
+- **Rueckzahlung ~96 %** (Simulation 26.09.2026, je 2–3 Mio Runden:
+  Basisspiel ~63 %, Bonus ~32–34 %, Bonus jede ~185. Runde, Ø ~59× samt
+  Retriggern, Spitzen ueber 5000×). Hoechstens **50.000 ×** Einsatz je Runde.
+  Nachrechnen: `node bookofrah.js [runden]`.
+- Angebunden wie Starlight: Bestenliste (Best multi, Biggest win), Statistik
+  je Spiel, Hall-of-Fame-Auswahl, „In game"-Anzeige, Admin-Luck (Mindest-Multi,
+  optional mit Bonus, Neuwurf wie Starlight), Casino-Modussperre,
+  Gold-Zeile im Feed ab 100×, Achievement „Tomb raider" (1.000×).
+  Nebenbei: `spin2` (Starlight) war bisher nicht von der Casino-Sperre
+  erfasst, jetzt schon.
 
 ## Budget Starlight (Tumble-Slot, frueher „Sweet Kek")
 

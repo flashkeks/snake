@@ -5771,6 +5771,469 @@ span.tier-common, span.tier-uncommon, span.tier-rare, span.tier-epic, span.tier-
     .s2g, .s2g * { animation: none !important; }
 }
 
+/* ---------- Book of Rah (Linien-Slot, 5 × 3, 10 Linien) ----------
+   Zellgroesse (--c) rechnet borFit() aus, wie bei Starlight. */
+
+#bookofrah-btn .ico {
+    filter: drop-shadow(0 0 6px rgba(232, 176, 74, .7));
+}
+
+#bookofrah .card {
+    --c: 84px;
+    width: auto;
+    min-width: min(360px, 100%);
+    border-color: #e8b04a;
+    box-shadow: 0 0 50px rgba(232, 176, 74, .3);
+    background: linear-gradient(180deg, #1c1408, #0b0a14 60%);
+    padding: 10px 12px 12px;
+    gap: 8px;
+    position: relative;
+}
+
+.bor-title {
+    font-size: 20px;
+    font-weight: 900;
+    margin-right: auto;
+    white-space: nowrap;
+    font-family: Georgia, 'Times New Roman', serif;
+    letter-spacing: .04em;
+    background: linear-gradient(90deg, #fff2a8, #e8b04a, #ffe98a, #b87a1a, #fff2a8);
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: goldShine 5s linear infinite;
+}
+
+.bor-maxwin {
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .06em;
+    padding: 2px 8px;
+    border-radius: 999px;
+    color: #2a1a02;
+    background: linear-gradient(90deg, #ffe98a, #e8b04a);
+    white-space: nowrap;
+}
+
+#bookofrah .s2-head .coins {
+    font-weight: 900;
+    color: #ffd23f;
+    white-space: nowrap;
+}
+
+#bookofrah .s2-hud { grid-template-columns: repeat(3, 1fr); }
+#bookofrah .s2-hud.bonus { grid-template-columns: repeat(4, 1fr); }
+#bookofrah .s2-stat { background: rgba(232, 176, 74, .06); border-color: rgba(232, 176, 74, .25); }
+.bor-special b { font-size: 20px; line-height: 1; height: 24px; display: flex; justify-content: center; }
+.bor-special .bor-sym { height: 24px; font-size: 20px; }
+.bor-special .bor-sym.l span { font-size: 22px; }
+.bor-special .bor-sym svg { width: 24px; height: 24px; }
+
+/* Rahmen um die Walzen: Sandstein und Gold */
+.bor-stage {
+    position: relative;
+    align-self: center;
+    padding: 8px;
+    border-radius: 12px;
+    background:
+        repeating-linear-gradient(90deg, rgba(0,0,0,.12) 0 2px, transparent 2px 22px),
+        linear-gradient(180deg, #6b4a1c, #3a260c);
+    border: 3px solid #d6a441;
+    box-shadow: inset 0 0 18px rgba(0,0,0,.8), 0 0 22px rgba(232, 176, 74, .25);
+}
+
+.bor-stage.free {
+    border-color: #ffe98a;
+    box-shadow: inset 0 0 18px rgba(0,0,0,.8), 0 0 34px rgba(255, 210, 63, .55);
+}
+
+.bor-reels {
+    display: grid;
+    grid-template-columns: repeat(5, var(--c));
+    gap: 4px;
+}
+
+.bor-reel {
+    position: relative;
+    height: calc(var(--c) * 3);
+    overflow: hidden;
+    border-radius: 6px;
+    background: radial-gradient(ellipse at 50% 40%, #22346e, #0b1230 80%);
+    box-shadow: inset 0 0 10px rgba(0,0,0,.7);
+}
+
+.bor-reel.tease {
+    box-shadow: inset 0 0 10px rgba(0,0,0,.7), 0 0 0 2px #ffd23f, 0 0 22px #ffd23f;
+    animation: borTease .35s ease-in-out infinite alternate;
+}
+
+.bor-strip {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    will-change: transform;
+}
+
+.bor-sym {
+    position: relative;
+    height: var(--c);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(var(--c) * .6);
+    line-height: 1;
+    transition: opacity .25s;
+}
+
+.bor-sym > * { pointer-events: none; }
+
+/* Kartenwerte: dicke Serifen, je Buchstabe eine Farbe, Goldrand */
+.bor-sym.l span {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-weight: 900;
+    font-size: calc(var(--c) * .62);
+    letter-spacing: -.04em;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0 1px #fff3b0) drop-shadow(0 2px 0 #3a2208) drop-shadow(0 0 6px rgba(0,0,0,.6));
+}
+
+.bor-sym.l-A span { background-image: linear-gradient(180deg, #ff9a8a, #e0281e 55%, #8a0c0c); }
+.bor-sym.l-K span { background-image: linear-gradient(180deg, #a8d8ff, #2f7fe0 55%, #123f8a); }
+.bor-sym.l-Q span { background-image: linear-gradient(180deg, #e8c2ff, #9b4ae0 55%, #521a8a); }
+.bor-sym.l-J span { background-image: linear-gradient(180deg, #b8ffb0, #2fbf46 55%, #0f6a22); }
+.bor-sym.l-T span { background-image: linear-gradient(180deg, #ffe0a0, #ff9a1a 55%, #a85300); font-size: calc(var(--c) * .5); }
+
+.bor-sym.pic > i {
+    font-style: normal;
+    filter: drop-shadow(0 3px 3px rgba(0,0,0,.6));
+}
+
+.bor-sym svg { width: 82%; height: 82%; filter: drop-shadow(0 3px 4px rgba(0,0,0,.6)); }
+
+.bor-sym.win {
+    z-index: 2;
+    animation: borWin .5s ease-in-out infinite alternate;
+}
+
+.bor-sym.win::after {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border-radius: 8px;
+    border: 3px solid var(--lc, #ffd23f);
+    box-shadow: 0 0 12px var(--lc, #ffd23f), inset 0 0 10px var(--lc, #ffd23f);
+}
+
+.bor-sym.dim { opacity: .35; }
+
+/* Gewinnlinien */
+.bor-lines {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 3;
+    overflow: visible;
+}
+
+.bor-lines path {
+    fill: none;
+    stroke-width: 5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 0 4px rgba(0,0,0,.9));
+    stroke-dasharray: 2000;
+    stroke-dashoffset: 2000;
+    animation: borDraw .45s ease-out forwards;
+}
+
+.bor-lines text {
+    font: 900 14px sans-serif;
+    paint-order: stroke;
+    stroke: #000;
+    stroke-width: 4px;
+}
+
+/* Aufklappendes Spezialsymbol */
+.bor-exp {
+    position: absolute;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    border-radius: 6px;
+    background: linear-gradient(180deg, rgba(255, 233, 138, .3), rgba(232, 176, 74, .45)), radial-gradient(ellipse at 50% 40%, #3a4a8e, #121a44 80%);
+    box-shadow: 0 0 0 3px #ffe98a, 0 0 26px #ffd23f;
+    pointer-events: none;
+}
+
+/* Einblendungen ueber den Walzen */
+.bor-banner {
+    position: absolute;
+    inset: 0;
+    z-index: 7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: calc(var(--c) * .5);
+    font-weight: 900;
+    color: #ffe98a;
+    text-shadow: 0 0 20px #e8b04a, 0 2px 4px #000;
+    background: rgba(20, 12, 0, .72);
+    border-radius: 12px;
+    pointer-events: none;
+    animation: pop .5s ease-out;
+}
+
+.bor-banner small {
+    font-family: system-ui, sans-serif;
+    font-size: calc(var(--c) * .22);
+    color: #fff;
+    margin-top: 6px;
+}
+
+/* Bonus-Start: das Buch klappt auf und waehlt das Spezialsymbol */
+.bor-intro {
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 12px;
+    background: radial-gradient(ellipse at center, rgba(90, 60, 10, .85), rgba(10, 6, 0, .95));
+    perspective: 900px;
+    animation: pop .4s ease-out;
+}
+
+.bor-intro h4 {
+    margin: 0;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: calc(var(--c) * .42);
+    color: #ffe98a;
+    text-shadow: 0 0 16px #e8b04a, 0 2px 3px #000;
+}
+
+.bor-intro p {
+    margin: 0;
+    font-size: calc(var(--c) * .2);
+    color: #fff;
+    opacity: .9;
+}
+
+.bor-open {
+    position: relative;
+    width: calc(var(--c) * 3.2);
+    height: calc(var(--c) * 2);
+    display: flex;
+    transform-style: preserve-3d;
+}
+
+.bor-page {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(90deg, #e9d6a4, #f7ecd0 40%, #e3cc93);
+    border: 2px solid #8a5a12;
+    box-shadow: inset 0 0 14px rgba(120, 80, 10, .5);
+}
+
+.bor-page.l { border-radius: 8px 2px 2px 8px; background: linear-gradient(90deg, #e3cc93, #f7ecd0 60%, #d9bd7c); }
+.bor-page.r { border-radius: 2px 8px 8px 2px; }
+.bor-page.l svg { width: 70%; height: 70%; opacity: .75; }
+
+.bor-page.r .bor-sym { height: auto; }
+.bor-page.r .bor-sym.hit { animation: borHit .6s ease-out; }
+
+.bor-cover {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: calc(50% + 4px);
+    height: calc(100% + 8px);
+    transform-origin: left center;
+    border-radius: 2px 10px 10px 2px;
+    background: linear-gradient(135deg, #b0231a, #6a0f0a);
+    border: 3px solid #e8b04a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backface-visibility: hidden;
+    animation: borCover 1s .35s ease-in-out forwards;
+}
+
+.bor-cover svg { width: 70%; height: 70%; }
+
+/* Risikospiel */
+.bor-gamble {
+    position: absolute;
+    inset: 0;
+    z-index: 9;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 12px;
+    background: rgba(8, 6, 16, .94);
+    perspective: 700px;
+}
+
+.bor-gamble[hidden] { display: none; }
+
+.bor-gamble .bg-amt {
+    font-size: 15px;
+    font-weight: 800;
+    text-align: center;
+}
+
+.bor-gamble .bg-amt b { color: #ffd23f; font-size: 20px; }
+
+.bor-cardx {
+    width: calc(var(--c) * 1.05);
+    height: calc(var(--c) * 1.5);
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform .45s ease-out;
+}
+
+.bor-cardx.flip { transform: rotateY(180deg); }
+
+.bor-cardx > div {
+    position: absolute;
+    inset: 0;
+    border-radius: 10px;
+    backface-visibility: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 18px rgba(0,0,0,.6);
+}
+
+.bor-cardx .back {
+    background: repeating-linear-gradient(45deg, #1e3a8a 0 8px, #172c6a 8px 16px);
+    border: 4px solid #e8b04a;
+    animation: borBlink .5s ease-in-out infinite alternate;
+}
+
+.bor-cardx .back::after { content: '📖'; font-size: calc(var(--c) * .5); }
+
+.bor-cardx .front {
+    background: #fffdf5;
+    border: 2px solid #ccc;
+    transform: rotateY(180deg);
+    font-size: calc(var(--c) * .9);
+}
+
+.bor-cardx .front.red { color: #d0101a; }
+.bor-cardx .front.black { color: #111; }
+
+.bor-gbtns {
+    display: flex;
+    gap: 8px;
+}
+
+.bor-gbtns button {
+    min-width: 92px;
+    height: 40px;
+    font-weight: 900;
+}
+
+.bor-gbtns .red { background: #c81e28; border-color: #ff6b6b; color: #fff; }
+.bor-gbtns .black { background: #16161c; border-color: #888; color: #fff; }
+
+.bor-ghist {
+    display: flex;
+    gap: 4px;
+    min-height: 22px;
+    font-size: 18px;
+}
+
+.bor-ghist .red { color: #ff4b55; }
+.bor-ghist .black { color: #ddd; }
+
+#bor-spin {
+    min-width: 120px;
+    height: 42px;
+    font-size: 19px;
+}
+
+#bor-gam {
+    height: 42px;
+    font-size: 14px;
+}
+
+#bor-gam:not(:disabled) {
+    border-color: #e8b04a;
+    color: #ffd23f;
+    animation: borBlink .6s ease-in-out infinite alternate;
+}
+
+/* Gewinntabelle */
+.bor-pay {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    display: grid;
+    grid-template-columns: repeat(5, auto);
+    align-content: center;
+    justify-content: center;
+    gap: 2px 14px;
+    padding: 10px;
+    font-size: 13px;
+    border-radius: 12px;
+    background: rgba(14, 10, 2, .96);
+    border: 2px solid #e8b04a;
+    overflow: auto;
+}
+
+.bor-pay.hidden { display: none; }
+.bor-pay .bor-sym { height: 28px; font-size: 22px; }
+.bor-pay .bor-sym.l span { font-size: 22px; }
+.bor-pay .bor-sym svg { width: 26px; height: 26px; }
+.bor-pay > span { align-self: center; text-align: right; font-variant-numeric: tabular-nums; }
+.bor-pay p { grid-column: 1 / -1; margin: 6px 0 0; font-size: 12px; opacity: .85; text-align: center; }
+
+/* Bonus-Tease: Rahmen pulsiert, beim dritten Buch Blitz und Wackeln */
+.bor-stage.bait {
+    animation: borBait .45s ease-in-out infinite alternate;
+}
+
+.bor-stage.boom {
+    animation: borBoom .7s ease-out;
+}
+
+.bor-stage.boom::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 10px;
+    pointer-events: none;
+    z-index: 6;
+    background: radial-gradient(ellipse at center, rgba(255, 245, 200, .9), rgba(255, 210, 63, .3) 50%, transparent 75%);
+    animation: borFlash .7s ease-out forwards;
+}
+
+@keyframes borBait { from { box-shadow: inset 0 0 18px rgba(0,0,0,.8), 0 0 18px rgba(255, 210, 63, .4); } to { box-shadow: inset 0 0 18px rgba(0,0,0,.8), 0 0 46px rgba(255, 210, 63, .95); } }
+@keyframes borBoom { 0%, 100% { transform: none; } 15% { transform: translate(-6px, 3px); } 30% { transform: translate(5px, -4px); } 45% { transform: translate(-4px, -2px); } 60% { transform: translate(3px, 3px); } 80% { transform: translate(-1px, 1px); } }
+@keyframes borFlash { from { opacity: 1; } to { opacity: 0; } }
+@keyframes borWin { from { transform: scale(1); } to { transform: scale(1.08); } }
+@keyframes borTease { from { filter: brightness(1); } to { filter: brightness(1.35); } }
+@keyframes borDraw { to { stroke-dashoffset: 0; } }
+@keyframes borCover { to { transform: rotateY(-180deg); } }
+@keyframes borHit { 0% { transform: scale(2.2); filter: brightness(2.5); } 100% { transform: scale(1); filter: none; } }
+@keyframes borBlink { from { filter: brightness(1); } to { filter: brightness(1.3); } }
+
 /* ---------- Budget Starlight: Max-Win-Hinweis ---------- */
 
 .s2-maxwin {
@@ -6776,6 +7239,7 @@ body.watch-mode #world-switch {
                     <div class="cs-grid" data-pane="slots" hidden>
                         <button type="button" class="cs-tile" id="slots-btn"><span class="ico">🎰</span><b>Slots</b><small>Classic three reels</small></button>
                         <button type="button" class="cs-tile" id="slots2-btn"><span class="ico">🌟</span><b>Budget Starlight</b><small>Tumbles · multipliers · free spins</small></button>
+                        <button type="button" class="cs-tile" id="bookofrah-btn"><span class="ico">📖</span><b>Book of Rah</b><small>10 lines · expanding symbol · gamble</small></button>
                         <button type="button" class="cs-tile" id="cross-btn"><span class="ico">🐔</span><b>Crossy Road</b><small>Cross lanes, cash out in time</small></button>
                         <button type="button" class="cs-tile" id="plinko-btn"><span class="ico">🔻</span><b>Plinko</b><small>Drop balls, up to ×1000</small></button>
                     </div>
@@ -7054,6 +7518,53 @@ body.watch-mode #world-switch {
                 </div>
             </div>
 
+            <!-- Book of Rah: Linien-Slot 5 × 3 -->
+            <div id="bookofrah" class="overlay hidden">
+                <div class="card">
+                    <div class="s2-head">
+                        <div class="bor-title">📖 Book of Rah</div>
+                        <span class="bor-maxwin" id="bor-maxwin">MAX WIN 50,000×</span>
+                        <span class="coins">🪙 <span id="bor-coins">0</span></span>
+                        <button type="button" class="s2-icon" id="bor-sound" title="Sound on/off">🔊</button>
+                        <button type="button" class="s2-icon" id="bor-info" title="Paytable">ℹ️</button>
+                        <button type="button" class="s2-icon" id="bor-back" title="Back to menu">✕</button>
+                    </div>
+                    <div class="s2-hud" id="bor-hud">
+                        <div class="s2-stat free hide" id="bor-st-free"><small>FREE SPINS</small><b id="bor-free">0</b></div>
+                        <div class="s2-stat" id="bor-st-bet"><small>BET</small><b id="bor-betshow">10</b></div>
+                        <div class="s2-stat bor-special hide" id="bor-st-special"><small>SPECIAL</small><b id="bor-special"></b></div>
+                        <div class="s2-stat win" id="bor-st-spin"><small id="bor-spinlabel">WIN</small><b id="bor-spinwin">0</b></div>
+                        <div class="s2-stat win hide" id="bor-st-total"><small>BONUS WIN</small><b id="bor-total">0</b></div>
+                    </div>
+                    <div class="bor-stage" id="bor-stage">
+                        <div class="bor-reels" id="bor-reels"></div>
+                        <svg class="bor-lines" id="bor-lines"></svg>
+                        <div class="bor-pay hidden" id="bor-pay"></div>
+                        <div class="bor-gamble" id="bor-gamble" hidden>
+                            <div class="bg-amt" id="bor-gamt"></div>
+                            <div class="bor-cardx" id="bor-gcard"><div class="back"></div><div class="front" id="bor-gface"></div></div>
+                            <div class="bor-ghist" id="bor-ghist"></div>
+                            <div class="bor-gbtns">
+                                <button type="button" class="red" id="bor-gred">RED</button>
+                                <button type="button" class="black" id="bor-gblack">BLACK</button>
+                            </div>
+                            <button type="button" class="gold" id="bor-gcollect">COLLECT</button>
+                        </div>
+                    </div>
+                    <div class="s2-log" id="bor-log">10 lines · 📖 is wild and scatter · 3+ 📖 = 10 free spins · Space = spin</div>
+                    <div class="s2-bar">
+                        <div class="s2-bet">
+                            <small>BET</small>
+                            <button type="button" class="ghost" id="bor-minus">−</button>
+                            <input id="bor-custom" type="number" min="1" step="1" value="10" title="Type any amount">
+                            <button type="button" class="ghost" id="bor-plus">+</button>
+                        </div>
+                        <button type="button" class="gold" id="bor-spin">SPIN</button>
+                        <button type="button" class="ghost" id="bor-gam" disabled>Gamble</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Konto -->
             <div id="konto" class="overlay hidden">
                 <div class="card">
@@ -7174,6 +7685,7 @@ body.watch-mode #world-switch {
                 </select>
                 <select id="hall-game" title="Game" hidden>
                     <option value="starlight">🌟 Starlight</option>
+                    <option value="bookofrah">📖 Book of Rah</option>
                     <option value="slots">🎰 Slots</option>
                     <option value="plinko">🔻 Plinko</option>
                     <option value="crossy">🐔 Crossy</option>
@@ -7502,6 +8014,7 @@ ws.onmessage = event => {
             slotInfo = data.slots;
             buildSlots();
             buildSlots2(data.slots2);
+            if (data.bookofrah) buildBor(data.bookofrah);
             buildCasino(data);
             break;
         case 'auth':
@@ -7583,6 +8096,9 @@ ws.onmessage = event => {
         case 'spinError': slotError(data.error); break;
         case 'spin2': s2Run(data); break;
         case 'spin2Error': s2Error(data.error); break;
+        case 'borSpin': borRun(data); break;
+        case 'borError': borError(data.error); break;
+        case 'borGamble': onBorGamble(data); break;
         case 'event': onEvent(data); break;
         case 'mg': onMgFrame(data); break;
         case 'sh': onSh(data); break;
@@ -7800,7 +8316,7 @@ let curScreen = 'menu';
 function showScreen(name) {
     curScreen = name;
     whereReport(name);
-    ['menu', 'casino', 'daily', 'cross', 'plinko', 'pokerlobby', 'shooter', 'arenahub', 'kekemon', 'market', 'shop', 'support', 'slots', 'slots2', 'konto', 'event', 'offer'].forEach(s => $(s).classList.toggle('hidden', s !== name));
+    ['menu', 'casino', 'daily', 'cross', 'plinko', 'pokerlobby', 'shooter', 'arenahub', 'kekemon', 'market', 'shop', 'support', 'slots', 'slots2', 'bookofrah', 'konto', 'event', 'offer'].forEach(s => $(s).classList.toggle('hidden', s !== name));
 }
 
 function backToMenu(resultHtml) {
@@ -7834,6 +8350,8 @@ function setMe(user) {
     $('slots-btn').title = me ? '' : 'Accounts only';
     $('slots2-btn').disabled = !me;
     $('slots2-btn').title = me ? '' : 'Accounts only';
+    $('bookofrah-btn').disabled = !me;
+    $('bookofrah-btn').title = me ? '' : 'Accounts only';
     if (me) {
         $('me-name').textContent = me.name;
         $('me-coins').textContent = me.coins;
@@ -7957,7 +8475,7 @@ $('del-form').addEventListener('submit', e => {
 
 // Konto-Seite: Ueberblick plus Tabelle je Spiel (#5)
 const GAME_LABELS = {
-    slots: '🎰 Slots', starlight: '🌟 Budget Starlight', crossy: '🐔 Crossy Road', plinko: '🔻 Plinko',
+    slots: '🎰 Slots', starlight: '🌟 Budget Starlight', bookofrah: '📖 Book of Rah', crossy: '🐔 Crossy Road', plinko: '🔻 Plinko',
     daily: '🎁 Daily Wheel', blackjack: '🃏 Blackjack', roulette: '🎡 Roulette', poker: '♠️ Poker', don: '🪙 Double or Nothing', arena: '🔫 Arena (stakes)'
 };
 
@@ -8002,7 +8520,7 @@ let spaceDown = false;
 // ESC fuehrt immer eine Ebene zurueck (Wunsch Max): je Screen der eigene
 // Zurueck-Knopf. Im Raid schliesst ESC nur das Inventar – Verlassen waere Tod.
 const ESC_BACK = { casino: 'casino-back', arenahub: 'hub-back', shop: 'shop-back', pokerlobby: 'pkl-back', daily: 'dw-back',
-    cross: 'cr-back', plinko: 'pl-back', slots: 'slots-back', slots2: 's2-back', konto: 'konto-back', support: 'sp-close' };
+    cross: 'cr-back', plinko: 'pl-back', slots: 'slots-back', slots2: 's2-back', bookofrah: 'bor-back', konto: 'konto-back', support: 'sp-close' };
 document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     const el = document.activeElement;
@@ -8050,6 +8568,12 @@ document.addEventListener('keydown', e => {
     if (e.code === 'Space' && !joined) {
         const s2 = !$('slots2').classList.contains('hidden');
         const s1 = !$('slots').classList.contains('hidden');
+        if (!$('bookofrah').classList.contains('hidden')) {
+            e.preventDefault();
+            if (document.activeElement && document.activeElement.tagName === 'BUTTON') document.activeElement.blur();
+            if (!e.repeat && $('bor-gamble').hidden) borStart();
+            return;
+        }
         if (!$('plinko').classList.contains('hidden')) {
             e.preventDefault();
             if (document.activeElement && document.activeElement.tagName === 'BUTTON') document.activeElement.blur();
@@ -10848,6 +11372,550 @@ const sfx = {
             [NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6].forEach((f, i) => sBell(f, i * .1, .1, 1.2));
         }
     }
+};
+
+// ---------- Book of Rah: Linien-Slot 5 × 3 ----------
+// Der Server wuerfelt die ganze Runde (inkl. Freispiele) und schickt alle
+// Raster; hier laufen nur Walzen, Linien, Buch und Risikospiel ab.
+// Zeitsteuerung ueber s2Sleep/s2Count (laufen mit s2Speed = 1).
+
+let borInfo = null;
+let borBet = 10;
+let borBusy = false;
+let borGam = null;          // offenes Risikospiel { amount, left }
+let borGamWait = false;
+
+const BOR_LINE_COL = ['#ffd23f', '#ff4b55', '#4bd0ff', '#7dff6b', '#ff8a1a', '#d67dff', '#ff5bd6', '#35ffd0', '#fff', '#9a8cff'];
+const BOR_BOOK_SVG = `<svg viewBox="0 0 64 64"><path d="M10,8 L50,6 Q56,6 56,12 L56,54 Q56,58 50,58 L12,60 Q8,60 8,56 L8,12 Q8,8 10,8 Z" fill="#8a1a10" stroke="#e8b04a" stroke-width="3"/><path d="M48,8 L48,58" stroke="#f7ecd0" stroke-width="5"/><path d="M14,14 L44,13 L44,52 L14,53 Z" fill="none" stroke="#e8b04a" stroke-width="2"/><path d="M18,32 Q29,22 40,32 Q29,40 18,32 Z" fill="#fff2a8" stroke="#e8b04a" stroke-width="2"/><circle cx="29" cy="31.5" r="4" fill="#1e3a8a"/><path d="M26,36 L24,44 M33,36 Q36,42 32,46" fill="none" stroke="#e8b04a" stroke-width="2.4" stroke-linecap="round"/><path d="M29,17 l1.5,3 3,.3 -2.3,2 .7,3 -2.9,-1.6 -2.9,1.6 .7,-3 -2.3,-2 3,-.3 Z" fill="#ffd23f"/></svg>`;
+
+const BOR_EYE_SVG = `<svg viewBox="0 0 64 64" fill="none" stroke="#8a5a12" stroke-width="3" stroke-linecap="round"><path d="M8,26 Q30,8 54,24 Q30,38 8,26 Z"/><circle cx="31" cy="24" r="6" fill="#8a5a12"/><path d="M26,32 L22,48 M36,32 Q42,42 36,48 Q32,50 32,46 M50,22 L58,20"/><path d="M32,52 L32,62 M26,56 L38,56" stroke-width="2.5"/></svg>`;
+const borSyms = () => borInfo ? Object.keys(borInfo.symbols) : ['E', 'H', 'U', 'S', 'A', 'K', 'Q', 'J', 'T'];
+const borIcon = id => id === 'B' ? '📖' : borInfo.symbols[id].icon;
+
+function borCell(id, cls) {
+    if (id === 'B') return `<div class="bor-sym book ${cls || ''}" data-s="B">${BOR_BOOK_SVG}</div>`;
+    const s = borInfo.symbols[id];
+    if (/^[AKQJT]$/.test(id)) return `<div class="bor-sym l l-${id} ${cls || ''}" data-s="${id}"><span>${s.icon}</span></div>`;
+    return `<div class="bor-sym pic ${cls || ''}" data-s="${id}"><i>${s.icon}</i></div>`;
+}
+
+function borRand() {
+    const ids = borSyms();
+    return ids[Math.floor(Math.random() * ids.length)];
+}
+
+const borReels = () => $('bor-reels').querySelectorAll('.bor-reel');
+
+// Raster fest hinstellen (grid[c][r])
+function borRender(grid) {
+    $('bor-reels').innerHTML = grid.map(col => `<div class="bor-reel"><div class="bor-strip">${col.map(s => borCell(s)).join('')}</div></div>`).join('');
+}
+
+// Zellgroesse so, dass alles ohne Scrollen passt
+function borFit() {
+    const ov = $('bookofrah');
+    if (ov.classList.contains('hidden')) return;
+    const card = ov.querySelector('.card');
+    const stage = $('bor-stage');
+    const cur = parseFloat(card.style.getPropertyValue('--c')) || 84;
+    const restH = card.offsetHeight - stage.offsetHeight;
+    const cellH = (ov.clientHeight - 32 - 4 - restH - 22) / 3;
+    const cellW = (ov.clientWidth - 32 - 28 - 22 - 16) / 5;
+    const c = Math.floor(Math.max(44, Math.min(120, cellH, cellW)));
+    if (c !== cur) card.style.setProperty('--c', c + 'px');
+}
+window.addEventListener('resize', borFit);
+
+function buildBor(info) {
+    borInfo = info;
+    const S = info.symbols;
+    const row = (id, pays) => borCell(id) + [2, 3, 4, 5].map(n => `<span>${pays[n] ? n + ': ' + s2Fmt(pays[n] / 10) + '×' : ''}</span>`).join('');
+    $('bor-pay').innerHTML = '<span></span><b>2</b><b>3</b><b>4</b><b>5</b>'.replace(/<b>/g, '<b style="text-align:right">') +
+        Object.keys(S).map(id => row(id, S[id].pay)).join('') +
+        borCell('B') + [2, 3, 4, 5].map(n => `<span>${info.bookPays[n] ? n + ': ' + info.bookPays[n] + '×' : ''}</span>`).join('') +
+        `<p>Pays × total bet on 10 fixed lines, left to right. 📖 is wild on the lines and pays anywhere as scatter.<br>` +
+        `3+ 📖 = ${info.freeSpins} free spins with a random special symbol. In free spins it expands over the whole reel when it lands on enough reels and pays on all 10 lines, even on reels that are not next to each other. 3+ 📖 in free spins = +${info.freeSpins}.<br>` +
+        `Gamble: after a win, guess red or black to double it (up to 5 times, fair 50/50).<br>` +
+        `<b>Max win ${info.maxWin.toLocaleString('en-US')}×</b> · <b>RTP ${info.rtp} %</b>. Tap to close.</p>`;
+    $('bor-maxwin').textContent = `MAX WIN ${info.maxWin.toLocaleString('en-US')}×`;
+    borRender(Array.from({ length: 5 }, () => Array.from({ length: 3 }, borRand)));
+    borRefresh();
+}
+
+function borSetBet(v) {
+    borBet = Math.max(1, Math.floor(v) || 1);
+    $('bor-custom').value = borBet;
+    borRefresh();
+}
+
+function borRefresh() {
+    if (!borBusy) {
+        $('bor-betshow').textContent = s2Fmt(borBet);
+        if (me) $('bor-coins').textContent = s2Fmt(me.coins);
+    }
+    $('bor-gam').disabled = borBusy || !borGam;
+    $('bor-gam').textContent = borGam && !borBusy ? `Gamble ${s2Fmt(borGam.amount)}` : 'Gamble';
+}
+
+function borHudMode(bonus) {
+    $('bor-hud').classList.toggle('bonus', bonus);
+    $('bor-stage').classList.toggle('free', bonus);
+    ['bor-st-free', 'bor-st-special', 'bor-st-total'].forEach(id => $(id).classList.toggle('hide', !bonus));
+    $('bor-st-bet').classList.toggle('hide', bonus);
+    $('bor-spinlabel').textContent = bonus ? 'SPIN WIN' : 'WIN';
+}
+
+function borBanner(html, ms) {
+    const b = document.createElement('div');
+    b.className = 'bor-banner';
+    b.innerHTML = html;
+    $('bor-stage').appendChild(b);
+    return s2Sleep(ms).then(() => b.remove());
+}
+
+function borClear() {
+    $('bor-lines').innerHTML = '';
+    $('bor-stage').querySelectorAll('.bor-exp').forEach(e => e.remove());
+    $('bor-reels').querySelectorAll('.bor-sym').forEach(e => { e.classList.remove('win', 'dim'); e.style.removeProperty('--lc'); });
+}
+
+// Walzen drehen: je Walze ein Streifen [Ziel 3 | Zufall | bisherige 3], der
+// nach unten laeuft und oben auf dem Ziel stehen bleibt.
+// Bonus-Tease (Wunsch Max): liegen nach einer Walze zwei Buecher, laufen die
+// restlichen Walzen weiter und halten nacheinander an – jede kriecht die
+// letzten Felder langsam durch, leuchtet, dazu ein steigender Spannungston.
+// Das dritte (vierte, fuenfte) Buch kommt mit Donner, Blitz und Wackeln.
+const BOR_TEASE_MS = 1900;      // so lang braucht eine Tease-Walze nach der vorigen
+const BOR_CRAWL = 5;            // so viele Felder kriecht sie am Ende
+
+function borTeaseSound(ms, k) {
+    const d = ms / 1000;
+    sTone(90 + k * 20, { dur: d, type: 'sawtooth', vol: .05, slide: 260 + k * 60, rev: .3, a: .3 });
+    sNoise({ dur: d, vol: .06, f: 300, f2: 3500, q: 5, rev: .3, a: .5 });
+    for (let i = 0; i < 8; i++) sTone(55, { t: i * d / 8, dur: .12, vol: .22 + i * .02, slide: 40, rev: 0 });
+}
+
+function borBookSound(k) {
+    if (k < 3) return sfx.scatter(k);
+    sfx.orbEpic();
+    [NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6, NOTE.E6 || NOTE.C6 * 1.26].slice(0, k).forEach((f, i) => sBrass(f, .05 + i * .08, .9, .05));
+}
+
+async function borSpinReels(grid) {
+    borClear();
+    const reels = borReels();
+    const c = reels[0].offsetHeight / 3;
+    sfx.spin();
+    // Haltezeiten vorab: normal gestaffelt, ab zwei Buechern je Walze ein Tease
+    const stops = [];
+    let books = 0;
+    let t = 0;
+    for (let i = 0; i < 5; i++) {
+        const tease = books >= 2;
+        t = tease ? t + BOR_TEASE_MS : 650 + i * 230;
+        stops.push({ at: t, tease });
+        books += grid[i].filter(s => s === 'B').length;
+    }
+    books = 0;
+    const lands = [];
+    for (let i = 0; i < 5; i++) {
+        const reel = reels[i];
+        const { at, tease } = stops[i];
+        const old = [...reel.querySelectorAll('.bor-sym')].slice(0, 3).map(e => e.dataset.s);
+        const n = Math.round(at / 45);
+        const mid = Array.from({ length: n }, borRand);
+        const strip = reel.querySelector('.bor-strip');
+        strip.innerHTML = [...grid[i], ...mid, ...old].map(s => borCell(s)).join('');
+        const dist = (n + 3) * c;
+        const frames = tease ? [
+            { transform: `translateY(${-dist}px)`, filter: 'blur(2px)', easing: 'linear' },
+            { transform: `translateY(${-BOR_CRAWL * c}px)`, filter: 'blur(2px)', offset: 1 - 1600 / at, easing: 'cubic-bezier(.2,.55,.35,1)' },
+            { transform: 'translateY(8px)', filter: 'blur(0)', offset: .97 },
+            { transform: 'translateY(0)' }
+        ] : [
+            { transform: `translateY(${-dist}px)`, filter: 'blur(0)' },
+            { transform: `translateY(${-dist * .5}px)`, filter: 'blur(2px)', offset: .45 },
+            { transform: 'translateY(6px)', filter: 'blur(0)', offset: .93 },
+            { transform: 'translateY(0)' }
+        ];
+        const anim = strip.animate(frames, { duration: at / s2Speed, easing: tease ? 'linear' : 'cubic-bezier(.3,.1,.4,1)' });
+        // Tease: Walze leuchtet erst, wenn die vorige steht
+        if (tease) {
+            const from = stops[i - 1].at;
+            setTimeout(() => {
+                reel.classList.add('tease');
+                $('bor-stage').classList.add('bait');
+                borTeaseSound(at - from, i);
+            }, from / s2Speed);
+        }
+        const nb = grid[i].filter(s => s === 'B').length;
+        lands.push(anim.finished.then(() => {
+            reel.classList.remove('tease');
+            strip.innerHTML = grid[i].map(s => borCell(s)).join('');
+            sfx.land(i);
+            if (nb) {
+                books += nb;
+                borBookSound(books);
+                const el = strip.querySelector('.book');
+                if (el) el.animate([{ transform: 'scale(1.6)', filter: 'brightness(2.5)' }, { transform: 'scale(1)', filter: 'none' }], { duration: 500, easing: 'ease-out' });
+                if (books >= 3) {
+                    const st = $('bor-stage');
+                    st.classList.remove('boom');
+                    void st.offsetWidth;
+                    st.classList.add('boom');
+                }
+            }
+            if (i === 4 || stops[i + 1] && !stops[i + 1].tease) $('bor-stage').classList.remove('bait');
+        }));
+    }
+    await Promise.all(lands);
+    $('bor-stage').classList.remove('bait');
+}
+
+// Mitte einer Zelle in Koordinaten der Linien-Ebene
+function borPos(c, r) {
+    const box = $('bor-stage').getBoundingClientRect();
+    const cell = borReels()[c].querySelectorAll('.bor-sym')[r].getBoundingClientRect();
+    return [cell.left - box.left + cell.width / 2, cell.top - box.top + cell.height / 2];
+}
+
+function borDrawLine(li, n, label) {
+    const svg = $('bor-lines');
+    const line = borInfo.lines[li];
+    const pts = line.map((r, c) => borPos(c, r));
+    const box = $('bor-stage').getBoundingClientRect();
+    const d = `M4,${pts[0][1]} ` + pts.map(p => `L${p[0]},${p[1]}`).join(' ') + ` L${box.width - 4},${pts[4][1]}`;
+    const col = BOR_LINE_COL[li];
+    svg.insertAdjacentHTML('beforeend', `<path d="${d}" stroke="${col}"/>` +
+        (label ? `<text x="${pts[Math.max(0, n - 1)][0]}" y="${pts[Math.max(0, n - 1)][1] - 10}" text-anchor="middle" fill="${col}">${label}</text>` : ''));
+    for (let c = 0; c < n; c++) {
+        const el = borReels()[c].querySelectorAll('.bor-sym')[line[c]];
+        el.classList.add('win');
+        el.style.setProperty('--lc', col);
+    }
+}
+
+// Spezialsymbol ueber die ganzen Walzen aufklappen
+async function borExpand(sp, special) {
+    const stage = $('bor-stage');
+    const box = stage.getBoundingClientRect();
+    sfx.charge();
+    for (const c of sp.expand.reels) {
+        const reel = borReels()[c];
+        const r0 = sp.grid[c].indexOf(special);
+        const rb = reel.getBoundingClientRect();
+        const ex = document.createElement('div');
+        ex.className = 'bor-exp';
+        Object.assign(ex.style, { left: rb.left - box.left + 'px', top: rb.top - box.top + 'px', width: rb.width + 'px', height: rb.height + 'px' });
+        ex.innerHTML = [0, 1, 2].map(() => borCell(special)).join('');
+        stage.appendChild(ex);
+        const top = r0 * 100 / 3;
+        const bot = (2 - r0) * 100 / 3;
+        const anim = ex.animate([
+            { clipPath: `inset(${top}% 0 ${bot}% 0 round 6px)`, filter: 'brightness(2)' },
+            { clipPath: 'inset(0% 0 0% 0 round 6px)', filter: 'brightness(1)' }
+        ], { duration: 520 / s2Speed, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'forwards' });
+        sfx.fly();
+        await anim.finished;
+        await s2Sleep(120);
+    }
+    sfx.multApply();
+}
+
+async function borShowWins(sp, winEl, from) {
+    let shown = from;
+    const count = async (add, ms) => {
+        await s2Count(winEl, shown, shown + add, ms, true);
+        shown += add;
+    };
+    if (sp.wins.length) {
+        // erst alle Linien auf einmal, dann einzeln
+        sp.wins.forEach(w => borDrawLine(w.line, w.n));
+        sfx.win(0);
+        $('bor-log').textContent = sp.wins.length > 1 ? `${sp.wins.length} winning lines` : '';
+        await count(sp.lw, 700);
+        await s2Sleep(400);
+        if (sp.wins.length > 1 || !sp.expand) {
+            for (const [k, w] of sp.wins.entries()) {
+                borClear();
+                borDrawLine(w.line, w.n, s2Fmt(w.pay));
+                $('bor-log').textContent = `Line ${w.line + 1}: ${w.n}× ${borIcon(w.sym)} = ${s2Fmt(w.pay)}`;
+                sfx.win(k + 1);
+                await s2Sleep(sp.wins.length > 5 ? 450 : 750);
+            }
+        }
+        borClear();
+    }
+    if (sp.scatterWin > 0) {
+        borReels().forEach(reel => reel.querySelectorAll('.bor-sym.book').forEach(e => e.classList.add('win')));
+        $('bor-log').textContent = `${sp.books}× 📖 scatter pays ${s2Fmt(sp.scatterWin)}`;
+        sfx.scatter(sp.books);
+        await count(sp.scatterWin, 600);
+        await s2Sleep(500);
+        borClear();
+    }
+    if (sp.expand) {
+        await borExpand(sp, borSpecial);
+        borInfo.lines.forEach((_, li) => borDrawLine(li, 0));
+        $('bor-log').textContent = `Special ${borIcon(borSpecial)} on ${sp.expand.reels.length} reels pays ${s2Fmt(sp.expand.pay)}`;
+        s2Bump(winEl);
+        await count(sp.expand.pay, 1100);
+        await s2Sleep(900);
+    }
+    return shown;
+}
+
+let borSpecial = null;
+
+// Bonus-Start: Buch klappt auf, blaettert durch die Symbole, bleibt auf dem Spezialsymbol stehen
+async function borIntro(special, label) {
+    const box = document.createElement('div');
+    box.className = 'bor-intro';
+    box.innerHTML = `<h4>${borInfo.freeSpins} FREE SPINS</h4>
+        <div class="bor-open"><div class="bor-page l">${BOR_EYE_SVG}</div><div class="bor-page r" id="bor-ipage"></div><div class="bor-cover">${BOR_BOOK_SVG}</div></div>
+        <p>${label}</p>`;
+    $('bor-stage').appendChild(box);
+    sfx.fanfare('bonus');
+    await s2Sleep(1400);
+    const page = box.querySelector('#bor-ipage');
+    const ids = borSyms();
+    let delay = 70;
+    let k = Math.floor(Math.random() * ids.length);
+    while (delay < 330) {
+        page.innerHTML = borCell(ids[k++ % ids.length]);
+        sfx.tick(delay / 400);
+        await s2Sleep(delay);
+        delay *= 1.12;
+    }
+    page.innerHTML = borCell(special, 'hit');
+    sfx.orbLand(3);
+    box.querySelector('p').innerHTML = `Special symbol: <b>${borInfo.symbols[special].name}</b> – expands and pays on all lines`;
+    await s2Sleep(2200);
+    box.remove();
+}
+
+async function borRun(d) {
+    borBusy = true;
+    borGam = null;
+    s2SetSpeed(1);
+    $('bor-gamble').hidden = true;
+    $('bor-spin').textContent = 'SPINNING…';
+    $('bor-spin').disabled = true;
+    $('bor-minus').disabled = $('bor-plus').disabled = $('bor-custom').disabled = true;
+    $('bor-pay').classList.add('hidden');
+    $('bor-betshow').textContent = s2Fmt(d.bet);
+    $('bor-spinwin').textContent = '0';
+    borRefresh();
+    borHudMode(false);
+
+    let total = 0;
+    let inBonus = false;
+    borSpecial = d.special;
+    const startBonus = async label => {
+        inBonus = true;
+        await borIntro(d.special, label);
+        borHudMode(true);
+        $('bor-special').innerHTML = borCell(d.special);
+        $('bor-free').textContent = borInfo.freeSpins;
+        $('bor-total').textContent = '0';
+    };
+
+    for (let i = 0; i < d.spins.length; i++) {
+        const sp = d.spins[i];
+        const winEl = $('bor-spinwin');
+        if (sp.free) {
+            $('bor-free').textContent = sp.freeLeft - (sp.retrig ? borInfo.freeSpins : 0);
+            s2Bump($('bor-free'));
+            $('bor-log').textContent = `Free spin ${sp.n}`;
+        } else {
+            $('bor-log').textContent = '';
+        }
+        winEl.textContent = '0';
+        await borSpinReels(sp.grid);
+        const win = await borShowWins(sp, winEl, 0);
+        winEl.textContent = s2Fmt(sp.win);
+
+        if (sp.free && sp.win > 0) {
+            await s2Count($('bor-total'), total, total + sp.win, 700, true);
+            s2Bump($('bor-total'));
+        }
+        total += sp.win;
+        if (!sp.free && sp.books >= 3) await startBonus(`${sp.books}× 📖`);
+        if (sp.retrig) {
+            sfx.fanfare('retrig');
+            await borBanner(`+${borInfo.freeSpins} FREE SPINS<small>${sp.books}× 📖</small>`, 1800);
+            $('bor-free').textContent = sp.freeLeft;
+            s2Bump($('bor-free'));
+        }
+        await s2Sleep(sp.free ? (win > 0 ? 500 : 250) : 100);
+    }
+
+    const x = d.win / d.bet;
+    if (inBonus) {
+        sfx.fanfare(x >= 20 ? 'big' : 'end');
+        await borBanner(`BONUS WIN<small>${s2Fmt(d.win)} coins · ${s2Fmt(x)}×${d.capped ? ' · MAX WIN' : ''}</small>`, 3000);
+    } else if (d.win > 0 && x >= 20) {
+        sfx.fanfare('big');
+        await borBanner(`${x >= 100 ? 'EPIC WIN' : x >= 50 ? 'MEGA WIN' : 'BIG WIN'}<small>${s2Fmt(d.win)} coins · ${s2Fmt(x)}×</small>`, 2600);
+    } else if (d.win > 0) sfx.chime(x);
+
+    borHudMode(false);
+    $('bor-spinwin').textContent = s2Fmt(d.win);
+    $('bor-log').textContent = d.bonus ? `Bonus paid ${s2Fmt(d.win)} coins` : d.win > 0 ? `Won ${s2Fmt(d.win)} coins – gamble it or spin on` : 'No win';
+    if (me) {
+        me.coins = d.balance;
+        $('me-coins').textContent = d.balance;
+    }
+    if (d.win > 0) borGam = { amount: d.win, left: 5 };
+    wsSend({ type: 'borDone' });
+    borDone();
+}
+
+function borDone() {
+    borBusy = false;
+    $('bor-spin').textContent = 'SPIN';
+    $('bor-spin').disabled = false;
+    $('bor-minus').disabled = $('bor-plus').disabled = $('bor-custom').disabled = false;
+    borRefresh();
+}
+
+function borError(msg) {
+    $('bor-log').textContent = msg;
+    borDone();
+}
+
+function borStart() {
+    if (borBusy || borGamWait || !me || !borInfo) return;
+    sfxInit();
+    const cost = borBet;
+    if (me.coins < cost) {
+        $('bor-log').textContent = 'Not enough coins';
+        return;
+    }
+    borBusy = true;
+    borGam = null;
+    $('bor-gamble').hidden = true;
+    $('bor-spin').disabled = true;
+    $('bor-coins').textContent = s2Fmt(me.coins - cost);
+    borRefresh();
+    wsSend({ type: 'borSpin', bet: borBet });
+}
+
+// ---- Risikospiel: Rot oder Schwarz ----
+function borGamShow() {
+    if (!borGam || borBusy) return;
+    sfxInit();
+    sfx.click();
+    $('bor-gamble').hidden = false;
+    $('bor-ghist').innerHTML = '';
+    borGamDraw();
+}
+
+function borGamDraw() {
+    $('bor-gcard').classList.remove('flip');
+    $('bor-gamt').innerHTML = `Gamble <b>${s2Fmt(borGam.amount)}</b> → win <b>${s2Fmt(borGam.amount * 2)}</b><br><small>${borGam.left} of 5 left</small>`;
+    $('bor-gred').disabled = $('bor-gblack').disabled = false;
+    $('bor-gcollect').disabled = false;
+}
+
+function borGamPick(pick) {
+    if (!borGam || borGamWait) return;
+    borGamWait = true;
+    $('bor-gred').disabled = $('bor-gblack').disabled = $('bor-gcollect').disabled = true;
+    sfx.click();
+    wsSend({ type: 'borGamble', pick });
+    if (pick === 'collect') {
+        $('bor-gamble').hidden = true;
+        $('bor-log').textContent = `Collected ${s2Fmt(borGam.amount)} coins`;
+        borGam = null;
+        borRefresh();
+    }
+}
+
+async function onBorGamble(d) {
+    if (d.collected) {
+        borGamWait = false;
+        return;
+    }
+    if (d.error) {
+        borGamWait = false;
+        borGam = null;
+        $('bor-gamble').hidden = true;
+        $('bor-log').textContent = d.error;
+        return borRefresh();
+    }
+    const red = d.suit === '♥' || d.suit === '♦';
+    const face = $('bor-gface');
+    face.textContent = d.suit;
+    face.className = 'front ' + (red ? 'red' : 'black');
+    $('bor-gcard').classList.add('flip');
+    $('bor-ghist').insertAdjacentHTML('afterbegin', `<span class="${red ? 'red' : 'black'}">${d.suit}</span>`);
+    if (me) {
+        me.coins = d.balance;
+        $('me-coins').textContent = d.balance;
+        $('bor-coins').textContent = s2Fmt(d.balance);
+    }
+    await s2Sleep(450);
+    if (d.won) {
+        sfx.chime(5);
+        borGam = { amount: d.amount, left: d.left };
+        $('bor-spinwin').textContent = s2Fmt(d.amount);
+        s2Bump($('bor-spinwin'));
+        await s2Sleep(700);
+        if (d.left <= 0) {
+            $('bor-gamble').hidden = true;
+            $('bor-log').textContent = `Gamble maxed out – ${s2Fmt(d.amount)} coins collected`;
+            borGam = null;
+        } else borGamDraw();
+    } else {
+        sTone(180, { dur: .5, vol: .2, slide: 60, rev: .2 });
+        $('bor-gamt').innerHTML = '<b style="color:#ff4b55">Lost</b>';
+        $('bor-spinwin').textContent = '0';
+        await s2Sleep(1100);
+        $('bor-gamble').hidden = true;
+        $('bor-log').textContent = 'Gamble lost';
+        borGam = null;
+    }
+    borGamWait = false;
+    borRefresh();
+}
+
+$('bor-spin').onclick = () => borStart();
+$('bor-gam').onclick = borGamShow;
+$('bor-gred').onclick = () => borGamPick('red');
+$('bor-gblack').onclick = () => borGamPick('black');
+$('bor-gcollect').onclick = () => borGamPick('collect');
+$('bor-minus').onclick = () => { sfxInit(); sfx.click(); borSetBet(S2_BETS.filter(b => b < borBet).pop() || 1); };
+$('bor-plus').onclick = () => { sfxInit(); sfx.click(); borSetBet(S2_BETS.find(b => b > borBet) || borBet); };
+$('bor-custom').oninput = e => {
+    const v = Math.floor(Number(e.target.value));
+    if (v >= 1) {
+        borBet = v;
+        borRefresh();
+    }
+};
+$('bor-custom').onchange = () => borSetBet(borBet);
+$('bor-info').onclick = () => $('bor-pay').classList.toggle('hidden');
+$('bor-pay').onclick = () => $('bor-pay').classList.add('hidden');
+$('bor-sound').textContent = sfxMuted ? '🔇' : '🔊';
+$('bor-sound').onclick = () => {
+    $('s2-sound').click();
+    $('bor-sound').textContent = sfxMuted ? '🔇' : '🔊';
+};
+$('bor-back').onclick = () => {
+    if (borBusy || borGamWait) return;
+    if (borGam) wsSend({ type: 'borGamble', pick: 'collect' });
+    borGam = null;
+    $('bor-gamble').hidden = true;
+    casinoRefresh();
+    showScreen('casino');
+};
+$('bookofrah-btn').onclick = () => {
+    if (!me) return;
+    borRefresh();
+    showScreen('bookofrah');
+    borFit();
+    requestAnimationFrame(borFit);
 };
 
 // ---------- Arena: Hub und Raid (Extraction) ----------

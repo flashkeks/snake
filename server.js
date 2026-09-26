@@ -7,6 +7,7 @@ const createAccounts = require('./accounts');
 const kmLevel = require('./km-level');
 const slots = require('./slots');
 const slots2 = require('./slots2');
+const bookofrah = require('./bookofrah');
 
 // Freier Einsatz: ganze Coins, mindestens 1, Obergrenze nur als Sicherung
 const MAX_BET = 1000000;
@@ -583,7 +584,7 @@ function activityOf(key) {
     const ui = c.ui || {};
     if (!what) {
         const tab = { kekemon: ui.kmTab, arenahub: ui.hubTab, market: ui.mkTab }[ui.screen];
-        const SCREEN = { menu: '🏠 Menu', casino: '🎰 Casino', daily: '🎡 Daily Wheel', cross: '🐔 Crossy Road', plinko: '🔻 Plinko', slots: '🎰 Slots', slots2: '🌟 Starlight', kekemon: '🃏 Kekémon', arenahub: '🔫 Arena', market: '🏛️ Market', shop: '🎨 Shop', support: '💬 Support', konto: '👤 Account', pokerlobby: '♠️ Poker lobby', event: '🎪 Event', offer: '🎲 Offer' };
+        const SCREEN = { menu: '🏠 Menu', casino: '🎰 Casino', daily: '🎡 Daily Wheel', cross: '🐔 Crossy Road', plinko: '🔻 Plinko', slots: '🎰 Slots', slots2: '🌟 Starlight', bookofrah: '📖 Book of Rah', kekemon: '🃏 Kekémon', arenahub: '🔫 Arena', market: '🏛️ Market', shop: '🎨 Shop', support: '💬 Support', konto: '👤 Account', pokerlobby: '♠️ Poker lobby', event: '🎪 Event', offer: '🎲 Offer' };
         what = (SCREEN[ui.screen] || ui.screen || '…') + (tab ? ' · ' + tab : '');
     }
     return { what, tabs: conns.length, idle: Math.round((Date.now() - (c.lastActive || Date.now())) / 1000), watchers: c.watchers ? c.watchers.size : 0 };
@@ -602,7 +603,7 @@ try { modeLocks = JSON.parse(fs.readFileSync(LOCKS_FILE, 'utf8')) || {}; } catch
 for (const k of Object.keys(modeLocks)) if (!MODE_LOCKS[k]) delete modeLocks[k];
 const ENTRY_MODE = {
     join: 'snake', shJoin: 'extract', msCreate: 'missions', msJoin: 'missions', msStart: 'missions',
-    tableJoin: 'casino', pokerCreate: 'casino', spin: 'casino', plinko: 'casino', crossStart: 'crossy',
+    tableJoin: 'casino', pokerCreate: 'casino', spin: 'casino', spin2: 'casino', borSpin: 'casino', borGamble: 'casino', plinko: 'casino', crossStart: 'crossy',
     kbStart: 'kekemon', kdCreate: 'kekemon', kdJoin: 'kekemon', mkBuy: 'market', mkBid: 'market', mkList: 'market', trReq: 'trade'
 };
 function modeOfEntry(d) {
@@ -692,7 +693,7 @@ let achRatesCache = null;
 // Schirm -> Anzeige. Menue, Konto, Support usw. zaehlen nicht als "spielt".
 const WHERE = {
     casino: '🎰 Casino', daily: '🎁 Daily Wheel', cross: '🐔 Crossy Road', plinko: '🔻 Plinko',
-    pokerlobby: '♠️ Poker', slots: '🎰 Slots', slots2: '🌟 Starlight', arenahub: '🔫 Arena',
+    pokerlobby: '♠️ Poker', slots: '🎰 Slots', slots2: '🌟 Starlight', bookofrah: '📖 Book of Rah', arenahub: '🔫 Arena',
     shooter: '🔫 Arena', kekemon: '🃏 Kekémon', shop: '🎨 Shop', event: '🎪 Event', market: '🏛️ Market'
 };
 const TABLE_WHERE = { blackjack: '🃏 Blackjack', roulette: '🎡 Roulette', poker: '♠️ Poker' };
@@ -910,7 +911,7 @@ const pendingWins = new Map();  // Konto -> { amount, feed, timer, onReveal }
 
 // Leaderboard (#8): Kategorien und Spiele mit sinnvollem Multi
 const BOARD_CATS = ['score', 'coins', 'kills', 'bigwin', 'bestx', 'casino', 'events', 'arena', 'alevel', 'pvp', 'zwave', 'kmduel'];
-const BOARD_X_GAMES = ['starlight', 'slots', 'plinko', 'crossy', 'roulette', 'blackjack', 'poker'];
+const BOARD_X_GAMES = ['starlight', 'bookofrah', 'slots', 'plinko', 'crossy', 'roulette', 'blackjack', 'poker'];
 
 function hideWin(key, amount, feedLine, ms, onReveal) {
     revealWin(key);
@@ -2076,6 +2077,89 @@ async function handle(c, data) {
             if (c.account) revealWin(c.account);
             return;
 
+        // --- Dritter Automat: Book of Rah (Linien, Buch = Wild/Scatter, Freispiele mit Spezialsymbol) ---
+
+        case 'borSpin': {
+            if (!c.account) return send(c, { type: 'borError', error: 'Accounts only' });
+            const now = Date.now();
+            if (now - (c.lastBor || 0) < 600) return;
+            const bet = Number(data.bet);
+            if (!validBet(bet)) return send(c, { type: 'borError', error: 'Invalid bet' });
+            // Kein Bonus-Kauf bei Book of Rah (Max, 26.09.2026): Freispiele nur ueber 3+ Buecher
+            const buy = false;
+            const cost = bet;
+            const u = accounts.get(c.account);
+            if (!u || u.coins < cost) return send(c, { type: 'borError', error: 'Not enough coins' });
+            c.lastBor = now;
+            c.borGamble = null;
+
+            accounts.addCoins(c.account, -cost);
+            const rig = accounts.takeRig(c.account, 'bookofrah');
+            const r = rig ? luck.starlightSpin(bookofrah, bet, buy, rig) : bookofrah.spin(bet, buy);
+            const balance = accounts.addCoins(c.account, r.win);
+            accounts.stat(c.account, s => {
+                s.spins++;
+                s.biggestWin = Math.max(s.biggestWin, r.win);
+            });
+            // Risikospiel: der ganze Gewinn der Runde, hoechstens 5 Mal verdoppeln
+            if (r.win > 0) c.borGamble = { amount: r.win, left: 5 };
+
+            const coins = v => Math.round(v * bet * 100) / 100;
+            send(c, {
+                type: 'borSpin', bet, buy, cost, win: r.win, capped: r.capped, bonus: r.bonus, special: r.special, balance,
+                // Gewinne je Spin schon in Coins, fuer die Anzeige waehrend der Animation
+                spins: r.spins.map(sp => ({
+                    ...sp,
+                    win: coins(sp.win), lw: coins(sp.lw), scatterWin: coins(sp.scatterWin),
+                    wins: sp.wins.map(w => ({ ...w, pay: coins(w.pay) })),
+                    expand: sp.expand ? { ...sp.expand, pay: coins(sp.expand.pay) } : null
+                }))
+            });
+            // Grob so lang wie die Animation im Browser, grosszuegig
+            const ms = Math.min(15 * 60e3, 15e3 + r.spins.length * 7e3);
+            const line = r.win >= bet * 100 ? [`📖 ${u.name} won ${r.win} coins (${Math.round(r.win / bet)}x) on Book of Rah`, 'gold', c.id] : null;
+            hideWin(c.account, r.win, line, ms, () => accounts.game(c.account, 'bookofrah', { wager: cost, win: r.win, x: r.win / bet }));
+            return;
+        }
+
+        case 'borDone':
+            if (c.account) revealWin(c.account);
+            return;
+
+        // Risikospiel (Rot/Schwarz): fair 50/50, der Gewinn liegt schon auf dem Konto
+        case 'borGamble': {
+            const g = c.borGamble;
+            if (!c.account || !g) return send(c, { type: 'borGamble', error: 'Nothing to gamble' });
+            if (data.pick === 'collect') {
+                c.borGamble = null;
+                return send(c, { type: 'borGamble', collected: true });
+            }
+            if (data.pick !== 'red' && data.pick !== 'black') return;
+            const now = Date.now();
+            if (now - (c.lastBorG || 0) < 300) return;
+            c.lastBorG = now;
+            const u = accounts.get(c.account);
+            if (!u || u.coins < g.amount) {
+                c.borGamble = null;
+                return send(c, { type: 'borGamble', error: 'Coins are gone already' });
+            }
+            revealWin(c.account);
+            const suit = ['♥', '♦', '♣', '♠'][Math.floor(Math.random() * 4)];
+            const won = (suit === '♥' || suit === '♦') === (data.pick === 'red');
+            const stake = g.amount;
+            const balance = accounts.addCoins(c.account, won ? stake : -stake);
+            accounts.game(c.account, 'bookofrah', { wager: stake, win: won ? 2 * stake : 0, play: false });
+            if (won) {
+                g.amount *= 2;
+                g.left--;
+                accounts.stat(c.account, s => { s.biggestWin = Math.max(s.biggestWin, g.amount); });
+                if (g.amount >= 100000) feedC(`📖 ${u.name} gambled up to ${g.amount} coins on Book of Rah`, 'gold', c.id);
+            }
+            if (!won || g.left <= 0) c.borGamble = null;
+            send(c, { type: 'borGamble', suit, won, amount: won ? g.amount : 0, left: won ? g.left : 0, balance });
+            return;
+        }
+
         // --- Automat ---
 
         case 'spin': {
@@ -2128,6 +2212,7 @@ wss.on('connection', (ws, req) => {
         achievements: achievements.catalog(),
         arenaItems: arenaItems.catalog(),
         arenaLevel: arenaLevel.catalog(),
+        bookofrah: bookofrah.info(),
         slots2: { pays: slots2.PAYS, scatterPays: slots2.SCATTER_PAYS, buyCost: slots2.BUY_COST, freeSpins: slots2.FREE_SPINS, retrigger: slots2.RETRIGGER, maxWin: slots2.MAX_WIN, rtp: slots2.RTP },
         wheel: casino.WHEEL,
         cross: casino.crossTable(),
