@@ -976,7 +976,6 @@ module.exports = function createArena(h, opts = {}) {
             if (!others.length || others.length !== uids.length) return h.send(c, { type: 'arError', error: 'Pick at least one item to fuse in' });
             if (others.some(it => it.kind !== main.kind || it.base !== main.base)) return h.send(c, { type: 'arError', error: 'You can only fuse the same item' });
             if (others.some(it => it.fav)) return h.send(c, { type: 'arError', error: '⭐ Protected items cannot be fused in – unprotect them first' });
-            if (!(main.mods || []).length) return h.send(c, { type: 'arError', error: 'The main item needs at least one effect' });
             const bad = I.fuseUseless(main, others);
             if (bad >= 0) return h.send(c, { type: 'arError', error: `${others[bad].name} would not improve anything – take it out` });
             const err = pay(c, I.FUSE_COST * others.length, 'scrap');

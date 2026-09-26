@@ -3432,3 +3432,25 @@ dort also auf 1/6 (−83 %). In allen anderen Quellen gilt weiter Phoenix −50 
 |---|---:|---:|---:|
 | `crate` | 7 | ~1,1 | ~6,4 (vorher 7) |
 | `crate2` | 20 | ~3,1 | ~18,4 (vorher 20) |
+
+## 🔥 Fuse in Items ohne Effekt (26.09.2026, Max)
+
+Max: „Wenn man ein legendäres Rüstungsitem droppt und von demselben Item ein episches mit
+Regeneration 3 hat und das legendäre gar keinen Effekt, wäre es cool, wenn man den ersten
+Effekt mit 100 % aufs krassere Item fusen könnte. Momentan geht das Fuse-Menü gar nicht auf."
+
+- `FUSE_ADD` von `[0, 0.1, 0.01]` auf `[1, 0.1, 0.01]`: Der **erste** Effekt auf einem Item
+  ohne Effekt sitzt sicher, in der Stufe, die er auf dem gefressenen Item hat. Zweiter
+  bleibt 10 %, dritter 1 %. Hat das gefressene Item mehrere Effekte, ist sein stärkster
+  (Effekte sind nach Stufe sortiert) der sichere, der nächste würfelt mit 10 %.
+- Server: Fehler „The main item needs at least one effect" entfernt. `fuseUseless` (Server
+  und Client) zählt einen sicheren neuen Effekt wie einen garantierten Aufstieg, damit eine
+  zweite Kopie mit demselben Effekt danach als Stufen-Aufstieg gilt.
+- Client: 🔥-Knopf erscheint jetzt auch auf Items ohne Effekt, wenn eine Kopie mit Effekt
+  da ist; Vorschau zeigt den ersten Effekt unter „Guaranteed".
+- Seltenheit bleibt die des Haupt-Items (legendär bleibt legendär), Odds wie gehabt vom
+  Original.
+
+Geprüft: Legendary-Juggernaut-Weste ohne Effekt + epische mit Regen 3 → legendär mit Regen 3;
+zweiter Effekt 8,9 % in 4000 Würfen; leer in leer wird abgelehnt; zwei Kopien mit Regen 1 in
+ein leeres Item → Regen 2.

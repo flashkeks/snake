@@ -11984,6 +11984,10 @@ function fusePreview(main, others) {
             const lvl = Math.min(def.max, have.lvl === m.lvl ? have.lvl + 1 : Math.max(have.lvl, m.lvl));
             if (lvl > have.lvl) sure.push(`${def.icon} ${def.name} ${ROMAN[have.lvl]} → ${ROMAN[lvl]}`);
             have.lvl = lvl;
+        } else if (mods.length < cap && add[mods.length] >= 1) {
+            // 26.09.2026: erster Effekt auf einem Item ohne Effekt ist sicher
+            sure.push(`${def.icon} ${def.name} ${ROMAN[m.lvl]} (new effect #${mods.length + 1})`);
+            mods.push({ id: m.id, lvl: m.lvl });
         } else if (mods.length < cap) maybe.push(`${def.icon} ${def.name} ${ROMAN[m.lvl]} (${Math.round(add[mods.length] * 100)}% as effect #${mods.length + 1})`);
     }
     return { sure, maybe };
@@ -11992,7 +11996,6 @@ function fusePreview(main, others) {
 function fuseUseless(main, others) {
     const fm = modDefs(main), add = arenaCat.fuse.add, cap = arenaCat.fuse.maxMods;
     const mods = itMods(main).map(m => ({ ...m }));
-    if (!mods.length) return others.length ? 0 : -1;
     for (let i = 0; i < others.length; i++) {
         let useful = false;
         for (const m of itMods(others[i])) {
@@ -12002,7 +12005,10 @@ function fuseUseless(main, others) {
             if (have) {
                 const lvl = Math.min(def.max, have.lvl === m.lvl ? have.lvl + 1 : Math.max(have.lvl, m.lvl));
                 if (lvl > have.lvl) { have.lvl = lvl; useful = true; }
-            } else if (mods.length < cap && add[mods.length] > 0) useful = true;
+            } else if (mods.length < cap && add[mods.length] > 0) {
+                useful = true;
+                if (add[mods.length] >= 1) mods.push({ id: m.id, lvl: m.lvl });
+            }
         }
         if (!useful) return i;
     }
@@ -12034,7 +12040,7 @@ function hubFuse() {
     const useless = it => !fuseSel.has(it.uid) && fuseUseless(main, [...picked, it]) >= 0;
     const pv = fusePreview(main, picked), total = cost * picked.length;
     return `<div class="hint">🔥 <b>Fuse</b>: feed copies of the same item into the main one. Same effect on the same level → guaranteed one level up. ` +
-        `A different effect only sticks as a <b>2nd</b> effect with ${Math.round(arenaCat.fuse.add[1] * 100)}% and as a <b>3rd</b> with ${Math.round(arenaCat.fuse.add[2] * 100)}%. ` +
+        `An item without effects takes the <b>first</b> effect for sure. A different effect only sticks as a <b>2nd</b> effect with ${Math.round(arenaCat.fuse.add[1] * 100)}% and as a <b>3rd</b> with ${Math.round(arenaCat.fuse.add[2] * 100)}%. ` +
         `Every item you fuse in costs <b>${cost} ⚙️</b> and is gone afterwards; half of its item XP moves over.</div>` +
         `<div class="fuse-main"><div><h4 style="margin:0 0 6px">Main ${main.kind === 'armor' ? 'armor' : 'weapon'}</h4>${itemCard(main, { eq: hubEquippedAs(main.uid) })}` +
         `<button type="button" class="ghost" data-fuseback="1">↩ Back to inventory</button></div>` +
