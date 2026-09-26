@@ -454,7 +454,12 @@ Princess / Gates of Olympus:
   mit Schnallen und Spitzenkante, Rock mit Schlitz, dunkle Struempfe,
   weiter Umhang statt Fluegeln (schwingt), lange schwarze Naegel, Ringe,
   Tattoo am Arm, Kristallstab mit animiertem lila Rauch; unten links
-  Buecher, Totenkopf, flackernde Kerzen und ein Rabe, der den Kopf dreht. Im Leerlauf schwebt sie, blinzelt, Zoepfe, Rock und Fluegel
+  Buecher, Totenkopf, flackernde Kerzen und ein Rabe, der den Kopf dreht.
+  Danach Gesicht weicher und juenger-erwachsen (Max: „sieht aus wie ue40“):
+  kuerzeres herzfoermiges Gesicht mit Verlauf (`s2gFace`), weich verblendete
+  Konturen und Rouge (`s2gSoft`, Gauss-Blur), groessere Augen mit Lidfalte
+  und Wimpern, feinerer unterer Lidstrich, gefuellte Brauen, glaenzende
+  Lippen, Curtain-Pony, Arm als geformte Flaeche statt Strich. Im Leerlauf schwebt sie, blinzelt, Zoepfe, Rock und Fluegel
   wippen, der Stern am Stab pulsiert. Posen per `s2Girl(pose, ms)`: `cast`
   (Stab schwingen) beim Spin und wenn der Multiplikator greift, `happy`
   (Augen zu, Mund auf, Hopser) bei jedem Tumble-Gewinn, `zap` (Stab hoch,
