@@ -534,10 +534,14 @@ const LOOK_BUDGET_MS = 10;
 // per Vorausschau. 26.09.2026 (Max: „alle KIs schlauer, die dann nochmal staerker"):
 // spielt jede eigene Option gegen jede Antwort des Gegners durch (replies) und wertet
 // vorsichtig (mix: Anteil des schlechtesten Falls), statt nur gegen eine gierige Antwort
-const LOOK3 = { samples: 20, turns: 5, replies: true, mix: 0.35, budget: 16, roll: TACT };
+const LOOK3 = { samples: 20, turns: 4, budget: 16, roll: TACT };
 // Stufe 4 (26.09.2026, neu, Ace-Reihe): noch tiefer, mehr Stichproben, rechnet mit dem
 // besten Gegenzug (mix hoch) und plant Wechsel nach einem K.o. genauso
-const LOOK4 = { samples: 32, turns: 6, replies: true, mix: 0.6, budget: 28, roll: TACT };
+const LOOK4 = { samples: 32, turns: 5, replies: true, mix: 0, budget: 24, roll: TACT };
+// Messung 26.09.2026 auf edge mit den echten Karten (tools/km-ai.js, 100 Paare, Seiten
+// getauscht): alle Vorausschau-Varianten 44–52 % gegen einen einfachen „buffen, dann
+// draufhauen"-Bot – bei diesem Kampfsystem entscheiden Werte und Zufall, die Zugwahl
+// ueber eine vernuenftige Heuristik hinaus kaum. Schwierigkeit kommt ueber mul/lv der Gyms.
 
 function lookahead(b, s, opt = { samples: LOOK_SAMPLES, turns: LOOK_TURNS }) {
     const me = act(b, s);

@@ -3728,3 +3728,31 @@ Geprüft: 50 Schaden Spieler→Spieler = 20, Gegner→Spieler = 50; alle ältere
 
 Geprüft gegen einen echten Server: beide Seiten bekommen `trState`; Reihenfolge nach Rarity
 und A–Z; Klick nach dem Umsortieren bietet genau das angeklickte Item an.
+
+## 🧠 Kekemon-KI: Stufen hochgestuft, taktische Zugwahl (26.09.2026, Max)
+
+Max: „Mach alle KIs schlauer – einmal hochstufen. Sprout Gym und Wild Canyon bekommen die KI
+von Champion/Summit, die Ace-Reihe eine neue, noch krassere, deren alte KI kommt zu
+Champion/Summit und darf nochmal stärker werden."
+
+Neue Stufen (`km-gyms.js`): Training Meadow 0→1, Canyon 1→2, Summit 2→3; Sprout 1→2, übrige
+Typ-Gyms und Champion 2→3, Ace-Reihe 3→**4** (neu).
+
+`km-battle.js`:
+- **`tactical()`** – Zugwahl wie ein guter Spieler: K.o. mitnehmen, wenn man zuerst dran
+  ist; vor einem sicheren K.o. auf eine Karte wechseln, die ihn aushält; einen gebufften
+  Gegner mit Schlaf/Paralyse bremsen; rechtzeitig heilen; selbst buffen, wenn sicher.
+- Die **Bewertung** der Vorausschau zählt jetzt auch die **Buffs des Gegners** (vorher nur
+  die eigenen – Buff-Sweeps galten beim Vorausrechnen nicht als Gefahr).
+- Stufe 3: Vorausschau mit taktischen Rollouts (20 Proben, 4 Züge). Stufe 4: 32 Proben,
+  5 Züge, gegen jede Antwort des Gegners. Höchstens ~26 ms je Entscheidung.
+
+**Ehrliche Messung** (edge, echte Karten, `tools/km-ai.js` + Ausnutzer-Bot „buffen, dann
+draufhauen", 80–100 Paare, Seiten getauscht): Zufall gegen Stufe 1 gewinnt 10 %, die
+Zugwahl zählt also – aber **alle** Vorausschau-Varianten, alt wie neu, liegen gegen den
+einfachen Bot bei 44–56 %. Über eine vernünftige Heuristik hinaus bringt Rechnen bei diesem
+Kampfsystem kaum etwas; Werte (Level, `mul`) und Zufall entscheiden.
+
+Warum Schmoggi mit Lv-16-Karten War Room (Lv 26, Legendary) schafft: `mul` 0,62 macht die
+Gym-Karten HP/Angriff ×1,24, seine Lv-16-Karten haben ×1,60. Die `mul`-Werte waren auf
+„Spieler auf Gym-Level" eingestellt – durch Verfüttern sind Spieler heute weit darüber.

@@ -18,21 +18,23 @@ const K = require('./km-moves');
 // gleiche Level, gemischte Teams mit Typ-Abdeckung, KI-Stufe 3). after: welches
 // Gym vorher geschafft sein muss. Der Champion bleibt der Abschluss der Typ-Reihe.
 const GYMS = [
-    { id: 'sprout', series: 'type', lv: 5, name: 'Sprout Gym', icon: '🌱', leader: 'Scout Mika', type: 'nature', rar: ['rare'], mul: 0.81, smart: 1, coins: 3000, pack: 'anime' },
-    { id: 'tide', series: 'type', lv: 10, name: 'Tide Gym', icon: '💧', leader: 'Captain Ren', type: 'water', rar: ['rare', 'epic'], mul: 0.97, smart: 2, coins: 4000, pack: 'film' },
-    { id: 'blaze', series: 'type', lv: 15, name: 'Blaze Gym', icon: '🔥', leader: 'Pyra', type: 'fire', rar: ['epic'], mul: 0.87, smart: 2, coins: 5000, pack: 'anime' },
-    { id: 'volt', series: 'type', lv: 20, name: 'Volt Gym', icon: '⚡', leader: 'Sparky', type: 'electric', rar: ['epic'], mul: 0.94, smart: 2, coins: 6500, pack: 'game' },
-    { id: 'dojo', series: 'type', lv: 26, name: 'Iron Dojo', icon: '👊', leader: 'Master Ken', type: 'fighting', rar: ['epic', 'legendary'], mul: 1.02, smart: 2, coins: 8000, pack: 'film' },
-    { id: 'mind', series: 'type', lv: 33, name: 'Mind Tower', icon: '🔮', leader: 'Oracle Lua', type: 'psychic', rar: ['legendary'], mul: 1.25, smart: 2, coins: 11000, pack: 'anime' },
-    { id: 'shadow', series: 'type', lv: 41, name: 'Shadow Gym', icon: '🌑', leader: 'Noct', type: 'dark', rar: ['legendary', 'secret'], mul: 0.84, smart: 2, coins: 15000, pack: 'mixed' },
-    { id: 'champ', series: 'type', lv: 50, name: 'Kek Champion', icon: '👑', leader: 'The Kek', type: null, rar: ['legendary', 'secret'], mul: 0.66, smart: 2, coins: 30000, pack: 'mixed' },
-    { id: 'ace1', series: 'ace', after: 'sprout', lv: 5, name: 'Rookie Cup', icon: '🥊', leader: 'Rival Kai', type: null, rar: ['rare', 'epic'], mul: 0.65, smart: 3, coins: 4500, pack: 'anime' },
-    { id: 'ace2', series: 'ace', lv: 10, name: 'Ace Arena', icon: '🎯', leader: 'Ace Mira', type: null, rar: ['epic'], mul: 0.62, smart: 3, coins: 6000, pack: 'film' },
-    { id: 'ace3', series: 'ace', lv: 15, name: 'Chess Club', icon: '♟️', leader: 'Tactician Rook', type: null, rar: ['epic'], mul: 0.77, smart: 3, coins: 7500, pack: 'game' },
-    { id: 'ace4', series: 'ace', lv: 20, name: 'Veteran Hall', icon: '🛡️', leader: 'Veteran Sol', type: null, rar: ['epic', 'legendary'], mul: 0.58, smart: 3, coins: 10000, pack: 'mixed' },
-    { id: 'ace5', series: 'ace', lv: 26, name: 'War Room', icon: '🧠', leader: 'Strategist Vex', type: null, rar: ['legendary'], mul: 0.62, smart: 3, coins: 12000, pack: 'mixed' },
-    { id: 'ace6', series: 'ace', lv: 33, name: 'Elite Spire', icon: '💫', leader: 'Elite Nova', type: null, rar: ['legendary', 'secret'], mul: 0.63, smart: 3, coins: 16500, pack: 'mixed' },
-    { id: 'ace7', series: 'ace', lv: 41, name: 'Grandmaster Throne', icon: '🏆', leader: 'Grandmaster Zed', type: null, rar: ['secret', 'legendary'], mul: 0.88, smart: 3, coins: 22500, pack: 'mixed' }
+    // 26.09.2026 (Max: „alle KIs einmal hochstufen"): Sprout 1 -> 2, uebrige Typ-Gyms und
+    // Champion 2 -> 3, Ace-Reihe 3 -> 4 (neu); Training Meadow 0 -> 1, Canyon 1 -> 2, Summit 2 -> 3
+    { id: 'sprout', series: 'type', lv: 5, name: 'Sprout Gym', icon: '🌱', leader: 'Scout Mika', type: 'nature', rar: ['rare'], mul: 0.81, smart: 2, coins: 3000, pack: 'anime' },
+    { id: 'tide', series: 'type', lv: 10, name: 'Tide Gym', icon: '💧', leader: 'Captain Ren', type: 'water', rar: ['rare', 'epic'], mul: 0.97, smart: 3, coins: 4000, pack: 'film' },
+    { id: 'blaze', series: 'type', lv: 15, name: 'Blaze Gym', icon: '🔥', leader: 'Pyra', type: 'fire', rar: ['epic'], mul: 0.87, smart: 3, coins: 5000, pack: 'anime' },
+    { id: 'volt', series: 'type', lv: 20, name: 'Volt Gym', icon: '⚡', leader: 'Sparky', type: 'electric', rar: ['epic'], mul: 0.94, smart: 3, coins: 6500, pack: 'game' },
+    { id: 'dojo', series: 'type', lv: 26, name: 'Iron Dojo', icon: '👊', leader: 'Master Ken', type: 'fighting', rar: ['epic', 'legendary'], mul: 1.02, smart: 3, coins: 8000, pack: 'film' },
+    { id: 'mind', series: 'type', lv: 33, name: 'Mind Tower', icon: '🔮', leader: 'Oracle Lua', type: 'psychic', rar: ['legendary'], mul: 1.25, smart: 3, coins: 11000, pack: 'anime' },
+    { id: 'shadow', series: 'type', lv: 41, name: 'Shadow Gym', icon: '🌑', leader: 'Noct', type: 'dark', rar: ['legendary', 'secret'], mul: 0.84, smart: 3, coins: 15000, pack: 'mixed' },
+    { id: 'champ', series: 'type', lv: 50, name: 'Kek Champion', icon: '👑', leader: 'The Kek', type: null, rar: ['legendary', 'secret'], mul: 0.66, smart: 3, coins: 30000, pack: 'mixed' },
+    { id: 'ace1', series: 'ace', after: 'sprout', lv: 5, name: 'Rookie Cup', icon: '🥊', leader: 'Rival Kai', type: null, rar: ['rare', 'epic'], mul: 0.65, smart: 4, coins: 4500, pack: 'anime' },
+    { id: 'ace2', series: 'ace', lv: 10, name: 'Ace Arena', icon: '🎯', leader: 'Ace Mira', type: null, rar: ['epic'], mul: 0.62, smart: 4, coins: 6000, pack: 'film' },
+    { id: 'ace3', series: 'ace', lv: 15, name: 'Chess Club', icon: '♟️', leader: 'Tactician Rook', type: null, rar: ['epic'], mul: 0.77, smart: 4, coins: 7500, pack: 'game' },
+    { id: 'ace4', series: 'ace', lv: 20, name: 'Veteran Hall', icon: '🛡️', leader: 'Veteran Sol', type: null, rar: ['epic', 'legendary'], mul: 0.58, smart: 4, coins: 10000, pack: 'mixed' },
+    { id: 'ace5', series: 'ace', lv: 26, name: 'War Room', icon: '🧠', leader: 'Strategist Vex', type: null, rar: ['legendary'], mul: 0.62, smart: 4, coins: 12000, pack: 'mixed' },
+    { id: 'ace6', series: 'ace', lv: 33, name: 'Elite Spire', icon: '💫', leader: 'Elite Nova', type: null, rar: ['legendary', 'secret'], mul: 0.63, smart: 4, coins: 16500, pack: 'mixed' },
+    { id: 'ace7', series: 'ace', lv: 41, name: 'Grandmaster Throne', icon: '🏆', leader: 'Grandmaster Zed', type: null, rar: ['secret', 'legendary'], mul: 0.88, smart: 4, coins: 22500, pack: 'mixed' }
 ];
 // Vorgaenger: sonst das vorige Gym derselben Reihe
 GYMS.forEach((g, i) => {
@@ -55,10 +57,10 @@ const REPEAT_SHARE = 0.15, REPEAT_PER_DAY = 3;
 // Bereich. XP seit 6.8 je besiegtem Gegner (km-level.js battleXp); Coins und Booster-Teile fallen mit den Siegen am
 // Tag ab (TRAIN_FALL). 10 Teile = 1 Trainer Booster (server.js kmFragBuy).
 const ZONES = [
-    { id: 'meadow', name: 'Wild Meadow', icon: '🌾', lv: [1, 10], rar: ['common', 'uncommon'], smart: 0, coins: 250, frag: 1 },
+    { id: 'meadow', name: 'Wild Meadow', icon: '🌾', lv: [1, 10], rar: ['common', 'uncommon'], smart: 1, coins: 250, frag: 1 },
     // 26.09.2026 (SINTHSBen: „sonst hat man keinen Grund, das zweite zu machen"): Teile 1 / 2 / 3
-    { id: 'canyon', name: 'Wild Canyon', icon: '🏜️', lv: [10, 30], rar: ['uncommon', 'rare'], smart: 1, coins: 600, frag: 2 },
-    { id: 'summit', name: 'Wild Summit', icon: '🏔️', lv: [30, 50], rar: ['rare', 'epic'], smart: 2, coins: 1200, frag: 3 }
+    { id: 'canyon', name: 'Wild Canyon', icon: '🏜️', lv: [10, 30], rar: ['uncommon', 'rare'], smart: 2, coins: 600, frag: 2 },
+    { id: 'summit', name: 'Wild Summit', icon: '🏔️', lv: [30, 50], rar: ['rare', 'epic'], smart: 3, coins: 1200, frag: 3 }
 ];
 // [bis Sieg Nr., Anteil Coins, Chance auf Teile]
 const TRAIN_FALL = [[10, 1, 1], [30, 0.25, 0.3], [Infinity, 0.05, 0.05]];
