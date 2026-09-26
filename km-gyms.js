@@ -73,7 +73,9 @@ const ZONES = [
     { id: 'summit', name: 'Wild Summit', icon: '🏔️', lv: [30, 50], rar: ['rare', 'epic'], smart: 3, coins: 1200, frag: 3 }
 ];
 // [bis Sieg Nr., Anteil Coins, Chance auf Teile]
-const TRAIN_FALL = [[10, 1, 1], [30, 0.25, 0.3], [Infinity, 0.05, 0.05]];
+// 26.09.2026 (Max): je Gebiet gezaehlt statt ueber alle zusammen, volle Belohnung fuer die
+// ersten 8 Siege je Gebiet (vorher 10 insgesamt), Stufe 2 bis Sieg 24 (vorher 30)
+const TRAIN_FALL = [[8, 1, 1], [24, 0.25, 0.3], [Infinity, 0.05, 0.05]];
 const FRAG_PER_PACK = 10;
 
 function seeded(str) {
@@ -224,16 +226,17 @@ module.exports = function createGyms(h) {
         return { mine, keys };
     }
 
+    // Siege heute je Gebiet: { day, by: { meadow: n, ... } } (alte Form { day, wins } verfaellt mit dem Tag)
     function trainDay(u) {
-        if (!u.kmTrain || u.kmTrain.day !== day()) u.kmTrain = { day: day(), wins: 0 };
+        if (!u.kmTrain || u.kmTrain.day !== day() || !u.kmTrain.by) u.kmTrain = { day: day(), by: {} };
         return u.kmTrain;
     }
+    const winsIn = (u, zid) => trainDay(u).by[zid] || 0;
     const fallOf = n => TRAIN_FALL.find(([upTo]) => n <= upTo);
 
     function zones(u) {
-        const t = trainDay(u);
-        const [, share, chance] = fallOf(t.wins + 1);
-        return ZONES.map(z => ({ id: z.id, name: z.name, icon: z.icon, lv: z.lv, rar: z.rar, train: true,
+        return ZONES.map(z => ({ z, fall: fallOf(winsIn(u, z.id) + 1) })).map(({ z, fall: [, share, chance] }) => ({ id: z.id, name: z.name, icon: z.icon, lv: z.lv, rar: z.rar, train: true,
+            today: winsIn(u, z.id), fullUpTo: TRAIN_FALL[0][0],
             // XP fuer einen Sieg gegen fuenf Gegner auf Bereichs-Mitte (nur Anzeige)
             xp: Math.round(B.TEAM_SIZE * LV.koXp((z.lv[0] + z.lv[1]) / 2) * 1.2 * LV.XP.train),
             coins: Math.round(z.coins * share), frag: z.frag, fragChance: chance, full: share === 1 }));
@@ -280,8 +283,8 @@ module.exports = function createGyms(h) {
         const res = { win, coins: 0, frag: 0, gym: z.id, train: true };
         if (win) {
             const t = trainDay(u);
-            t.wins++;
-            const [, share, chance] = fallOf(t.wins);
+            t.by[z.id] = (t.by[z.id] || 0) + 1;
+            const [, share, chance] = fallOf(t.by[z.id]);
             res.coins = Math.round(z.coins * share);
             if (Math.random() < chance) res.frag = z.frag;
             if (res.coins) {
@@ -289,7 +292,7 @@ module.exports = function createGyms(h) {
                 accounts.earn(c.account, 'cards', res.coins);
             }
             if (res.frag) u.kmFrag = (u.kmFrag || 0) + res.frag;
-            res.today = t.wins;
+            res.today = t.by[z.id];
         }
         // 6.8: XP nur fuer besiegte Gegner (km-level.js battleXp)
         const gain = LV.battleXp(kb.b, 0, LV.XP.train);

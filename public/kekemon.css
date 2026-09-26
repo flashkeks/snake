@@ -2568,3 +2568,4 @@ body.world-cards #kekemon > .card {
 .km-fd-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: -2px 0 10px; padding: 6px 8px; border-radius: 8px; background: rgba(77,255,136,.06); border: 1px solid rgba(77,255,136,.25); font-size: 13px; }
 .km-fd-quick small { flex-basis: 100%; opacity: .65; }
 .km-fd-quick label { display: inline-flex; align-items: center; gap: 4px; }
+.kb-zone-day { display: block; margin: 4px 0 6px; opacity: .75; font-size: 12px; }

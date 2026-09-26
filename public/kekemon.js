@@ -1376,11 +1376,12 @@ function kbDrawTrain() {
     const tiles = zs.map(z => `<div class="kb-zone z-${z.id}">
         <div class="kb-gym-head"><span class="ico">${z.icon}</span><div><b>${esc(z.name)}</b><small>Wild Lv ${z.lv[0]}–${z.lv[1]} · ${z.rar.map(r => `<span style="color:${R[ri[r]].color}">${esc(R[ri[r]].name)}</span>`).join(' / ')}</small></div></div>
         <div class="kb-zone-rw"><span>✨ ~${z.xp} XP per card</span><span>🪙 ${z.coins.toLocaleString('en-US')}</span><span>🧩 ${z.fragChance >= 1 ? '+' + z.frag : Math.round(z.fragChance * 100) + ' % for +' + z.frag}</span></div>
+        ${z.fullUpTo ? `<small class="kb-zone-day">${z.full ? `Full rewards: ${Math.max(0, z.fullUpTo - (z.today || 0))} of ${z.fullUpTo} wins left today` : 'Full rewards used up here today – try another area'}</small>` : ''}
         <button type="button" class="gold" data-kbgym="${z.id}">🌿 Train</button>
     </div>`).join('');
-    const full = zs[0].full;
+    // 26.09.2026: volle Belohnung je Gebiet (die ersten 8 Siege am Tag)
     return `<h3 class="kd-h">🌿 Training</h3>
-        <div class="hint">Unlimited fights against wild teams around your own level. XP for every foe you knock out${full ? '' : ' – coins and pieces are lower for the rest of today'}.</div>
+        <div class="hint">Unlimited fights against wild teams around your own level. XP for every foe you knock out. Coins and pieces are full for the first ${zs[0].fullUpTo || 8} wins per area each day, then lower.</div>
         <div class="kb-zones">${tiles}</div>${kbFragBox()}`;
 }
 

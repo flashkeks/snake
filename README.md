@@ -3759,3 +3759,14 @@ Gym-Karten HP/Angriff ×1,24, seine Lv-16-Karten haben ×1,60. Die `mul`-Werte w
 - Nachtrag (Max): **Analyser** sortiert jetzt auch Karten (Rarest, Value, Level, Count, A–Z),
   Packs/Cases/Cosmetics (Value, Count, A–Z) – gleiche Schlüssel wie das Handelsfenster
   (`trKey`). Vorher gab es die Knöpfe nur bei Arena-Items.
+
+## 🌿 Training: volle Belohnung je Gebiet (26.09.2026, Max)
+
+Vorher: die ersten 10 Trainingssiege am Tag **insgesamt** (über Meadow, Canyon, Summit
+zusammen) gaben volle Coins und sichere Booster-Teile, danach 25 % / 30 % bis Sieg 30, dann
+5 % / 5 %. Jetzt zählt jedes Gebiet für sich: **8 volle Siege je Gebiet**, Stufe 2 bis Sieg 24,
+dann 5 % (`TRAIN_FALL`, `u.kmTrain = { day, by: { meadow, canyon, summit } }`). Die alte
+Form (`wins`) wird beim ersten Aufruf verworfen, heute fangen also alle je Gebiet bei 0 an.
+Jede Kachel zeigt „Full rewards: X of 8 wins left today".
+
+Geprüft: Meadow mit 8 Siegen → 63 Coins / 30 % Teile, Canyon/Summit voll; mit 7 noch voll.
