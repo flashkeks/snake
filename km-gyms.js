@@ -36,6 +36,11 @@ const GYMS = [
     { id: 'ace6', series: 'ace', lv: 33, name: 'Elite Spire', icon: '💫', leader: 'Elite Nova', type: null, rar: ['legendary', 'secret'], mul: 0.63, smart: 4, coins: 16500, pack: 'mixed' },
     { id: 'ace7', series: 'ace', lv: 41, name: 'Grandmaster Throne', icon: '🏆', leader: 'Grandmaster Zed', type: null, rar: ['secret', 'legendary'], mul: 0.88, smart: 4, coins: 22500, pack: 'mixed' }
 ];
+// 26.09.2026 (Max): Gym-Karten mindestens so stark wie ihr angezeigtes Level (mul >= 1).
+// Die mul-Werte oben stammen aus der Simulation vom 24.09. mit Spielern auf Gym-Level; seit
+// man Karten verfuettern kann, sind Spieler weit darueber – War Room (Lv 26, mul 0,62) hatte
+// Werte wie Lv 7 und fiel gegen Lv-16-Teams. Werte ueber 1 (Iron Dojo, Mind Tower) bleiben.
+for (const g of GYMS) g.mul = Math.max(1, g.mul);
 // Vorgaenger: sonst das vorige Gym derselben Reihe
 GYMS.forEach((g, i) => {
     if (g.after !== undefined) return;
