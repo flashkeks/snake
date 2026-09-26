@@ -828,7 +828,7 @@ body.world-cards #kekemon > .card {
     cursor: grab;
 }
 
-.km-sc > .km-new,
+.km-sc .km-new,
 .km-sum-c > .km-new2 {
     position: absolute;
     top: -8px;
@@ -2528,3 +2528,10 @@ body.world-cards #kekemon > .card {
     border: 6px solid #ffd23f;
     box-shadow: 0 6px 16px rgba(0,0,0,.6);
 }
+
+/* Gesicht liegt schon im Stapel, sichtbar erst nach dem Umdrehen (kmFace) */
+.km-sc-back, .km-sc-face { position: absolute; left: 0; top: 0; }
+.km-sc-face { visibility: hidden; }
+.km-sc.faced .km-sc-face { visibility: visible; }
+.km-sc.faced .km-sc-back { display: none; }
+.km-sc-face > .km-new { position: absolute; top: -8px; right: -8px; }

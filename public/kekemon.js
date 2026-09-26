@@ -670,7 +670,12 @@ function kmStack() {
     const box = $('km-open');
     // 26.09.2026 (Max: „man sieht an den Raendern, ob eine krasse Karte dabei ist"): alle
     // Karten unter der obersten liegen verdeckt (gleiche Rueckseite), das Gesicht kommt erst in kmReveal
-    const cards = o.order.map((ci, pos) => `<div class="km-sc" data-pos="${pos}" style="z-index:${100 - pos};--d:${Math.min(pos, 4)}"><div class="km-sc-back"></div></div>`).join('');
+    // Gesicht steht schon drin (Bilder laden vor), bleibt aber unsichtbar bis kmFace
+    const cards = o.order.map((ci, pos) => {
+        const g = o.cards[ci];
+        return `<div class="km-sc" data-pos="${pos}" style="z-index:${100 - pos};--d:${Math.min(pos, 4)}"><div class="km-sc-back"></div>` +
+            `<div class="km-sc-face">${kmCard(kmCat.byId[g.id], { v: g.v })}${o.fresh[ci] ? '<span class="km-new">NEW</span>' : ''}</div></div>`;
+    }).join('');
     box.innerHTML = `<div class="km-count" id="km-count2"></div>
         <div class="km-reveal"><div class="km-stack" id="km-stack">${cards}</div><div class="km-rinfo" id="km-rinfo"></div></div>
         <div class="km-note" style="padding:0">Swipe or tap the card · → / Space</div>
@@ -701,7 +706,7 @@ function kmReveal() {
     document.querySelectorAll('#km-stack .km-sc').forEach(el => el.style.setProperty('--d', Math.max(0, Math.min(Number(el.dataset.pos) - o.idx, 4))));
     const r = kmCat.ridx[c.rarity];
     const top = document.querySelector(`#km-stack .km-sc[data-pos="${o.idx}"]`);
-    top.innerHTML = kmCard(c, { v: g.v }) + (o.fresh[o.order[o.idx]] ? '<span class="km-new">NEW</span>' : '');
+    kmFace(o.idx);
     top.classList.add('top');
     // erst jetzt zaehlt die Karte fuers Album
     kmUnpend(g);
@@ -719,12 +724,20 @@ function kmReveal() {
     else kmSfx('click');
 }
 
+// Karte an Position pos umdrehen (26.09.2026, Max: „wirkt, als muss die naechste erst laden"):
+// die naechste dreht sich schon beim Antippen/Wischen der obersten um
+function kmFace(pos) {
+    const el = document.querySelector(`#km-stack .km-sc[data-pos="${pos}"]`);
+    if (el) el.classList.add('faced');
+}
+
 // Oberste Karte wegwischen (dir: -1 links, 1 rechts)
 function kmNext(dir) {
     const o = kmOpening;
     if (!o || o.busy || o.done) return;
     const top = document.querySelector(`#km-stack .km-sc[data-pos="${o.idx}"]`);
     if (!top) return;
+    kmFace(o.idx + 1);
     o.busy = true;
     top.style.transition = 'transform .35s ease-in, opacity .35s';
     top.style.transform = `translate(${dir * 130}vw, -40px) rotate(${dir * 30}deg)`;
@@ -766,6 +779,7 @@ $('km-open').addEventListener('pointerdown', e => {
     const top = e.target.closest('#km-stack .km-sc.top');
     if (!top || !kmOpening || kmOpening.busy || Number(top.dataset.pos) !== kmOpening.idx) return;
     kmDrag = { el: top, x: e.clientX, y: e.clientY, dx: 0 };
+    kmFace(kmOpening.idx + 1);
     try { top.setPointerCapture(e.pointerId); } catch {}
     top.style.transition = 'none';
 });

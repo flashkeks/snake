@@ -3667,3 +3667,11 @@ NUR Sachen von Snake und Gamba anzeigen und auch nur da rendern und laden."
 Geprüft gegen einen echten Server (8/8): Anmeldung nicht im Feed, Snake-Join nur an die
 Snake-Welt, Verlauf beim Wechsel, Pack geöffnet ohne Achievement, „Booster" erst nach
 `kmRevealed`. Screenshot vom verdeckten Stapel; Album-Zähler 0 → 1 → 5 beim Aufdecken.
+
+### Nachtrag: nächste Karte ist schon umgedreht (Max: „wirkt, als muss die nächste erst kurz laden")
+
+Alle Kartengesichter stehen beim Aufbau des Stapels schon im DOM (Bilder laden vor), aber
+unsichtbar unter der Rückseite (`.km-sc-face`, `visibility: hidden`). `kmFace(pos)` dreht um.
+Die nächste Karte dreht sich, sobald man die oberste anfasst (`pointerdown`) oder wegtippt/
+-wischt (`kmNext`) – beim Wegfliegen liegt sie also schon offen da. Vorher sieht man
+weiterhin nur Rückseiten an den Rändern.
