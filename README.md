@@ -382,6 +382,8 @@ Runde samt Freispielen), Anzeige in `public/index.html` (`bor*`).
   sonst 3), klappt es ueber die ganzen Walzen auf und zahlt auf allen 10
   Linien, auch wenn die Walzen nicht nebeneinander liegen. 3+ Buecher im
   Bonus = +10 Freispiele.
+  Im Bonus liegt das Spezialsymbol schon beim Landen golden hinterlegt
+  (`.bor-sym.special`), auch wenn es danach nicht aufklappt.
 - **Kein Bonus-Kauf** (Max). `play({ buy: true })` gibt es nur fuer die
   Simulation.
 - **Bonus-Tease:** liegen zwei Buecher, laufen die restlichen Walzen weiter

@@ -5930,6 +5930,13 @@ span.tier-common, span.tier-uncommon, span.tier-rare, span.tier-epic, span.tier-
 
 .bor-sym.dim { opacity: .35; }
 
+/* Im Bonus: das Spezialsymbol ist schon beim Landen golden */
+.bor-sym.special {
+    border-radius: 8px;
+    background: radial-gradient(ellipse at center, rgba(255, 233, 138, .55), rgba(232, 176, 74, .25) 60%, transparent 80%);
+    box-shadow: inset 0 0 0 2px rgba(255, 233, 138, .8), 0 0 14px rgba(255, 210, 63, .6);
+}
+
 /* Gewinnlinien */
 .bor-lines {
     position: absolute;
@@ -6184,12 +6191,7 @@ span.tier-common, span.tier-uncommon, span.tier-rare, span.tier-epic, span.tier-
     position: absolute;
     inset: 0;
     z-index: 10;
-    display: grid;
-    grid-template-columns: repeat(5, auto);
-    align-content: center;
-    justify-content: center;
-    gap: 2px 14px;
-    padding: 10px;
+    padding: 10px 14px;
     font-size: 13px;
     border-radius: 12px;
     background: rgba(14, 10, 2, .96);
@@ -6198,11 +6200,15 @@ span.tier-common, span.tier-uncommon, span.tier-rare, span.tier-epic, span.tier-
 }
 
 .bor-pay.hidden { display: none; }
+.bor-pt { margin: 0 auto; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.bor-pt th { font-size: 11px; opacity: .7; padding: 0 10px 2px; text-align: right; }
+.bor-pt td { padding: 0 10px; text-align: right; white-space: nowrap; }
+.bor-pt td:first-child { padding: 0 8px 0 0; }
+.bor-pt tr:nth-child(2n) td { background: rgba(232, 176, 74, .06); }
 .bor-pay .bor-sym { height: 28px; font-size: 22px; }
 .bor-pay .bor-sym.l span { font-size: 22px; }
 .bor-pay .bor-sym svg { width: 26px; height: 26px; }
-.bor-pay > span { align-self: center; text-align: right; font-variant-numeric: tabular-nums; }
-.bor-pay p { grid-column: 1 / -1; margin: 6px 0 0; font-size: 12px; opacity: .85; text-align: center; }
+.bor-pay p { max-width: 560px; margin: 8px auto 0; font-size: 12px; opacity: .85; text-align: center; }
 
 /* Bonus-Tease: Rahmen pulsiert, beim dritten Buch Blitz und Wackeln */
 .bor-stage.bait {
@@ -11384,6 +11390,7 @@ let borBet = 10;
 let borBusy = false;
 let borGam = null;          // offenes Risikospiel { amount, left }
 let borGamWait = false;
+let borSpecial = null;       // Spezialsymbol, solange der Bonus laeuft
 
 const BOR_LINE_COL = ['#ffd23f', '#ff4b55', '#4bd0ff', '#7dff6b', '#ff8a1a', '#d67dff', '#ff5bd6', '#35ffd0', '#fff', '#9a8cff'];
 const BOR_BOOK_SVG = `<svg viewBox="0 0 64 64"><path d="M10,8 L50,6 Q56,6 56,12 L56,54 Q56,58 50,58 L12,60 Q8,60 8,56 L8,12 Q8,8 10,8 Z" fill="#8a1a10" stroke="#e8b04a" stroke-width="3"/><path d="M48,8 L48,58" stroke="#f7ecd0" stroke-width="5"/><path d="M14,14 L44,13 L44,52 L14,53 Z" fill="none" stroke="#e8b04a" stroke-width="2"/><path d="M18,32 Q29,22 40,32 Q29,40 18,32 Z" fill="#fff2a8" stroke="#e8b04a" stroke-width="2"/><circle cx="29" cy="31.5" r="4" fill="#1e3a8a"/><path d="M26,36 L24,44 M33,36 Q36,42 32,46" fill="none" stroke="#e8b04a" stroke-width="2.4" stroke-linecap="round"/><path d="M29,17 l1.5,3 3,.3 -2.3,2 .7,3 -2.9,-1.6 -2.9,1.6 .7,-3 -2.3,-2 3,-.3 Z" fill="#ffd23f"/></svg>`;
@@ -11429,10 +11436,9 @@ window.addEventListener('resize', borFit);
 function buildBor(info) {
     borInfo = info;
     const S = info.symbols;
-    const row = (id, pays) => borCell(id) + [2, 3, 4, 5].map(n => `<span>${pays[n] ? n + ': ' + s2Fmt(pays[n] / 10) + '×' : ''}</span>`).join('');
-    $('bor-pay').innerHTML = '<span></span><b>2</b><b>3</b><b>4</b><b>5</b>'.replace(/<b>/g, '<b style="text-align:right">') +
-        Object.keys(S).map(id => row(id, S[id].pay)).join('') +
-        borCell('B') + [2, 3, 4, 5].map(n => `<span>${info.bookPays[n] ? n + ': ' + info.bookPays[n] + '×' : ''}</span>`).join('') +
+    const row = (id, pays, k) => `<tr><td>${borCell(id)}</td>` + [2, 3, 4, 5].map(n => `<td>${pays[n] ? s2Fmt(pays[n] / k) + '×' : '–'}</td>`).join('') + '</tr>';
+    $('bor-pay').innerHTML = '<table class="bor-pt"><tr><th></th><th>2</th><th>3</th><th>4</th><th>5</th></tr>' +
+        Object.keys(S).map(id => row(id, S[id].pay, 10)).join('') + row('B', info.bookPays, 1) + '</table>' +
         `<p>Pays × total bet on 10 fixed lines, left to right. 📖 is wild on the lines and pays anywhere as scatter.<br>` +
         `3+ 📖 = ${info.freeSpins} free spins with a random special symbol. In free spins it expands over the whole reel when it lands on enough reels and pays on all 10 lines, even on reels that are not next to each other. 3+ 📖 in free spins = +${info.freeSpins}.<br>` +
         `Gamble: after a win, guess red or black to double it (up to 5 times, fair 50/50).<br>` +
@@ -11551,7 +11557,7 @@ async function borSpinReels(grid) {
         const nb = grid[i].filter(s => s === 'B').length;
         lands.push(anim.finished.then(() => {
             reel.classList.remove('tease');
-            strip.innerHTML = grid[i].map(s => borCell(s)).join('');
+            strip.innerHTML = grid[i].map(s => borCell(s, s === borSpecial ? 'special' : '')).join('');
             sfx.land(i);
             if (nb) {
                 books += nb;
@@ -11665,7 +11671,6 @@ async function borShowWins(sp, winEl, from) {
     return shown;
 }
 
-let borSpecial = null;
 
 // Bonus-Start: Buch klappt auf, blaettert durch die Symbole, bleibt auf dem Spezialsymbol stehen
 async function borIntro(special, label) {
@@ -11710,9 +11715,10 @@ async function borRun(d) {
 
     let total = 0;
     let inBonus = false;
-    borSpecial = d.special;
+    borSpecial = null;
     const startBonus = async label => {
         inBonus = true;
+        borSpecial = d.special;
         await borIntro(d.special, label);
         borHudMode(true);
         $('bor-special').innerHTML = borCell(d.special);
@@ -11760,6 +11766,7 @@ async function borRun(d) {
     } else if (d.win > 0) sfx.chime(x);
 
     borHudMode(false);
+    borSpecial = null;
     $('bor-spinwin').textContent = s2Fmt(d.win);
     $('bor-log').textContent = d.bonus ? `Bonus paid ${s2Fmt(d.win)} coins` : d.win > 0 ? `Won ${s2Fmt(d.win)} coins – gamble it or spin on` : 'No win';
     if (me) {
