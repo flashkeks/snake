@@ -6216,6 +6216,229 @@ span.tier-common, span.tier-uncommon, span.tier-rare, span.tier-epic, span.tier-
 .bor-pay .bor-sym svg { width: 26px; height: 26px; }
 .bor-pay p { max-width: 560px; margin: 8px auto 0; font-size: 12px; opacity: .85; text-align: center; }
 
+/* ---------- Avalon Silver (Wege, 6 Walzen, 4–8 Reihen, nach Avalon Gold) ----------
+   Zellgroesse (--c) rechnet avFit() aus. Das Brett ist immer 8 Reihen hoch,
+   gesperrte Reihen oben deckt #av-lock ab. Zellen liegen absolut (r = 0 unten). */
+
+#avalon-btn .ico {
+    filter: drop-shadow(0 0 6px rgba(200, 220, 255, .8));
+}
+
+#avalon .card {
+    --c: 56px;
+    width: auto;
+    min-width: min(360px, 100%);
+    border-color: #c9d6ea;
+    box-shadow: 0 0 50px rgba(170, 200, 255, .28);
+    background: linear-gradient(180deg, #0e1a1a, #0a0f1c 60%);
+    padding: 10px 12px 12px;
+    gap: 8px;
+    position: relative;
+}
+
+.av-title {
+    font-size: 20px;
+    font-weight: 900;
+    margin-right: auto;
+    white-space: nowrap;
+    font-family: Georgia, 'Times New Roman', serif;
+    letter-spacing: .04em;
+    background: linear-gradient(90deg, #ffffff, #9fb3cc, #eef4ff, #6f8099, #ffffff);
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: goldShine 6s linear infinite;
+}
+
+.av-maxwin {
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .06em;
+    padding: 2px 8px;
+    border-radius: 999px;
+    color: #10182a;
+    background: linear-gradient(90deg, #eef4ff, #9fb3cc);
+    white-space: nowrap;
+}
+
+#avalon .s2-head .coins { font-weight: 900; color: #ffd23f; white-space: nowrap; }
+#avalon .s2-hud { grid-template-columns: repeat(3, 1fr); }
+#avalon .s2-hud.bonus { grid-template-columns: repeat(4, 1fr); }
+#avalon .s2-stat { background: rgba(170, 200, 255, .06); border-color: rgba(170, 200, 255, .25); }
+
+/* Rahmen: Moos, Stein, Silber */
+.av-stage {
+    position: relative;
+    align-self: center;
+    padding: 8px;
+    border-radius: 12px;
+    background:
+        radial-gradient(ellipse at 50% 0%, rgba(160, 255, 200, .12), transparent 60%),
+        linear-gradient(180deg, #2c3a34, #151d22);
+    border: 3px solid #b8c6da;
+    box-shadow: inset 0 0 18px rgba(0,0,0,.8), 0 0 22px rgba(170, 200, 255, .22);
+}
+.av-stage.free {
+    border-color: #eef4ff;
+    box-shadow: inset 0 0 18px rgba(0,0,0,.8), 0 0 34px rgba(190, 220, 255, .6);
+}
+.av-board {
+    position: relative;
+    width: calc(var(--c) * 6);
+    height: calc(var(--c) * 8);
+    overflow: hidden;
+    border-radius: 6px;
+    background:
+        repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 1px, transparent 1px var(--c)),
+        radial-gradient(ellipse at 50% 70%, #1f3b4a, #0b1622 85%);
+    box-shadow: inset 0 0 12px rgba(0,0,0,.7);
+}
+/* Gesperrte Reihen oben: Steinplatte, schrumpft mit jeder Lawine */
+.av-lock {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    z-index: 5;
+    height: calc(var(--c) * 4);
+    transition: height .45s cubic-bezier(.3,.1,.3,1.3);
+    background:
+        repeating-linear-gradient(0deg, rgba(0,0,0,.35) 0 2px, transparent 2px var(--c)),
+        repeating-linear-gradient(90deg, rgba(0,0,0,.25) 0 2px, transparent 2px calc(var(--c) * 1.5)),
+        linear-gradient(180deg, #4a5560, #2b333c);
+    border-bottom: 2px solid #b8c6da;
+    box-shadow: 0 4px 12px rgba(0,0,0,.6);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    font-size: calc(var(--c) * .28);
+    color: rgba(230, 240, 255, .55);
+    font-weight: 900;
+    letter-spacing: .1em;
+    padding-bottom: 4px;
+    pointer-events: none;
+}
+.av-lock.open { box-shadow: 0 4px 22px rgba(190, 230, 255, .9); }
+
+.av-cell {
+    position: absolute;
+    left: 0;
+    top: 0;
+    padding: 2px;
+    will-change: transform;
+}
+.av-cell > div {
+    width: 100%;
+    height: 100%;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(var(--c) * .58 * var(--z, 1));
+    background: radial-gradient(ellipse at 50% 35%, rgba(255,255,255,.12), rgba(0,0,0,.25) 80%);
+    box-shadow: inset 0 0 0 1px rgba(200, 220, 255, .12);
+    position: relative;
+    line-height: 1;
+}
+.av-cell.big > div {
+    background: radial-gradient(ellipse at 50% 35%, rgba(200, 225, 255, .25), rgba(0,0,0,.35) 80%);
+    box-shadow: inset 0 0 0 2px #c9d6ea, 0 0 14px rgba(170, 200, 255, .4);
+}
+.av-cell .l {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-weight: 900;
+    font-size: calc(var(--c) * .56 * var(--z, 1));
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,.7));
+}
+.av-cell .l-A { background-image: linear-gradient(180deg, #ffb0a0, #d8322a 55%, #7a1010); }
+.av-cell .l-K { background-image: linear-gradient(180deg, #b8e0ff, #3b8be0 55%, #143f7a); }
+.av-cell .l-Q { background-image: linear-gradient(180deg, #e8c8ff, #9a50e0 55%, #4f1a7a); }
+.av-cell .l-J { background-image: linear-gradient(180deg, #c0ffb8, #36c04c 55%, #10662a); }
+.av-cell .w {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-weight: 900;
+    font-size: calc(var(--c) * .3 * var(--z, 1));
+    letter-spacing: .02em;
+    background: linear-gradient(180deg, #ffffff, #a9b8cc 50%, #eef4ff);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0 6px rgba(190, 220, 255, .9));
+}
+.av-cell.wild > div { background: radial-gradient(ellipse at 50% 40%, #5a7394, #1b2638 85%); box-shadow: inset 0 0 0 2px #eef4ff; }
+.av-cell.ew > div { animation: avEw 1s ease-out; }
+.av-cell svg { width: 86%; height: 86%; filter: drop-shadow(0 3px 4px rgba(0,0,0,.6)); }
+.av-cell.framed > div { box-shadow: inset 0 0 0 3px #ffd23f, 0 0 12px rgba(255, 210, 63, .8); }
+.av-cell.win > div { animation: avWin .5s ease-in-out infinite alternate; box-shadow: inset 0 0 0 3px #eef4ff, 0 0 18px #bfe0ff; z-index: 3; }
+.av-cell.dim { opacity: .35; }
+.av-cell.box > div { background: radial-gradient(ellipse at 50% 40%, #3a4a62, #141c2a 85%); }
+.av-cell.open > div { background: radial-gradient(ellipse at 50% 40%, #4a6078, #19222f 85%); box-shadow: inset 0 0 0 2px #c9d6ea; }
+.av-coin, .av-feat {
+    font-weight: 900;
+    text-align: center;
+    line-height: 1.05;
+    font-family: system-ui, sans-serif;
+}
+.av-coin { color: #ffe98a; font-size: calc(var(--c) * .24 * var(--z, 1)); text-shadow: 0 0 8px rgba(255, 210, 63, .8), 0 1px 2px #000; }
+.av-coin::before { content: '🪙'; display: block; font-size: 1.3em; }
+.av-feat { color: #eef4ff; font-size: calc(var(--c) * .19 * var(--z, 1)); text-shadow: 0 0 8px #8fc2ff, 0 1px 2px #000; }
+.av-feat b { display: block; font-size: 1.7em; color: #fff; }
+.av-feat.mult b { color: #e39bff; }
+.av-feat.collect b { color: #7dffb0; }
+.av-feat.redrop b { color: #ffd23f; }
+
+@keyframes avWin { from { transform: scale(1); filter: brightness(1); } to { transform: scale(1.07); filter: brightness(1.45); } }
+@keyframes avEw { 0% { transform: scale(.2); filter: brightness(3); } 60% { transform: scale(1.15); } 100% { transform: scale(1); filter: none; } }
+
+.av-banner {
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: calc(var(--c) * .7);
+    font-weight: 900;
+    color: #eef4ff;
+    text-shadow: 0 0 20px #8fc2ff, 0 2px 4px #000;
+    background: rgba(6, 12, 22, .74);
+    border-radius: 12px;
+    pointer-events: none;
+    animation: pop .5s ease-out;
+}
+.av-banner small { font-family: system-ui, sans-serif; font-size: calc(var(--c) * .26); color: #fff; margin-top: 6px; max-width: 90%; }
+.av-banner svg { width: calc(var(--c) * 2); height: calc(var(--c) * 2); filter: drop-shadow(0 0 16px #bfe0ff); animation: avSword 1.4s ease-out; }
+@keyframes avSword { 0% { transform: translateY(40%) scale(.6); opacity: 0; } 60% { transform: translateY(-6%) scale(1.08); opacity: 1; } 100% { transform: none; } }
+
+.av-pay {
+    position: absolute;
+    inset: 0;
+    z-index: 9;
+    overflow: auto;
+    padding: 10px;
+    border-radius: 12px;
+    background: rgba(6, 12, 22, .95);
+    font-size: 13px;
+    cursor: pointer;
+}
+.av-pay.hidden { display: none; }
+.av-pt { margin: 0 auto; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.av-pt th { font-size: 11px; opacity: .7; padding: 0 10px 2px; text-align: right; }
+.av-pt td { padding: 0 10px; text-align: right; white-space: nowrap; }
+.av-pt td:first-child { padding: 0 8px 0 0; }
+.av-pt tr:nth-child(2n) td { background: rgba(170, 200, 255, .06); }
+.av-wtxt { font-family: Georgia, 'Times New Roman', serif; padding: 0 5px; border-radius: 5px; background: linear-gradient(180deg, #5a7394, #1b2638); color: #eef4ff; box-shadow: inset 0 0 0 1px #eef4ff; }
+.av-cell.av-inl { position: static; display: inline-block; vertical-align: middle; width: 30px; height: 30px; --c: 30px; --z: 1; }
+.av-pay p { max-width: 560px; margin: 8px auto 0; font-size: 12px; opacity: .88; text-align: center; }
+#av-spin { min-width: 110px; }
+
 /* Bonus-Tease: Rahmen pulsiert, beim dritten Buch Blitz und Wackeln */
 .bor-stage.bait {
     animation: borBait .45s ease-in-out infinite alternate;
@@ -7252,6 +7475,7 @@ body.watch-mode #world-switch {
                         <button type="button" class="cs-tile" id="slots-btn"><span class="ico">🎰</span><b>Slots</b><small>Classic three reels</small></button>
                         <button type="button" class="cs-tile" id="slots2-btn"><span class="ico">🌟</span><b>Budget Starlight</b><small>Tumbles · multipliers · free spins</small></button>
                         <button type="button" class="cs-tile" id="bookofrah-btn"><span class="ico">📖</span><b>Book of Nasus</b><small>10 lines · expanding symbol · gamble</small></button>
+                        <button type="button" class="cs-tile" id="avalon-btn"><span class="ico">⚔️</span><b>Avalon Silver</b><small>Avalanches · up to 262,144 ways · mystery boxes</small></button>
                         <button type="button" class="cs-tile" id="cross-btn"><span class="ico">🐔</span><b>Crossy Road</b><small>Cross lanes, cash out in time</small></button>
                         <button type="button" class="cs-tile" id="plinko-btn"><span class="ico">🔻</span><b>Plinko</b><small>Drop balls, up to ×1000</small></button>
                     </div>
@@ -7577,6 +7801,41 @@ body.watch-mode #world-switch {
                 </div>
             </div>
 
+            <!-- Avalon Silver: Wege-Slot 6 × 4–8 mit Lawinen (nach Avalon Gold) -->
+            <div id="avalon" class="overlay hidden">
+                <div class="card">
+                    <div class="s2-head">
+                        <div class="av-title">⚔️ Avalon Silver</div>
+                        <span class="av-maxwin" id="av-maxwin">MAX WIN 25,000×</span>
+                        <span class="coins">🪙 <span id="av-coins">0</span></span>
+                        <button type="button" class="s2-icon" id="av-sound" title="Sound on/off">🔊</button>
+                        <button type="button" class="s2-icon" id="av-info" title="Paytable">ℹ️</button>
+                        <button type="button" class="s2-icon" id="av-back" title="Back to menu">✕</button>
+                    </div>
+                    <div class="s2-hud" id="av-hud">
+                        <div class="s2-stat free hide" id="av-st-free"><small>FREE DROPS</small><b id="av-free">0</b></div>
+                        <div class="s2-stat" id="av-st-bet"><small>BET</small><b id="av-betshow">10</b></div>
+                        <div class="s2-stat" id="av-st-ways"><small id="av-wayslabel">WAYS</small><b id="av-ways">4,096</b></div>
+                        <div class="s2-stat win" id="av-st-spin"><small id="av-spinlabel">WIN</small><b id="av-spinwin">0</b></div>
+                        <div class="s2-stat win hide" id="av-st-total"><small>BONUS WIN</small><b id="av-total">0</b></div>
+                    </div>
+                    <div class="av-stage" id="av-stage">
+                        <div class="av-board" id="av-board"><div class="av-lock" id="av-lock"></div></div>
+                        <div class="av-pay hidden" id="av-pay"></div>
+                    </div>
+                    <div class="s2-log" id="av-log">6 reels · wins on ways from the left · every avalanche unlocks a row · 3+ ⚔️ = free drops · Space = spin</div>
+                    <div class="s2-bar">
+                        <div class="s2-bet">
+                            <small>BET</small>
+                            <button type="button" class="ghost" id="av-minus">−</button>
+                            <input id="av-custom" type="number" min="1" step="1" value="10" title="Type any amount">
+                            <button type="button" class="ghost" id="av-plus">+</button>
+                        </div>
+                        <button type="button" class="gold" id="av-spin">SPIN</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Konto -->
             <div id="konto" class="overlay hidden">
                 <div class="card">
@@ -7698,6 +7957,7 @@ body.watch-mode #world-switch {
                 <select id="hall-game" title="Game" hidden>
                     <option value="starlight">🌟 Starlight</option>
                     <option value="bookofrah">📖 Book of Nasus</option>
+                    <option value="avalon">⚔️ Avalon Silver</option>
                     <option value="slots">🎰 Slots</option>
                     <option value="plinko">🔻 Plinko</option>
                     <option value="crossy">🐔 Crossy</option>
@@ -8033,6 +8293,7 @@ ws.onmessage = event => {
             buildSlots();
             buildSlots2(data.slots2);
             if (data.bookofrah) buildBor(data.bookofrah);
+            if (data.avalon) buildAv(data.avalon);
             buildCasino(data);
             break;
         case 'auth':
@@ -8117,6 +8378,8 @@ ws.onmessage = event => {
         case 'borSpin': borRun(data); break;
         case 'borError': borError(data.error); break;
         case 'borGamble': onBorGamble(data); break;
+        case 'avSpin': avRun(data); break;
+        case 'avError': avError(data.error); break;
         case 'event': onEvent(data); break;
         case 'mg': onMgFrame(data); break;
         case 'sh': onSh(data); break;
@@ -8334,7 +8597,7 @@ let curScreen = 'menu';
 function showScreen(name) {
     curScreen = name;
     whereReport(name);
-    ['menu', 'casino', 'daily', 'cross', 'plinko', 'pokerlobby', 'shooter', 'arenahub', 'kekemon', 'market', 'shop', 'support', 'slots', 'slots2', 'bookofrah', 'konto', 'event', 'offer'].forEach(s => $(s).classList.toggle('hidden', s !== name));
+    ['menu', 'casino', 'daily', 'cross', 'plinko', 'pokerlobby', 'shooter', 'arenahub', 'kekemon', 'market', 'shop', 'support', 'slots', 'slots2', 'bookofrah', 'avalon', 'konto', 'event', 'offer'].forEach(s => $(s).classList.toggle('hidden', s !== name));
 }
 
 function backToMenu(resultHtml) {
@@ -8370,6 +8633,8 @@ function setMe(user) {
     $('slots2-btn').title = me ? '' : 'Accounts only';
     $('bookofrah-btn').disabled = !me;
     $('bookofrah-btn').title = me ? '' : 'Accounts only';
+    $('avalon-btn').disabled = !me;
+    $('avalon-btn').title = me ? '' : 'Accounts only';
     if (me) {
         $('me-name').textContent = me.name;
         $('me-coins').textContent = me.coins;
@@ -8493,7 +8758,7 @@ $('del-form').addEventListener('submit', e => {
 
 // Konto-Seite: Ueberblick plus Tabelle je Spiel (#5)
 const GAME_LABELS = {
-    slots: '🎰 Slots', starlight: '🌟 Budget Starlight', bookofrah: '📖 Book of Nasus', crossy: '🐔 Crossy Road', plinko: '🔻 Plinko',
+    slots: '🎰 Slots', starlight: '🌟 Budget Starlight', bookofrah: '📖 Book of Nasus', avalon: '⚔️ Avalon Silver', crossy: '🐔 Crossy Road', plinko: '🔻 Plinko',
     daily: '🎁 Daily Wheel', blackjack: '🃏 Blackjack', roulette: '🎡 Roulette', poker: '♠️ Poker', don: '🪙 Double or Nothing', arena: '🔫 Arena (stakes)'
 };
 
@@ -8538,7 +8803,7 @@ let spaceDown = false;
 // ESC fuehrt immer eine Ebene zurueck (Wunsch Max): je Screen der eigene
 // Zurueck-Knopf. Im Raid schliesst ESC nur das Inventar – Verlassen waere Tod.
 const ESC_BACK = { casino: 'casino-back', arenahub: 'hub-back', shop: 'shop-back', pokerlobby: 'pkl-back', daily: 'dw-back',
-    cross: 'cr-back', plinko: 'pl-back', slots: 'slots-back', slots2: 's2-back', bookofrah: 'bor-back', konto: 'konto-back', support: 'sp-close' };
+    cross: 'cr-back', plinko: 'pl-back', slots: 'slots-back', slots2: 's2-back', bookofrah: 'bor-back', avalon: 'av-back', konto: 'konto-back', support: 'sp-close' };
 document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     const el = document.activeElement;
@@ -8590,6 +8855,12 @@ document.addEventListener('keydown', e => {
             e.preventDefault();
             if (document.activeElement && document.activeElement.tagName === 'BUTTON') document.activeElement.blur();
             if (!e.repeat && $('bor-gamble').hidden) borStart();
+            return;
+        }
+        if (!$('avalon').classList.contains('hidden')) {
+            e.preventDefault();
+            if (document.activeElement && document.activeElement.tagName === 'BUTTON') document.activeElement.blur();
+            if (!e.repeat) avStart();
             return;
         }
         if (!$('plinko').classList.contains('hidden')) {
@@ -11935,6 +12206,445 @@ $('bookofrah-btn').onclick = () => {
     showScreen('bookofrah');
     borFit();
     requestAnimationFrame(borFit);
+};
+
+// ---------- Avalon Silver: Wege-Slot 6 × 4–8 (nach Avalon Gold) ----------
+// Der Server wuerfelt die ganze Runde und schickt je Spin die Zustaende
+// (frames: drop, win, fall, myst, fill, redrop). Hier fallen die Symbole wie im
+// Original von oben ins Brett, Gewinne platzen, der Rest rutscht nach, jede
+// Lawine schiebt die Steinplatte oben eine Reihe hoch. Zellen haben feste Ids,
+// so bewegt sich jede sichtbar an ihren neuen Platz.
+
+const AV_ROWS = 8, AV_REELS = 6;
+let avInfo = null;
+let avBet = 10;
+let avBusy = false;
+let avH = 4;                 // offene Reihen
+let avCs = 56;               // Zellgroesse in px
+let avRunBet = 10;           // Einsatz der laufenden Runde (Frames sind × Einsatz)
+const avEls = new Map();     // id -> { el, d }
+
+const AV_SWORD_SVG = `<svg viewBox="0 0 64 64"><path d="M14,58 Q32,44 50,58 Z" fill="#5d6670" stroke="#2b333c" stroke-width="2"/><path d="M10,60 L54,60" stroke="#2b333c" stroke-width="3" stroke-linecap="round"/><path d="M32,4 L36,10 L35,44 L29,44 L28,10 Z" fill="#eef4ff" stroke="#8fa3bd" stroke-width="1.5"/><path d="M32,8 L32,44" stroke="#b8c6da" stroke-width="1"/><path d="M20,44 L44,44 Q46,47 44,49 L20,49 Q18,47 20,44 Z" fill="#ffd23f" stroke="#a87a10" stroke-width="1.5"/><path d="M29.5,49 L34.5,49 L34,56 L30,56 Z" fill="#6b3a1a"/><circle cx="32" cy="46.5" r="2" fill="#4bd0ff"/></svg>`;
+const AV_BOX_SVG = `<svg viewBox="0 0 64 64"><path d="M8,22 L32,10 L56,22 L56,50 L32,60 L8,50 Z" fill="#46556b" stroke="#c9d6ea" stroke-width="2.5"/><path d="M8,22 L32,32 L56,22 M32,32 L32,60" fill="none" stroke="#c9d6ea" stroke-width="2"/><path d="M8,22 L32,32 L32,60 L8,50 Z" fill="#35425a"/><text x="32" y="48" text-anchor="middle" font-size="22" font-weight="900" fill="#eef4ff" font-family="Georgia,serif">?</text></svg>`;
+
+const avFmtX = v => s2Fmt(v * avRunBet);
+
+function avInner(s) {
+    if (s === 'W') return '<span class="w">WILD</span>';
+    if (s === 'X') return AV_SWORD_SVG;
+    if (s === 'M') return AV_BOX_SVG;
+    if (/^[AKQJ]$/.test(s)) return `<span class="l l-${s}">${s}</span>`;
+    return (avInfo && avInfo.symbols[s] ? avInfo.symbols[s].icon : s);
+}
+// Symbol als kleines Bild fuer Paytable und Text
+function avCellHtml(s) {
+    return `<span class="av-cell av-inl ${s === 'W' ? 'wild' : ''} ${s === 'M' ? 'box' : ''}"><div>${avInner(s)}</div></span>`;
+}
+const avXY = d => [d.c * avCs, (AV_ROWS - d.r - d.z) * avCs];
+const avTf = (x, y, extra) => `translate(${x}px, ${y}px)${extra || ''}`;
+
+function avStyle(o) {
+    const { el, d } = o;
+    el.className = 'av-cell' + (d.s === 'W' ? ' wild' : '') + (d.s === 'M' ? ' box' : '') + (d.z > 1 ? ' big' : '') + (d.f ? ' framed' : '');
+    el.style.setProperty('--z', d.z);
+    el.style.width = el.style.height = (d.z * avCs) + 'px';
+}
+function avMake(d) {
+    const el = document.createElement('div');
+    el.innerHTML = `<div>${avInner(d.s)}</div>`;
+    const o = { el, d };
+    avStyle(o);
+    const [x, y] = avXY(d);
+    el.style.transform = avTf(x, y);
+    $('av-board').appendChild(el);
+    avEls.set(d.id, o);
+    return o;
+}
+const avParse = a => ({ id: a[0], s: a[1], c: a[2], r: a[3], z: a[4], f: a[5], ew: a[6], bf: a[7] });
+
+function avLock(h, animate) {
+    const lock = $('av-lock');
+    lock.style.transition = animate ? '' : 'none';
+    lock.style.height = ((AV_ROWS - h) * avCs) + 'px';
+    lock.textContent = h < AV_ROWS ? '🔒 ' + (AV_ROWS - h) : '';
+    if (!animate) { void lock.offsetWidth; lock.style.transition = ''; }
+    $('av-ways').textContent = Math.pow(h, AV_REELS).toLocaleString('en-US');
+}
+
+// Zellgroesse so, dass alles ohne Scrollen passt
+function avFit() {
+    const ov = $('avalon');
+    if (ov.classList.contains('hidden')) return;
+    const card = ov.querySelector('.card');
+    const stage = $('av-stage');
+    const restH = card.offsetHeight - stage.offsetHeight;
+    const cellH = (ov.clientHeight - 32 - 4 - restH - 22) / AV_ROWS;
+    const cellW = (ov.clientWidth - 32 - 28 - 22 - 16) / AV_REELS;
+    const c = Math.floor(Math.max(30, Math.min(84, cellH, cellW)));
+    if (c === avCs && card.style.getPropertyValue('--c')) return;
+    avCs = c;
+    card.style.setProperty('--c', c + 'px');
+    for (const o of avEls.values()) {
+        avStyle(o);
+        const [x, y] = avXY(o.d);
+        o.el.style.transform = avTf(x, y);
+    }
+    avLock(avH, false);
+}
+window.addEventListener('resize', avFit);
+
+function buildAv(info) {
+    avInfo = info;
+    const S = info.symbols;
+    const row = id => `<tr><td>${avCellHtml(id)}</td>` + S[id].pay.map(p => `<td>${s2Fmt(p)}×</td>`).join('') + '</tr>';
+    $('av-pay').innerHTML = '<table class="av-pt"><tr><th></th><th>3</th><th>4</th><th>5</th><th>6</th></tr>' +
+        Object.keys(S).map(row).join('') + '</table>' +
+        `<p>6 reels, ${Math.pow(info.minRows, 6).toLocaleString('en-US')} ways to win, up to ${Math.pow(info.maxRows, 6).toLocaleString('en-US')}. ` +
+        `A win is 3+ matching symbols on adjacent reels from the left; the table shows what one way pays (× bet), times the number of ways it hits. <b class="av-wtxt">WILD</b> substitutes all except ⚔️ and ❓.</p>` +
+        `<p><b>Avalanche:</b> winning symbols vanish, the rest falls and new ones drop in – every avalanche unlocks one more row (up to ${info.maxRows}). In the base game the next drop starts at ${info.minRows} rows again.</p>` +
+        `<p><b>Big symbols</b> (2×2, 3×3, 4×4) count as that many symbols. They do not fall – gaps below them fill with their symbol. <b>Gold frames:</b> when space opens above a framed symbol, it fills with wilds.</p>` +
+        `<p><b>❓ Mystery boxes</b> block until ${info.mystMin}+ are in view, then open: a symbol (all the same), a wild, or an Avalon feature – 🪙 coin (× bet), ✖️ multiplier (all coins in view), Swiper (puts a 1 in front of the last coin: 7 → 17), Collect (pays all coins and opens the boxes again), Redrop (new drop, the boxes open again for sure). Coins in view pay at the end.</p>` +
+        `<p><b>Free drops:</b> 3 / 4 / 5 / 6 ⚔️ Excalibur = ${[3, 4, 5, 6].map(k => info.free[k]).join(' / ')}. Same again in free drops. Mystery boxes stay until they open, and every winning drop raises the safety level by one row – the next drop starts that high.</p>` +
+        `<p><b>Max win ${info.maxWin.toLocaleString('en-US')}×</b> · <b>RTP ${info.rtp} %</b> · no bonus buy. Tap to close.</p>`;
+    $('av-maxwin').textContent = `MAX WIN ${info.maxWin.toLocaleString('en-US')}×`;
+    // Startbild: zufaellige Symbole
+    const ids = Object.keys(S);
+    let id = -1;
+    for (let c = 0; c < AV_REELS; c++) for (let r = 0; r < info.minRows; r++) avMake({ id: id--, s: ids[Math.floor(Math.random() * ids.length)], c, r, z: 1 });
+    avLock(info.minRows, false);
+    avRefresh();
+}
+
+function avSetBet(v) {
+    avBet = Math.max(1, Math.floor(v) || 1);
+    $('av-custom').value = avBet;
+    avRefresh();
+}
+function avRefresh() {
+    if (!avBusy) {
+        $('av-betshow').textContent = s2Fmt(avBet);
+        if (me) $('av-coins').textContent = s2Fmt(me.coins);
+    }
+}
+function avHudMode(bonus) {
+    $('av-hud').classList.toggle('bonus', bonus);
+    $('av-stage').classList.toggle('free', bonus);
+    ['av-st-free', 'av-st-total'].forEach(id => $(id).classList.toggle('hide', !bonus));
+    $('av-st-bet').classList.toggle('hide', bonus);
+    $('av-spinlabel').textContent = bonus ? 'DROP WIN' : 'WIN';
+}
+function avBanner(html, ms) {
+    const b = document.createElement('div');
+    b.className = 'av-banner';
+    b.innerHTML = html;
+    $('av-stage').appendChild(b);
+    return s2Sleep(ms).then(() => b.remove());
+}
+const avAnim = (el, frames, opts) => {
+    const a = el.animate(frames, { ...opts, duration: opts.duration / s2Speed });
+    return a.finished.catch(() => {});
+};
+
+// Neuen Zustand zeigen. drop: alte Symbole fallen unten raus, neue von oben;
+// fall: Gewinner platzen, Rest rutscht, Neue fallen nach.
+async function avApply(cells, h, mode) {
+    const next = new Map(cells.map(a => { const d = avParse(a); return [d.id, d]; }));
+    const gone = [...avEls.entries()].filter(([id]) => !next.has(id));
+    if (gone.length) {
+        if (mode === 'drop') {
+            await Promise.all(gone.map(([, o]) => {
+                const [x, y] = avXY(o.d);
+                return avAnim(o.el, [{ transform: avTf(x, y) }, { transform: avTf(x, y + AV_ROWS * avCs), opacity: .6 }],
+                    { duration: 420, delay: o.d.c * 40, easing: 'cubic-bezier(.5,0,1,.5)', fill: 'forwards' });
+            }));
+        } else {
+            sfx.pop(gone.length);
+            await Promise.all(gone.map(([, o]) => avAnim(o.el, [{ opacity: 1, transform: o.el.style.transform }, { opacity: 0, transform: o.el.style.transform + ' scale(.2)' }], { duration: 260, easing: 'ease-in', fill: 'forwards' })));
+        }
+        for (const [id, o] of gone) { o.el.remove(); avEls.delete(id); }
+    }
+    if (h !== avH) {
+        const up = h > avH;
+        avH = h;
+        avLock(h, true);
+        if (up && mode !== 'drop') {
+            $('av-lock').classList.add('open');
+            sTone(420, { dur: .35, type: 'triangle', vol: .08, slide: 900, rev: .4 });
+            await s2Sleep(320);
+            $('av-lock').classList.remove('open');
+        }
+    }
+    const lands = new Set();
+    const moves = [];
+    // Neue fallen von oberhalb des Bretts; je Walze von unten nach oben gestaffelt
+    const fresh = [...next.values()].filter(d => !avEls.has(d.id)).sort((a, b) => a.c - b.c || a.r - b.r);
+    const perCol = {};
+    for (const d of next.values()) {
+        const o = avEls.get(d.id);
+        if (!o) continue;
+        const [ox, oy] = avXY(o.d);
+        const changed = o.d.s !== d.s || o.el.classList.contains('open') || o.el.dataset.rev;
+        o.d = d;
+        avStyle(o);
+        if (changed) {
+            o.el.innerHTML = `<div>${avInner(d.s)}</div>`;
+            delete o.el.dataset.rev;
+        }
+        const [x, y] = avXY(d);
+        o.el.style.transform = avTf(x, y);
+        if (y !== oy || x !== ox) {
+            const rows = Math.abs(y - oy) / avCs;
+            moves.push(avAnim(o.el, [{ transform: avTf(ox, oy) }, { transform: avTf(x, y + 4), offset: .9 }, { transform: avTf(x, y) }],
+                { duration: 180 + rows * 70, easing: 'cubic-bezier(.45,0,.9,.6)' }).then(() => lands.add(d.c)));
+        }
+    }
+    for (const d of fresh) {
+        const o = avMake(d);
+        const [x, y] = avXY(d);
+        const k = perCol[d.c] = (perCol[d.c] || 0) + 1;
+        if (d.ew) {
+            moves.push(s2Sleep(120 + k * 60).then(() => { o.el.classList.add('ew'); sBell(PENTA[6 + Math.min(4, k)], 0, .07, .8); }));
+            continue;
+        }
+        const from = -(d.z + 1) * avCs - (mode === 'drop' ? 0 : (AV_ROWS - avH) * avCs);
+        const delay = (mode === 'drop' ? d.c * 70 + d.r * 35 : d.c * 30 + k * 40);
+        const dist = (y - from) / avCs;
+        o.el.style.transform = avTf(x, from);
+        moves.push(avAnim(o.el, [{ transform: avTf(x, from) }, { transform: avTf(x, y + 5), offset: .88 }, { transform: avTf(x, y) }],
+            { duration: 200 + dist * 55, delay, easing: 'cubic-bezier(.5,0,1,.6)', fill: 'backwards' }).then(() => {
+            o.el.style.transform = avTf(x, y);
+            if (!lands.has(d.c)) { lands.add(d.c); sfx.land(d.c); }
+            if (d.s === 'X') { sfx.scatter(Math.min(6, [...avEls.values()].filter(q => q.d.s === 'X').length)); o.el.animate([{ filter: 'brightness(2.5)' }, { filter: 'none' }], { duration: 500 }); }
+        }));
+    }
+    await Promise.all(moves);
+}
+
+function avClearMarks() {
+    for (const o of avEls.values()) o.el.classList.remove('win', 'dim');
+}
+
+async function avShowWin(f, winEl, acc) {
+    const ids = new Set(f.ids);
+    for (const [id, o] of avEls) o.el.classList.toggle('win', ids.has(id)), o.el.classList.toggle('dim', !ids.has(id));
+    sfx.win(Math.min(5, f.wins.length + 1));
+    const S = avInfo.symbols;
+    $('av-log').innerHTML = f.wins.map(w => `${/^[AKQJ]$/.test(w.s) ? w.s : S[w.s].icon}×${w.n} · ${w.ways.toLocaleString('en-US')} way${w.ways > 1 ? 's' : ''} · ${avFmtX(w.pay)}`).join(' &nbsp; ');
+    await s2Count(winEl, acc, acc + f.pay * avRunBet, 600, false);
+    await s2Sleep(450);
+    avClearMarks();
+}
+
+// Mystery Boxes: eine nach der anderen aufdecken
+function avBoxFace(o, k, v) {
+    const inner = o.el.firstElementChild;
+    o.el.dataset.rev = '1';
+    o.el.classList.add('open');
+    if (k === 'sym' || k === 'wild') {
+        o.el.classList.remove('box', 'open');
+        inner.innerHTML = avInner(v);
+        if (v === 'W') o.el.classList.add('wild');
+    } else if (k === 'coin') inner.innerHTML = `<div class="av-coin">${avFmtX(v)}</div>`;
+    else if (k === 'mult') inner.innerHTML = `<div class="av-feat mult"><b>×${v}</b>MULTI</div>`;
+    else if (k === 'swipe') inner.innerHTML = '<div class="av-feat"><b>1→</b>SWIPER</div>';
+    else if (k === 'collect') inner.innerHTML = '<div class="av-feat collect"><b>⇲</b>COLLECT</div>';
+    else if (k === 'redrop') inner.innerHTML = '<div class="av-feat redrop"><b>↻</b>REDROP</div>';
+}
+function avCoinsSet(coins, bump) {
+    for (const [id, v] of coins) {
+        const o = avEls.get(id);
+        if (!o) continue;
+        const el = o.el.querySelector('.av-coin');
+        const txt = avFmtX(v);
+        if (el && el.textContent !== txt) {
+            el.textContent = txt;
+            if (bump) o.el.animate([{ transform: o.el.style.transform + ' scale(1.25)', filter: 'brightness(2)' }, { transform: o.el.style.transform }], { duration: 400 / s2Speed });
+        }
+    }
+}
+
+async function avMystery(f, winEl, acc) {
+    $('av-log').textContent = '❓ Mystery boxes open!';
+    sfx.orbEpic();
+    const boxes = [...avEls.values()].filter(o => o.d.s === 'M');
+    await Promise.all(boxes.map(o => avAnim(o.el, [{ filter: 'none' }, { filter: 'brightness(2.2) drop-shadow(0 0 10px #bfe0ff)' }, { filter: 'none' }], { duration: 700 })));
+    let got = acc;
+    for (const st of f.steps) {
+        if (st.again) {
+            // Collect: geoeffnete Boxen gehen wieder zu und oeffnen sich neu
+            for (const id of st.again) {
+                const o = avEls.get(id);
+                if (!o) continue;
+                o.el.firstElementChild.innerHTML = AV_BOX_SVG;
+                o.el.classList.remove('open');
+                o.el.animate([{ filter: 'brightness(2.5)' }, { filter: 'none' }], { duration: 400 / s2Speed });
+            }
+            sfx.charge();
+            await s2Sleep(450);
+            continue;
+        }
+        const o = avEls.get(st.id);
+        if (!o) continue;
+        await avAnim(o.el.firstElementChild, [{ transform: 'rotateY(0)' }, { transform: 'rotateY(90deg)' }], { duration: 140, easing: 'ease-in' });
+        avBoxFace(o, st.k, st.v);
+        await avAnim(o.el.firstElementChild, [{ transform: 'rotateY(90deg)' }, { transform: 'rotateY(0)' }], { duration: 160, easing: 'ease-out' });
+        if (st.k === 'coin') sfx.orbLand(1);
+        else if (st.k === 'mult') { sfx.multApply(); avCoinsSet(st.coins, true); }
+        else if (st.k === 'swipe') { sfx.orbHit(3); avCoinsSet(st.coins, true); }
+        else if (st.k === 'collect') {
+            sfx.fly();
+            for (const [id] of st.coins) { const q = avEls.get(id); if (q) q.el.animate([{ filter: 'brightness(2.5)' }, { filter: 'none' }], { duration: 500 / s2Speed }); }
+            if (st.pay) { await s2Count(winEl, got, got + st.pay * avRunBet, 600, true); got += st.pay * avRunBet; }
+        } else if (st.k === 'redrop') sfx.fanfare('retrig');
+        else sfx.tick(.5);
+        await s2Sleep(st.k === 'sym' || st.k === 'wild' ? 160 : 320);
+    }
+    if (f.end > 0) {
+        for (const o of avEls.values()) if (o.el.querySelector('.av-coin')) o.el.classList.add('win');
+        await s2Count(winEl, got, got + f.end * avRunBet, 700, true);
+        got += f.end * avRunBet;
+        await s2Sleep(300);
+        avClearMarks();
+    }
+    if (f.redrop) {
+        $('av-log').textContent = '↻ Redrop – the boxes open again';
+        await s2Sleep(500);
+    }
+    return got;
+}
+
+async function avRun(d) {
+    avBusy = true;
+    avRunBet = d.bet;
+    s2SetSpeed(1);
+    $('av-spin').textContent = 'DROPPING…';
+    $('av-spin').disabled = true;
+    $('av-minus').disabled = $('av-plus').disabled = $('av-custom').disabled = true;
+    $('av-pay').classList.add('hidden');
+    $('av-betshow').textContent = s2Fmt(d.bet);
+    avHudMode(false);
+    avRefresh();
+
+    let total = 0;
+    let inBonus = false;
+    for (const sp of d.spins) {
+        const winEl = $('av-spinwin');
+        winEl.textContent = '0';
+        if (sp.free) {
+            $('av-free').textContent = sp.freeLeft - sp.got;
+            s2Bump($('av-free'));
+            $('av-log').textContent = `Free drop ${sp.n}`;
+        } else $('av-log').textContent = '';
+        let acc = 0;
+        sfx.spin();
+        for (const f of sp.frames) {
+            if (f.t === 'drop' || f.t === 'redrop') await avApply(f.cells, f.h, 'drop');
+            else if (f.t === 'fall' || f.t === 'fill') await avApply(f.cells, f.h, 'fall');
+            else if (f.t === 'win') { await avShowWin(f, winEl, acc); acc += f.pay * d.bet; }
+            else if (f.t === 'myst') acc = await avMystery(f, winEl, acc);
+        }
+        const spinWin = Math.floor(sp.win * d.bet * 100) / 100;
+        winEl.textContent = s2Fmt(spinWin);
+        if (sp.free && spinWin > 0) {
+            await s2Count($('av-total'), total, total + spinWin, 600, true);
+            s2Bump($('av-total'));
+        }
+        total += spinWin;
+        if (sp.got) {
+            sfx.fanfare(sp.free ? 'retrig' : 'bonus');
+            for (const o of avEls.values()) if (o.d.s === 'X') o.el.classList.add('win');
+            await s2Sleep(700);
+            avClearMarks();
+            if (!sp.free) {
+                await avBanner(`${AV_SWORD_SVG}${sp.got} FREE DROPS<small>${sp.bonus}× Excalibur · mystery boxes stay until they open · every winning drop raises the safety level</small>`, 3200);
+                inBonus = true;
+                avHudMode(true);
+                $('av-total').textContent = s2Fmt(total);
+                $('av-free').textContent = sp.got;
+            } else {
+                await avBanner(`+${sp.got} FREE DROPS<small>${sp.bonus}× Excalibur</small>`, 1800);
+                $('av-free').textContent = sp.freeLeft;
+                s2Bump($('av-free'));
+            }
+        }
+        if (sp.free) $('av-wayslabel').textContent = `WAYS · SAFETY ${sp.safety}`;
+        await s2Sleep(sp.free ? (spinWin > 0 ? 450 : 250) : 100);
+    }
+
+    const x = d.win / d.bet;
+    if (inBonus) {
+        sfx.fanfare(x >= 20 ? 'big' : 'end');
+        await avBanner(`BONUS WIN<small>${s2Fmt(d.win)} coins · ${s2Fmt(x)}×${d.capped ? ' · MAX WIN' : ''}</small>`, 3000);
+    } else if (d.win > 0 && x >= 20) {
+        sfx.fanfare('big');
+        await avBanner(`${x >= 100 ? 'EPIC WIN' : x >= 50 ? 'MEGA WIN' : 'BIG WIN'}<small>${s2Fmt(d.win)} coins · ${s2Fmt(x)}×</small>`, 2600);
+    } else if (d.win > 0) sfx.chime(x);
+
+    avHudMode(false);
+    $('av-wayslabel').textContent = 'WAYS';
+    $('av-spinwin').textContent = s2Fmt(d.win);
+    $('av-log').textContent = d.bonus ? `Bonus paid ${s2Fmt(d.win)} coins` : d.win > 0 ? `Won ${s2Fmt(d.win)} coins` : 'No win';
+    if (me) {
+        me.coins = d.balance;
+        $('me-coins').textContent = d.balance;
+    }
+    wsSend({ type: 'avDone' });
+    avDone();
+}
+
+function avDone() {
+    avBusy = false;
+    $('av-spin').textContent = 'SPIN';
+    $('av-spin').disabled = false;
+    $('av-minus').disabled = $('av-plus').disabled = $('av-custom').disabled = false;
+    avRefresh();
+}
+function avError(msg) {
+    $('av-log').textContent = msg;
+    avDone();
+}
+function avStart() {
+    if (avBusy || !me || !avInfo) return;
+    sfxInit();
+    if (me.coins < avBet) {
+        $('av-log').textContent = 'Not enough coins';
+        return;
+    }
+    avBusy = true;
+    $('av-spin').disabled = true;
+    $('av-coins').textContent = s2Fmt(me.coins - avBet);
+    wsSend({ type: 'avSpin', bet: avBet });
+}
+
+$('av-spin').onclick = () => avStart();
+$('av-minus').onclick = () => { sfxInit(); sfx.click(); avSetBet(S2_BETS.filter(b => b < avBet).pop() || 1); };
+$('av-plus').onclick = () => { sfxInit(); sfx.click(); avSetBet(S2_BETS.find(b => b > avBet) || avBet); };
+$('av-custom').oninput = e => {
+    const v = Math.floor(Number(e.target.value));
+    if (v >= 1) {
+        avBet = v;
+        avRefresh();
+    }
+};
+$('av-custom').onchange = () => avSetBet(avBet);
+$('av-info').onclick = () => $('av-pay').classList.toggle('hidden');
+$('av-pay').onclick = () => $('av-pay').classList.add('hidden');
+$('av-sound').textContent = sfxMuted ? '🔇' : '🔊';
+$('av-sound').onclick = () => {
+    $('s2-sound').click();
+    $('av-sound').textContent = sfxMuted ? '🔇' : '🔊';
+};
+$('av-back').onclick = () => {
+    if (avBusy) return;
+    casinoRefresh();
+    showScreen('casino');
+};
+$('avalon-btn').onclick = () => {
+    if (!me) return;
+    avRefresh();
+    showScreen('avalon');
+    avFit();
+    requestAnimationFrame(avFit);
 };
 
 // ---------- Arena: Hub und Raid (Extraction) ----------

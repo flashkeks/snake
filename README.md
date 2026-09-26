@@ -3852,3 +3852,33 @@ Neun Wünsche aus einer Runde, alle in `shooter.js` außer wo genannt.
 | Favoriten im Guild Stash | ☆/⭐ auf jeder Kachel (`gFav`), gleiches Feld `it.fav` wie „Protect“ im Hub – also auch vor Recyceln, Fuse und Verkauf geschützt. Favoriten stehen oben, eigener Filter „⭐ Favorites“. Stapel mit und ohne Stern werden getrennt gezeigt. |
 
 Geprüft per WebSocket gegen einen Testserver (`PORT=3999 SNAKE_TEST=1`): Sortier-Reihenfolge, Tausch, Stapel-Tausch, leeres Feld; Reaper-Flächen kommen beim Spieler am Boss an, beim Spieler im Guild House nicht; Tod am Reaper → Todesort nach Wiedereinstieg da (180 s) → in der Nähe weg; Favorit setzen/entfernen, bleibt beim Einlagern, blockt Recyceln, wirkt nur am Stash. Nicht automatisch geprüft: Karma-Gnadenzeit, Aggro-Reset (nur Code-Review), die Optik im Browser.
+
+## ⚔️ Avalon Silver: neuer Slot nach Avalon Gold (26.09.2026, Max)
+
+Wunsch Max: „neuer Slot Avalon Silver, orientiere dich an Avalon Gold. Bonus bekommen, aber nicht kaufen. Wie beim Original 3 Bonus-Symbole 10 Freispiele, 4 = 15 usw. Features, Animation und Spin-Logik wie beim Original.“
+
+Vorbild ist **Avalon Gold von ELK Studios** (Gold-Serie mit Kane). Die Spielregeln sind aus dem Review von bigwinboard.com zusammengetragen; die Seite ist aus dem Claude-Container gesperrt, deshalb wurde sie über CT 113 → edge abgerufen. Grafik und Symbole sind eigene: Emoji plus zwei SVGs (Excalibur, Mystery Box), Silber statt Gold.
+
+**Engine `avalon.js`** (der Server würfelt die ganze Runde, der Browser spielt sie ab):
+
+| Original | Hier |
+|---|---|
+| 6 Walzen, 4 Reihen, 4.096 Wege, bis 8 Reihen / 262.144 Wege | gleich. Gewinn = 3+ gleiche auf benachbarten Walzen ab links, Wege = Produkt der Treffer je Walze |
+| Avalanche: jede Lawine eine Reihe mehr, im Basisspiel danach zurück auf 4 | gleich. Gesperrte Reihen deckt eine Steinplatte ab, die mit jeder Lawine hochfährt |
+| 12 Symbole: 4 Buchstaben J–A, 4 Tiere, 3 Masken + Kane | J Q K A · Hirsch, Eule, Wolf, Schwan · Schild, Krone, Gral, Lady of the Lake. Verhältnisse wie im Original (Sechser: Buchstaben 0,3, Tiere 0,8–1, Hohe 2–5). Gezahlt wird die Tabelle × `PAY_SCALE` 0,22, die Paytable im Spiel zeigt die echten Werte |
+| Wild ersetzt alles außer Bonus und Mystery | gleich |
+| Big Symbols 2×2/3×3/4×4, fallen nicht, Lücken darunter füllen sich mit ihrem Symbol | gleich, auch als Mystery Box |
+| Goldrahmen: Lücken über dem Symbol werden Wilds | gleich (Rahmen wird dabei verbraucht) |
+| Mystery Boxes: ab 5 im Bild öffnen sie sich – Symbol, Wild oder Avalon-Feature: Coin, Multiplier, Swiper (7 → 17), Collect (zahlt Coins, öffnet Boxen neu), Redrop | gleich. Alle Symbol-Boxen zeigen dasselbe Symbol. Coins zahlen am Ende. Collect öffnet höchstens 3× neu, Redrop höchstens 3× je Drop |
+| Free Drops: 3/4/5/6 Bonus = 10/15/20/25, im Bonus genauso nachtriggerbar | gleich (`FREE`) |
+| Im Bonus: Boxen bleiben liegen, bis sie aufgehen. Safety Level +1 Reihe nach jedem Gewinn-Drop | gleich |
+| X-iter (Bonus- und Feature-Kauf) | **gibt es nicht** (Wunsch Max) |
+| RTP 94 %, max. 25.000× | RTP ~96 % wie die anderen Automaten, max. 25.000× |
+
+**Abstimmung per Simulation** (`node avalon.js 200000`): Basisspiel ~63–66 %, Bonus etwa jede 230. Runde mit Ø ~70× (inklusive Nachtrigger) = ~30 %, zusammen ~96 %. Die Spitzen liegen über 10.000×, deshalb wackelt die Quote bei 200.000 Runden um mehrere Prozentpunkte (gemessen 88–101 %). Genauer wird es, wenn man den Bonus getrennt misst: `play({ buy: true })` ist nur für die Simulation da, im Spiel gibt es keinen Kauf.
+
+**Server** (`server.js`): `avSpin` / `avDone`, Modus-Sperre „casino“, Statistik und Bestenliste als Spiel `avalon`, Admin-Rig (`luck.js`, wie Book of Nasus), Achievement „Knight of Avalon“ (1.000×). Gewinne in den Frames bleiben × Einsatz, der Browser rechnet um.
+
+**Browser**: Zellen haben feste Ids. Bei jedem Zustand sieht man: alte Symbole fallen unten raus, neue kommen von oben (je Walze gestaffelt), Gewinne leuchten und platzen, der Rest rutscht nach. Boxen drehen sich einzeln um, Coins zählen hoch. Free Drops starten mit Excalibur-Banner, die HUD zeigt Drops, Wege und Safety Level.
+
+Geprüft: Simulation wie oben; WebSocket-Test mit 25 Spins (Einsatz ab, Gewinn gut, Summe der Frames = Gewinn, zu hoher Einsatz abgelehnt); Browser (Playwright, Desktop und 390 px) mit einem gerigten Bonus und vorgewürfelten Runden mit Multiplier, Collect und Goldrahmen – keine Fehler in der Konsole.

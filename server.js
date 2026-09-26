@@ -8,6 +8,7 @@ const kmLevel = require('./km-level');
 const slots = require('./slots');
 const slots2 = require('./slots2');
 const bookofrah = require('./bookofrah');
+const avalon = require('./avalon');
 
 // Freier Einsatz: ganze Coins, mindestens 1, Obergrenze nur als Sicherung
 const MAX_BET = 1000000;
@@ -584,7 +585,7 @@ function activityOf(key) {
     const ui = c.ui || {};
     if (!what) {
         const tab = { kekemon: ui.kmTab, arenahub: ui.hubTab, market: ui.mkTab }[ui.screen];
-        const SCREEN = { menu: '🏠 Menu', casino: '🎰 Casino', daily: '🎡 Daily Wheel', cross: '🐔 Crossy Road', plinko: '🔻 Plinko', slots: '🎰 Slots', slots2: '🌟 Starlight', bookofrah: '📖 Book of Nasus', kekemon: '🃏 Kekémon', arenahub: '🔫 Arena', market: '🏛️ Market', shop: '🎨 Shop', support: '💬 Support', konto: '👤 Account', pokerlobby: '♠️ Poker lobby', event: '🎪 Event', offer: '🎲 Offer' };
+        const SCREEN = { menu: '🏠 Menu', casino: '🎰 Casino', daily: '🎡 Daily Wheel', cross: '🐔 Crossy Road', plinko: '🔻 Plinko', slots: '🎰 Slots', slots2: '🌟 Starlight', bookofrah: '📖 Book of Nasus', avalon: '⚔️ Avalon Silver', kekemon: '🃏 Kekémon', arenahub: '🔫 Arena', market: '🏛️ Market', shop: '🎨 Shop', support: '💬 Support', konto: '👤 Account', pokerlobby: '♠️ Poker lobby', event: '🎪 Event', offer: '🎲 Offer' };
         what = (SCREEN[ui.screen] || ui.screen || '…') + (tab ? ' · ' + tab : '');
     }
     return { what, tabs: conns.length, idle: Math.round((Date.now() - (c.lastActive || Date.now())) / 1000), watchers: c.watchers ? c.watchers.size : 0 };
@@ -603,7 +604,7 @@ try { modeLocks = JSON.parse(fs.readFileSync(LOCKS_FILE, 'utf8')) || {}; } catch
 for (const k of Object.keys(modeLocks)) if (!MODE_LOCKS[k]) delete modeLocks[k];
 const ENTRY_MODE = {
     join: 'snake', shJoin: 'extract', msCreate: 'missions', msJoin: 'missions', msStart: 'missions',
-    tableJoin: 'casino', pokerCreate: 'casino', spin: 'casino', spin2: 'casino', borSpin: 'casino', borGamble: 'casino', plinko: 'casino', crossStart: 'crossy',
+    tableJoin: 'casino', pokerCreate: 'casino', spin: 'casino', spin2: 'casino', borSpin: 'casino', borGamble: 'casino', avSpin: 'casino', plinko: 'casino', crossStart: 'crossy',
     kbStart: 'kekemon', kdCreate: 'kekemon', kdJoin: 'kekemon', mkBuy: 'market', mkBid: 'market', mkList: 'market', trReq: 'trade'
 };
 function modeOfEntry(d) {
@@ -693,7 +694,7 @@ let achRatesCache = null;
 // Schirm -> Anzeige. Menue, Konto, Support usw. zaehlen nicht als "spielt".
 const WHERE = {
     casino: '🎰 Casino', daily: '🎁 Daily Wheel', cross: '🐔 Crossy Road', plinko: '🔻 Plinko',
-    pokerlobby: '♠️ Poker', slots: '🎰 Slots', slots2: '🌟 Starlight', bookofrah: '📖 Book of Nasus', arenahub: '🔫 Arena',
+    pokerlobby: '♠️ Poker', slots: '🎰 Slots', slots2: '🌟 Starlight', bookofrah: '📖 Book of Nasus', avalon: '⚔️ Avalon Silver', arenahub: '🔫 Arena',
     shooter: '🔫 Arena', kekemon: '🃏 Kekémon', shop: '🎨 Shop', event: '🎪 Event', market: '🏛️ Market'
 };
 const TABLE_WHERE = { blackjack: '🃏 Blackjack', roulette: '🎡 Roulette', poker: '♠️ Poker' };
@@ -911,7 +912,7 @@ const pendingWins = new Map();  // Konto -> { amount, feed, timer, onReveal }
 
 // Leaderboard (#8): Kategorien und Spiele mit sinnvollem Multi
 const BOARD_CATS = ['score', 'coins', 'kills', 'bigwin', 'bestx', 'casino', 'events', 'arena', 'alevel', 'pvp', 'zwave', 'kmduel'];
-const BOARD_X_GAMES = ['starlight', 'bookofrah', 'slots', 'plinko', 'crossy', 'roulette', 'blackjack', 'poker'];
+const BOARD_X_GAMES = ['starlight', 'bookofrah', 'avalon', 'slots', 'plinko', 'crossy', 'roulette', 'blackjack', 'poker'];
 
 function hideWin(key, amount, feedLine, ms, onReveal) {
     revealWin(key);
@@ -2126,6 +2127,40 @@ async function handle(c, data) {
             if (c.account) revealWin(c.account);
             return;
 
+        // --- Vierter Automat: Avalon Silver (Wege, Lawinen, Mystery Boxes, Free Drops) ---
+        // Wie Avalon Gold (ELK), aber ohne Bonus-Kauf (Max, 26.09.2026): Free Drops nur ueber 3+ Excalibur
+        case 'avSpin': {
+            if (!c.account) return send(c, { type: 'avError', error: 'Accounts only' });
+            const now = Date.now();
+            if (now - (c.lastAv || 0) < 600) return;
+            const bet = Number(data.bet);
+            if (!validBet(bet)) return send(c, { type: 'avError', error: 'Invalid bet' });
+            const u = accounts.get(c.account);
+            if (!u || u.coins < bet) return send(c, { type: 'avError', error: 'Not enough coins' });
+            c.lastAv = now;
+
+            accounts.addCoins(c.account, -bet);
+            const rig = accounts.takeRig(c.account, 'avalon');
+            const r = rig ? luck.starlightSpin(avalon, bet, false, rig) : avalon.spin(bet);
+            const balance = accounts.addCoins(c.account, r.win);
+            accounts.stat(c.account, s => {
+                s.spins++;
+                s.biggestWin = Math.max(s.biggestWin, r.win);
+            });
+            // Gewinne in den Frames bleiben × Einsatz, der Browser rechnet mit bet um
+            send(c, { type: 'avSpin', bet, cost: bet, win: r.win, capped: r.capped, bonus: r.bonus, balance, spins: r.spins });
+            // Grob so lang wie die Animation im Browser, grosszuegig
+            const frames = r.spins.reduce((n, sp) => n + sp.frames.length, 0);
+            const ms = Math.min(20 * 60e3, 15e3 + frames * 2500);
+            const line = r.win >= bet * 100 ? [`⚔️ ${u.name} won ${r.win} coins (${Math.round(r.win / bet)}x) on Avalon Silver`, 'gold', c.id] : null;
+            hideWin(c.account, r.win, line, ms, () => accounts.game(c.account, 'avalon', { wager: bet, win: r.win, x: r.win / bet }));
+            return;
+        }
+
+        case 'avDone':
+            if (c.account) revealWin(c.account);
+            return;
+
         // Risikospiel (Rot/Schwarz): fair 50/50, der Gewinn liegt schon auf dem Konto
         case 'borGamble': {
             const g = c.borGamble;
@@ -2213,6 +2248,7 @@ wss.on('connection', (ws, req) => {
         arenaItems: arenaItems.catalog(),
         arenaLevel: arenaLevel.catalog(),
         bookofrah: bookofrah.info(),
+        avalon: avalon.info(),
         slots2: { pays: slots2.PAYS, scatterPays: slots2.SCATTER_PAYS, buyCost: slots2.BUY_COST, freeSpins: slots2.FREE_SPINS, retrigger: slots2.RETRIGGER, maxWin: slots2.MAX_WIN, rtp: slots2.RTP },
         wheel: casino.WHEEL,
         cross: casino.crossTable(),

@@ -7,6 +7,7 @@
 //             (bzw. die Freispiele ausloest); Zeitbudget 400 ms, sonst der
 //             beste gefundene
 //   bookofrah wie starlight
+//   avalon    wie starlight (kein Kauf)
 //   plinko    Fach mit Multi >= min wird gewaehlt, der Pfad passend gebaut
 //   daily     Rad wird neu gedreht, bis der Wert >= min ist
 //   crossy    N Laeufe ohne Unfall
@@ -16,6 +17,7 @@ const GAMES = {
     slots: { name: '🎰 Slots', mins: [2, 6, 10, 20, 40, 80, 200, 1000], unit: '×' },
     starlight: { name: '🌟 Budget Starlight (spins + bonus buy)', mins: [5, 20, 50, 100, 250, 500, 1000, 5000], unit: '×', bonus: true },
     bookofrah: { name: '📖 Book of Nasus (spins)', mins: [5, 20, 50, 100, 250, 500, 1000, 5000], unit: '×', bonus: true },
+    avalon: { name: '⚔️ Avalon Silver (drops)', mins: [5, 20, 50, 100, 250, 500, 1000, 5000], unit: '×', bonus: true },
     plinko: { name: '🔻 Plinko', mins: [2, 9, 26, 41, 110, 130, 1000], unit: '×' },
     daily: { name: '🎡 Daily wheel', mins: [500, 1000, 2500, 5000, 10000, 25000], unit: 'coins' },
     crossy: { name: '🐔 Crossy Road (no crash)', mins: null }
