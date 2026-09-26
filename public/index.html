@@ -3336,7 +3336,10 @@ body.world-arena h1 {
 .gd-tools span { color: #b8a888; font-size: 12px; margin-left: 4px; }
 .gd-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; max-height: 52vh; overflow-y: auto; padding-right: 4px; }
 .gd-it { position: relative; display: flex; align-items: center; gap: 8px; text-align: left; padding: 6px 8px; border-radius: 9px; background: rgba(255,255,255,.05); border: 2px solid rgba(255,255,255,.12); min-width: 0; }
-.gd-it:hover:not(:disabled) { background: rgba(255,255,255,.12); transform: translateY(-1px); }
+.gd-it.off { opacity: .45; cursor: not-allowed; }
+.gd-rc { font-size: 13px; padding: 2px 5px; border-radius: 6px; background: rgba(120,220,140,.15); cursor: pointer; margin-left: 4px; }
+.gd-rc:hover { background: rgba(120,220,140,.35); }
+.gd-it:hover:not(:disabled):not(.off) { background: rgba(255,255,255,.12); transform: translateY(-1px); }
 .gd-it { border-color: var(--tc, rgba(255,255,255,.12)); }
 .gd-it.tier-common { border-color: rgba(255,255,255,.14); }
 .gd-it.tier-legendary { border-color: #ffb13d; box-shadow: 0 0 8px rgba(255,177,61,.35); } .gd-it.tier-mythic { border-color: #ff4d6d; box-shadow: 0 0 10px rgba(255,77,109,.4); }
@@ -11375,10 +11378,13 @@ function gdTile(st, dir, blocked) {
     const tierName = (arenaCat.tiers[tierIdx(t)] || {}).name || '';
     const sub = k === 'armor' ? (arenaCat.slotNames[it.sl || def.slot] || '') : k === 'util' ? (def.desc || '') : k === 'pack' ? `${def.cap} slots` : `${Math.round((def.dmg || 0) * (def.pellets || 1))} dmg`;
     const attr = dir === 'in' ? 'data-dep' : 'data-wd';
-    return `<button type="button" class="gd-it tier-${t}" ${attr}="${esc(st.uids[0])}" ${blocked ? 'disabled' : ''} title="${esc(it.n || it.name)} · ${esc(tierName)}${mods ? ' · ' + mods : ''} – click to ${dir === 'in' ? 'store' : 'take'}${n > 1 ? ' one' : ''}">` +
+    // voll: Kachel gesperrt (data-off statt disabled, sonst ginge auch ♻️ nicht)
+    return `<button type="button" class="gd-it tier-${t}${blocked ? ' off' : ''}" ${attr}="${esc(st.uids[0])}" ${blocked ? 'data-off="1"' : ''} title="${esc(it.n || it.name)} · ${esc(tierName)}${mods ? ' · ' + mods : ''} – click to ${dir === 'in' ? 'store' : 'take'}${n > 1 ? ' one' : ''}">` +
         `<span class="gd-ic">${itemIcon(it)}${lv > 1 ? `<i class="gd-lv">${lv}</i>` : ''}${n > 1 ? `<i class="gd-n">×${n}</i>` : ''}</span>` +
         `<span class="gd-tx"><b>${esc(it.n || it.name)}</b><small class="gd-tier">${esc(tierName)}${mods ? ' · ' + mods : ''}</small><small>${esc(sub)}</small></span>` +
-        (n > 1 ? `<span class="gd-all" ${attr}="${esc(st.uids.join(','))}" title="Move the whole stack">all</span>` : '') + '</button>';
+        (n > 1 ? `<span class="gd-all" ${attr}="${esc(st.uids.join(','))}" title="Move the whole stack">all</span>` : '') +
+        // Recyceln (26.09.2026): ganzes Feld zu Scrap, ⭐ geschuetzte nicht
+        (it.fav ? '' : `<span class="gd-rc" data-gsv="${esc(st.uids.join(','))}" data-gsvn="${esc(it.n || it.name)}" data-gsvx="${n}" data-gsvs="${(it.sv || 0) * n}" title="Recycle${n > 1 ? ` all ${n}` : ''} for scrap">♻️</span>`) + '</button>';
 }
 function gdRedraw() {
     const box = $('gd-stash'), d = gdLast;
@@ -11426,10 +11432,17 @@ function onGuildRaw(d) {
         el.className = 'sh-trader sh-guild';
         document.querySelector('#shooter .card').appendChild(el);
         el.addEventListener('click', e => {
-            const b = e.target.closest('button');
+            // 26.09.2026: Knoepfe im Feld („all", ♻️) haben eigene Daten – vorher griff „all" die ganze Kachel
+            const b = e.target.closest('[data-gsv], .gd-all, button');
             if (!b || b.disabled) return;
+            if (!b.dataset.gsv && (b.closest('button') || b).dataset.off) return;
             const ds = b.dataset;
             if (ds.close) return onGuild({ close: true });
+            if (ds.gsv) {
+                const n = Number(ds.gsvx) || 1;
+                return uiConfirm(`Recycle ${n > 1 ? n + '× ' : ''}${ds.gsvn} for about ${Number(ds.gsvs).toLocaleString('en-US')} ⚙️ scrap? It is gone afterwards.`, { title: '♻️ Recycle', ok: 'Recycle', danger: true })
+                    .then(ok => ok && wsSend({ type: 'gSalvage', uids: ds.gsv.split(',') }));
+            }
             if (ds.ms) {
                 const o = { type: ds.ms };
                 if (ds.kind) o.kind = ds.kind;

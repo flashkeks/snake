@@ -584,7 +584,7 @@ function brief(it) {
     return it ? {
         uid: it.uid, n: it.name, b: it.base, k: it.kind, t: it.tier, s: !!it.starter,
         sl: it.slot || null, o: it.odds, sc: it.score, m: it.mods && it.mods.length ? it.mods.map(m => [m.id, m.lvl]) : undefined,
-        wxp: it.wxp || undefined
+        wxp: it.wxp || undefined, sv: it.kind ? I.salvageValue(it) : undefined, fav: it.fav ? 1 : undefined
     } : null;
 }
 
@@ -1503,7 +1503,7 @@ module.exports = function createArena(h, opts = {}) {
             ability(p, now);
         } else if (d.type && d.type.startsWith('ms')) {
             missionAction(p, d, now);
-        } else if (d.type === 'gDeposit' || d.type === 'gWithdraw' || d.type === 'gInsure') {
+        } else if (d.type === 'gDeposit' || d.type === 'gWithdraw' || d.type === 'gInsure' || d.type === 'gSalvage') {
             guildAction(p, d);
         } else if (d.type === 'crOpen' || d.type === 'crGive' || d.type === 'crHeal' || d.type === 'crClear') {
             creativeAction(p, d);
@@ -1869,6 +1869,27 @@ module.exports = function createArena(h, opts = {}) {
     }
     function guildAction(p, d) {
         const a = st(p.c);
+        // Recyceln am Guild Stash (26.09.2026, Max): Items aus Lager oder Rucksack zu Scrap,
+        // gleicher Wert wie im Hub (Salvage, samt Skill-Bonus); geschuetzte (⭐) bleiben
+        if (d.type === 'gSalvage') {
+            if (!nearStationKind(p, 'stash')) return;
+            const uids = new Set((Array.isArray(d.uids) ? d.uids : [d.uid]).slice(0, 60).map(String));
+            const out = a.inv.filter(it => uids.has(it.uid) && !it.fav), outPack = p.pack.filter(it => uids.has(it.uid) && !it.fav);
+            if (!out.length && !outPack.length) {
+                if (a.inv.some(it => uids.has(it.uid) && it.fav)) h.send(p.c, { type: 'shEvent', text: '⭐ Protected items cannot be recycled', kind: 'self' });
+                return;
+            }
+            const gone = new Set([...out, ...outPack].map(it => it.uid));
+            const scrap = Math.round([...out, ...outPack].reduce((s, it) => s + I.salvageValue(it), 0) * L.bonuses(a.prog, 'extract').scrap);
+            a.inv = a.inv.filter(it => !gone.has(it.uid));
+            p.pack = p.pack.filter(it => !gone.has(it.uid));
+            fixLoadout(a);
+            a.scrap += scrap;
+            h.accounts.touch();
+            h.send(p.c, { type: 'shEvent', text: `♻️ Recycled ${gone.size} item${gone.size > 1 ? 's' : ''} for ${scrap} ⚙️ scrap`, kind: 'drop' });
+            sendInv(p);
+            return sendGuildStash(p);
+        }
         if (d.type === 'gInsure') {
             if (!nearStationKind(p, 'insure')) return;
             const it = p.gear[String(d.slot)];
@@ -3782,6 +3803,23 @@ module.exports = function createArena(h, opts = {}) {
     const inZone = (x, y, z, m) => !!z && x > z[0] - m && x < z[0] + z[2] + m && y > z[1] - m && y < z[1] + z[3] + m;
     // Stadt und Aussenposten sind Schutzzonen: Gegner kommen nicht hinein (schiessen aber hinein)
     // Tod in der Mission (25.09.2026): zurueck in ein Guild House, freie Stelle drinnen
+    // Guild Tokens von Bossen (26.09.2026, Max): jeder, der dem Boss Schaden gemacht hat,
+    // bekommt je nach Boss 1-3 🎟️ – auch wer inzwischen tot oder raus ist (ueber das Konto).
+    // Raid-Bosse nach Beute-Stufe (Raccoon King/Hive Queen 1, Iron Golem 2, Titan/Reaper 3),
+    // Missions-Bosse nach Missions-Stufe (Easy 1, Normal 2, Hard 3). Zombie-Bosse geben Cases.
+    function bossTokens(m, n) {
+        if (zb || !m.dmgAcc) return;
+        for (const [id, who] of m.dmgAcc) {
+            if (!(m.dmgBy.get(id) > 0)) continue;
+            const a = h.accounts.arena(who.account);
+            if (!a) continue;
+            a.tokens = (a.tokens || 0) + n;
+            if (who.account) h.accounts.stat(who.account, s => { s.bossTokens = (s.bossTokens || 0) + n; });
+            h.send(who.c, { type: 'shEvent', text: `🎟️ +${n} Guild Token${n > 1 ? 's' : ''} for the ${m.def.name}`, kind: 'drop' });
+        }
+        h.accounts.touch();
+    }
+
     function guildSpot(near) {
         const gs = MAP.guilds || [];
         if (!gs.length) return null;
@@ -3931,7 +3969,10 @@ module.exports = function createArena(h, opts = {}) {
         const real = Math.min(dmg, m.hp);
         m.hp -= dmg;
         if (phHit) bossPhase(m, now);
-        if (attacker && attacker.account) m.dmgBy.set(attacker.id, (m.dmgBy.get(attacker.id) || 0) + real);
+        if (attacker && attacker.account) {
+            m.dmgBy.set(attacker.id, (m.dmgBy.get(attacker.id) || 0) + real);
+            (m.dmgAcc = m.dmgAcc || new Map()).set(attacker.id, { account: attacker.account, c: attacker.c, name: attacker.name });
+        }
         // Wer schiesst, wird zum Ziel (auch von weit weg)
         if (attacker && players.has(attacker.id)) {
             m.tgt = attacker.id;
@@ -4226,6 +4267,7 @@ module.exports = function createArena(h, opts = {}) {
                 const q = players.get(id);
                 if (q && total > 0) award(q, L.XP.bossHelp * n / total, 'boss damage');
             }
+            bossTokens(m, def.loot && def.loot[0] >= 4 ? 3 : def.loot && def.loot[0] >= 3 ? 2 : 1);
             // Brut der Koenigin faellt mit ihr
             for (const o of [...mobs]) if (o.parent === m.id) mobs.splice(mobs.indexOf(o), 1);
             return;
@@ -4235,6 +4277,7 @@ module.exports = function createArena(h, opts = {}) {
             for (const q of players.values()) h.send(q.c, { type: 'shEvent', text: `✅ Mission complete! Head back to the exit to claim ${MISSION_DIFF[opts.mission.diff].tokens} 🎟️ Mission Tokens`, kind: 'drop' });
         }
         if (def.special) {
+            bossTokens(m, m.diff === 'hard' ? 3 : m.diff === 'easy' ? 1 : 2);
             const n = def.drop ? def.drop.n : 3;
             for (let k = 0; k < n; k++) {
                 const a = k / n * Math.PI * 2, x = m.x + Math.cos(a) * 55, y = m.y + Math.sin(a) * 55;

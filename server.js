@@ -1678,7 +1678,7 @@ async function handle(c, data) {
         case 'shInteract':
         case 'shAbility':
         case 'msOpen': case 'msClose': case 'msCreate': case 'msJoin': case 'msLeave': case 'msSet': case 'msStart':
-        case 'gDeposit': case 'gWithdraw': case 'gInsure':
+        case 'gDeposit': case 'gWithdraw': case 'gInsure': case 'gSalvage':
         case 'crOpen': case 'crGive': case 'crHeal': case 'crClear':
         case 'shInv':
         case 'shTrade':

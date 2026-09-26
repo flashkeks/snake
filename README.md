@@ -3548,3 +3548,34 @@ belegen. Ingame im Inventar bis 10 und in der Hotbar bis 5."
 Geprüft (`stack.js`, 11/11): Hotbar-Limits, 50/51 und 10/11 Stück, volles Lager nimmt
 Bandagen in den angefangenen Stapel (auch 10 per Shop), Frag nicht; 25 Bandagen + Waffe im
 Raid = 4 Plätze. Alle älteren Tests grün.
+
+## ♻️ Recyceln am Guild Stash, 🎟️ Guild Tokens von Bossen (26.09.2026, Max)
+
+**Recyceln im Gilden-Stash:** Jede Kachel im Guild Stash (Lager- und Rucksack-Seite) hat einen
+♻️-Knopf. Nach Rückfrage („Recycle 23× Bandage for about 46 ⚙️ scrap?") wird das ganze Feld
+zu Scrap – gleicher Wert wie Salvage im Hub, samt Scrap-Bonus aus dem Skill-Baum. ⭐ geschützte
+Items haben keinen Knopf und werden auch serverseitig übersprungen. Server: `gSalvage` (nur
+am Stash, bis 60 uids je Aufruf), Routing in `server.js`. Ist Lager oder Rucksack voll, bleibt
+die Kachel zum Verschieben gesperrt (`data-off` statt `disabled`), ♻️ geht trotzdem – genau
+dann braucht man es. `brief()` trägt dafür `sv` (Scrap-Wert) und `fav`.
+
+Nebenbei behoben: der „all"-Knopf auf gestapelten Kacheln verschob nur **ein** Stück – der
+Klick landete über `closest('button')` immer auf der Kachel selbst.
+
+**Guild Tokens von Bossen:** Jeder, der einem Boss Schaden gemacht hat, bekommt beim Tod des
+Bosses Tokens – auch wer inzwischen gestorben oder raus ist (gemerkt über das Konto,
+`m.dmgAcc`). `bossTokens()`:
+
+| Boss | 🎟️ |
+|---|---:|
+| Raccoon King, Hive Queen (Beute-Stufe 1–2) | 1 |
+| Iron Golem (Stufe 3–4) | 2 |
+| Titan Mk-IV, The Reaper (Stufe 4–5) | 3 |
+| Missions-Boss Easy / Normal / Hard | 1 / 2 / 3 |
+
+Der bisherige Missions-Lohn am Ausgang (1/2/4) bleibt zusätzlich. Zombie-Bosse geben keine
+Tokens, dort gibt es die Boss-Cases. Statistik `bossTokens` je Konto.
+
+Geprüft (`tok.js`, 6/6): King/Golem/Reaper geben 1/2/3 an beide Schützen, nicht an den dritten
+Spieler; Recyceln aus Lager und Rucksack, ⭐ bleibt, weg vom Stash geht nichts. Screenshot der
+Stash-Ansicht mit Rückfrage.
