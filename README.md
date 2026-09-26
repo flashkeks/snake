@@ -3714,6 +3714,5 @@ Schaden von Gegnern und Bossen an Spielern und Schaden von Spielern an Gegnern b
 Ein Treffer der Railgun (Legendary, Lv 30) an Schmoggi: 267 → ~107, also 4 statt 2 Treffer.
 
 Geprüft: 50 Schaden Spieler→Spieler = 20, Gegner→Spieler = 50; alle älteren Tests grün.
-- Nachtrag (Max): „Only duplicates" ist bei der Zielwahl aus (man sieht alle Karten) und geht
-  automatisch an, sobald links eine Karte steht; „↺ Other card" schaltet ihn wieder aus.
-  Öffnen aus der Kartenansicht („Level up with other cards…") startet direkt mit Filter an.
+- Nachtrag (Max): „Only duplicates" startet immer aus und bleibt aus, bis man ihn selbst
+  anhakt – die Schnellauswahl lässt mit „keep one of each" ohnehin eine Kopie je Karte übrig.

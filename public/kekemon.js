@@ -1806,8 +1806,8 @@ function kmFdEl() {
 function kmFdOpen(id) {
     kmFd.open = true;
     kmFd.target = id || null;
-    // 26.09.2026 (Max): Zielwahl zeigt alles, sobald eine Karte links steht, nur Duplikate
-    kmFd.dupes = !!kmFd.target;
+    // 26.09.2026 (Max): „Only duplicates" startet immer aus – die Schnellauswahl behaelt ohnehin eine je Karte
+    kmFd.dupes = false;
     kmFd.pick.clear();
     kmFdEl().hidden = false;
     kmFdDraw();
@@ -1947,7 +1947,7 @@ function kmFdClick(e) {
     if (ds.fdq) return kmFdQuick(ds.fdq);
     if (ds.fdclear) { kmFd.pick.clear(); return kmFdDraw(); }
     if (ds.fdmore) { kmFd.shown += 120; return kmFdGrid(); }
-    if (ds.fdchange) { kmFd.target = null; kmFd.dupes = false; kmFd.pick.clear(); kmFd.shown = 120; return kmFdDraw(); }
+    if (ds.fdchange) { kmFd.target = null; kmFd.pick.clear(); kmFd.shown = 120; return kmFdDraw(); }
     if (ds.fdm) return kmFdAdd(ds.fdm, -1);
     if (ds.fdp) return kmFdAdd(ds.fdp, 1);
     if (ds.fdx) { kmFd.pick.delete(ds.fdx); return kmFdDraw(); }
@@ -1960,7 +1960,7 @@ function kmFdClick(e) {
             .then(ok => ok && wsSend({ type: 'kmFeedMany', target: kmFdTKey(), items }));
     }
     if (ds.fdk) {
-        if (!kmFd.target) { kmFd.target = kmParse(ds.fdk).id; kmFd.dupes = true; kmFd.pick.clear(); kmFd.shown = 120; return kmFdDraw(); }
+        if (!kmFd.target) { kmFd.target = kmParse(ds.fdk).id; kmFd.pick.clear(); kmFd.shown = 120; return kmFdDraw(); }
         return kmFdAdd(ds.fdk, 1);
     }
 }
