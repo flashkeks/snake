@@ -5715,7 +5715,7 @@ span.tier-common, span.tier-uncommon, span.tier-rare, span.tier-epic, span.tier-
     display: none;
 }
 .s2-girl.on { display: block; }
-.s2g { width: 100%; height: auto; display: block; overflow: visible; filter: drop-shadow(0 6px 18px rgba(255, 91, 214, .35)); }
+.s2g { width: 100%; height: auto; display: block; overflow: visible; filter: drop-shadow(0 6px 18px rgba(160, 90, 255, .4)); }
 .s2g * { transform-box: view-box; }
 .s2g .g-all { animation: s2gFloat 4.2s ease-in-out infinite; }
 .s2g .g-wingL { transform-origin: 150px 270px; animation: s2gWingL 2.4s ease-in-out infinite; }
@@ -7724,161 +7724,167 @@ body.watch-mode #world-switch {
     </div>
 </div>
 
-                    <!-- Budget Starlight: Magierin links neben der Maschine, eigene Zeichnung (s2Fit/s2Girl).
+                    <!-- Budget Starlight: Magierin links neben der Maschine, eigene Zeichnung (s2Fit/s2Girl), seit 26.09. als Goth.
                          Liegt ausserhalb von #slots2, weil das Overlay (backdrop-filter, overflow) sie sonst abschneidet -->
                     <div class="s2-girl" id="s2-girl">
                     <svg class="s2g" viewBox="0 0 320 600" aria-hidden="true">
                       <defs>
                         <linearGradient id="s2gHair" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0" stop-color="#ffb3dd"/><stop offset=".45" stop-color="#ff72c2"/><stop offset="1" stop-color="#b8409a"/>
+                          <stop offset="0" stop-color="#3a3046"/><stop offset=".4" stop-color="#1a1522"/><stop offset="1" stop-color="#0a080e"/>
                         </linearGradient>
                         <linearGradient id="s2gHairD" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0" stop-color="#e05aae"/><stop offset="1" stop-color="#8a2c7c"/>
+                          <stop offset="0" stop-color="#231c2c"/><stop offset="1" stop-color="#07060a"/>
                         </linearGradient>
                         <linearGradient id="s2gIris" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0" stop-color="#4b1fb8"/><stop offset=".55" stop-color="#8c5cff"/><stop offset="1" stop-color="#5ee6ff"/>
+                          <stop offset="0" stop-color="#2a0620"/><stop offset=".55" stop-color="#9a1e5a"/><stop offset="1" stop-color="#ff7ab0"/>
                         </linearGradient>
-                        <linearGradient id="s2gGold" x1="0" y1="0" x2="1" y2="1">
-                          <stop offset="0" stop-color="#fff2a8"/><stop offset=".5" stop-color="#ffd23f"/><stop offset="1" stop-color="#d08a12"/>
+                        <linearGradient id="s2gSilver" x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#b9b6c8"/><stop offset="1" stop-color="#6c6880"/>
                         </linearGradient>
-                        <linearGradient id="s2gSkirt" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0" stop-color="#ff9ad5"/><stop offset="1" stop-color="#e0529f"/>
+                        <linearGradient id="s2gCloth" x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0" stop-color="#2a2233"/><stop offset=".5" stop-color="#15111b"/><stop offset="1" stop-color="#0b090f"/>
+                        </linearGradient>
+                        <linearGradient id="s2gLeg" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0" stop-color="#0c0a10"/><stop offset=".55" stop-color="#241d2e"/><stop offset="1" stop-color="#0c0a10"/>
                         </linearGradient>
                         <linearGradient id="s2gWing" x1="1" y1="0" x2="0" y2="1">
-                          <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e6dcff"/>
+                          <stop offset="0" stop-color="#3a2c4e"/><stop offset="1" stop-color="#0d0a12"/>
                         </linearGradient>
+                        <linearGradient id="s2gMoon" x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0" stop-color="#f4e8ff"/><stop offset=".5" stop-color="#c9a8ff"/><stop offset="1" stop-color="#7a4ad0"/>
+                        </linearGradient>
+                        <pattern id="s2gMesh" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                          <path d="M0,0 L0,6 M0,0 L6,0" stroke="#4a3d58" stroke-width=".8" opacity=".55"/>
+                        </pattern>
                         <radialGradient id="s2gAura">
-                          <stop offset="0" stop-color="#ffd23f" stop-opacity=".55"/><stop offset=".5" stop-color="#ff5bd6" stop-opacity=".25"/><stop offset="1" stop-color="#ff5bd6" stop-opacity="0"/>
+                          <stop offset="0" stop-color="#c38bff" stop-opacity=".5"/><stop offset=".5" stop-color="#8a1e5a" stop-opacity=".25"/><stop offset="1" stop-color="#8a1e5a" stop-opacity="0"/>
                         </radialGradient>
                         <radialGradient id="s2gGlow">
-                          <stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".35" stop-color="#ffe98a" stop-opacity=".7"/><stop offset="1" stop-color="#ffd23f" stop-opacity="0"/>
+                          <stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".35" stop-color="#d9b8ff" stop-opacity=".7"/><stop offset="1" stop-color="#8a4ad0" stop-opacity="0"/>
                         </radialGradient>
                       </defs>
                     
                       <ellipse class="g-aura" cx="160" cy="300" rx="170" ry="290" fill="url(#s2gAura)"/>
                     
                       <g class="g-all">
-                        <!-- Fluegel -->
+                        <!-- dunkle Fluegel -->
                         <g class="g-wingL">
-                          <path d="M150,262 C118,222 62,176 14,184 C34,196 30,210 20,222 C44,226 38,244 26,258 C52,258 50,276 38,292 C64,290 66,306 58,320 C88,306 122,290 150,284 Z" fill="url(#s2gWing)" stroke="#c9b6ff" stroke-width="2" stroke-linejoin="round"/>
-                          <path d="M140,266 C110,240 70,214 40,206 M136,274 C106,260 72,248 46,248 M134,282 C108,280 82,282 62,290" fill="none" stroke="#d6c8ff" stroke-width="2" stroke-linecap="round"/>
+                          <path d="M150,262 C118,222 62,176 14,184 C34,196 30,210 20,222 C44,226 38,244 26,258 C52,258 50,276 38,292 C64,290 66,306 58,320 C88,306 122,290 150,284 Z" fill="url(#s2gWing)" stroke="#7a5aa0" stroke-width="2" stroke-linejoin="round"/>
+                          <path d="M140,266 C110,240 70,214 40,206 M136,274 C106,260 72,248 46,248 M134,282 C108,280 82,282 62,290" fill="none" stroke="#5a4478" stroke-width="2" stroke-linecap="round"/>
                         </g>
                         <g class="g-wingR">
-                          <path d="M170,262 C202,222 258,176 306,184 C286,196 290,210 300,222 C276,226 282,244 294,258 C268,258 270,276 282,292 C256,290 254,306 262,320 C232,306 198,290 170,284 Z" fill="url(#s2gWing)" stroke="#c9b6ff" stroke-width="2" stroke-linejoin="round"/>
-                          <path d="M180,266 C210,240 250,214 280,206 M184,274 C214,260 248,248 274,248 M186,282 C212,280 238,282 258,290" fill="none" stroke="#d6c8ff" stroke-width="2" stroke-linecap="round"/>
+                          <path d="M170,262 C202,222 258,176 306,184 C286,196 290,210 300,222 C276,226 282,244 294,258 C268,258 270,276 282,292 C256,290 254,306 262,320 C232,306 198,290 170,284 Z" fill="url(#s2gWing)" stroke="#7a5aa0" stroke-width="2" stroke-linejoin="round"/>
+                          <path d="M180,266 C210,240 250,214 280,206 M184,274 C214,260 248,248 274,248 M186,282 C212,280 238,282 258,290" fill="none" stroke="#5a4478" stroke-width="2" stroke-linecap="round"/>
                         </g>
                     
-                        <!-- Zoepfe -->
-                        <g class="g-tailL">
-                          <path d="M112,86 C62,104 34,190 48,290 C56,356 36,420 20,470 C64,446 92,384 88,312 C84,236 96,150 128,108 Z" fill="url(#s2gHair)"/>
-                          <path d="M100,110 C70,160 62,240 70,320 C74,380 60,420 50,448" fill="none" stroke="#c44d9f" stroke-width="3" stroke-linecap="round" opacity=".6"/>
-                        </g>
-                        <g class="g-tailR">
-                          <path d="M208,86 C258,104 286,190 272,290 C264,356 284,420 300,470 C256,446 228,384 232,312 C236,236 224,150 192,108 Z" fill="url(#s2gHair)"/>
-                          <path d="M220,110 C250,160 258,240 250,320 C246,380 260,420 270,448" fill="none" stroke="#c44d9f" stroke-width="3" stroke-linecap="round" opacity=".6"/>
+                        <!-- lange glatte Haare hinten -->
+                        <g transform="translate(160 206) scale(.88) translate(-160 -206)">
+                          <path d="M100,120 C88,60 232,60 220,120 C234,200 240,320 232,432 Q196,440 160,436 Q124,440 88,432 C80,320 86,200 100,120 Z" fill="url(#s2gHairD)"/>
+                          <g class="g-tailL"><path d="M104,112 C86,190 80,320 84,452 Q92,444 100,452 Q106,440 112,448 C110,330 112,210 122,124 Z" fill="url(#s2gHair)"/></g>
+                          <g class="g-tailR"><path d="M216,112 C234,190 240,320 236,452 Q228,444 220,452 Q214,440 208,448 C210,330 208,210 198,124 Z" fill="url(#s2gHair)"/></g>
                         </g>
                     
-                        <!-- Haare hinten -->
-                        <path d="M100,124 C92,64 228,64 220,124 C230,190 226,240 212,272 L108,272 C94,240 90,190 100,124 Z" fill="url(#s2gHairD)"/>
-                    
-                        <!-- Beine -->
+                        <!-- Beine: Leggings und Plateau-Boots -->
                         <g class="g-legs">
-                          <path d="M140,396 L134,496 L152,496 L156,396 Z" fill="#fff6fb" stroke="#e7cde0" stroke-width="1.5"/>
-                          <path d="M131,488 L154,488 L156,538 Q144,550 124,546 Q122,538 132,530 Z" fill="url(#s2gGold)" stroke="#b57410" stroke-width="1.5" stroke-linejoin="round"/>
-                          <path d="M132,492 L154,492" stroke="#fff" stroke-width="3"/>
-                          <path d="M166,396 L184,476 L200,472 L184,396 Z" fill="#fff6fb" stroke="#e7cde0" stroke-width="1.5"/>
-                          <path d="M182,466 L201,460 L214,512 Q206,524 190,522 Q188,514 194,508 Z" fill="url(#s2gGold)" stroke="#b57410" stroke-width="1.5" stroke-linejoin="round"/>
-                          <path d="M183,470 L201,464" stroke="#fff" stroke-width="3"/>
+                          <path d="M134,318 C130,380 132,440 136,478 L156,478 C158,440 160,380 160,318 Z" fill="url(#s2gLeg)"/>
+                          <path d="M162,318 C166,370 176,420 186,470 L204,464 C196,420 188,370 186,318 Z" fill="url(#s2gLeg)"/>
+                          <path d="M131,470 L159,470 L160,522 L166,532 L166,544 Q146,552 118,548 L118,536 L128,528 Z" fill="#141018" stroke="#3e3448" stroke-width="1.5" stroke-linejoin="round"/>
+                          <path d="M118,540 L166,540" stroke="#2c2434" stroke-width="7"/>
+                          <path d="M136,482 L154,488 M136,494 L154,500 M136,506 L154,512" stroke="#b9b6c8" stroke-width="1.6" stroke-linecap="round"/>
+                          <path d="M182,460 L206,454 L216,506 L224,514 L226,526 Q206,536 182,532 L182,522 L190,512 Z" fill="#141018" stroke="#3e3448" stroke-width="1.5" stroke-linejoin="round"/>
+                          <path d="M182,526 L226,520" stroke="#2c2434" stroke-width="7"/>
+                          <path d="M188,470 L204,474 M190,482 L206,486 M192,494 L208,498" stroke="#b9b6c8" stroke-width="1.6" stroke-linecap="round"/>
                         </g>
                     
-                        <!-- Rock -->
+                        <!-- Oberteil: schwarzes Mesh, Korsett-Guertel -->
+                        <path d="M128,226 C140,218 180,218 192,226 C190,258 184,280 186,300 C188,312 190,318 190,324 L130,324 C130,318 132,312 134,300 C136,280 130,258 128,226 Z" fill="url(#s2gCloth)"/>
+                        <path d="M128,226 C140,218 180,218 192,226 C190,258 184,280 186,300 C188,312 190,318 190,324 L130,324 C130,318 132,312 134,300 C136,280 130,258 128,226 Z" fill="url(#s2gMesh)"/>
+                        <path d="M140,224 Q160,244 180,224" fill="none" stroke="#6a5a7c" stroke-width="2"/>
+                        <path d="M134,288 L186,288 L188,312 L132,312 Z" fill="#0b090f" stroke="#4a3d58" stroke-width="1.2"/>
+                        <path d="M150,292 L170,300 M170,292 L150,300 M150,300 L170,308 M170,300 L150,308" stroke="#b9b6c8" stroke-width="1"/>
+                    
+                        <!-- Kettenguertel, schwingt mit -->
                         <g class="g-skirt">
-                          <path d="M130,296 L190,296 C216,338 240,378 248,406 Q234,398 222,412 Q206,400 192,414 Q176,402 160,416 Q144,402 128,414 Q114,400 98,412 Q86,398 72,406 C80,378 104,338 130,296 Z" fill="#fff6fb" stroke="#f0c8e4" stroke-width="2" stroke-linejoin="round"/>
-                          <path d="M132,296 L188,296 C206,330 222,360 230,388 Q216,380 204,392 Q190,382 176,394 Q160,384 144,394 Q130,382 116,392 Q104,380 90,388 C98,360 114,330 132,296 Z" fill="url(#s2gSkirt)"/>
-                          <path d="M92,384 Q104,376 116,388 Q130,378 144,390 Q160,380 176,390 Q190,378 204,388 Q216,376 228,384" fill="none" stroke="url(#s2gGold)" stroke-width="3" stroke-linecap="round"/>
-                          <path d="M150,300 L140,380 M170,300 L180,380 M130,304 L112,372 M190,304 L208,372" stroke="#c9458f" stroke-width="2" opacity=".45"/>
+                          <path d="M130,318 Q160,332 190,318" fill="none" stroke="#b9b6c8" stroke-width="2.5" stroke-dasharray="4 2"/>
+                          <path d="M132,322 Q146,360 176,342 Q186,336 190,322" fill="none" stroke="url(#s2gSilver)" stroke-width="2.5" stroke-dasharray="4 2"/>
+                          <path d="M156,352 l0,10 M151,357 l10,0" stroke="#d6d2e2" stroke-width="2.4" stroke-linecap="round"/>
                         </g>
                     
-                        <!-- Oberteil -->
-                        <path d="M122,232 C136,220 184,220 198,232 L190,300 L130,300 Z" fill="#fff6fb" stroke="#f0c8e4" stroke-width="2" stroke-linejoin="round"/>
-                        <path d="M136,232 L160,262 L184,232" fill="none" stroke="url(#s2gGold)" stroke-width="3.5" stroke-linejoin="round"/>
-                        <rect x="128" y="290" width="64" height="12" rx="4" fill="url(#s2gGold)" stroke="#b57410" stroke-width="1"/>
-                        <path d="M160,250 l5,9 10,1 -8,6 3,10 -10,-6 -10,6 3,-10 -8,-6 10,-1 Z" fill="#ff5bd6" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/>
+                        <!-- linker Arm (haengt), Mesh-Aermel -->
+                        <path d="M128,232 C114,258 108,290 110,322 L122,322 C122,294 126,266 136,242 Z" fill="url(#s2gCloth)"/>
+                        <path d="M128,232 C114,258 108,290 110,322 L122,322 C122,294 126,266 136,242 Z" fill="url(#s2gMesh)"/>
+                        <circle cx="116" cy="330" r="7.5" fill="#f6ebe8" stroke="#d9c3c0" stroke-width="1.5"/>
+                        <path d="M110,334 l-1,4 M114,336 l0,4 M118,336 l1,4" stroke="#1a1020" stroke-width="2.2" stroke-linecap="round"/>
                     
-                        <!-- linker Arm (haengt) -->
-                        <path d="M114,246 C104,276 102,300 108,322 L120,322 C118,300 122,278 130,254 Z" fill="#ffe3d3" stroke="#eab9a4" stroke-width="1.5"/>
-                        <path d="M104,312 L124,312 L122,324 L106,324 Z" fill="#fff" stroke="#f0c8e4" stroke-width="1.5"/>
-                        <circle cx="114" cy="330" r="8" fill="#ffe3d3" stroke="#eab9a4" stroke-width="1.5"/>
-                        <circle cx="120" cy="240" r="17" fill="#fff" stroke="#f0c8e4" stroke-width="2"/>
-                    
-                        <!-- Hals -->
-                        <path d="M150,198 L170,198 L170,226 Q160,232 150,226 Z" fill="#f6c9b6"/>
+                        <!-- Hals mit Choker -->
+                        <path d="M151,196 L169,196 L169,224 Q160,229 151,224 Z" fill="#ecdcd8"/>
+                        <rect x="149" y="205" width="22" height="6" rx="2" fill="#0b090f"/>
+                        <circle cx="160" cy="214" r="3" fill="none" stroke="#d6d2e2" stroke-width="1.8"/>
                     
                         <!-- Kopf -->
                         <g class="g-head">
-                          <path d="M104,118 C104,172 130,200 160,208 C190,200 216,172 216,118 C216,78 104,78 104,118 Z" fill="#ffe3d3" stroke="#eab9a4" stroke-width="1.5"/>
-                          <ellipse cx="124" cy="176" rx="10" ry="4.5" fill="#ff8fb0" opacity=".55"/>
-                          <ellipse cx="196" cy="176" rx="10" ry="4.5" fill="#ff8fb0" opacity=".55"/>
+                         <g transform="translate(160 206) scale(.88) translate(-160 -206)">
+                          <path d="M106,118 C106,170 132,198 160,206 C188,198 214,170 214,118 C214,78 106,78 106,118 Z" fill="#f6ebe8" stroke="#d9c3c0" stroke-width="1.5"/>
+                          <ellipse cx="124" cy="176" rx="9" ry="4" fill="#d88aa6" opacity=".22"/>
+                          <ellipse cx="196" cy="176" rx="9" ry="4" fill="#d88aa6" opacity=".22"/>
                     
                           <g class="g-eyes">
                             <g class="g-eye">
-                              <ellipse cx="136" cy="155" rx="14.5" ry="17.5" fill="#fff"/>
-                              <ellipse cx="136" cy="157" rx="12" ry="15.5" fill="url(#s2gIris)"/>
-                              <ellipse cx="136" cy="158" rx="5.5" ry="8" fill="#240d4a"/>
-                              <circle cx="131" cy="149" r="4.5" fill="#fff"/>
-                              <circle cx="141" cy="164" r="2.2" fill="#fff" opacity=".9"/>
-                              <path d="M119,153 C119,137 132,132 139,133 C148,134 153,140 154,147 C149,141 145,138 138,138 C128,138 122,144 119,153 Z M121,144 L111,139 L119,150 Z" fill="#3a1638"/>
-                              <path d="M127,172 Q135,175 143,172.5" fill="none" stroke="#7a3a5a" stroke-width="1.5" stroke-linecap="round"/>
-                              <ellipse cx="184" cy="155" rx="14.5" ry="17.5" fill="#fff"/>
-                              <ellipse cx="184" cy="157" rx="12" ry="15.5" fill="url(#s2gIris)"/>
-                              <ellipse cx="184" cy="158" rx="5.5" ry="8" fill="#240d4a"/>
-                              <circle cx="189" cy="149" r="4.5" fill="#fff"/>
-                              <circle cx="179" cy="164" r="2.2" fill="#fff" opacity=".9"/>
-                              <path d="M201,153 C201,137 188,132 181,133 C172,134 167,140 166,147 C171,141 175,138 182,138 C192,138 198,144 201,153 Z M199,144 L209,139 L201,150 Z" fill="#3a1638"/>
-                              <path d="M193,172 Q185,175 177,172.5" fill="none" stroke="#7a3a5a" stroke-width="1.5" stroke-linecap="round"/>
-                              </g>
-                            <g class="g-joy" fill="none" stroke="#3a1638" stroke-width="4" stroke-linecap="round">
-                              <path d="M124,158 Q136,142 148,158"/>
-                              <path d="M172,158 Q184,142 196,158"/>
+                              <ellipse cx="137" cy="146" rx="18" ry="10" fill="#5a3a6a" opacity=".35"/>
+                              <ellipse cx="183" cy="146" rx="18" ry="10" fill="#5a3a6a" opacity=".35"/>
+                              <ellipse cx="137" cy="156" rx="14" ry="14.5" fill="#fff"/>
+                              <ellipse cx="137" cy="158" rx="11" ry="13" fill="url(#s2gIris)"/>
+                              <ellipse cx="137" cy="159" rx="4.5" ry="7" fill="#12040e"/>
+                              <circle cx="132" cy="151" r="4" fill="#fff"/>
+                              <circle cx="141" cy="164" r="1.8" fill="#fff" opacity=".9"/>
+                              <path d="M120,156 C120,142 132,139 139,140 C148,141 153,146 155,152 C149,146 145,145 138,145 C128,145 123,150 120,156 Z M122,147 L106,141 L120,153 Z" fill="#0b050c"/>
+                              <path d="M124,168 Q134,172 146,168" fill="none" stroke="#0b050c" stroke-width="2" stroke-linecap="round"/>
+                              <ellipse cx="183" cy="156" rx="14" ry="14.5" fill="#fff"/>
+                              <ellipse cx="183" cy="158" rx="11" ry="13" fill="url(#s2gIris)"/>
+                              <ellipse cx="183" cy="159" rx="4.5" ry="7" fill="#12040e"/>
+                              <circle cx="178" cy="151" r="4" fill="#fff"/>
+                              <circle cx="187" cy="164" r="1.8" fill="#fff" opacity=".9"/>
+                              <path d="M200,156 C200,142 188,139 181,140 C172,141 167,146 165,152 C171,146 175,145 182,145 C192,145 197,150 200,156 Z M198,147 L214,141 L200,153 Z" fill="#0b050c"/>
+                              <path d="M196,168 Q186,172 174,168" fill="none" stroke="#0b050c" stroke-width="2" stroke-linecap="round"/>
+                            </g>
+                            <g class="g-joy" fill="none" stroke="#0b050c" stroke-width="4" stroke-linecap="round">
+                              <path d="M124,160 Q137,146 150,160"/>
+                              <path d="M170,160 Q183,146 196,160"/>
                             </g>
                           </g>
-                          <path d="M126,128 Q136,123 146,127 M174,127 Q184,123 194,128" fill="none" stroke="#b8409a" stroke-width="2.5" stroke-linecap="round"/>
-                          <path class="g-mouth" d="M153,186 Q160,191 167,186" fill="none" stroke="#b0405e" stroke-width="2.5" stroke-linecap="round"/>
-                          <path class="g-mouthO" d="M150,184 Q160,200 170,184 Q160,188 150,184 Z" fill="#d2446e" stroke="#9c2c4a" stroke-width="1.5" stroke-linejoin="round"/>
+                          <path d="M124,133 Q136,127 149,132 M171,132 Q184,127 196,133" fill="none" stroke="#120c18" stroke-width="2.6" stroke-linecap="round"/>
+                          <path class="g-mouth" d="M152,185 Q156,182 160,184 Q164,182 168,185 Q160,191 152,185 Z" fill="#3a0f2e" stroke="#240820" stroke-width="1"/>
+                          <path class="g-mouthO" d="M150,183 Q160,181 170,183 Q166,196 160,196 Q154,196 150,183 Z" fill="#3a0f2e" stroke="#240820" stroke-width="1.2" stroke-linejoin="round"/>
                     
-                          <!-- Pony und Seitenstraehnen -->
-                          <path d="M104,112 C94,150 96,196 110,232 C114,200 112,162 118,124 Z" fill="url(#s2gHair)"/>
-                          <path d="M216,112 C226,150 224,196 210,232 C206,200 208,162 202,124 Z" fill="url(#s2gHair)"/>
-                          <path d="M98,126 C88,52 232,52 222,126 Q214,114 210,132 Q204,112 192,134 Q186,106 172,126 Q166,100 156,124 Q146,102 138,128 Q128,108 122,134 Q114,114 110,130 Q104,116 98,126 Z" fill="url(#s2gHair)"/>
-                          <path d="M114,104 Q120,90 134,84" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".55"/>
+                          <!-- Seitenvorhaenge und gerader Pony -->
+                          <path d="M104,110 C96,160 96,210 100,248 L118,246 C114,200 114,160 118,122 Z" fill="url(#s2gHair)"/>
+                          <path d="M216,110 C224,160 224,210 220,248 L202,246 C206,200 206,160 202,122 Z" fill="url(#s2gHair)"/>
+                          <path d="M98,130 C88,50 232,50 222,130 Q216,134 210,131 Q204,135 198,131 Q192,135 186,131 Q180,135 174,131 Q168,135 162,131 Q156,135 150,131 Q144,135 138,131 Q132,135 126,131 Q120,135 114,131 Q108,135 104,131 Z" fill="url(#s2gHair)"/>
+                          <path d="M118,86 Q140,72 166,74" fill="none" stroke="#8a78a8" stroke-width="4" stroke-linecap="round" opacity=".45"/>
                     
-                          <!-- Diadem -->
-                          <path d="M130,84 Q160,70 190,84 L184,92 Q160,82 136,92 Z" fill="url(#s2gGold)" stroke="#b57410" stroke-width="1"/>
-                          <path d="M160,58 l4,10 11,1 -8,7 3,11 -10,-6 -10,6 3,-11 -8,-7 11,-1 Z" fill="url(#s2gGold)" stroke="#b57410" stroke-width="1.2" stroke-linejoin="round"/>
-                          <circle cx="160" cy="72" r="3" fill="#5ee6ff"/>
-                          <!-- Zopfhalter -->
-                          <circle cx="108" cy="96" r="9" fill="#ff5bd6" stroke="#fff" stroke-width="2"/>
-                          <circle cx="212" cy="96" r="9" fill="#ff5bd6" stroke="#fff" stroke-width="2"/>
+                          <!-- kleine Krone mit Mondstein -->
+                          <path d="M140,80 L146,66 L153,76 L160,60 L167,76 L174,66 L180,80 Q160,74 140,80 Z" fill="#141018" stroke="#b9b6c8" stroke-width="1.5" stroke-linejoin="round"/>
+                          <circle cx="160" cy="74" r="3" fill="#c9a8ff"/>
+                         </g>
                         </g>
                     
-                        <!-- rechter Arm mit Zauberstab -->
+                        <!-- rechter Arm mit Mondstab -->
                         <g class="g-arm">
-                          <circle cx="200" cy="240" r="17" fill="#fff" stroke="#f0c8e4" stroke-width="2"/>
-                          <path d="M204,248 L234,226 L248,188" fill="none" stroke="#eab9a4" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
-                          <path d="M204,248 L234,226 L248,188" fill="none" stroke="#ffe3d3" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
-                          <path d="M236,232 L230,216" stroke="#fff" stroke-width="10" stroke-linecap="butt"/>
-                          <line x1="238" y1="232" x2="272" y2="78" stroke="url(#s2gGold)" stroke-width="6" stroke-linecap="round"/>
-                          <circle cx="250" cy="182" r="8.5" fill="#ffe3d3" stroke="#eab9a4" stroke-width="1.5"/>
+                          <path d="M190,236 L206,248 L234,226 L248,188" fill="none" stroke="#2a2233" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+                          <path d="M190,236 L206,248 L234,226 L248,188" fill="none" stroke="url(#s2gMesh)" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+                          <line x1="238" y1="232" x2="272" y2="80" stroke="url(#s2gSilver)" stroke-width="5" stroke-linecap="round"/>
+                          <circle cx="250" cy="182" r="8" fill="#f6ebe8" stroke="#d9c3c0" stroke-width="1.5"/>
+                          <path d="M244,178 l-4,-2 M246,174 l-3,-3" stroke="#1a1020" stroke-width="2.2" stroke-linecap="round"/>
                           <g class="g-star">
                             <circle class="g-starGlow" cx="274" cy="62" r="40" fill="url(#s2gGlow)"/>
-                            <path d="M252,74 Q238,56 248,44 Q256,58 264,62 Z M296,74 Q310,56 300,44 Q292,58 284,62 Z" fill="#fff" stroke="#c9b6ff" stroke-width="1.5"/>
-                            <path d="M274,38 l7,15 16,2 -12,11 3,16 -14,-8 -14,8 3,-16 -12,-11 16,-2 Z" fill="url(#s2gGold)" stroke="#b57410" stroke-width="1.5" stroke-linejoin="round"/>
-                            <circle cx="274" cy="61" r="5" fill="#5ee6ff" stroke="#fff" stroke-width="1.5"/>
+                            <path d="M284,34 A30,30 0 1 0 290,88 A24,24 0 1 1 284,34 Z" fill="url(#s2gMoon)" stroke="#6a3ab0" stroke-width="1.5"/>
+                            <path d="M280,56 l3,7 7,1 -5,5 1,7 -6,-3 -6,3 1,-7 -5,-5 7,-1 Z" fill="#fff" stroke="#c9a8ff" stroke-width="1"/>
+                            <path d="M262,86 L286,86 L274,98 Z" fill="#9a1e5a" stroke="#b9b6c8" stroke-width="1.2"/>
                           </g>
                         </g>
                       </g>
                     
-                      <g class="g-sparks" fill="#fff">
+                      <g class="g-sparks" fill="#d9b8ff">
                         <path d="M40,90 l3,9 9,3 -9,3 -3,9 -3,-9 -9,-3 9,-3 Z"/>
                         <path d="M290,150 l2,6 6,2 -6,2 -2,6 -2,-6 -6,-2 6,-2 Z"/>
                         <path d="M30,370 l2.5,7 7,2.5 -7,2.5 -2.5,7 -2.5,-7 -7,-2.5 7,-2.5 Z"/>
