@@ -750,20 +750,27 @@ function kmHandle(c, d) {
         accounts.touch();
         return kmState(c, { teamSaved: { slot: i, name } });
     }
-    // Verfuettern (6.7): Kopien derselben Karte opfern, XP fuer die beste Kopie von target
-    if (d.type === 'kmFeed') {
-        const target = String(d.target || ''), source = String(d.source || '');
-        const a = cards.parseKey(target), b = cards.parseKey(source);
+    // Verfuettern (6.7): Kopien opfern, XP fuer die beste Kopie von target.
+    // 26.09.2026 (Max): jede Karte in jede, XP nach Seltenheit der Geopferten, dieselbe
+    // Karte zaehlt doppelt. kmFeedMany: mehrere Quellen auf einmal (Album-Auswahl)
+    if (d.type === 'kmFeed' || d.type === 'kmFeedMany') {
+        const target = String(d.target || '');
+        const a = cards.parseKey(target);
         const card = cardDb.byId[a.id];
-        if (!card || a.id !== b.id) return send(c, { type: 'kmError', error: 'You can only feed copies of the same card' });
-        if (!(u.cards[target] > 0) || !(u.cards[source] > 0)) return send(c, { type: 'kmError', error: 'You do not own that card' });
-        const want = Math.max(1, Math.min(99, Math.floor(Number(d.n)) || 1));
+        if (!card || !(u.cards[target] > 0)) return send(c, { type: 'kmError', error: 'You do not own that card' });
+        const items = d.type === 'kmFeed' ? [[d.source, d.n]] : (Array.isArray(d.items) ? d.items : []).slice(0, 300);
         let res = null, n = 0;
-        for (let i = 0; i < want; i++) {
-            const r = kmLevel.feed(u, target, source, card.rarity);
-            if (!r) break;
-            n++;
-            res = res ? { ...r, xp: res.xp + r.xp, from: res.from } : r;
+        for (const [src, cnt] of items) {
+            const source = String(src || '');
+            const b = cards.parseKey(source), sc = cardDb.byId[b.id];
+            if (!sc || !(u.cards[source] > 0)) continue;
+            const want = Math.max(1, Math.min(999, Math.floor(Number(cnt)) || 1));
+            for (let i = 0; i < want; i++) {
+                const r = kmLevel.feed(u, target, source, sc.rarity, b.id === a.id);
+                if (!r) break;
+                n++;
+                res = res ? { ...r, xp: res.xp + r.xp, from: res.from } : r;
+            }
         }
         if (!n) return send(c, { type: 'kmError', error: 'Nothing to feed – you keep the card you feed into' });
         accounts.stat(c.account, st => { st.kmFed = (st.kmFed || 0) + n; });
@@ -823,11 +830,14 @@ function kmHandle(c, d) {
         sendAccount(c);
         return kmState(c, { opened: { pack: d.pack, cards: got, fresh } });
     }
-    if (d.type === 'kmSell' || d.type === 'kmSellDupes') {
-        // Von jeder Karte bleibt immer mindestens ein Exemplar (egal welche Variante)
+    if (d.type === 'kmSell' || d.type === 'kmSellDupes' || d.type === 'kmSellMany') {
+        // „Doppelte verkaufen" laesst eins je Karte da. Einzeln und per Auswahl (26.09.2026,
+        // SINTHSBen/Max) darf auch das letzte Exemplar weg
         const total = id => Object.keys(u.cards).reduce((n, k) => n + (cards.parseKey(k).id === id ? u.cards[k] : 0), 0);
+        const keepOne = d.type === 'kmSellDupes' || !!d.keepOne;
         let list;
         if (d.type === 'kmSell') list = [[String(d.key), Math.max(1, Math.floor(Number(d.n) || 1))]];
+        else if (d.type === 'kmSellMany') list = (Array.isArray(d.items) ? d.items : []).slice(0, 500).map(([k, n]) => [String(k), Math.max(1, Math.floor(Number(n) || 1))]);
         // Doppelte verkaufen: nur normale Exemplare, Ball/Shiny bleiben
         else list = Object.keys(u.cards).filter(k => !k.includes('~')).map(k => [k, u.cards[k]]);
         let n = 0, coins = 0;
@@ -837,14 +847,15 @@ function kmHandle(c, d) {
             if (!card || !(u.cards[key] > 0)) continue;
             // 6.7: "Doppelte verkaufen" laesst gelevelte Kopien in Ruhe
             const lvl = d.type === 'kmSellDupes' ? kmLevel.normalize(u, key).length : 0;
-            const k = Math.min(want, u.cards[key] - lvl, total(id) - 1);
+            const k = Math.min(want, u.cards[key] - lvl, keepOne ? total(id) - 1 : Infinity);
             if (k <= 0) continue;
             u.cards[key] -= k;
             if (!u.cards[key]) delete u.cards[key];
             n += k;
             coins += k * cards.valueOf(card, v);
         }
-        if (!n) return send(c, { type: 'kmError', error: 'Nothing to sell – you always keep one of each card' });
+        if (!n) return send(c, { type: 'kmError', error: keepOne ? 'Nothing to sell – you keep one of each card' : 'Nothing to sell' });
+        kmLevel.normalizeAll && kmLevel.normalizeAll(u);
         accounts.addCoins(c.account, coins);
         accounts.earn(c.account, 'cards', coins);
         accounts.touch();
@@ -1683,9 +1694,11 @@ async function handle(c, data) {
         case 'kmWheel':
         case 'kmFragBuy':
         case 'kmFeed':
+        case 'kmFeedMany':
         case 'kmTeamSave':
         case 'kmSell':
         case 'kmSellDupes':
+        case 'kmSellMany':
             kmHandle(c, data);
             return;
 

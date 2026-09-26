@@ -2509,3 +2509,9 @@ body.world-cards #kekemon > .card {
 .kb-teambar .kb-tslot.empty { opacity: .6; }
 .kb-teambar .kb-tslot.on { opacity: 1; color: #ffd23f; border-color: #ffd23f; box-shadow: 0 0 0 1px #ffd23f inset; background: rgba(255,210,63,.14); }
 .kb-aces .kb-gym { --gc: #ff5bd6 !important; }
+
+/* Mehrfachauswahl im Album (26.09.2026) */
+.kc.km-picked { outline: 3px solid #4dff88; outline-offset: 2px; box-shadow: 0 0 14px rgba(77,255,136,.55); }
+.km-selbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 10px; padding: 8px 10px; border: 1px solid rgba(77,255,136,.45); border-radius: 10px; background: rgba(77,255,136,.07); }
+.km-selbar .hint { flex-basis: 100%; opacity: .75; }
+#km-selmode.on { background: rgba(77,255,136,.25); border-color: #4dff88; }

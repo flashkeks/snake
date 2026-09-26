@@ -3611,3 +3611,29 @@ spielt zu Ende. Wer es versucht, bekommt ein Fenster „🔒 Extraction raids" m
 
 Geprüft gegen einen echten Server: Raid gesperrt → `modeLocked` mit Meldung, Zombies-Lobby
 geht weiter, `locks.json` geschrieben und beim Öffnen wieder geleert; Screenshot des Panels.
+
+## 🃏 Kekemon: Teile, Training-XP, Verfüttern jede-in-jede, alles verkaufen, Mehrfachauswahl (26.09.2026)
+
+Aus dem Discord (SINTHSBen), entschieden von Max.
+
+- **Booster-Teile je Trainingsgebiet:** Wild Meadow 1, **Wild Canyon 2** (vorher 1), **Wild
+  Summit 3** (vorher 2) – „sonst hat man effektiv keinen Grund, das zweite zu machen".
+- **Training-XP verdoppelt** (`km-level.js` `XP.train` 1 → 2) – Ben: 19 Trainings = 4 Level.
+- **Verfüttern: jede Karte in jede.** Bisher nur Kopien derselben Karte. Grund-XP nach
+  Seltenheit der **geopferten** Karte, ×3 gegenüber vorher (Common 180, Uncommon 360, Rare 750,
+  Epic 1800, Legendary 4500, Secret 12 000), dieselbe Karte zählt doppelt (`FEED_SAME`), dazu
+  wie gehabt die Hälfte der eigenen XP der Geopferten. Die beste Kopie des Ziels bleibt immer.
+  Server: `kmFeed` ohne Gleich-Karte-Sperre, neu `kmFeedMany { target, items: [[key, n]] }`.
+- **Verkaufen: auch das letzte Exemplar.** Einzeln in der Kartenansicht („Sell all N"), mit
+  Rückfrage, wenn die Karte dadurch aus dem Album fällt. „Sell duplicates" behält wie bisher
+  eins je Karte.
+- **Mehrfachauswahl im Album:** „☑️ Select" → Karten antippen (grüner Rahmen) → Leiste mit
+  „Select all shown", „Sell, keep 1 each", „Sell all copies" (mit Coin-Summe) und „Clear".
+  Zum Verfüttern: Auswahl stehen lassen, die Zielkarte öffnen, „🍪 Feed N selected → this card".
+  Die Auswahl bleibt, bis man verkauft, verfüttert oder „Clear" drückt. Server:
+  `kmSellMany { items, keepOne }` (verkauft bei `keepOne` die billigsten Varianten zuerst).
+- **Album-Filter startet auf „Owned"** (Max).
+
+Geprüft gegen einen echten Server (Admin gibt Karten, 6/6): fremde Karte verfüttert, letzte
+Kopie verkauft, `keepOne` lässt eine, „alles" verkauft alles. Screenshots von Auswahl-Leiste und
+„Feed selected".

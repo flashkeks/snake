@@ -56,8 +56,9 @@ const REPEAT_SHARE = 0.15, REPEAT_PER_DAY = 3;
 // Tag ab (TRAIN_FALL). 10 Teile = 1 Trainer Booster (server.js kmFragBuy).
 const ZONES = [
     { id: 'meadow', name: 'Wild Meadow', icon: '🌾', lv: [1, 10], rar: ['common', 'uncommon'], smart: 0, coins: 250, frag: 1 },
-    { id: 'canyon', name: 'Wild Canyon', icon: '🏜️', lv: [10, 30], rar: ['uncommon', 'rare'], smart: 1, coins: 600, frag: 1 },
-    { id: 'summit', name: 'Wild Summit', icon: '🏔️', lv: [30, 50], rar: ['rare', 'epic'], smart: 2, coins: 1200, frag: 2 }
+    // 26.09.2026 (SINTHSBen: „sonst hat man keinen Grund, das zweite zu machen"): Teile 1 / 2 / 3
+    { id: 'canyon', name: 'Wild Canyon', icon: '🏜️', lv: [10, 30], rar: ['uncommon', 'rare'], smart: 1, coins: 600, frag: 2 },
+    { id: 'summit', name: 'Wild Summit', icon: '🏔️', lv: [30, 50], rar: ['rare', 'epic'], smart: 2, coins: 1200, frag: 3 }
 ];
 // [bis Sieg Nr., Anteil Coins, Chance auf Teile]
 const TRAIN_FALL = [[10, 1, 1], [30, 0.25, 0.3], [Infinity, 0.05, 0.05]];

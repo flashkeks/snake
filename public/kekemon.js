@@ -11,7 +11,45 @@ let kmCat = null;            // Katalog: { types, rarities, sets, packs, effects
 let kmCatLoading = null;
 let kmTab = 'packs';
 let kmShown = 60;            // Album: so viele Karten gerade sichtbar
-const kmFilter = { set: '', type: '', rarity: '', own: '', q: '', sort: 'num' };
+// 26.09.2026 (Max): Standard „Owned"
+const kmFilter = { set: '', type: '', rarity: '', own: 'have', q: '', sort: 'num' };
+// Mehrfachauswahl im Album (26.09.2026, SINTHSBen/Max): Karten-ids zum Verkaufen/Verfuettern
+let kmSelMode = false;
+const kmSel = new Set();
+// Auswahl als [key, Anzahl], billigste Variante zuerst (bei keepOne bleibt die beste)
+function kmSelItems(except) {
+    const own = kmOwn(), out = [];
+    for (const id of kmSel) {
+        const o = own[id];
+        if (!o) continue;
+        for (const [v, n] of Object.entries(o.vars).sort((a, b) => kmVRank(a[0]) - kmVRank(b[0]))) if (kmKeyOf(id, v) !== except) out.push([kmKeyOf(id, v), n]);
+    }
+    return out;
+}
+function kmSelBar() {
+    if (!kmSelMode) return '';
+    const own = kmOwn();
+    let copies = 0, all = 0, keep = 0;
+    for (const id of kmSel) {
+        const o = own[id], c = kmCat.byId[id];
+        if (!o || !c) continue;
+        copies += o.total;
+        const vs = Object.entries(o.vars).sort((a, b) => kmVRank(a[0]) - kmVRank(b[0]));
+        let left = o.total - 1;
+        for (const [v, n] of vs) {
+            all += n * kmValue(c, v);
+            const k = Math.min(n, left);
+            keep += k * kmValue(c, v);
+            left -= k;
+        }
+    }
+    return `<div class="km-selbar" id="km-selbar"><b>☑️ ${kmSel.size} card${kmSel.size === 1 ? '' : 's'}</b> <small>${copies} cop${copies === 1 ? 'y' : 'ies'}</small>
+        <button type="button" data-kmselall="1">Select all shown</button>
+        <button type="button" data-kmsellsel="keep" ${kmSel.size ? '' : 'disabled'}>💰 Sell, keep 1 each (🪙 ${keep.toLocaleString('en-US')})</button>
+        <button type="button" data-kmsellsel="all" class="danger" ${kmSel.size ? '' : 'disabled'}>💰 Sell all copies (🪙 ${all.toLocaleString('en-US')})</button>
+        <button type="button" data-kmselclear="1">✖ Clear</button>
+        <small class="hint">🍪 To feed: open the card you want to level and press “Feed selected”.</small></div>`;
+}
 let kmOpening = null;        // offenes Pack { pack, cards: [{id, v}], fresh, order, idx }
 
 const KM_PACK_COLOR = { anime: '#ff7ac8', film: '#3da5ff', waifu: '#ff4f8b', game: '#57e38a', mixed: '#ffb13d', train: '#7dffb0' };
@@ -467,14 +505,15 @@ function kmDrawAlbum() {
         <select data-kmf="sort">${opt('num', 'Sort: number', kmFilter.sort)}${opt('rarity', 'Sort: rarity', kmFilter.sort)}${opt('hp', 'Sort: HP', kmFilter.sort)}${opt('name', 'Sort: name', kmFilter.sort)}${opt('level', 'Sort: level', kmFilter.sort)}</select>
         <input data-kmf="q" placeholder="Search name or series…" value="${esc(kmFilter.q)}">
         <button type="button" id="km-selldupes">💰 Sell duplicates</button>
-    </div>`;
+        <button type="button" id="km-selmode" class="${kmSelMode ? 'on' : ''}">☑️ ${kmSelMode ? 'Done selecting' : kmSel.size ? `Select (${kmSel.size} picked)` : 'Select'}</button>
+    </div>${kmSelBar()}`;
     const prog = Object.entries(kmCat.sets).map(([k, s]) => {
         const all = kmCat.cards.filter(c => c.set === k);
         const n = all.filter(c => own[c.id]).length;
         return `<div>${s.icon} ${esc(s.name)} <b style="float:right">${n} / ${all.length}</b><div class="bar"><i style="width:${(n / Math.max(1, all.length) * 100).toFixed(1)}%"></i></div></div>`;
     }).join('');
     const list = kmList();
-    const grid = list.slice(0, kmShown).map(c => { const o = own[c.id]; return kmCard(c, { mini: true, missing: !o, count: o ? o.total : 0, v: o ? o.best : '', lv: o ? kmCardLv(c.id) : 0 }); }).join('');
+    const grid = list.slice(0, kmShown).map(c => { const o = own[c.id]; const h = kmCard(c, { mini: true, missing: !o, count: o ? o.total : 0, v: o ? o.best : '', lv: o ? kmCardLv(c.id) : 0 }); return kmSel.has(c.id) ? h.replace('class="kc ', 'class="kc km-picked ') : h; }).join('');
     return `<div class="km-prog">${prog}</div>${bar}
         <div class="km-grid">${grid || '<div class="km-note" style="grid-column:1/-1">No cards match.</div>'}</div>
         ${list.length > kmShown ? `<button type="button" class="km-more" id="km-more">Show more (${(list.length - kmShown).toLocaleString('en-US')} left)</button>` : ''}`;
@@ -486,6 +525,8 @@ function kmRegrid() {
     tmp.innerHTML = kmDrawAlbum();
     const body = $('km-body');
     body.querySelector('.km-grid').replaceWith(tmp.querySelector('.km-grid'));
+    const sb = body.querySelector('#km-selbar'), nsb = tmp.querySelector('#km-selbar');
+    if (sb && nsb) sb.replaceWith(nsb);
     const old = body.querySelector('#km-more'), neu = tmp.querySelector('#km-more');
     if (old) old.remove();
     if (neu) body.appendChild(neu);
@@ -509,7 +550,8 @@ function kmView(id, showV) {
     // Je Variante: Anzahl, Wert, Verkaufen (nie das letzte Exemplar der Karte)
     const vars = o ? Object.entries(o.vars).sort((a, b) => kmVRank(b[0]) - kmVRank(a[0])).map(([vv, n]) => {
         const val = kmValue(c, vv);
-        const canSell = Math.min(n, o.total - 1);
+        // 26.09.2026: auch das letzte Exemplar (mit Rueckfrage)
+        const canSell = n;
         // 6.7: Level je Kopie; die beste kaempft
         const xs = kmXpList(kmKeyOf(id, vv));
         const L = kmLvOf(xs[0] || 0);
@@ -519,13 +561,13 @@ function kmView(id, showV) {
         const tKey = kmKeyOf(id, cur), sKey = kmKeyOf(id, vv);
         const canFeed = o.vars[cur] ? (vv === cur ? n - 1 : n) : 0;
         const fx = (km && km.lvCurve && km.lvCurve.feed) || {};
-        const gain = (fx[c.rarity] || 60) + Math.round((xs[n - 1] || 0) * ((km && km.lvCurve && km.lvCurve.feedKeep) || 0.5));
+        const gain = (fx[c.rarity] || 180) * ((km && km.lvCurve && km.lvCurve.feedSame) || 1) + Math.round((xs[n - 1] || 0) * ((km && km.lvCurve && km.lvCurve.feedKeep) || 0.5));
         const feedBtns = canFeed > 0 ? `<button type="button" class="km-feed" data-kmfeed="${esc(sKey)}" data-to="${esc(tKey)}" data-n="1" title="Sacrifice the weakest copy">🍪 Feed 1 → ${kmVName(cur)} (+${gain} XP)</button>` +
             (canFeed > 1 ? `<button type="button" class="km-feed" data-kmfeed="${esc(sKey)}" data-to="${esc(tKey)}" data-n="${canFeed}">🍪 Feed ${canFeed}</button>` : '') : '';
         return `<div class="km-var ${vv === cur ? 'on' : ''}" data-kmshow="${vv}">
             <b>${kmVName(vv)}</b> ×${n} <small>· worth 🪙 ${val.toLocaleString('en-US')}</small>${lvRow}
             ${canSell > 0 ? `<button type="button" data-kmsell="${esc(kmKeyOf(id, vv))}" data-n="1">Sell 1</button>` : ''}
-            ${canSell > 1 ? `<button type="button" data-kmsell="${esc(kmKeyOf(id, vv))}" data-n="${canSell}">Sell ${canSell} (🪙 ${(canSell * val).toLocaleString('en-US')})</button>` : ''}
+            ${canSell > 1 ? `<button type="button" data-kmsell="${esc(kmKeyOf(id, vv))}" data-n="${canSell}">Sell all ${canSell} (🪙 ${(canSell * val).toLocaleString('en-US')})</button>` : ''}
             ${feedBtns}
         </div>`;
     }).join('') : '';
@@ -536,6 +578,7 @@ function kmView(id, showV) {
         ${o ? kmBattleInfo(c) : ''}
         <div style="margin-top:8px">${o ? `You own <b>${o.total}</b>` : 'You do not own this card yet'}</div>
         ${vars}
+        ${o && kmSel.size ? kmFeedSelBtn(id, cur) : ''}
         <button type="button" id="km-view-close">Close</button>
     </div>`;
     v.hidden = false;
@@ -745,7 +788,26 @@ $('km-body').addEventListener('click', e => {
         e.target.closest('#km-spin').disabled = true;
         return wsSend({ type: 'kmWheel' });
     }
+    if (e.target.id === 'km-selmode') {
+        // Auswahl bleibt beim Beenden stehen – so kann man eine Karte oeffnen und „Feed selected" druecken
+        kmSelMode = !kmSelMode;
+        return kmDraw();
+    }
+    if (e.target.closest('[data-kmselclear]')) { kmSel.clear(); return kmRegrid(); }
+    if (e.target.closest('[data-kmselall]')) { for (const c of kmList().slice(0, kmShown)) if (kmOwn()[c.id]) kmSel.add(c.id); return kmRegrid(); }
+    const ss = e.target.closest('[data-kmsellsel]');
+    if (ss) {
+        const keepOne = ss.dataset.kmsellsel === 'keep', items = kmSelItems();
+        if (!items.length) return;
+        return uiConfirm(keepOne ? `Sell the selected cards and keep one of each?` : `Sell ALL copies of ${kmSel.size} card${kmSel.size === 1 ? '' : 's'} – including levelled ones? Cards you sell completely leave your album.`,
+            { title: '💰 Sell selected', ok: 'Sell', danger: !keepOne }).then(ok => { if (ok) { wsSend({ type: 'kmSellMany', items, keepOne }); kmSel.clear(); } });
+    }
     const card = e.target.closest('[data-kmcard]');
+    if (card && kmSelMode) {
+        if (!kmOwn()[card.dataset.kmcard]) return;
+        if (kmSel.has(card.dataset.kmcard)) kmSel.delete(card.dataset.kmcard); else kmSel.add(card.dataset.kmcard);
+        return kmRegrid();
+    }
     if (card) return kmView(card.dataset.kmcard);
     if (e.target.id === 'km-more') {
         kmShown += 120;
@@ -777,7 +839,30 @@ $('km-body').addEventListener('input', e => {
     kmRegrid();
 });
 
+// Ausgewaehlte Karten in diese verfuettern (26.09.2026): XP nach Seltenheit, gleiche Karte doppelt
+function kmFeedSelBtn(id, cur) {
+    const tKey = kmKeyOf(id, cur), fx = (km && km.lvCurve) || {};
+    const items = kmSelItems(), own = kmOwn();
+    let n = 0, xp = 0;
+    for (const [k, cnt] of items) {
+        const p = kmParse(k), c = kmCat.byId[p.id];
+        const use = k === tKey ? cnt - 1 : cnt;
+        if (!c || use <= 0) continue;
+        n += use;
+        xp += use * ((fx.feed || {})[c.rarity] || 180) * (p.id === id ? fx.feedSame || 2 : 1);
+    }
+    if (!n) return '';
+    return `<button type="button" class="km-feed" data-kmfeedsel="${esc(tKey)}" data-n="${n}" data-xp="${xp}">🍪 Feed ${n} selected → this card (+${xp.toLocaleString('en-US')} XP or more)</button>`;
+}
+
 $('km-view').addEventListener('click', e => {
+    const fs = e.target.closest('[data-kmfeedsel]');
+    if (fs) {
+        e.stopPropagation();
+        const items = kmSelItems().map(([k, n]) => k === fs.dataset.kmfeedsel ? [k, n - 1] : [k, n]).filter(([, n]) => n > 0);
+        return uiConfirm(`Feed ${fs.dataset.n} selected card${fs.dataset.n === '1' ? '' : 's'} into this one for about +${Number(fs.dataset.xp).toLocaleString('en-US')} XP? They are gone for good.`, { title: '🍪 Feed selected', ok: 'Feed', danger: true })
+            .then(ok => { if (ok) { wsSend({ type: 'kmFeedMany', target: fs.dataset.kmfeedsel, items }); kmSel.clear(); } });
+    }
     const fd = e.target.closest('[data-kmfeed]');
     if (fd) {
         e.stopPropagation();
@@ -795,6 +880,8 @@ $('km-view').addEventListener('click', e => {
         const n = Number(s.dataset.n);
         // Teure Karten nochmal bestaetigen
         const go = () => wsSend({ type: 'kmSell', key: s.dataset.kmsell, n });
+        const o = kmOwn()[id];
+        if (o && n >= o.total) return uiConfirm(`Sell your last ${n > 1 ? n + ' copies' : 'copy'} of ${c.name}? It leaves your album.`, { title: 'Sell card', ok: 'Sell', danger: true }).then(ok => ok && go());
         if (v || kmCat.ridx[c.rarity] >= 3) return uiConfirm(`Sell ${n}× ${kmVName(v)} ${c.name} for ${(n * kmValue(c, v)).toLocaleString('en-US')} coins?`, { title: 'Sell card', ok: 'Sell' }).then(ok => ok && go());
         return go();
     }

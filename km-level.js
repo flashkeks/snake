@@ -87,25 +87,27 @@ function battleXp(b, s, mul = 1) {
 }
 const XP = {
     gym: 1.5,        // Gyms und neue Reihe
-    train: 1,
+    train: 2,        // 26.09.2026 (SINTHSBen: 19 Trainings = 4 Level): verdoppelt
     duel: 1          // Duelle: dazu DUEL_FULL/DUEL_LATE je Tag
 };
 // Duelle: volle XP fuer die ersten DUEL_FULL am Tag, danach DUEL_LATE
 const DUEL_FULL = 10, DUEL_LATE = 0.2;
 
 function catalog() {
-    return { max: MAX_LV, curve: CURVE, feed: FEED, feedKeep: FEED_KEEP };
+    return { max: MAX_LV, curve: CURVE, feed: FEED, feedKeep: FEED_KEEP, feedSame: FEED_SAME };
 }
 
 // Verfuettern (Schritt 4): Grund-XP nach Seltenheit der geopferten Kopie,
-// dazu die Haelfte ihrer eigenen XP
-const FEED = { common: 60, uncommon: 120, rare: 250, epic: 600, legendary: 1500, secret: 4000 };
-const FEED_KEEP = 0.5;
+// dazu die Haelfte ihrer eigenen XP.
+// 26.09.2026 (SINTHSBen: „lohnt 0, gibt fast nichts"; Max): jede Karte in jede,
+// Grund-XP ×3, dieselbe Karte zaehlt doppelt (FEED_SAME)
+const FEED = { common: 180, uncommon: 360, rare: 750, epic: 1800, legendary: 4500, secret: 12000 };
+const FEED_KEEP = 0.5, FEED_SAME = 2;
 
 // Eine Kopie von source opfern (immer die schwaechste; ist source == target,
 // nie die beste) und die XP auf die beste Kopie von target buchen.
 // Rueckgabe wie addXp oder null
-function feed(u, target, source, rarity) {
+function feed(u, target, source, rarity, same = true) {
     const n = (u.cards || {})[source] || 0;
     if (n < (source === target ? 2 : 1) || !((u.cards || {})[target] > 0)) return null;
     const list = normalize(u, source);
@@ -116,7 +118,7 @@ function feed(u, target, source, rarity) {
         if (list.length) u.cardXp[source] = list;
         else delete u.cardXp[source];
     }
-    return addXp(u, target, (FEED[rarity] || FEED.common) + Math.round(fed * FEED_KEEP));
+    return addXp(u, target, (FEED[rarity] || FEED.common) * (same ? FEED_SAME : 1) + Math.round(fed * FEED_KEEP));
 }
 
 module.exports = { MAX_LV, CURVE, need, levelOf, statMul, normalize, normalizeAll, bestXp, bestLv, addXp, feed, FEED, totalFor, XP, battleXp, koXp, DUEL_FULL, DUEL_LATE, catalog };
