@@ -1778,7 +1778,7 @@ document.addEventListener('change', e => {
 // Links die Karte, die levelt; rechts alle eigenen Karten als Futter. Klick = +1 Kopie,
 // Rechtsklick = −1. Feste XP nach Seltenheit der Geopferten, gleiche Karte doppelt.
 // 26.09.2026 (Max): Filter nach Set/Typ/Seltenheit, Sortierung, Standard hoechstes Level zuerst
-const kmFd = { open: false, target: null, pick: new Map(), q: '', rar: '', set: '', type: '', sort: 'level', dupes: true, shown: 120 };
+const kmFd = { open: false, target: null, pick: new Map(), q: '', rar: '', set: '', type: '', sort: 'level', dupes: true, shown: 120, protect: true, keepOne: true };
 function kmFdEl() {
     let el = $('km-fd');
     if (!el) {
@@ -1797,6 +1797,8 @@ function kmFdEl() {
             if (e.target.id === 'km-fd-type') { kmFd.type = e.target.value; kmFd.shown = 120; kmFdGrid(); }
             if (e.target.id === 'km-fd-sort') { kmFd.sort = e.target.value; kmFd.shown = 120; kmFdGrid(); }
             if (e.target.id === 'km-fd-dup') { kmFd.dupes = e.target.checked; kmFd.shown = 120; kmFdGrid(); }
+            if (e.target.id === 'km-fd-prot') kmFd.protect = e.target.checked;
+            if (e.target.id === 'km-fd-keep') kmFd.keepOne = e.target.checked;
         });
     }
     return el;
@@ -1867,6 +1869,11 @@ function kmFdDraw() {
             <select id="km-fd-rar"><option value="">All rarities</option>${rar}</select>
             <label><input type="checkbox" id="km-fd-dup" ${kmFd.dupes ? 'checked' : ''}> Only duplicates</label>
             ${tc ? '<small>Click = +1 · right-click = −1</small>' : ''}</div>
+            ${tc ? `<div class="km-fd-quick"><b>Quick pick:</b>${['common', 'uncommon', 'rare'].map(r => `<button type="button" data-fdq="${r}">+ all ${esc((kmCat.rarities[kmCat.ridx[r]] || {}).name || r)}</button>`).join('')}
+                <button type="button" data-fdclear="1">✕ Clear all</button>
+                <label title="Pokéball, Masterball, Shiny and cards that already have XP are never quick-picked – select them by hand"><input type="checkbox" id="km-fd-prot" ${kmFd.protect ? 'checked' : ''}> skip Shiny / Ball / levelled</label>
+                <label title="Quick pick leaves at least one copy of every card, so nothing leaves your album"><input type="checkbox" id="km-fd-keep" ${kmFd.keepOne ? 'checked' : ''}> keep one of each</label>
+                <small>Quick pick only marks cards – you can still unselect them. It follows the set/type/search filter.</small></div>` : ''}
             <div class="km-fd-grid" id="km-fd-grid"></div></div></div></div>`;
     kmFdGrid();
 }
@@ -1884,7 +1891,8 @@ function kmFdGrid() {
         if (kmFd.type && c.type !== kmFd.type) continue;
         if (q && !c.name.toLowerCase().includes(q) && !c.from.toLowerCase().includes(q)) continue;
         // Ziel waehlen: nur Karten; Futter: mit Duplikat-Filter nur, was mehr als einmal da ist
-        if (kmFd.target && kmFd.dupes && own[p.id].total < 2) continue;
+        // 26.09.2026 (Max: „Only duplicates geht nicht"): galt nur nach der Zielwahl, jetzt immer
+        if (kmFd.dupes && own[p.id].total < 2) continue;
         if (!kmFd.target && k !== kmKeyOf(p.id, own[p.id].best)) continue;
         keys.push([k, p, c, n]);
     }
@@ -1904,13 +1912,38 @@ function kmFdGrid() {
         return `<div class="km-fd-c ${picked ? 'on' : ''} ${isT ? 'tgt' : ''}" data-fdk="${esc(k)}">${h}${picked ? `<span class="km-fd-n">${picked}/${kmFdAvail(k)}</span>` : ''}${isT ? '<span class="km-fd-t">LEVELS UP</span>' : ''}` +
             (kmFd.target && kmFdAvail(k) > 1 ? `<button type="button" class="km-fd-all" data-fdall="${esc(k)}" title="All but one of this card">+ extras</button>` : '') + '</div>';
     }).join('') + (keys.length > kmFd.shown ? `<button type="button" class="km-more" data-fdmore="1">Show more (${keys.length - kmFd.shown})</button>` : '') ||
-        `<div class="km-note">${kmFd.dupes && kmFd.target ? 'No duplicates here – untick “Only duplicates” to feed any card.' : 'No cards match.'}</div>`;
+        `<div class="km-note">${kmFd.dupes ? 'No duplicates here – untick “Only duplicates” to feed any card.' : 'No cards match.'}</div>`;
 }
+// Schnellauswahl (26.09.2026, Max): alle Karten einer Seltenheit markieren – ohne Shiny/Ball und
+// ohne Kopien mit XP (die nur von Hand), auf Wunsch eine Kopie je Karte behalten
+function kmFdQuick(rar) {
+    const have = (km && km.have) || {}, own = kmOwn(), tKey = kmFdTKey(), q = kmFd.q.trim().toLowerCase();
+    for (const [k, n] of Object.entries(have)) {
+        if (!(n > 0)) continue;
+        const p = kmParse(k), c = kmCat.byId[p.id];
+        if (!c || c.rarity !== rar) continue;
+        if (kmFd.set && c.set !== kmFd.set) continue;
+        if (kmFd.type && c.type !== kmFd.type) continue;
+        if (q && !c.name.toLowerCase().includes(q) && !c.from.toLowerCase().includes(q)) continue;
+        if (kmFd.protect && p.v) continue;
+        // Kopien ohne XP: der Server opfert immer die schwaechste Kopie zuerst
+        const withXp = kmXpList(k).filter(x => x > 0).length;
+        let free = kmFd.protect ? n - withXp : n;
+        if (k === tKey) free = Math.min(free, n - 1);
+        else if (kmFd.keepOne) free = Math.min(free, n - Math.max(0, 1 - (own[p.id].total - n)));
+        free = Math.max(0, Math.min(free, kmFdAvail(k)));
+        if (free > (kmFd.pick.get(k) || 0)) kmFd.pick.set(k, free);
+    }
+    kmFdDraw();
+}
+
 function kmFdClick(e) {
     const b = e.target.closest('button, [data-fdk]');
     if (!b) return;
     const ds = b.dataset;
     if (ds.fdclose) return kmFdClose();
+    if (ds.fdq) return kmFdQuick(ds.fdq);
+    if (ds.fdclear) { kmFd.pick.clear(); return kmFdDraw(); }
     if (ds.fdmore) { kmFd.shown += 120; return kmFdGrid(); }
     if (ds.fdchange) { kmFd.target = null; kmFd.pick.clear(); return kmFdDraw(); }
     if (ds.fdm) return kmFdAdd(ds.fdm, -1);

@@ -3697,3 +3697,10 @@ Geprüft im Browser gegen einen echten Server: Usopp Lv 1 + 1 Common + 2 Common 
 Lv 5; Screenshots von Knopf und Menü.
 - Nachtrag (Max): Feed-Menü mit Sortierung – **Standard: höchstes Level zuerst**, außerdem
   Seltenheit ↓/↑, meiste Kopien, Name – und Filtern nach Set, Typ und Seltenheit.
+- Nachtrag (Max): **Schnellauswahl im Feed-Menü** – „+ all Common / Uncommon / Rare"
+  markiert nur (abwählen geht weiter über −/✕ oder Rechtsklick). Standardmäßig geschützt
+  („skip Shiny / Ball / levelled"): Pokéball-, Masterball- und Shiny-Varianten sowie Kopien mit
+  XP – die nur von Hand. „keep one of each" lässt von jeder Karte mindestens eine Kopie übrig
+  (eine geschützte Variante zählt dabei als die behaltene). Folgt Set-/Typ-/Suchfilter.
+  Außerdem: „Only duplicates" wirkt jetzt auch schon bei der Wahl der Zielkarte (galt vorher
+  erst danach).
