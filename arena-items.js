@@ -251,6 +251,35 @@ const UTILS = {
 };
 // ---------- Rucksaecke: eigener Slot, bestimmen den Platz im Raid ----------
 const BASE_PACK = 12;            // Plaetze ohne Rucksack
+
+// Stapel (26.09.2026, Max): gleiches Verbrauchsgut belegt je Stapel nur einen Platz –
+// im Lager bis 50, im Raid-Rucksack bis 10, in der Hotbar (Q/G) bis 5. Die Items
+// bleiben einzeln gespeichert, nur das Zaehlen der Plaetze geht ueber Stapel.
+// Legendaere und Uniques behalten ihr Hotbar-Limit (1-3).
+const STASH_STACK = 50, PACK_STACK = 10, HOTBAR_STACK = 5;
+for (const u of Object.values(UTILS)) if (!u.unique && u.tier < 4) u.stack = HOTBAR_STACK;
+// Belegte Plaetze einer Liste (volle Items mit kind/base oder Kurzform mit k/b)
+function slotsUsed(items, stack) {
+    let n = 0;
+    const per = {};
+    for (const it of items) {
+        if (!it) continue;
+        if ((it.kind || it.k) === 'util') per[it.base || it.b] = (per[it.base || it.b] || 0) + 1;
+        else n++;
+    }
+    for (const k in per) n += Math.ceil(per[k] / stack);
+    return n;
+}
+// Passt ein Item noch dazu? Verbrauchsgut in einen angefangenen Stapel passt immer
+function canAdd(items, it, max, stack) {
+    if (it && it.kind === 'util') {
+        const have = items.filter(x => x && x.kind === 'util' && x.base === it.base).length;
+        if (have % stack) return true;
+    }
+    return slotsUsed(items, stack) + 1 <= max;
+}
+const fits = (items, add, max, stack) => slotsUsed(items.concat(add), stack) <= max;
+const invUsed = a => slotsUsed(a.inv || [], STASH_STACK);
 const PACKS = {
     daypack: { name: 'Daypack', icon: '🎒', tier: 0, cap: 18 },
     fieldpack: { name: 'Field pack', icon: '🎒', tier: 1, cap: 22 },
@@ -803,6 +832,7 @@ function catalog() {
 
 module.exports = {
     TIERS, TIER_IDX, TIER_ODDS, TIER_BONUS, WEAPONS, ARMORS, SETS, SLOTS, UTILS, PACKS, BASE_PACK, THROW_RANGE, WEAPON_MODS, ARMOR_MODS,
+    STASH_STACK, PACK_STACK, HOTBAR_STACK, slotsUsed, canAdd, fits, invUsed,
     SOURCES, CASES, SHOP, INV_MAX, INV_UP, invMaxOf, invUpCost, baseWeight, poolAt, WLV, weaponLevel, itemLevel, isAwake, fuse, fuseUseless, FUSE_COST, FUSE_ADD, FUSE_MAX_MODS, EFFECT_N, maxTierOf, generate, plain, craft, salvageValue, weaponStats, armorStats, catalog, migrate, effectFactor
 };
 

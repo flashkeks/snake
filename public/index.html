@@ -11355,12 +11355,14 @@ function guildNear() {
 let gdLast = null, gdFilter = 'all', gdSort = 'rarity', gdQ = '';
 const GD_FILTERS = [['all', 'All'], ['weapon', '🔫 Weapons'], ['helmet', '🪖 Helmets'], ['vest', '🦺 Vests'], ['pants', '👖 Pants'], ['boots', '🥾 Boots'], ['util', '💣 Consumables'], ['pack', '🎒 Backpacks']];
 const gdOk = (it, f) => f === 'all' || itKind(it) === f || (itKind(it) === 'armor' && (it.sl || it.slot || itemDef(it).slot) === f);
-function gdStacks(list) {
+// Stapel (26.09.2026): hoechstens `max` je Feld (Lager 50, Rucksack 10)
+function gdStacks(list, max = 50) {
     const out = [], by = {};
     for (const it of list) {
         if (itKind(it) === 'util') {
-            if (!by[itBase(it)]) out.push(by[itBase(it)] = { it, uids: [] });
-            by[itBase(it)].uids.push(it.uid);
+            const b = itBase(it);
+            if (!by[b] || by[b].uids.length >= max) out.push(by[b] = { it, uids: [] });
+            by[b].uids.push(it.uid);
         } else out.push({ it, uids: [it.uid] });
     }
     return out;
@@ -11390,14 +11392,15 @@ function gdRedraw() {
         level: (a, b) => (b.it.wxp || 0) - (a.it.wxp || 0) || tierIdx(itTier(b.it)) - tierIdx(itTier(a.it)),
         name: (a, b) => String(a.it.n).localeCompare(String(b.it.n))
     };
-    const invSt = gdStacks(inv).sort(sorters[gdSort] || sorters.rarity), packSt = gdStacks(pack).sort(sorters.rarity);
-    const stashFull = d.inv.length >= d.invMax, packFull = d.pack.length >= d.packMax;
+    const invSt = gdStacks(inv, d.invStack || 50).sort(sorters[gdSort] || sorters.rarity), packSt = gdStacks(pack, d.packStack || 10).sort(sorters.rarity);
+    const invUsed = d.invUsed ?? d.inv.length, packUsed = d.packUsed ?? d.pack.length;
+    const stashFull = invUsed >= d.invMax, packFull = packUsed >= d.packMax;
     const bar = (n, m) => `<span class="gd-bar"><i style="width:${Math.min(100, n / m * 100)}%"></i></span>`;
     box.innerHTML = `<div class="gd-cols">` +
-        `<section><div class="gd-colh"><b>🎒 Backpack</b> ${pack.length}/${d.packMax}${bar(d.pack.length, d.packMax)}` +
+        `<section><div class="gd-colh"><b>🎒 Backpack</b> ${packUsed}/${d.packMax}${bar(packUsed, d.packMax)}` +
         (pack.length ? `<button type="button" class="ghost" data-dep="${esc(pack.map(it => it.uid).join(','))}" ${stashFull ? 'disabled' : ''}>Store all →</button>` : '') + `</div>` +
         `<div class="gd-list">${packSt.map(st => gdTile(st, 'in', stashFull)).join('') || '<span class="hint">Backpack is empty</span>'}</div></section>` +
-        `<section><div class="gd-colh"><b>📦 Stash</b> ${d.inv.length}/${d.invMax}${bar(d.inv.length, d.invMax)}</div>` +
+        `<section><div class="gd-colh"><b>📦 Stash</b> ${invUsed}/${d.invMax}${bar(invUsed, d.invMax)}</div>` +
         `<div class="gd-filters">${GD_FILTERS.map(([k, n]) => { const c = d.inv.filter(it => gdOk(it, k)).length; return c || k === 'all' ? `<button type="button" data-gdf="${k}" class="${gdFilter === k ? 'on' : ''}">${n} <small>${c}</small></button>` : ''; }).join('')}</div>` +
         `<div class="gd-tools"><input id="gd-q" placeholder="🔎 Search…" value="${esc(gdQ)}"><span>Sort</span>${[['rarity', 'Rarity'], ['score', 'Score'], ['level', 'Level'], ['name', 'A–Z']].map(([k, n]) => `<button type="button" data-gds="${k}" class="${gdSort === k ? 'on' : ''}">${n}</button>`).join('')}</div>` +
         `<div class="gd-list">${invSt.map(st => gdTile(st, 'out', packFull)).join('') || '<span class="hint">Nothing here – try another filter</span>'}</div></section></div>` +
@@ -11612,15 +11615,25 @@ function onArXp(d) {
 }
 
 // Verbrauchsgut im Lager zu Stapeln zusammenfassen
+// 26.09.2026 (Max): ein Stapel hat hoechstens 50 und belegt einen Lagerplatz
 function hubStacks(list) {
-    const out = [], stacks = {};
+    const out = [], stacks = {}, max = (hub && hub.invStack) || 50;
     for (const it of list) {
         if (it.kind === 'util') {
-            if (!stacks[it.base]) out.push(stacks[it.base] = { it, uids: [] });
+            if (!stacks[it.base] || stacks[it.base].uids.length >= max) out.push(stacks[it.base] = { it, uids: [] });
             stacks[it.base].uids.push(it.uid);
         } else out.push({ it, uids: [it.uid] });
     }
     return out;
+}
+// Belegte Lagerplaetze (Stapel zaehlen einmal)
+function hubUsed() {
+    if (!hub || !hub.inv) return 0;
+    const max = hub.invStack || 50, per = {};
+    let n = 0;
+    for (const it of hub.inv) if (it.kind === 'util') per[it.base] = (per[it.base] || 0) + 1; else n++;
+    for (const k in per) n += Math.ceil(per[k] / max);
+    return n;
 }
 
 const HUB_FILTERS = [['all', 'All'], ['weapon', '🔫 Weapons'], ['helmet', '🪖 Helmets'], ['vest', '🦺 Vests'], ['pants', '👖 Pants'],
@@ -11658,7 +11671,7 @@ function hubDrawRaw() {
     $('hub-scrap').textContent = hub ? hub.scrap.toLocaleString('en-US') : '–';
     // 6.10 (Max): volles Lager sichtbar machen – Tab-Knopf zaehlt mit, ab 90 % gelb, voll rot
     if (hub && hub.inv) {
-        const used = hub.inv.length, max = hub.invMax || arenaCat.invMax, tab = document.querySelector('#hub-tabs [data-hubtab="inv"]');
+        const used = hubUsed(), max = hub.invMax || arenaCat.invMax, tab = document.querySelector('#hub-tabs [data-hubtab="inv"]');
         const full = used >= max || (hub.overflow || []).length > 0;
         if (tab) tab.innerHTML = `🎒 Inventory${full ? ' <b class="inv-full">FULL</b>' : used >= max * 0.9 ? ` <b class="inv-near">${used}/${max}</b>` : ''}`;
     }
@@ -11700,8 +11713,8 @@ function hubDrawRaw() {
         html = (waiting.length ? `<div class="inv-wait"><b>📥 ${waiting.length} item${waiting.length > 1 ? 's' : ''} waiting – your stash is full.</b> ` +
             `<span class="hint">Salvage something and they move in automatically. Nothing gets scrapped on its own.</span>` +
             `<div class="inv-grid">${waiting.map(it => itemCard(it, {})).join('')}</div></div>` : '') +
-            (inv.length >= invMaxNow() && !waiting.length ? `<div class="inv-wait"><b>📦 Your stash is full (${inv.length}/${invMaxNow()}).</b> <span class="hint">New loot waits until you salvage something – or upgrade your stash.</span></div>` : '') +
-            `<div class="inv-bar">${filters}<span class="hint ${inv.length >= invMaxNow() ? 'inv-full' : inv.length >= invMaxNow() * 0.9 ? 'inv-near' : ''}">${inv.length} / ${invMaxNow()}</span>${invUpButton()}</div>` +
+            (hubUsed() >= invMaxNow() && !waiting.length ? `<div class="inv-wait"><b>📦 Your stash is full (${hubUsed()}/${invMaxNow()}).</b> <span class="hint">New loot waits until you salvage something – or upgrade your stash.</span></div>` : '') +
+            `<div class="inv-bar">${filters}<span class="hint ${hubUsed() >= invMaxNow() ? 'inv-full' : hubUsed() >= invMaxNow() * 0.9 ? 'inv-near' : ''}">${hubUsed()} / ${invMaxNow()}</span>${invUpButton()}</div>` +
             `<div class="inv-main"><div class="inv-list">${hubStacks(list).map(({ it, uids }) => itemRow(it, { sel: uids.includes(hubSel), eq: hubEquippedAs(it.uid), n: uids.length })).join('') || '<div class="hint">Nothing here.</div>'}</div>` +
             `<div class="inv-detail">${sel ? itemDetail(sel) + (waiting.includes(sel) ? `<div class="hint">Waiting for space in your stash.</div><div class="it-actions"><button type="button" class="danger" data-salvage="${sel.uid}">♻️ Salvage (+${sel.sv || 0} ⚙️)</button></div>` : hubActions(sel)) : '<div class="hint">Click an item to equip or salvage it.</div>'}</div></div>`;
     } else if (hubTab === 'salvage') {
@@ -12285,12 +12298,14 @@ function shInvDrawRaw() {
     };
     // Rucksack: Verbrauchsgut gleicher Sorte in ein Feld
     const cells = [];
+    // 26.09.2026 (Max): hoechstens 10 je Feld, ein Stapel belegt einen Platz
+    const pst = d.packStack || 10;
     for (const it of d.pack) {
-        const c = it.k === 'util' && cells.find(x => x.it.k === 'util' && x.it.b === it.b);
+        const c = it.k === 'util' && cells.find(x => x.it.k === 'util' && x.it.b === it.b && x.n < pst);
         if (c) c.n++;
         else cells.push({ it, n: 1 });
     }
-    const used = d.pack.length;
+    const used = cells.length;
     let grid = cells.map(({ it, n }) => {
         TIP.set(it.uid, it);
         return `<div class="ri-cell tier-${it.t} ${isSel('pack', it.uid) ? 'sel' : ''}" data-ri="pack" data-key="${esc(it.uid)}" data-tip="${esc(it.uid)}">` +

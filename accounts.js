@@ -625,7 +625,7 @@ module.exports = function createAccounts(dataDir) {
                 const defs = kind === 'weapon' ? I.WEAPONS : kind === 'armor' ? I.ARMORS : kind === 'util' ? I.UTILS : kind === 'pack' ? I.PACKS : null;
                 if (!defs || !defs[base]) return 'unknown base';
                 const count = Math.max(1, Math.min(50, Math.floor(Number(d.count)) || 1));
-                if (a.inv.length + count > I.invMaxOf(a)) return `stash full (${a.inv.length}/${I.invMaxOf(a)})`;
+                if (!I.fits(a.inv, Array.from({ length: count }, () => ({ kind, base })), I.invMaxOf(a), I.STASH_STACK)) return `stash full (${I.invUsed(a)}/${I.invMaxOf(a)})`;
                 const mdefs = kind === 'weapon' ? I.WEAPON_MODS : I.ARMOR_MODS;
                 const mods = kind === 'weapon' || kind === 'armor' ? (Array.isArray(d.mods) ? d.mods : [])
                     .filter(m => mdefs[m.id]).slice(0, 6)
@@ -694,7 +694,7 @@ module.exports = function createAccounts(dataDir) {
                 if (src.uid && have.has(src.uid)) { skipped++; continue; }
                 const it = JSON.parse(JSON.stringify(src));
                 delete it.insured;
-                if (a.inv.length < arenaItems.invMaxOf(a)) { a.inv.push(it); added++; } else { a.overflow.push(it); queued++; }
+                if (arenaItems.canAdd(a.inv, it, arenaItems.invMaxOf(a), arenaItems.STASH_STACK)) { a.inv.push(it); added++; } else { a.overflow.push(it); queued++; }
                 if (it.uid) have.add(it.uid);
             }
             touch();

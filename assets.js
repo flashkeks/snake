@@ -114,7 +114,8 @@ module.exports = function createAssets(h) {
         const n = assets.filter(x => x.k === 'item').length;
         if (!n) return true;
         const a = accounts.arena(key);
-        return a.inv.length - leaving + n <= I.invMaxOf(a);
+        // Stapel (26.09.2026): grob – was geht, zaehlt als ein Platz weniger
+        return I.slotsUsed(a.inv.concat(assets.filter(x => x.k === 'item').map(x => x.item)), I.STASH_STACK) - leaving <= I.invMaxOf(a);
     }
 
     // Einbuchen. Cosmetic, das man schon hat: zaehlt nicht doppelt – dann
@@ -201,7 +202,7 @@ module.exports = function createAssets(h) {
             cos: cosOwned(u),
             packs: Object.entries(u.packs || {}).filter(([, n]) => n > 0).map(([id, n]) => ({ id, n, ...meta('pack', id) })),
             cases: Object.entries(a.cases || {}).filter(([, n]) => n > 0).map(([id, n]) => ({ id, n, ...meta('case', id) })),
-            coins: u.coins, scrap: a.scrap, invMax: I.invMaxOf(a), invUsed: a.inv.length
+            coins: u.coins, scrap: a.scrap, invMax: I.invMaxOf(a), invUsed: I.invUsed(a)
         };
     }
 

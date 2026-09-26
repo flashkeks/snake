@@ -767,7 +767,7 @@ module.exports = function createArena(h, opts = {}) {
         h.send(c, {
             type: 'arHub', inv: a.inv.map(it => ({ ...it, sv: I.salvageValue(it) })), loadout: a.loadout,
             overflow: (a.overflow || []).map(it => ({ ...it, sv: I.salvageValue(it) })),
-            invMax: I.invMaxOf(a), invUp: a.invUp || 0,
+            invMax: I.invMaxOf(a), invUp: a.invUp || 0, invUsed: I.invUsed(a), invStack: I.STASH_STACK,
             loadouts: { extract: a.loadout, pvp: loadoutOf(a, 'pvp'), zombies: loadoutOf(a, 'zombies') },
             presets: Object.fromEntries(L.MODES.map(m => [m, presetsOf(a, m).map(x => ({ name: x.name, l: x.l }))])),
             scrap: a.scrap, coins: u.coins, inRaid: players.has(c.id), prog: progView(c, a), pvp: a.pvp || null, zombies: a.zombies || null,
@@ -790,10 +790,12 @@ module.exports = function createArena(h, opts = {}) {
     const OVERFLOW_MAX = 200;
     function addItems(c, items) {
         const a = st(c);
-        const room = I.invMaxOf(a) - a.inv.length;
-        const kept = items.slice(0, Math.max(0, room));
-        const over = items.slice(kept.length);
-        a.inv.push(...kept);
+        // Stapel (26.09.2026): Verbrauchsgut passt in einen angefangenen Stapel
+        const kept = [], over = [];
+        for (const it of items) {
+            if (I.canAdd(a.inv, it, I.invMaxOf(a), I.STASH_STACK)) { a.inv.push(it); kept.push(it); }
+            else over.push(it);
+        }
         a.overflow = a.overflow || [];
         a.overflow.push(...over);
         // Notbremse: nur wenn auch die Warteschlange ueberlaeuft, geht das Schlechteste zu Scrap
@@ -810,8 +812,7 @@ module.exports = function createArena(h, opts = {}) {
 
     function flushOverflow(a) {
         if (!a.overflow || !a.overflow.length) return;
-        const room = I.invMaxOf(a) - a.inv.length;
-        if (room > 0) a.inv.push(...a.overflow.splice(0, room));
+        while (a.overflow.length && I.canAdd(a.inv, a.overflow[0], I.invMaxOf(a), I.STASH_STACK)) a.inv.push(a.overflow.shift());
         h.accounts.touch();
     }
 
@@ -872,7 +873,8 @@ module.exports = function createArena(h, opts = {}) {
             const offer = I.SHOP.find(x => x.id === d.id);
             if (!offer) return;
             const n = Math.max(1, Math.min(10, Math.floor(Number(d.n)) || 1));
-            if (a.inv.length + n > I.invMaxOf(a)) return h.send(c, { type: 'arError', error: 'Your stash is full – salvage something first' });
+            const probe = Array.from({ length: n }, () => offer.kind === 'gen' ? { kind: 'weapon' } : { kind: offer.kind, base: offer.base });
+            if (!I.fits(a.inv, probe, I.invMaxOf(a), I.STASH_STACK)) return h.send(c, { type: 'arError', error: 'Your stash is full – salvage something first' });
             const err = pay(c, offer.price * n, offer.currency);
             if (err) return h.send(c, { type: 'arError', error: err });
             const items = Array.from({ length: n }, () => offer.kind === 'gen' ? I.generate(offer.source) : I.plain(offer.kind, offer.base));
@@ -908,7 +910,7 @@ module.exports = function createArena(h, opts = {}) {
             const cs = Object.prototype.hasOwnProperty.call(I.CASES, d.id) ? I.CASES[d.id] : null;
             a.cases = a.cases || {};
             if (!cs || !(a.cases[d.id] > 0)) return h.send(c, { type: 'arError', error: 'You have no such case' });
-            if (a.inv.length >= I.invMaxOf(a)) return h.send(c, { type: 'arError', error: 'Your stash is full – salvage something first' });
+            if (I.invUsed(a) >= I.invMaxOf(a)) return h.send(c, { type: 'arError', error: 'Your stash is full – salvage something first' });
             a.cases[d.id]--;
             if (!a.cases[d.id]) delete a.cases[d.id];
             const item = I.generate(cs.source);
@@ -1282,7 +1284,7 @@ module.exports = function createArena(h, opts = {}) {
     function sendInv(p) {
         const gear = {};
         for (const s of GEAR) gear[s] = brief(p.gear[s]);
-        h.send(p.c, { type: 'shInv', gear, pack: p.pack.map(brief), util: p.util, packMax: p.packMax, sets: p.sets });
+        h.send(p.c, { type: 'shInv', gear, pack: p.pack.map(brief), util: p.util, packMax: p.packMax, packStack: I.PACK_STACK, sets: p.sets });
     }
 
     // Verbrauchsgut stapelt sich in die Slots, alles andere in den Rucksack.
@@ -1297,7 +1299,7 @@ module.exports = function createArena(h, opts = {}) {
                 const empty = p.util.findIndex(u => !u);
                 if (empty >= 0) { p.util[empty] = { base: it.base, n: 1 }; continue; }
             }
-            if (p.pack.length < p.packMax) p.pack.push(it);
+            if (I.canAdd(p.pack, it, p.packMax, I.PACK_STACK)) p.pack.push(it);
             else rest.push(it);
         }
         return rest;
@@ -1580,7 +1582,7 @@ module.exports = function createArena(h, opts = {}) {
                 const slot = it.kind === 'armor' ? it.slot : it.kind === 'pack' ? 'backpack' : (d.slot === 'secondary' ? 'secondary' : 'primary');
                 const old = p.gear[slot];
                 // Rucksack tauschen: der neue muss alles fassen (samt dem alten)
-                if (slot === 'backpack' && I.PACKS[it.base].cap < p.pack.length - 1 + (old ? 1 : 0)) return h.send(p.c, { type: 'shLoot', items: [], full: true });
+                if (slot === 'backpack' && I.PACKS[it.base].cap < I.slotsUsed(p.pack.filter(x => x !== it), I.PACK_STACK) + (old ? 1 : 0)) return h.send(p.c, { type: 'shLoot', items: [], full: true });
                 p.pack.splice(i, 1);
                 if (old && !old.starter) p.pack.push(old);
                 p.gear[slot] = it;
@@ -1592,13 +1594,13 @@ module.exports = function createArena(h, opts = {}) {
                 const si = slot === 'util0' ? 0 : 1;
                 const u = p.util[si];
                 if (!u) return;
-                if (p.pack.length + u.n > p.packMax) return h.send(p.c, { type: 'shLoot', items: [], full: true });
+                if (!I.fits(p.pack, Array.from({ length: u.n }, () => ({ kind: 'util', base: u.base })), p.packMax, I.PACK_STACK)) return h.send(p.c, { type: 'shLoot', items: [], full: true });
                 for (let k = 0; k < u.n; k++) p.pack.push(I.plain('util', u.base));
                 p.util[si] = null;
             } else {
                 if (!slots.includes(slot) || !p.gear[slot] || p.gear[slot].starter) return;
                 const cap = slot === 'backpack' ? I.BASE_PACK : p.packMax;
-                if (p.pack.length >= cap) return h.send(p.c, { type: 'shLoot', items: [], full: true });
+                if (I.slotsUsed(p.pack, I.PACK_STACK) >= cap) return h.send(p.c, { type: 'shLoot', items: [], full: true });
                 p.pack.push(p.gear[slot]);
                 p.gear[slot] = slot === 'primary' ? starterPistol() : null;
                 if (slot === 'secondary' && p.slot === 'secondary') p.slot = 'primary';
@@ -1617,7 +1619,7 @@ module.exports = function createArena(h, opts = {}) {
                 const slots = ['primary', 'secondary', 'helmet', 'vest', 'pants', 'boots', 'backpack'];
                 if (!slots.includes(slot) || !p.gear[slot] || p.gear[slot].starter) return;
                 // Rucksack nur, wenn der Inhalt in den Grundrucksack passt
-                if (slot === 'backpack' && p.pack.length > I.BASE_PACK) return h.send(p.c, { type: 'shLoot', items: [], full: true });
+                if (slot === 'backpack' && I.slotsUsed(p.pack, I.PACK_STACK) > I.BASE_PACK) return h.send(p.c, { type: 'shLoot', items: [], full: true });
                 const it = p.gear[slot];
                 p.gear[slot] = slot === 'primary' ? starterPistol() : null;
                 if (slot === 'secondary' && p.slot === 'secondary') p.slot = 'primary';
@@ -1857,7 +1859,8 @@ module.exports = function createArena(h, opts = {}) {
     }
     function sendGuildStash(p) {
         const a = st(p.c);
-        h.send(p.c, { type: 'gStash', inv: a.inv.map(brief), pack: p.pack.map(brief), packMax: p.packMax, invMax: I.invMaxOf(a), tokens: a.tokens || 0, scrap: a.scrap });
+        h.send(p.c, { type: 'gStash', inv: a.inv.map(brief), pack: p.pack.map(brief), packMax: p.packMax, invMax: I.invMaxOf(a),
+            invUsed: I.invUsed(a), packUsed: I.slotsUsed(p.pack, I.PACK_STACK), invStack: I.STASH_STACK, packStack: I.PACK_STACK, tokens: a.tokens || 0, scrap: a.scrap });
     }
     function sendInsure(p) {
         const a = st(p.c);
@@ -1888,12 +1891,12 @@ module.exports = function createArena(h, opts = {}) {
             if (d.type === 'gDeposit') {
                 const i = p.pack.findIndex(x => x.uid === uid);
                 if (i < 0) continue;
-                if (a.inv.length >= I.invMaxOf(a)) { full = true; break; }
+                if (!I.canAdd(a.inv, p.pack[i], I.invMaxOf(a), I.STASH_STACK)) { full = true; break; }
                 a.inv.push(p.pack.splice(i, 1)[0]);
             } else {
                 const i = a.inv.findIndex(x => x.uid === uid);
                 if (i < 0) continue;
-                if (p.pack.length >= p.packMax) { full = true; break; }
+                if (!I.canAdd(p.pack, a.inv[i], p.packMax, I.PACK_STACK)) { full = true; break; }
                 p.pack.push(a.inv.splice(i, 1)[0]);
             }
             moved++;
@@ -5751,7 +5754,7 @@ module.exports = function createArena(h, opts = {}) {
             h.send(p.c, {
                 type: 'sh', t: now, ack: p.seq,
                 me: {
-                    hp: Math.max(0, Math.round(p.hp)), mh: p.maxHp, slot: p.slot, pack: p.pack.length, packMax: p.packMax, util: p.util,
+                    hp: Math.max(0, Math.round(p.hp)), mh: p.maxHp, slot: p.slot, pack: I.slotsUsed(p.pack, I.PACK_STACK), packMax: p.packMax, util: p.util,
                     gear: { primary: brief(p.gear.primary), secondary: brief(p.gear.secondary) },
                     ms: Math.round(I.weaponStats(w).ms / p.rateMul),
                     spd: now < (p.jailUntil || 0) ? 0 : Math.round(p.speedMul * (now < p.slowUntil && !p.geppo ? 1 - p.slow : 1) * (now < p.stimUntil ? 1 + p.stim : 1) * 100) / 100,

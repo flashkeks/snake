@@ -3523,3 +3523,28 @@ Server: `accounts.adminArena(key, 'skillreset', { tree })`, im Admin-Log als `ar
 Die bisherige Anzeige „x skill points spent" las noch das alte Feld `prog.skills` (vor den
 getrennten Bäumen) und zeigte deshalb meist 0 – ersetzt durch die Zahlen an den Knöpfen.
 Wer gerade im Hub ist, sieht die freien Punkte nach dem nächsten Neuladen.
+
+## 🧪 Verbrauchsgut stapelt: Lager 50, Raid-Rucksack 10, Hotbar 5 (26.09.2026, Max)
+
+Max: „Heals usw. sollen im Inventar bis 50 stacken können und dann auch nur einen Lagerplatz
+belegen. Ingame im Inventar bis 10 und in der Hotbar bis 5."
+
+- **Daten bleiben wie sie sind:** jedes Verbrauchsgut ist weiter ein eigenes Item (keine
+  Migration, Raid-Log, Markt, Handel, Admin unverändert). Neu ist nur das **Zählen der
+  Plätze**: `I.slotsUsed(liste, stapel)` = Nicht-Verbrauchsgut + je Sorte ⌈Anzahl / Stapel⌉.
+- **Lager:** Stapel bis 50 (`STASH_STACK`). Alle Prüfungen auf „Lager voll" laufen über
+  `invUsed`/`canAdd`/`fits` (Shop, Case öffnen, Raid-Heimkehr, Warteschlange, Guild Stash,
+  Admin „Give", Raid-Log-Restore, Markt/Handel in `assets.js`). Ein Verbrauchsgut, das in einen
+  angefangenen Stapel passt, passt auch bei vollem Lager.
+- **Raid-Rucksack:** Stapel bis 10 (`PACK_STACK`): Aufheben, Rucksack wechseln/ablegen,
+  Hotbar leeren, Guild Stash. Die Anzeige `🎒 x/y` zählt Plätze, nicht Items.
+- **Hotbar (Q/G):** alle normalen Verbrauchsgüter (Stufe bis Epic, keine Uniques) bis 5
+  (`HOTBAR_STACK`, vorher 1–5 je Sorte). Legendäre und Uniques behalten ihr Limit
+  (Phoenix, Chidori, Senzu, Nuke, Spirit Bomb, Black Hole, World Ender je 1; Hiraishin 3,
+  Chain Jail/Hollow Mask/Door-Door 2 …) – Max' Wahl.
+- Client: Hub-Inventar, Guild Stash und Raid-Rucksack zeigen Stapel mit höchstens 50 bzw.
+  10 je Feld; Zähler über `hubUsed()`, `invUsed`/`packUsed` aus dem Server.
+
+Geprüft (`stack.js`, 11/11): Hotbar-Limits, 50/51 und 10/11 Stück, volles Lager nimmt
+Bandagen in den angefangenen Stapel (auch 10 per Shop), Frag nicht; 25 Bandagen + Waffe im
+Raid = 4 Plätze. Alle älteren Tests grün.
