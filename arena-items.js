@@ -464,21 +464,21 @@ function rollLevel(m) {
     return pickWeighted(Array.from({ length: m.max }, (_, i) => [i + 1, Math.pow(m.decay, i)]));
 }
 
-// Phoenix Elixir (26.09.2026, Max: „davon existieren schon 6"): halb so oft wie vorher.
-// In Kisten, die nur Heil- und Wurf-Items kennen (crate, crate2), war es das einzige
-// legendaere Verbrauchsgut – jeder legendaere Wurf dort wurde ein Phoenix. Jetzt kann
-// dort auch jedes andere legendaere Verbrauchsgut kommen, jedes mit 1/10 der (neuen)
-// Phoenix-Chance. Umsetzung: Faellt die Wahl auf Phoenix, bleibt es mit 50 %; mit je
-// 5 % wird es eines der anderen legendaeren (nur in solchen Kisten), sonst wird ohne
-// Phoenix neu gezogen.
-const PHOENIX_KEEP = 0.5, PHOENIX_OTHER = 0.1;
+// Phoenix Elixir (26.09.2026, Max: „davon existieren schon 6"). In Kisten, die nur Heil-
+// und Wurf-Items kennen (crate, crate2), war es das einzige legendaere Verbrauchsgut –
+// jeder legendaere Wurf dort wurde ein Phoenix. Jetzt:
+//   - in solchen Kisten: faellt die Wahl auf Phoenix, wird gleichverteilt eines aus Phoenix
+//     und den anderen legendaeren Verbrauchsguetern, die der Filter sonst ausschliesst
+//     (Max: „selbe Chance wie Phoenix", Gesamtmenge an Legendaries bleibt gleich)
+//   - ueberall sonst: Phoenix halb so oft (mit 50 % ohne Phoenix neu ziehen)
+const PHOENIX_KEEP = 0.5;
 function phoenixSwap(src, tier) {
-    const r = Math.random();
-    if (r < PHOENIX_KEEP) return 'phoenix';
     const lt = UTILS.phoenix.tier;
-    const others = src.uses ? Object.entries(UTILS).filter(([k, b]) => b.tier === lt && k !== 'phoenix' && !src.uses.includes(b.use)).map(([k]) => k) : [];
-    const i = Math.floor((r - PHOENIX_KEEP) / (PHOENIX_KEEP * PHOENIX_OTHER));
-    if (i < others.length) return others[i];
+    if (src.uses) {
+        const all = ['phoenix', ...Object.entries(UTILS).filter(([k, b]) => b.tier === lt && k !== 'phoenix' && !src.uses.includes(b.use)).map(([k]) => k)];
+        return all[Math.floor(Math.random() * all.length)];
+    }
+    if (Math.random() < PHOENIX_KEEP) return 'phoenix';
     return pickBase('util', tier, { ...src, skip: 'phoenix' }) || 'phoenix';
 }
 

@@ -3420,3 +3420,15 @@ Simuliert, pro 10.000 Verbrauchsgüter:
 
 Die Odds-Anzeige eines Items hängt an Stufe und Effekten, nicht an der Basis – sie ändert
 sich dadurch nicht.
+
+### Nachtrag: in Kisten gleiche Chance für alle sechs (Max: „mach doch selbe Chance wie Phoenix")
+
+Die 1/10-Regel ist wieder raus. In `crate`/`crate2` wird der Phoenix-Treffer jetzt gleich
+verteilt auf Phoenix, Chidori, Hiraishin Kunai, Chain Jail, Hollow Mask und Door-Door Fruit.
+Max' Wahl: die **Gesamtmenge** an Legendaries aus Kisten bleibt wie früher, Phoenix fällt
+dort also auf 1/6 (−83 %). In allen anderen Quellen gilt weiter Phoenix −50 %.
+
+| Quelle (pro 10.000 Verbrauchsgüter) | Phoenix vorher | jetzt je Legendary | Legendaries gesamt |
+|---|---:|---:|---:|
+| `crate` | 7 | ~1,1 | ~6,4 (vorher 7) |
+| `crate2` | 20 | ~3,1 | ~18,4 (vorher 20) |
