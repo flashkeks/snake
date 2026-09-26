@@ -3675,3 +3675,21 @@ unsichtbar unter der Rückseite (`.km-sc-face`, `visibility: hidden`). `kmFace(p
 Die nächste Karte dreht sich, sobald man die oberste anfasst (`pointerdown`) oder wegtippt/
 -wischt (`kmNext`) – beim Wegfliegen liegt sie also schon offen da. Vorher sieht man
 weiterhin nur Rückseiten an den Rändern.
+
+### Nachtrag: Feed-Menü, XP nur noch fest (26.09.2026 abends, Max)
+
+Max: „Die XP beim Feeden soll nur eine Flat-Menge sein – egal welches Level die geopferte
+Karte hat. Sonst könnte man eine Lv-3-Rare einer anderen Lv-3-Rare opfern und die wäre Lv 6."
+
+- `km-level.js`: `FEED_KEEP` 0,5 → 0. Eine geopferte Kopie bringt nur noch die feste Menge
+  nach ihrer Seltenheit (Common 180 … Secret 12 000, gleiche Karte ×2). Ihre eigenen XP
+  verfallen.
+- **Feed-Menü** (Knopf „🍪 Feed / Level up cards" oben in der Sammlung, außerdem „🍪 Level up
+  with other cards…" in jeder Kartenansicht): links die Karte, die levelt (Lv jetzt → Lv
+  danach, XP-Balken, Liste der Opfer mit −/+/✕), rechts alle eigenen Karten als Futter –
+  Klick +1 Kopie, Rechtsklick −1, „+ extras" nimmt alle bis auf eine. Suche,
+  Seltenheitsfilter, „Only duplicates" (Standard an). Die beste Kopie der Zielkarte ist nie
+  Futter. Schickt `kmFeedMany`, danach bleibt das Menü offen für die nächste Runde.
+
+Geprüft im Browser gegen einen echten Server: Usopp Lv 1 + 1 Common + 2 Common → +540 XP,
+Lv 5; Screenshots von Knopf und Menü.

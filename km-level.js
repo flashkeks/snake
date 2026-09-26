@@ -97,12 +97,13 @@ function catalog() {
     return { max: MAX_LV, curve: CURVE, feed: FEED, feedKeep: FEED_KEEP, feedSame: FEED_SAME };
 }
 
-// Verfuettern (Schritt 4): Grund-XP nach Seltenheit der geopferten Kopie,
-// dazu die Haelfte ihrer eigenen XP.
+// Verfuettern (Schritt 4): feste XP nach Seltenheit der geopferten Kopie.
 // 26.09.2026 (SINTHSBen: „lohnt 0, gibt fast nichts"; Max): jede Karte in jede,
-// Grund-XP ×3, dieselbe Karte zaehlt doppelt (FEED_SAME)
+// Grund-XP ×3, dieselbe Karte zaehlt doppelt (FEED_SAME).
+// 26.09.2026 abends (Max): nur noch die feste Menge – das Level der Geopferten zaehlt nicht
+// mehr (vorher +50 % ihrer XP, damit liessen sich gelevelte Karten weiterreichen)
 const FEED = { common: 180, uncommon: 360, rare: 750, epic: 1800, legendary: 4500, secret: 12000 };
-const FEED_KEEP = 0.5, FEED_SAME = 2;
+const FEED_KEEP = 0, FEED_SAME = 2;
 
 // Eine Kopie von source opfern (immer die schwaechste; ist source == target,
 // nie die beste) und die XP auf die beste Kopie von target buchen.
@@ -111,14 +112,15 @@ function feed(u, target, source, rarity, same = true) {
     const n = (u.cards || {})[source] || 0;
     if (n < (source === target ? 2 : 1) || !((u.cards || {})[target] > 0)) return null;
     const list = normalize(u, source);
-    const fed = n > list.length ? 0 : list.pop();
+    // die schwaechste Kopie geht (ihre XP verfallen, FEED_KEEP = 0)
+    if (n <= list.length) list.pop();
     u.cards[source] = n - 1;
     if (!u.cards[source]) delete u.cards[source];
     if (u.cardXp && u.cardXp[source]) {
         if (list.length) u.cardXp[source] = list;
         else delete u.cardXp[source];
     }
-    return addXp(u, target, (FEED[rarity] || FEED.common) * (same ? FEED_SAME : 1) + Math.round(fed * FEED_KEEP));
+    return addXp(u, target, (FEED[rarity] || FEED.common) * (same ? FEED_SAME : 1));
 }
 
 module.exports = { MAX_LV, CURVE, need, levelOf, statMul, normalize, normalizeAll, bestXp, bestLv, addXp, feed, FEED, totalFor, XP, battleXp, koXp, DUEL_FULL, DUEL_LATE, catalog };

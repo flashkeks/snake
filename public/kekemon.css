@@ -2535,3 +2535,33 @@ body.world-cards #kekemon > .card {
 .km-sc.faced .km-sc-face { visibility: visible; }
 .km-sc.faced .km-sc-back { display: none; }
 .km-sc-face > .km-new { position: absolute; top: -8px; right: -8px; }
+
+/* Feed-Menue (26.09.2026) */
+.km-albumtop { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; flex-wrap: wrap; }
+.km-albumtop small { opacity: .7; }
+#km-fd { position: fixed; inset: 0; z-index: 56; background: rgba(5,5,12,.9); display: flex; align-items: flex-start; justify-content: center; padding: 16px; box-sizing: border-box; overflow: auto; }
+#km-fd[hidden] { display: none; }
+.km-fd-box { width: min(1250px, 100%); background: #11121a; border: 1px solid rgba(255,177,61,.45); border-radius: 14px; padding: 12px 14px; color: #dfe6ee; }
+.km-fd-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+.km-fd-head b { font-size: 18px; white-space: nowrap; }
+.km-fd-head small { flex: 1; opacity: .75; }
+.km-fd-main { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.km-fd-side { width: 280px; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.km-fd-side .kc { --w: 230px; }
+.km-fd-pickt { padding: 30px 10px; text-align: center; border: 2px dashed rgba(255,177,61,.4); border-radius: 12px; display: flex; flex-direction: column; gap: 6px; width: 100%; box-sizing: border-box; }
+.km-fd-lv { width: 100%; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.km-fd-lv .up { color: #4dff88; }
+.km-fd-list { width: 100%; max-height: 220px; overflow: auto; display: flex; flex-direction: column; gap: 3px; }
+.km-fd-row { display: flex; align-items: center; gap: 5px; font-size: 12px; background: rgba(255,255,255,.04); border-radius: 6px; padding: 3px 6px; }
+.km-fd-row span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.km-fd-row button { padding: 1px 7px; font-size: 12px; }
+#km-fd-go { width: 100%; }
+.km-fd-right { flex: 1; min-width: 300px; }
+.km-fd-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+.km-fd-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+.km-fd-c { position: relative; cursor: pointer; }
+.km-fd-c.on .kc { outline: 3px solid #4dff88; outline-offset: 2px; }
+.km-fd-c.tgt .kc { outline: 3px solid #ffb13d; outline-offset: 2px; }
+.km-fd-n { position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); background: #4dff88; color: #06210f; font-weight: 900; font-size: 12px; padding: 2px 8px; border-radius: 10px; }
+.km-fd-t { position: absolute; top: -8px; left: 50%; transform: translateX(-50%); background: #ffb13d; color: #221; font-weight: 900; font-size: 10px; padding: 2px 6px; border-radius: 8px; white-space: nowrap; }
+.km-fd-all { position: absolute; top: 4px; right: 4px; font-size: 10px; padding: 1px 5px; }
