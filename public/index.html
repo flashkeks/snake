@@ -5718,11 +5718,11 @@ span.tier-common, span.tier-uncommon, span.tier-rare, span.tier-epic, span.tier-
 .s2g { width: 100%; height: auto; display: block; overflow: visible; filter: drop-shadow(0 6px 18px rgba(160, 90, 255, .4)); }
 .s2g * { transform-box: view-box; }
 .s2g .g-all { animation: s2gFloat 4.2s ease-in-out infinite; }
-.s2g .g-wingL { transform-origin: 154px 176px; animation: s2gWingL 2.4s ease-in-out infinite; }
-.s2g .g-wingR { transform-origin: 166px 176px; animation: s2gWingR 2.4s ease-in-out infinite; }
+.s2g .g-wingL { transform-origin: 124px 166px; animation: s2gWingL 2.4s ease-in-out infinite; }
+.s2g .g-wingR { transform-origin: 196px 166px; animation: s2gWingR 2.4s ease-in-out infinite; }
 .s2g .g-tailL { transform-origin: 136px 64px; animation: s2gSway 3.4s ease-in-out infinite; }
 .s2g .g-tailR { transform-origin: 184px 64px; animation: s2gSway 3.4s ease-in-out -1.1s infinite reverse; }
-.s2g .g-skirt { transform-origin: 160px 270px; animation: s2gSkirt 4.2s ease-in-out infinite; }
+.s2g .g-skirt { transform-origin: 160px 262px; animation: s2gSkirt 4.2s ease-in-out infinite; }
 .s2g .g-legs { transform-origin: 160px 300px; animation: s2gSkirt 4.2s ease-in-out -.4s infinite; }
 .s2g .g-head { transform-origin: 160px 120px; animation: s2gHead 6s ease-in-out infinite; }
 .s2g .g-eye { transform-origin: 160px 83px; animation: s2gBlink 5s infinite; }
@@ -5730,6 +5730,11 @@ span.tier-common, span.tier-uncommon, span.tier-rare, span.tier-epic, span.tier-
 .s2g .g-arm { transform-origin: 199px 156px; animation: s2gArm 4.2s ease-in-out infinite; }
 .s2g .g-star { transform-origin: 248px 24px; animation: s2gStar 2.6s ease-in-out infinite; }
 .s2g .g-starGlow { transform-origin: 248px 24px; animation: s2gGlow 2.6s ease-in-out infinite; }
+.s2g .g-rhead { transform-origin: 58px 498px; animation: s2gRaven 5s ease-in-out infinite; }
+.s2g .g-flame { transform-box: fill-box; transform-origin: 50% 100%; animation: s2gFlame .16s ease-in-out infinite alternate; }
+.s2g .g-smoke path { stroke-dasharray: 26 16; animation: s2gSmoke 2.6s linear infinite; }
+.s2g .g-smoke path:nth-child(2) { animation-duration: 3.3s; }
+.s2g.big .g-smoke path, .s2g.bonus .g-smoke path, .s2g.zap .g-smoke path { stroke: #e0c0ff; animation-duration: 1s; }
 .s2g .g-aura { opacity: 0; transform-origin: 160px 300px; transition: opacity .6s; }
 .s2g .g-sparks path { transform-box: fill-box; transform-origin: center; animation: s2gTwinkle 2.2s ease-in-out infinite; }
 .s2g .g-sparks path:nth-child(2n) { animation-delay: -.7s; animation-duration: 2.8s; }
@@ -5748,9 +5753,12 @@ span.tier-common, span.tier-uncommon, span.tier-rare, span.tier-epic, span.tier-
 .s2g.big .g-sparks path, .s2g.bonus .g-sparks path { fill: #ffe98a; animation-duration: .9s; }
 .s2g.bonus .g-aura { opacity: 1; animation: s2gAura 2s ease-in-out infinite; }
 
+@keyframes s2gRaven { 0%, 58%, 100% { transform: rotate(0); } 63% { transform: rotate(-16deg); } 70% { transform: rotate(8deg); } 77% { transform: rotate(0); } }
+@keyframes s2gFlame { from { transform: scale(1, 1); opacity: 1; } to { transform: scale(.82, 1.14); opacity: .85; } }
+@keyframes s2gSmoke { to { stroke-dashoffset: -84; } }
 @keyframes s2gFloat { 50% { transform: translateY(-12px); } }
-@keyframes s2gWingL { 50% { transform: rotate(9deg); } }
-@keyframes s2gWingR { 50% { transform: rotate(-9deg); } }
+@keyframes s2gWingL { 50% { transform: rotate(2.5deg); } }
+@keyframes s2gWingR { 50% { transform: rotate(-2.5deg); } }
 @keyframes s2gSway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
 @keyframes s2gSkirt { 0%, 100% { transform: skewX(-2deg); } 50% { transform: skewX(2deg); } }
 @keyframes s2gHead { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(3deg); } }
@@ -7736,60 +7744,89 @@ body.watch-mode #world-switch {
                           <stop offset="0" stop-color="#211a29"/><stop offset="1" stop-color="#060508"/>
                         </linearGradient>
                         <linearGradient id="s2gSkin" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0" stop-color="#e9d6d2"/><stop offset=".45" stop-color="#f8eeeb"/><stop offset="1" stop-color="#e2cdc9"/>
+                          <stop offset="0" stop-color="#dcc3cc"/><stop offset=".45" stop-color="#f6e9ec"/><stop offset="1" stop-color="#d5bcc6"/>
                         </linearGradient>
                         <radialGradient id="s2gIris">
-                          <stop offset="0" stop-color="#ff8ab8"/><stop offset=".55" stop-color="#9a1e5a"/><stop offset="1" stop-color="#2a0620"/>
+                          <stop offset="0" stop-color="#e6d8ff"/><stop offset=".55" stop-color="#8f7ab8"/><stop offset="1" stop-color="#2a2040"/>
                         </radialGradient>
                         <linearGradient id="s2gSilver" x1="0" y1="0" x2="1" y2="1">
                           <stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#b9b6c8"/><stop offset="1" stop-color="#6c6880"/>
                         </linearGradient>
-                        <linearGradient id="s2gCloth" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0" stop-color="#0b090f"/><stop offset=".45" stop-color="#2a2233"/><stop offset="1" stop-color="#0b090f"/>
+                        <linearGradient id="s2gLeather" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0" stop-color="#08070b"/><stop offset=".4" stop-color="#2c2436"/><stop offset=".6" stop-color="#1c1724"/><stop offset="1" stop-color="#08070b"/>
                         </linearGradient>
-                        <linearGradient id="s2gLeg" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0" stop-color="#0a080d"/><stop offset=".55" stop-color="#262030"/><stop offset="1" stop-color="#0a080d"/>
+                        <linearGradient id="s2gRobe" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0" stop-color="#241c2e"/><stop offset="1" stop-color="#07060a"/>
                         </linearGradient>
-                        <linearGradient id="s2gWing" x1="1" y1="0" x2="0" y2="1">
-                          <stop offset="0" stop-color="#3a2c4e"/><stop offset="1" stop-color="#0d0a12"/>
+                        <linearGradient id="s2gSheer" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0" stop-color="#08070b" stop-opacity=".96"/><stop offset=".5" stop-color="#1a1422" stop-opacity=".84"/><stop offset="1" stop-color="#08070b" stop-opacity=".96"/>
                         </linearGradient>
-                        <linearGradient id="s2gMoon" x1="0" y1="0" x2="1" y2="1">
-                          <stop offset="0" stop-color="#f4e8ff"/><stop offset=".5" stop-color="#c9a8ff"/><stop offset="1" stop-color="#7a4ad0"/>
+                        <linearGradient id="s2gCrystal" x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0" stop-color="#f4e8ff"/><stop offset=".45" stop-color="#b36bff"/><stop offset="1" stop-color="#4a1a8a"/>
                         </linearGradient>
-                        <pattern id="s2gMesh" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                          <path d="M0,0 L0,5 M0,0 L5,0" stroke="#55466a" stroke-width=".7" opacity=".5"/>
-                        </pattern>
                         <radialGradient id="s2gAura">
-                          <stop offset="0" stop-color="#c38bff" stop-opacity=".5"/><stop offset=".5" stop-color="#8a1e5a" stop-opacity=".25"/><stop offset="1" stop-color="#8a1e5a" stop-opacity="0"/>
+                          <stop offset="0" stop-color="#b36bff" stop-opacity=".5"/><stop offset=".5" stop-color="#5a1a8a" stop-opacity=".25"/><stop offset="1" stop-color="#5a1a8a" stop-opacity="0"/>
                         </radialGradient>
                         <radialGradient id="s2gGlow">
-                          <stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".35" stop-color="#d9b8ff" stop-opacity=".7"/><stop offset="1" stop-color="#8a4ad0" stop-opacity="0"/>
+                          <stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".3" stop-color="#d9b8ff" stop-opacity=".75"/><stop offset="1" stop-color="#8a3aff" stop-opacity="0"/>
                         </radialGradient>
                         <radialGradient id="s2gBust" cx=".45" cy=".35" r=".7">
                           <stop offset="0" stop-color="#5a4a72"/><stop offset=".6" stop-color="#2e2540" stop-opacity=".6"/><stop offset="1" stop-color="#15111b" stop-opacity="0"/>
+                        </radialGradient>
+                        <radialGradient id="s2gCandle">
+                          <stop offset="0" stop-color="#fff6d0"/><stop offset=".5" stop-color="#ffb347" stop-opacity=".6"/><stop offset="1" stop-color="#ff7a1a" stop-opacity="0"/>
                         </radialGradient>
                       </defs>
                     
                       <ellipse class="g-aura" cx="160" cy="300" rx="170" ry="290" fill="url(#s2gAura)"/>
                     
+                      <!-- Buecher, Totenkopf, Kerzen, Rabe -->
+                      <g class="g-deco">
+                        <path d="M10,560 L100,556 L102,574 L12,578 Z" fill="#3a1a22" stroke="#6a4a3a" stroke-width="1.2"/>
+                        <path d="M6,578 L104,574 L106,594 L8,598 Z" fill="#241a30" stroke="#5a4a6a" stroke-width="1.2"/>
+                        <path d="M14,566 L98,562 M10,585 L102,581" stroke="#c9a86a" stroke-width="1" opacity=".6"/>
+                        <path d="M36,556 C30,534 38,520 52,520 C66,520 74,534 68,556 Z" fill="#cfc4b8" stroke="#8a7e72" stroke-width="1.2"/>
+                        <ellipse cx="46" cy="538" rx="5" ry="6" fill="#1a1016"/>
+                        <ellipse cx="60" cy="538" rx="5" ry="6" fill="#1a1016"/>
+                        <path d="M52,544 l-2,5 h4 Z M44,552 l0,4 M50,552 l0,4 M56,552 l0,4 M62,552 l0,4" fill="#1a1016" stroke="#1a1016" stroke-width="1.2"/>
+                        <rect x="80" y="522" width="10" height="36" rx="2" fill="#e8dcc8"/>
+                        <rect x="16" y="532" width="9" height="26" rx="2" fill="#e8dcc8"/>
+                        <circle cx="85" cy="512" r="12" fill="url(#s2gCandle)"/>
+                        <circle cx="20.5" cy="522" r="10" fill="url(#s2gCandle)"/>
+                        <path class="g-flame" d="M85,504 C89,511 89,518 85,521 C81,518 81,511 85,504 Z" fill="#ffd27a"/>
+                        <path class="g-flame" d="M20.5,515 C24,521 24,527 20.5,530 C17,527 17,521 20.5,515 Z" fill="#ffd27a" style="animation-delay:-.09s"/>
+                        <!-- Rabe auf dem Schaedel -->
+                        <path d="M30,518 L14,530 L24,516 Z" fill="#0b0910"/>
+                        <path d="M26,512 C28,498 42,490 56,494 C64,497 66,506 62,514 C56,522 40,524 26,512 Z" fill="#0f0c14"/>
+                        <path d="M32,508 C40,500 50,500 58,504" fill="none" stroke="#3a2e4a" stroke-width="1.5"/>
+                        <path d="M46,520 L45,522 M52,520 L53,522" stroke="#3a3a3a" stroke-width="1.5"/>
+                        <g class="g-rhead">
+                          <circle cx="60" cy="492" r="8" fill="#0f0c14"/>
+                          <path d="M66,489 L78,493 L66,496 Z" fill="#4a4550"/>
+                          <circle cx="62" cy="490" r="1.7" fill="#c38bff"/>
+                        </g>
+                      </g>
+                    
                       <g class="g-all">
-                        <!-- dunkle Fluegel -->
+                        <!-- weiter Umhang, faellt von den Schultern -->
                         <g class="g-wingL">
-                          <path transform="translate(4,-88)" d="M150,262 C118,222 62,176 14,184 C34,196 30,210 20,222 C44,226 38,244 26,258 C52,258 50,276 38,292 C64,290 66,306 58,320 C88,306 122,290 150,284 Z" fill="url(#s2gWing)" stroke="#7a5aa0" stroke-width="2" stroke-linejoin="round"/>
-                          <path transform="translate(4,-88)" d="M140,266 C110,240 70,214 40,206 M136,274 C106,260 72,248 46,248 M134,282 C108,280 82,282 62,290" fill="none" stroke="#5a4478" stroke-width="2" stroke-linecap="round"/>
+                          <path d="M124,166 C98,194 86,282 80,400 C76,440 72,470 66,504 Q90,512 114,504 C114,444 120,364 128,302 C132,262 130,214 128,180 Z" fill="url(#s2gRobe)" stroke="#3a2e4a" stroke-width="1.2"/>
+                          <path d="M90,440 m-7,0 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 M90,433 l2,5 5,.3 -4,3.2 1.4,5 -4.4,-2.8 -4.4,2.8 1.4,-5 -4,-3.2 5,-.3 Z" fill="none" stroke="#8a5ad0" stroke-width="1" opacity=".6"/>
                         </g>
                         <g class="g-wingR">
-                          <path transform="translate(-4,-88)" d="M170,262 C202,222 258,176 306,184 C286,196 290,210 300,222 C276,226 282,244 294,258 C268,258 270,276 282,292 C256,290 254,306 262,320 C232,306 198,290 170,284 Z" fill="url(#s2gWing)" stroke="#7a5aa0" stroke-width="2" stroke-linejoin="round"/>
-                          <path transform="translate(-4,-88)" d="M180,266 C210,240 250,214 280,206 M184,274 C214,260 248,248 274,248 M186,282 C212,280 238,282 258,290" fill="none" stroke="#5a4478" stroke-width="2" stroke-linecap="round"/>
+                          <path d="M196,166 C222,194 234,282 240,400 C244,440 248,470 254,504 Q230,512 206,504 C206,444 200,364 192,302 C188,262 190,214 192,180 Z" fill="url(#s2gRobe)" stroke="#3a2e4a" stroke-width="1.2"/>
+                          <path d="M230,440 m-7,0 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 M230,433 l2,5 5,.3 -4,3.2 1.4,5 -4.4,-2.8 -4.4,2.8 1.4,-5 -4,-3.2 5,-.3 Z" fill="none" stroke="#8a5ad0" stroke-width="1" opacity=".6"/>
                         </g>
                     
-                        <!-- lange glatte Haare hinten -->
-                        <path d="M128,58 C122,28 198,28 192,58 C204,110 212,200 208,284 Q184,292 160,288 Q136,292 112,284 C108,200 116,110 128,58 Z" fill="url(#s2gHairD)"/>
+                        <!-- lange Haare hinten -->
+                        <path d="M128,58 C122,28 198,28 192,58 C206,110 214,200 210,290 Q186,298 160,294 Q134,298 110,290 C106,200 114,110 128,58 Z" fill="url(#s2gHairD)"/>
                     
-                        <!-- Beine: Leggings, Plateau-Boots -->
+                        <!-- Beine: halbtransparente schwarze Struempfe, Plateau-Boots -->
                         <g class="g-legs">
-                          <path d="M122,290 C121,340 127,382 131,412 C134,442 137,468 139,490 L155,490 C155,466 153,440 153,412 C155,372 158,332 161,302 Z" fill="url(#s2gLeg)"/>
-                          <path d="M198,290 C200,340 196,382 193,412 C197,440 204,462 211,484 L196,489 C189,466 180,440 177,412 C171,372 164,332 159,302 Z" fill="url(#s2gLeg)"/>
+                          <path d="M122,290 C121,340 127,382 131,412 C134,442 137,468 139,490 L155,490 C155,466 153,440 153,412 C155,372 158,332 161,302 Z" fill="url(#s2gSkin)"/>
+                          <path d="M198,290 C200,340 196,382 193,412 C197,440 204,462 211,484 L196,489 C189,466 180,440 177,412 C171,372 164,332 159,302 Z" fill="url(#s2gSkin)"/>
+                          <path d="M122,290 C121,340 127,382 131,412 C134,442 137,468 139,490 L155,490 C155,466 153,440 153,412 C155,372 158,332 161,302 Z" fill="url(#s2gSheer)"/>
+                          <path d="M198,290 C200,340 196,382 193,412 C197,440 204,462 211,484 L196,489 C189,466 180,440 177,412 C171,372 164,332 159,302 Z" fill="url(#s2gSheer)"/>
                           <path d="M134,468 L159,468 L159,530 L165,540 L165,553 Q144,560 119,555 L119,543 L130,535 Z" fill="#141018" stroke="#3e3448" stroke-width="1.5" stroke-linejoin="round"/>
                           <path d="M119,548 L165,548" stroke="#2a2332" stroke-width="8"/>
                           <path d="M137,478 L156,484 M137,490 L156,496 M137,502 L156,508 M137,514 L156,520" stroke="#b9b6c8" stroke-width="1.5" stroke-linecap="round"/>
@@ -7797,107 +7834,124 @@ body.watch-mode #world-switch {
                           <path d="M190,536 L234,530" stroke="#2a2332" stroke-width="8"/>
                           <path d="M197,476 L215,478 M199,488 L217,490 M201,500 L219,502 M203,512 L221,514" stroke="#b9b6c8" stroke-width="1.5" stroke-linecap="round"/>
                         </g>
-                        <!-- Becken -->
-                        <path d="M136,246 L184,246 C194,258 199,274 198,292 C186,300 172,304 160,304 C148,304 134,300 122,292 C121,274 126,258 136,246 Z" fill="url(#s2gLeg)"/>
                     
-                        <!-- Oberteil: eng anliegendes schwarzes Mesh, Karree-Ausschnitt -->
-                        <path d="M149,134 C138,138 124,142 118,152 C113,168 116,182 121,192 C125,204 134,216 137,236 C137,244 136,252 134,260 L186,260 C184,252 183,244 183,236 C186,216 195,204 199,192 C204,182 207,168 202,152 C196,142 182,138 171,134 Z" fill="url(#s2gCloth)"/>
-                        <path d="M149,134 C138,138 124,142 118,152 C113,168 116,182 121,192 C125,204 134,216 137,236 C137,244 136,252 134,260 L186,260 C184,252 183,244 183,236 C186,216 195,204 199,192 C204,182 207,168 202,152 C196,142 182,138 171,134 Z" fill="url(#s2gMesh)"/>
-                        <!-- Oberweite: Form nur ueber Licht und Schatten -->
-                        <ellipse cx="143" cy="184" rx="19" ry="17" fill="url(#s2gBust)"/>
-                        <ellipse cx="177" cy="184" rx="19" ry="17" fill="url(#s2gBust)"/>
-                        <path d="M126,194 Q142,210 158,198 M162,198 Q178,210 194,194" fill="none" stroke="#050408" stroke-width="2.2" stroke-linecap="round" opacity=".8"/>
-                        <path d="M150,136 Q160,142 170,136 L168,154 Q160,160 152,154 Z" fill="url(#s2gSkin)"/>
-                        <path d="M148,136 L152,156 Q160,161 168,156 L172,136" fill="none" stroke="#3e3448" stroke-width="1.6"/>
-                        <path d="M146,146 Q151,149 156,148 M164,148 Q169,149 174,146" fill="none" stroke="#cdb3ae" stroke-width="1.1" stroke-linecap="round"/>
-                        <!-- Korsett-Guertel an der Taille -->
-                        <path d="M136,226 L184,226 L185,252 L135,252 Z" fill="#0a080d" stroke="#4a3d58" stroke-width="1.2"/>
-                        <path d="M152,230 L168,237 M168,230 L152,237 M152,237 L168,244 M168,237 L152,244 M152,244 L168,250 M168,244 L152,250" stroke="#b9b6c8" stroke-width="1"/>
+                        <!-- Rock mit Schlitz -->
+                        <path d="M134,250 L186,250 C198,272 210,300 214,334 Q200,328 190,338 Q176,330 164,340 Q152,330 146,338 L140,300 L130,336 Q120,330 108,336 C112,300 122,272 134,250 Z" fill="url(#s2gLeather)" stroke="#3a2e4a" stroke-width="1"/>
+                        <path d="M150,260 L146,330 M172,260 L180,332 M190,262 L204,328" stroke="#3a2e4a" stroke-width="1.2" opacity=".7"/>
                     
-                        <!-- Kettenguertel auf der Huefte, schwingt mit -->
+                        <!-- Kettenguertel, schwingt mit -->
                         <g class="g-skirt">
-                          <path d="M124,270 Q160,286 196,270" fill="none" stroke="#b9b6c8" stroke-width="2.4" stroke-dasharray="4 2"/>
-                          <path d="M126,274 Q142,312 174,294 Q186,286 194,274" fill="none" stroke="url(#s2gSilver)" stroke-width="2.4" stroke-dasharray="4 2"/>
-                          <path d="M150,304 l0,11 M145,309 l10,0" stroke="#d6d2e2" stroke-width="2.4" stroke-linecap="round"/>
+                          <path d="M128,262 Q160,276 194,262" fill="none" stroke="#b9b6c8" stroke-width="2.2" stroke-dasharray="4 2"/>
+                          <path d="M130,266 Q146,300 176,286 Q186,280 192,266" fill="none" stroke="url(#s2gSilver)" stroke-width="2.2" stroke-dasharray="4 2"/>
+                          <circle cx="176" cy="286" r="3.5" fill="none" stroke="#d6d2e2" stroke-width="1.6"/>
                         </g>
                     
-                        <!-- Seitenstraehnen vorn, ueber die Schultern -->
-                        <g class="g-tailL"><path d="M132,62 C122,110 118,170 120,236 Q126,230 131,238 Q134,232 138,236 C136,170 138,112 142,72 Z" fill="url(#s2gHair)"/></g>
-                        <g class="g-tailR"><path d="M188,62 C198,110 202,170 200,236 Q194,230 189,238 Q186,232 182,236 C184,170 182,112 178,72 Z" fill="url(#s2gHair)"/></g>
+                        <!-- Schultern und Dekollete -->
+                        <path d="M150,132 C138,136 124,140 116,152 L114,184 C132,176 148,180 160,186 C172,180 188,176 206,184 L204,152 C196,140 182,136 170,132 Z" fill="url(#s2gSkin)"/>
+                        <path d="M140,148 Q150,152 157,150 M163,150 Q170,152 180,148" fill="none" stroke="#c9adb6" stroke-width="1.1" stroke-linecap="round"/>
                     
-                        <!-- linker Arm (haengt), Mesh-Aermel -->
-                        <path d="M121,155 L112,224 L117,284" fill="none" stroke="#1a1522" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M121,155 L112,224 L117,284" fill="none" stroke="url(#s2gMesh)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M113,286 C110,296 113,304 118,306 C123,304 124,296 121,286 Z" fill="#f4e6e2" stroke="#d6bfba" stroke-width="1.2"/>
-                        <path d="M114,303 l-.5,4 M117,305 l0,4 M120,304 l.5,4" stroke="#140a18" stroke-width="2" stroke-linecap="round"/>
+                        <!-- Korsett mit Schnallen, Spitzenkante -->
+                        <path d="M116,180 C124,168 142,168 152,176 Q158,182 160,190 Q162,182 168,176 C178,168 196,168 204,180 C206,194 200,206 193,216 C187,228 185,240 186,256 L134,256 C135,240 133,228 127,216 C120,206 114,194 116,180 Z" fill="url(#s2gLeather)"/>
+                        <ellipse cx="141" cy="188" rx="17" ry="12" fill="url(#s2gBust)"/>
+                        <ellipse cx="179" cy="188" rx="17" ry="12" fill="url(#s2gBust)"/>
+                        <path d="M160,190 L160,196" stroke="#0a0710" stroke-width="1.4" stroke-linecap="round"/>
+                        <path d="M116,180 C124,168 142,168 152,176 Q158,182 160,190 Q162,182 168,176 C178,168 196,168 204,180" fill="none" stroke="#6a5a7e" stroke-width="3" stroke-dasharray="1.5 2.5" stroke-linecap="round"/>
+                        <path d="M124,202 Q142,214 158,204 M162,204 Q178,214 196,202" fill="none" stroke="#050408" stroke-width="1.6" opacity=".8"/>
+                        <path d="M128,218 L192,218 L190,226 L130,226 Z M132,238 L188,238 L187,246 L133,246 Z" fill="#0a080d" stroke="#4a3d58" stroke-width="1"/>
+                        <rect x="166" y="216" width="10" height="12" rx="1.5" fill="none" stroke="url(#s2gSilver)" stroke-width="2"/>
+                        <rect x="152" y="236" width="10" height="12" rx="1.5" fill="none" stroke="url(#s2gSilver)" stroke-width="2"/>
                     
-                        <!-- Hals mit Choker -->
-                        <path d="M151,110 L169,110 L170,138 Q160,143 150,138 Z" fill="url(#s2gSkin)"/>
-                        <path d="M152,128 Q160,133 168,128" fill="none" stroke="#d6bfba" stroke-width="1"/>
-                        <rect x="149" y="121" width="22" height="5.5" rx="2" fill="#0b090f"/>
-                        <circle cx="160" cy="129.5" r="2.8" fill="none" stroke="#d6d2e2" stroke-width="1.6"/>
+                        <!-- Seitenstraehnen vorn -->
+                        <g class="g-tailL"><path d="M132,62 C122,110 116,170 118,236 Q124,230 129,238 Q132,232 136,236 C134,170 136,112 142,72 Z" fill="url(#s2gHair)"/></g>
+                        <g class="g-tailR"><path d="M188,62 C198,110 204,170 202,236 Q196,230 191,238 Q188,232 184,236 C186,170 184,112 178,72 Z" fill="url(#s2gHair)"/></g>
                     
-                        <!-- Kopf, realistische Proportionen -->
+                        <!-- linker Arm im weiten Umhang-Aermel -->
+                        <path d="M116,156 C104,196 98,238 98,272 Q106,292 128,284 C124,248 126,208 130,172 Z" fill="url(#s2gRobe)" stroke="#3a2e4a" stroke-width="1.2"/>
+                        <path d="M100,276 Q112,286 126,282" fill="none" stroke="#8a5ad0" stroke-width="1.2" opacity=".6"/>
+                        <path d="M108,284 C104,294 108,304 113,306 C118,304 120,294 118,284 Z" fill="url(#s2gSkin)" stroke="#c9adb6" stroke-width="1"/>
+                        <path d="M108.5,303 l-1.5,7 M112,305 l-.5,8 M115.5,304.5 l.5,7.5" stroke="#0b0710" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M110,298 l5,0" stroke="#d6d2e2" stroke-width="2" stroke-linecap="round"/>
+                    
+                        <!-- Hals, Choker mit O-Ring, Kette mit Mond -->
+                        <path d="M151,110 L169,110 L170,136 Q160,141 150,136 Z" fill="url(#s2gSkin)"/>
+                        <rect x="148.5" y="119" width="23" height="8" rx="2.5" fill="#0b090f" stroke="#3e3448" stroke-width="1"/>
+                        <circle cx="160" cy="130.5" r="3.4" fill="none" stroke="#d6d2e2" stroke-width="1.8"/>
+                        <path d="M151,127 Q160,166 169,127" fill="none" stroke="#b9b6c8" stroke-width="1" stroke-dasharray="2 1.2"/>
+                        <path d="M163,151 A5,5 0 1 1 158,159 A4,4 0 1 0 163,151 Z" fill="url(#s2gSilver)"/>
+                    
+                        <!-- Kopf -->
                         <g class="g-head">
-                          <path d="M134,66 C134,92 144,110 160,119 C176,110 186,92 186,66 C186,40 134,40 134,66 Z" fill="url(#s2gSkin)" stroke="#d6bfba" stroke-width="1.2"/>
-                          <path d="M137,92 Q142,104 152,110 M183,92 Q178,104 168,110" fill="none" stroke="#e0c8c3" stroke-width="3" stroke-linecap="round" opacity=".7"/>
-                          <ellipse cx="143" cy="96" rx="6" ry="3" fill="#c98aa2" opacity=".18"/>
-                          <ellipse cx="177" cy="96" rx="6" ry="3" fill="#c98aa2" opacity=".18"/>
+                          <!-- Dutts oben -->
+                          <circle cx="140" cy="38" r="13" fill="url(#s2gHair)"/>
+                          <circle cx="180" cy="38" r="13" fill="url(#s2gHair)"/>
+                          <path d="M131,34 Q140,26 149,36 M171,36 Q180,26 189,34 M134,44 Q126,54 124,70 M186,44 Q194,54 196,70" fill="none" stroke="#4a3d5a" stroke-width="1.4" stroke-linecap="round"/>
+                          <path d="M134,66 C134,92 144,110 160,119 C176,110 186,92 186,66 C186,40 134,40 134,66 Z" fill="url(#s2gSkin)" stroke="#c9adb6" stroke-width="1.2"/>
+                          <path d="M137,92 Q142,104 152,110 M183,92 Q178,104 168,110" fill="none" stroke="#d9c1c9" stroke-width="3" stroke-linecap="round" opacity=".7"/>
                     
                           <g class="g-eyes">
                             <g class="g-eye">
-                              <ellipse cx="148" cy="81" rx="11" ry="6" fill="#4a2a58" opacity=".4"/>
-                              <ellipse cx="172" cy="81" rx="11" ry="6" fill="#4a2a58" opacity=".4"/>
-                              <path d="M139.5,84 Q148,77 156.5,83 Q148,88 139.5,84 Z" fill="#fbf7f7"/>
-                              <circle cx="148.5" cy="83" r="3.7" fill="url(#s2gIris)"/>
-                              <circle cx="148.5" cy="83" r="1.6" fill="#12040e"/>
-                              <circle cx="147.3" cy="81.8" r=".9" fill="#fff"/>
-                              <path d="M157,83.5 Q149,74.5 138.5,81 L134,77 L137.5,84 Q148,77.5 157,83.5 Z" fill="#0b050c"/>
-                              <path d="M141,86.5 Q148,89.5 155,86" fill="none" stroke="#2a1628" stroke-width="1" stroke-linecap="round"/>
-                              <path d="M180.5,84 Q172,77 163.5,83 Q172,88 180.5,84 Z" fill="#fbf7f7"/>
-                              <circle cx="171.5" cy="83" r="3.7" fill="url(#s2gIris)"/>
-                              <circle cx="171.5" cy="83" r="1.6" fill="#12040e"/>
-                              <circle cx="170.3" cy="81.8" r=".9" fill="#fff"/>
-                              <path d="M163,83.5 Q171,74.5 181.5,81 L186,77 L182.5,84 Q172,77.5 163,83.5 Z" fill="#0b050c"/>
-                              <path d="M179,86.5 Q172,89.5 165,86" fill="none" stroke="#2a1628" stroke-width="1" stroke-linecap="round"/>
+                              <ellipse cx="147" cy="81.5" rx="10" ry="5.5" fill="#3a1a4e" opacity=".45"/>
+                              <ellipse cx="173" cy="81.5" rx="10" ry="5.5" fill="#3a1a4e" opacity=".45"/>
+                              <path d="M139.5,84 Q148,78 156.5,83 Q148,87.5 139.5,84 Z" fill="#fbf7f7"/>
+                              <circle cx="148.5" cy="83.3" r="3.6" fill="url(#s2gIris)"/>
+                              <circle cx="148.5" cy="83.3" r="1.5" fill="#12040e"/>
+                              <circle cx="147.4" cy="82.2" r=".9" fill="#fff"/>
+                              <path d="M157,83.2 Q149,76.5 138.5,81.5 L133,77 L137.5,84.2 Q148,79 157,83.2 Z" fill="#0b050c"/>
+                              <path d="M141,86.5 Q148,89.5 155,86" fill="none" stroke="#1a0a1e" stroke-width="1.3" stroke-linecap="round"/>
+                              <path d="M180.5,84 Q172,78 163.5,83 Q172,87.5 180.5,84 Z" fill="#fbf7f7"/>
+                              <circle cx="171.5" cy="83.3" r="3.6" fill="url(#s2gIris)"/>
+                              <circle cx="171.5" cy="83.3" r="1.5" fill="#12040e"/>
+                              <circle cx="170.4" cy="82.2" r=".9" fill="#fff"/>
+                              <path d="M163,83.2 Q171,76.5 181.5,81.5 L187,77 L182.5,84.2 Q172,79 163,83.2 Z" fill="#0b050c"/>
+                              <path d="M179,86.5 Q172,89.5 165,86" fill="none" stroke="#1a0a1e" stroke-width="1.3" stroke-linecap="round"/>
                             </g>
                             <g class="g-joy" fill="none" stroke="#0b050c" stroke-width="2.4" stroke-linecap="round">
                               <path d="M140,85 Q148,79 157,84"/>
                               <path d="M180,85 Q172,79 163,84"/>
                             </g>
                           </g>
-                          <path d="M139,73.5 Q147,69.5 157,72.5 M181,73.5 Q173,69.5 163,72.5" fill="none" stroke="#120c18" stroke-width="2" stroke-linecap="round"/>
-                          <path d="M159.6,91 Q158.6,96 159.4,98.4 Q160.8,99.6 162.8,98.4" fill="none" stroke="#c6a8a3" stroke-width="1.3" stroke-linecap="round"/>
+                          <path d="M139,72.5 Q147,68 157,71.5 M181,72.5 Q173,68 163,71.5" fill="none" stroke="#120c18" stroke-width="2.2" stroke-linecap="round"/>
+                          <path d="M159.6,91 Q158.6,96 159.4,98.4 Q160.8,99.6 162.8,98.4" fill="none" stroke="#b89aa6" stroke-width="1.3" stroke-linecap="round"/>
+                          <circle cx="157.6" cy="98.6" r="1.7" fill="none" stroke="#d6d2e2" stroke-width="1"/>
+                          <path d="M141,94 c-1.6,-1.6 -3.6,.2 -1.8,2 l1.8,1.8 1.8,-1.8 c1.8,-1.8 -.2,-3.6 -1.8,-2 Z" fill="#2a0a22"/>
                           <g class="g-mouth">
-                            <path d="M152,105 Q156,102 160,103.6 Q164,102 168,105 Q160,106.6 152,105 Z" fill="#4a1238"/>
-                            <path d="M152.8,105.4 Q160,112 167.2,105.4 Q160,107 152.8,105.4 Z" fill="#5c1a46"/>
-                            <path d="M156,108.4 Q160,109.6 164,108.4" fill="none" stroke="#b86a98" stroke-width="1" stroke-linecap="round" opacity=".7"/>
+                            <path d="M152,105 Q156,102 160,103.6 Q164,102 168,105.4 Q160,106.6 152,105 Z" fill="#2a0a22"/>
+                            <path d="M152.8,105.4 Q160,112 167.6,105.6 Q160,107 152.8,105.4 Z" fill="#3a1030"/>
+                            <path d="M156,108.4 Q160,109.6 164,108.4" fill="none" stroke="#9a5a86" stroke-width="1" stroke-linecap="round" opacity=".7"/>
                           </g>
-                          <path class="g-mouthO" d="M151,104 Q160,102.5 169,104 Q166,113 160,113 Q154,113 151,104 Z" fill="#4a1238" stroke="#2a0820" stroke-width="1" stroke-linejoin="round"/>
+                          <path class="g-mouthO" d="M151,104 Q160,102.5 169,104 Q166,113 160,113 Q154,113 151,104 Z" fill="#2a0a22" stroke="#1a0616" stroke-width="1" stroke-linejoin="round"/>
                     
-                          <!-- Seitenvorhaenge und gerader Pony -->
+                          <!-- Seitenvorhaenge, fransiger Pony mit Mittelscheitel -->
                           <path d="M132,58 C127,90 127,112 131,132 L140,130 C138,106 138,84 141,64 Z" fill="url(#s2gHair)"/>
                           <path d="M188,58 C193,90 193,112 189,132 L180,130 C182,106 182,84 179,64 Z" fill="url(#s2gHair)"/>
-                          <path d="M129,74 C120,28 200,28 191,74 Q187,76 183,73.5 Q179,76 175,73.5 Q171,76 167,73.5 Q163,76 159,73.5 Q155,76 151,73.5 Q147,76 143,73.5 Q139,76 135,73.5 Q132,76 129,74 Z" fill="url(#s2gHair)"/>
-                          <path d="M140,42 Q154,34 170,36" fill="none" stroke="#8a78a8" stroke-width="3" stroke-linecap="round" opacity=".45"/>
-                    
-                          <!-- kleine Krone mit Mondstein -->
-                          <path d="M147,40 L151,30 L155,37 L160,26 L165,37 L169,30 L173,40 Q160,36 147,40 Z" fill="#141018" stroke="#b9b6c8" stroke-width="1.2" stroke-linejoin="round"/>
-                          <circle cx="160" cy="36" r="2.2" fill="#c9a8ff"/>
+                          <path d="M129,76 C118,30 202,30 191,76 Q187,68 185,79 Q180,64 175,78 Q171,60 165,68 Q161,52 158,66 Q152,58 146,78 Q141,64 136,79 Q134,68 129,76 Z" fill="url(#s2gHair)"/>
+                          <path d="M140,44 Q152,36 164,38" fill="none" stroke="#8a78a8" stroke-width="2.5" stroke-linecap="round" opacity=".45"/>
+                          <!-- Kreuz-Ohrringe -->
+                          <path d="M134,101 L134,114 M131.5,105 L136.5,105 M186,101 L186,114 M183.5,105 L188.5,105" stroke="url(#s2gSilver)" stroke-width="1.6" stroke-linecap="round"/>
+                          <circle cx="134" cy="99" r="1.6" fill="none" stroke="#d6d2e2" stroke-width="1.2"/>
+                          <circle cx="186" cy="99" r="1.6" fill="none" stroke="#d6d2e2" stroke-width="1.2"/>
                         </g>
                     
-                        <!-- rechter Arm mit Mondstab -->
+                        <!-- rechter Arm (frei, mit Tattoo) und Kristallstab -->
                         <g class="g-arm">
-                          <line x1="231" y1="206" x2="246" y2="40" stroke="url(#s2gSilver)" stroke-width="4.5" stroke-linecap="round"/>
-                          <path d="M199,156 L227,132 L238,94" fill="none" stroke="#1a1522" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
-                          <path d="M199,156 L227,132 L238,94" fill="none" stroke="url(#s2gMesh)" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
-                          <path d="M233,92 C232,82 236,76 242,76 C247,78 247,86 244,93 Z" fill="#f4e6e2" stroke="#d6bfba" stroke-width="1.2"/>
-                          <path d="M236,79 l-3,-2 M239,77 l-2,-3" stroke="#140a18" stroke-width="2" stroke-linecap="round"/>
+                          <line x1="231" y1="206" x2="246" y2="44" stroke="#15101c" stroke-width="5.5" stroke-linecap="round"/>
+                          <line x1="231" y1="206" x2="246" y2="44" stroke="url(#s2gSilver)" stroke-width="2" stroke-dasharray="3 6" stroke-linecap="round"/>
+                          <path d="M199,156 L227,132 L238,94" fill="none" stroke="#d5bcc6" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+                          <path d="M199,156 L227,132 L238,94" fill="none" stroke="#f3e5e9" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+                          <path d="M206,152 Q212,142 220,144 Q216,150 222,152 M212,146 q3,-5 8,-3 M214,152 q-2,4 3,5" fill="none" stroke="#4a3d58" stroke-width="1.1" stroke-linecap="round" opacity=".85"/>
+                          <path d="M233,92 C232,82 236,76 242,76 C247,78 247,86 244,93 Z" fill="url(#s2gSkin)" stroke="#c9adb6" stroke-width="1.1"/>
+                          <path d="M236,79 l-5,-5 M239,77 l-3,-6 M242,76.5 l-1,-6" stroke="#0b0710" stroke-width="2" stroke-linecap="round"/>
+                          <path d="M234,84 l6,1 M234,88 l6,1" stroke="#d6d2e2" stroke-width="1.8" stroke-linecap="round"/>
+                          <g class="g-smoke" fill="none" stroke="#b36bff" stroke-linecap="round">
+                            <path d="M248,24 C226,6 206,20 214,36 C222,52 244,40 236,24 C230,12 214,4 200,-2" stroke-width="2.4" opacity=".75"/>
+                            <path d="M248,24 C270,8 292,18 282,34 C274,46 258,36 266,22 C272,12 286,2 298,-4" stroke-width="2" opacity=".6"/>
+                            <path d="M248,24 C240,0 256,-12 262,-20" stroke-width="1.6" opacity=".5"/>
+                          </g>
                           <g class="g-star">
-                            <circle class="g-starGlow" cx="248" cy="24" r="36" fill="url(#s2gGlow)"/>
-                            <path d="M256,2 A24,24 0 1 0 262,44 A19,19 0 1 1 256,2 Z" fill="url(#s2gMoon)" stroke="#6a3ab0" stroke-width="1.5"/>
-                            <path d="M253,19 l2.6,6 6,.8 -4.4,4.2 1,6 -5.2,-2.8 -5.2,2.8 1,-6 -4.4,-4.2 6,-.8 Z" fill="#fff" stroke="#c9a8ff" stroke-width="1"/>
-                            <path d="M238,44 L256,44 L247,54 Z" fill="#9a1e5a" stroke="#b9b6c8" stroke-width="1.2"/>
+                            <circle class="g-starGlow" cx="248" cy="24" r="34" fill="url(#s2gGlow)"/>
+                            <path d="M248,0 L258,23 L248,46 L238,23 Z" fill="url(#s2gCrystal)" stroke="#e6d0ff" stroke-width="1.2"/>
+                            <path d="M248,0 L248,46 M238,23 L258,23" stroke="#fff" stroke-width=".8" opacity=".6"/>
+                            <path d="M238,40 L234,32 L242,42 M258,40 L262,32 L254,42 M244,46 L248,52 L252,46" fill="none" stroke="#b9b6c8" stroke-width="1.8" stroke-linejoin="round"/>
                           </g>
                         </g>
                       </g>
@@ -7908,7 +7962,7 @@ body.watch-mode #world-switch {
                         <path d="M30,370 l2.5,7 7,2.5 -7,2.5 -2.5,7 -2.5,-7 -7,-2.5 7,-2.5 Z"/>
                         <path d="M280,330 l3,9 9,3 -9,3 -3,9 -3,-9 -9,-3 9,-3 Z"/>
                         <path d="M200,40 l2,6 6,2 -6,2 -2,6 -2,-6 -6,-2 6,-2 Z"/>
-                        <path d="M70,520 l2,6 6,2 -6,2 -2,6 -2,-6 -6,-2 6,-2 Z"/>
+                        <path d="M110,440 l2,6 6,2 -6,2 -2,6 -2,-6 -6,-2 6,-2 Z"/>
                         <path d="M270,560 l2.5,7 7,2.5 -7,2.5 -2.5,7 -2.5,-7 -7,-2.5 7,-2.5 Z"/>
                       </g>
                     </svg>
