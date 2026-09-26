@@ -446,15 +446,7 @@ Princess / Gates of Olympus:
   Danach (Max: „sieht aus wie ein Kind“) auf erwachsene, realistischere
   Proportionen umgezeichnet: ~7,5 Kopflaengen statt Chibi, mandelfoermige
   Augen mit Lidstrich, Nase, volle Lippen, Wangenknochen, Taille/Huefte und
-  fuelligere Oberweite (nur ueber Licht und Schatten, eng anliegendes Mesh).
-  Dritte Fassung nach einer Vorlage von Max (Goth-Hexe; die Vorlage war ein
-  Pin-up in Dessous – das bewusst nicht uebernommen, das Maskottchen bleibt
-  bekleidet): Dutts, Mittelscheitel-Pony, Nasenring, Kreuz-Ohrringe,
-  Herz-Beauty-Mark, Choker mit O-Ring und Mondkette, schulterfreies Korsett
-  mit Schnallen und Spitzenkante, Rock mit Schlitz, dunkle Struempfe,
-  weiter Umhang statt Fluegeln (schwingt), lange schwarze Naegel, Ringe,
-  Tattoo am Arm, Kristallstab mit animiertem lila Rauch; unten links
-  Buecher, Totenkopf, flackernde Kerzen und ein Rabe, der den Kopf dreht. Im Leerlauf schwebt sie, blinzelt, Zoepfe, Rock und Fluegel
+  fuelligere Oberweite (nur ueber Licht und Schatten, eng anliegendes Mesh). Im Leerlauf schwebt sie, blinzelt, Zoepfe, Rock und Fluegel
   wippen, der Stern am Stab pulsiert. Posen per `s2Girl(pose, ms)`: `cast`
   (Stab schwingen) beim Spin und wenn der Multiplikator greift, `happy`
   (Augen zu, Mund auf, Hopser) bei jedem Tumble-Gewinn, `zap` (Stab hoch,
