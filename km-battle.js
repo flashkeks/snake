@@ -464,6 +464,48 @@ function greedy(b, s, smart) {
     return { a: 'move', i: opts[0].i };
 }
 
+// Taktische Wahl (26.09.2026, Max: „alle KIs schlauer"): was ein guter Spieler macht –
+// K.o. mitnehmen, wenn man zuerst dran ist; vor einem sicheren K.o. auf eine Karte wechseln,
+// die das aushaelt; einen gebufften Gegner mit Schlaf/Paralyse bremsen; rechtzeitig heilen;
+// selbst buffen, wenn es sicher ist; sonst der staerkste Treffer. Wird auch in der
+// Vorausschau fuer beide Seiten gespielt (TACT), damit die KI Buff-Sweeps kommen sieht.
+const TACT = 1.5;
+function tactical(b, s) {
+    if (b.phase === 'switch') return { a: 'switch', to: bestSwitch(b, s, -1) };
+    const me = act(b, s), foe = act(b, 1 - s), side = b.sides[s];
+    const usable = me.moves.map((m, i) => ({ m, i })).filter(x => x.m.ppLeft > 0);
+    if (!usable.length) return { a: 'move', i: -1 };
+    const faster = speedOf(me) >= speedOf(foe);
+    const atk = usable.filter(x => x.m.pow).map(x => {
+        const d = estimate(me, foe, x.m).dmg;
+        return { ...x, d: d * (x.m.acc ? x.m.acc / 100 : 1), ko: d >= foe.hp };
+    }).sort((x, y) => y.d - x.d);
+    const threat = bestDamage(foe, me);
+    const foeKOs = threat >= me.hp;
+    const ko = atk.filter(x => x.ko).sort((x, y) => (y.m.pri || 0) - (x.m.pri || 0) || (y.m.acc || 100) - (x.m.acc || 100))[0];
+    if (ko && (faster || ko.m.pri > 0 || !foeKOs)) return { a: 'move', i: ko.i };
+    if (foeKOs && !faster) {
+        const to = bestSwitch(b, s, side.active);
+        if (to >= 0) {
+            const c = side.cards[to];
+            if (bestDamage(foe, c) < c.hp * 0.5) return { a: 'switch', to };
+        }
+    }
+    const offK = me.style === 'spec' ? 'spa' : 'atk';
+    const eff = x => x.m.eff || {};
+    const foeBoost = Math.max(foe.boosts.atk || 0, foe.boosts.spa || 0);
+    const cripple = usable.find(x => (eff(x).st === 'slp' || eff(x).st === 'par') && K.IMMUNE[eff(x).st] !== foe.type);
+    if (foeBoost >= 2 && !foe.status && cripple && !foeKOs) return { a: 'move', i: cripple.i };
+    const heal = usable.find(x => eff(x).heal);
+    if (heal && me.hp / me.maxHp < 0.45 && threat < me.maxHp * 0.4) return { a: 'move', i: heal.i };
+    const setup = usable.find(x => eff(x).self && (eff(x).self.off || eff(x).self[offK]));
+    if (setup && (me.boosts[offK] || 0) < 4 && threat < me.hp * 0.4 && !(atk[0] && atk[0].d * 2 >= foe.hp)) return { a: 'move', i: setup.i };
+    const sleep = usable.find(x => eff(x).st === 'slp' && K.IMMUNE.slp !== foe.type);
+    if (sleep && !foe.status && foe.hp > foe.maxHp * 0.6 && !foeKOs) return { a: 'move', i: sleep.i };
+    if (atk.length) return { a: 'move', i: atk[0].i };
+    return greedy(b, s, 1);
+}
+
 // Bewertung aus Sicht von Seite s: eigene HP/Karten minus die des Gegners
 function evalSide(b, s) {
     const score = side => side.cards.reduce((a, c) => a + (c.hp > 0 ? 0.45 + 0.55 * c.hp / c.maxHp - (c.status ? 0.08 : 0) : 0), 0);
@@ -473,11 +515,11 @@ function evalSide(b, s) {
     return score(b.sides[s]) - score(b.sides[1 - s]) + (me.hp > 0 ? boost : 0);
 }
 
-function cloneBattle(b) {
+function cloneBattle(b, roll = 1) {
     return {
         ...b,
         sides: b.sides.map(side => ({
-            ...side, choice: null, ai: true, level: 1,
+            ...side, choice: null, ai: true, level: roll,
             cards: side.cards.map(c => ({ ...c, st: { ...c.st }, boosts: { ...c.boosts }, moves: c.moves.map(m => ({ ...m })) }))
         })),
         smart: 1
@@ -485,10 +527,15 @@ function cloneBattle(b) {
 }
 
 const LOOK_SAMPLES = 8, LOOK_TURNS = 3;
-// Stufe 3 (6.8, neue Gym-Reihe): doppelt so viele Stichproben, einen Zug
-// tiefer, und auch die Einwechsel-Wahl nach einem K.o. per Vorausschau
-const LOOK3 = { samples: 16, turns: 4 };
 const LOOK_BUDGET_MS = 10;
+// Stufe 3 (6.8, neue Gym-Reihe): mehr Stichproben, tiefer, auch die Einwechsel-Wahl
+// per Vorausschau. 26.09.2026 (Max: „alle KIs schlauer, die dann nochmal staerker"):
+// spielt jede eigene Option gegen jede Antwort des Gegners durch (replies) und wertet
+// vorsichtig (mix: Anteil des schlechtesten Falls), statt nur gegen eine gierige Antwort
+const LOOK3 = { samples: 20, turns: 5, replies: true, mix: 0.35, budget: 16 };
+// Stufe 4 (26.09.2026, neu, Ace-Reihe): noch tiefer, mehr Stichproben, rechnet mit dem
+// besten Gegenzug (mix hoch) und plant Wechsel nach einem K.o. genauso
+const LOOK4 = { samples: 32, turns: 6, replies: true, mix: 0.6, budget: 28 };
 
 function lookahead(b, s, opt = { samples: LOOK_SAMPLES, turns: LOOK_TURNS }) {
     const me = act(b, s);
@@ -504,28 +551,42 @@ function lookahead(b, s, opt = { samples: LOOK_SAMPLES, turns: LOOK_TURNS }) {
     // Reihum rechnen (je Runde eine Stichprobe fuer jeden Kandidaten) und nach
     // LOOK_BUDGET_MS aufhoeren (6.8): die Vorausschau laeuft im selben Thread wie
     // Snake und Arena, Stufe 3 brauchte in Spitzen 50 ms = spuerbarer Ruckler
-    const sums = cands.map(() => 0);
-    const t0 = Date.now();
+    // Antworten des Gegners: ohne replies eine gierige, mit replies jede seiner Attacken
+    // und sein bester Wechsel (null = gierig im Klon ausrechnen)
+    const opp = 1 - s;
+    let replies = [null];
+    if (opt.replies && !switching && b.phase === 'move') {
+        const fo = act(b, opp), fs = b.sides[opp];
+        replies = fo.moves.map((m, i) => m.ppLeft > 0 ? { a: 'move', i } : null).filter(Boolean);
+        const sw = fs.cards.some((c, i) => i !== fs.active && c.hp > 0) ? bestSwitch(b, opp, fs.active) : -1;
+        if (sw >= 0) replies.push({ a: 'switch', to: sw });
+        if (!replies.length) replies = [null];
+    }
+    const sums = cands.map(() => replies.map(() => 0));
+    const t0 = Date.now(), budget = opt.budget || LOOK_BUDGET_MS;
     let rounds = 0;
     for (let k = 0; k < opt.samples; k++) {
-        cands.forEach((c, ci) => {
-            const x = cloneBattle(b);
+        cands.forEach((c, ci) => replies.forEach((r, ri) => {
+            const x = cloneBattle(b, opt.roll || 1);
             x.sides[s].choice = c;
-            if (!switching) x.sides[1 - s].choice = greedy(x, 1 - s, 1);
+            if (!switching) x.sides[opp].choice = r || (opt.roll === TACT ? tactical(x, opp) : greedy(x, opp, 1));
             const start = x.turn;
             let g = 0;
             while (!x.over && x.turn < start + opt.turns && g++ < 24) {
                 if (!switching && x.phase === 'move' && !x.sides[0].choice && !x.sides[1].choice && x.turn === start) break;
                 step(x, []);
             }
-            sums[ci] += evalSide(x, s);
-        });
+            sums[ci][ri] += evalSide(x, s);
+        }));
         rounds++;
-        if (rounds >= 3 && Date.now() - t0 > LOOK_BUDGET_MS) break;
+        if (rounds >= 3 && Date.now() - t0 > budget) break;
     }
+    const mix = opt.mix || 0;
     let best = null, bv = -1e9;
     cands.forEach((c, ci) => {
-        if (sums[ci] > bv) { bv = sums[ci]; best = c; }
+        const avg = sums[ci].map(v => v / rounds);
+        const v = mix * Math.min(...avg) + (1 - mix) * avg.reduce((a, x) => a + x, 0) / avg.length;
+        if (v > bv) { bv = v; best = c; }
     });
     return best;
 }
@@ -534,12 +595,14 @@ function lookahead(b, s, opt = { samples: LOOK_SAMPLES, turns: LOOK_TURNS }) {
 function aiChoose(b, s, level) {
     const lv = b.sides[s].level;
     const smart = level !== undefined ? level : lv !== undefined ? lv : b.smart;
-    if (b.phase === 'switch') return smart >= 3 ? lookahead(b, s, LOOK3) : { a: 'switch', to: bestSwitch(b, s, -1) };
+    if (b.phase === 'switch') return smart >= 4 ? lookahead(b, s, LOOK4) : smart >= 3 ? lookahead(b, s, LOOK3) : { a: 'switch', to: bestSwitch(b, s, -1) };
     if (smart < 0) {
         // nur fuer Tests: rein zufaellig
         const ok = act(b, s).moves.map((m, i) => i).filter(i => act(b, s).moves[i].ppLeft > 0);
         return { a: 'move', i: ok.length ? ok[Math.floor(b.rnd() * ok.length)] : -1 };
     }
+    if (smart === TACT) return tactical(b, s);
+    if (smart >= 4) return lookahead(b, s, LOOK4);
     if (smart >= 3) return lookahead(b, s, LOOK3);
     if (smart >= 2) return lookahead(b, s);
     return greedy(b, s, smart);
