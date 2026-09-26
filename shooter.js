@@ -413,6 +413,8 @@ const ZMB_POWERUPS = {
 const Z_DROP_CHANCE = 0.035, Z_DROP_MAX = 4, Z_DROP_MS = 25000, Z_DROP_R = 42;
 // Pause (26.09.2026, Max): 5 s Countdown, dann steht alles
 const Z_PAUSE_CD = 5000;
+// Spieler gegen Spieler (26.09.2026, Max): aller Schaden ×0,4
+const PVP_PLAYER_DMG = 0.4;
 // Boss-Cases (26.09.2026, Max: „Zombies lohnenswerter"): jeder im Spiel bekommt fuer jeden
 // getoeteten Boss am Spielende einen Case, nach Welle gestaffelt. Je Schwierigkeit (Max):
 //   Hard   – jeder Boss, Leiter ab Standard (W5 Standard, W10 Demolition ... W45+ Sovereign)
@@ -2944,6 +2946,9 @@ module.exports = function createArena(h, opts = {}) {
             }
             return false;
         }
+        // 26.09.2026 (Max): Schaden von Spielern an Spielern ×0,4 – fuer alle Waffen (Kugeln, Strahlen,
+        // Explosionen, Feuer, Tesla, Geschuetze, Verbrauchsgut). Gegner/Bosse bleiben wie sie sind
+        if (attacker && attacker !== v && players.has(attacker.id)) dmg *= PVP_PLAYER_DMG;
         if (attacker && attacker.b && attacker.b.exec && v.hp < v.maxHp * 0.3) dmg *= 1 + attacker.b.exec;
         // Zombie-Baum (6.5): Treffer von Zombies und Bossen
         if (zb && !attacker) {

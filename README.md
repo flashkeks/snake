@@ -3704,3 +3704,13 @@ Lv 5; Screenshots von Knopf und Menü.
   (eine geschützte Variante zählt dabei als die behaltene). Folgt Set-/Typ-/Suchfilter.
   Außerdem: „Only duplicates" wirkt jetzt auch schon bei der Wahl der Zielkarte (galt vorher
   erst danach).
+
+## ⚔️ Spieler-Schaden ×0,4 (26.09.2026, Max: „nerfe für alle Waffen Player-Dmg ×0.4")
+
+In `damage()`: Trifft ein Spieler einen anderen Spieler, zählt der Schaden nur zu 40 %
+(`PVP_PLAYER_DMG`) – für alles, was einen Spieler als Angreifer hat: Kugeln, Strahlen,
+Explosionen, Feuer, Tesla, Geschütze, Granaten und anderes Verbrauchsgut, in Raids und PvP.
+Schaden von Gegnern und Bossen an Spielern und Schaden von Spielern an Gegnern bleibt gleich.
+Ein Treffer der Railgun (Legendary, Lv 30) an Schmoggi: 267 → ~107, also 4 statt 2 Treffer.
+
+Geprüft: 50 Schaden Spieler→Spieler = 20, Gegner→Spieler = 50; alle älteren Tests grün.
